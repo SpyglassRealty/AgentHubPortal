@@ -1,0 +1,251 @@
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "createdAt": 0,
+  "updatedAt": 0,
+  "agentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "status": "CREATED",
+  "nextStatus": "CREATED",
+  "applicationType": "REGULAR",
+  "country": "UNITED_STATES",
+  "firstName": "string",
+  "lastName": "string",
+  "emailAddress": "string",
+  "phoneNumber": "string",
+  "birthDate": "2025-12-05",
+  "boardOrMls": "string",
+  "currentBrokerage": "string",
+  "hasPendingTransactionsWithCurrentBrokerage": true,
+  "estimatedSales": "string",
+  "commercialAgent": true,
+  "doesBusinessInExtended": [
+    {
+      "licenseResponse": {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "number": "string",
+        "active": true,
+        "expirationDate": "2025-12-05",
+        "knownComplaints": true,
+        "administrativeArea": {
+          "id": "string",
+          "createdAt": 0,
+          "updatedAt": 0,
+          "country": "UNITED_STATES",
+          "stateOrProvince": "ALABAMA",
+          "signupFee": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "licenseTransferFee": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "agentCanTransferLicense": true,
+          "realEstateLicenseImageUploadRequired": true,
+          "driversLicenseImageUploadRequired": true
+        },
+        "licenseImagePath": "string",
+        "licenseImageApprovalStatus": "APPROVED"
+      },
+      "boards": [
+        "string"
+      ],
+      "mlses": [
+        "string"
+      ]
+    }
+  ],
+  "icaType": "RESIDENTIAL_STANDARD_V1",
+  "icaName": "string",
+  "icaSignature": "string",
+  "icaAnniversaryDateRequested": "2025-12-05",
+  "sponsoringAgents": [
+    {
+      "name": "string",
+      "email": "string",
+      "sponsorCode": "string"
+    }
+  ],
+  "icaSignedAt": 0,
+  "teamName": "string",
+  "teamLeaderName": "string",
+  "teamRole": "MEMBER",
+  "preferredTitleVendor": "string",
+  "feesPaidAt": 0,
+  "paidFeesAmount": {
+    "amount": 0,
+    "currency": "USD"
+  },
+  "feesStripeChargeId": "string",
+  "approvedAt": 0,
+  "approvedBy": "string",
+  "sponsorCode": "string",
+  "licenseTransferMarkedAsCompleteAt": 0,
+  "licenseTransferredAt": 0,
+  "rejectedAt": 0,
+  "rejectedBy": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "icaEmergencyContactName": "string",
+  "icaEmergencyContactPhoneNumber": "string",
+  "icaEmergencyContactEmailAddress": "string",
+  "icaEmergencyContactRelationship": "string",
+  "icaEntityName": "string",
+  "icaInitials": "string",
+  "loiName": "string",
+  "loiSignature": "string",
+  "loiResidentIn": "string",
+  "loiNumDaysUntilJoining": 0,
+  "loiSignedAt": 0,
+  "optInToStockPlan": true,
+  "feesWaivedAt": 0,
+  "feesWaivedBy": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "driverLicenseImagePath": "string",
+  "icaAgreement": {
+    "agreementId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "signeeToken": "string",
+    "signedAt": 0,
+    "agreementDefinitionId": "string",
+    "agreementVersion": 0
+  },
+  "couponCode": "string",
+  "preferredTitleVendorFlag": true,
+  "individualAgentFlag": true,
+  "teamInvitation": {
+    "invitationId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "teamId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "lastName": "string",
+    "firstName": "string",
+    "emailAddress": "string",
+    "capLevel": 0,
+    "waiveFees": true,
+    "invitationCreatedByAgentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "status": "EMAILED",
+    "couponCode": "string",
+    "emailSentAt": 0,
+    "applicationId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "applicationStatus": "CREATED",
+    "emailStatus": "EMAILED",
+    "leaderSplits": [
+      {
+        "leaderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "leaderSplit": 100
+      }
+    ],
+    "memberFeeSplits": [
+      {
+        "leaderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "feeSplits": [
+          {
+            "feeType": "BROKERAGE_FEE",
+            "percent": 100
+          }
+        ]
+      }
+    ],
+    "teamFeeCap": {
+      "capAmount": 0,
+      "preCapFee": 0,
+      "postCapFee": 0
+    },
+    "genericTeamInvitation": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "timeline": [
+      {
+        "name": "EMAILED",
+        "completedAt": 0
+      }
+    ],
+    "inviteeAgentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "firstAndLastName": "string",
+    "pending": true,
+    "teamConfigOverride": true
+  },
+  "genericTeamInvitation": {
+    "invitationId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "invitationCreatedByAgentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "teamId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "capLevel": 0,
+    "waiveFees": true,
+    "expirationTime": 0,
+    "couponCode": "string",
+    "leaderFeeOverrides": [
+      {
+        "leaderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "leaderSplit": 100
+      }
+    ],
+    "agentFeeOverrides": [
+      {
+        "leaderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "feeSplits": [
+          {
+            "feeType": "BROKERAGE_FEE",
+            "percent": 100
+          }
+        ]
+      }
+    ],
+    "teamFeeOverride": {
+      "capAmount": 0,
+      "preCapFee": 0,
+      "postCapFee": 0
+    },
+    "creationTime": 0,
+    "teamConfigOverride": true
+  },
+  "userId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "roles": [
+    "TRANSACTION_COORDINATOR"
+  ],
+  "latestSherlockApplicationId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "latestOnboardingId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "otherSherlockApplicationIds": [
+    "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+  ],
+  "stateOrProvinces": [
+    "ALABAMA"
+  ],
+  "transactionCoordinatorOnboardingApplication": {
+    "onboardingId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "userId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "dropboxId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "roles": [
+      "TRANSACTION_COORDINATOR"
+    ],
+    "status": "STARTED",
+    "firstName": "string",
+    "lastName": "string",
+    "accountCountry": "string",
+    "emailAddress": "string",
+    "phoneNumber": "string",
+    "sherlockApplicationId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "sherlockApplicationStatusChecklistId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "connection": {
+      "agentName": "string",
+      "agentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "teamName": "string",
+      "teamId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "connectionCreatedAt": 0,
+      "connectionExpiringAt": 0,
+      "currentMilestone": "REQUEST_SENT",
+      "otherRequesters": [
+        "string"
+      ]
+    },
+    "assistantAccessAgreementName": "string",
+    "assistantAccessAgreementSignedAt": 0,
+    "policyAndProcedureAgreementName": "string",
+    "policyAndProcedureAgreementSignedAt": 0,
+    "approvedAt": 0,
+    "rejectedAt": 0
+  },
+  "onboardings": [
+    {
+      "onboardingId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "role": "TRANSACTION_COORDINATOR",
+      "sherlockApplicationId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "sherlockApplicationStatusChecklistId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "legacyApplicationId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "status": "STARTED",
+      "approvedAt": 0,
+      "rejectedAt": 0
+    }
+  ]
+}
