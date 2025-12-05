@@ -11,7 +11,8 @@ import {
   Bell,
   Search,
   BrainCircuit,
-  BookOpen
+  BookOpen,
+  Mail
 } from "lucide-react";
 
 export interface AppDefinition {
@@ -25,6 +26,15 @@ export interface AppDefinition {
 }
 
 export const apps: AppDefinition[] = [
+  {
+    id: "blog-email-automator",
+    name: "Blog to Email Automator",
+    description: "Automatically convert your blog posts into engaging email newsletters.",
+    icon: Mail,
+    category: "Marketing",
+    color: "bg-pink-100 text-pink-700",
+    url: "https://blog-to-email-automator--ryan1648.replit.app"
+  },
   {
     id: "realty-hack-ai",
     name: "RealtyHack AI",
