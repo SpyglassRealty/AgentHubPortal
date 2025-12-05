@@ -31,15 +31,23 @@ export default function CalendarPage() {
   const startDate = format(startOfMonth(currentMonth), "yyyy-MM-dd");
   const endDate = format(endOfMonth(currentMonth), "yyyy-MM-dd");
 
-  const { data: agentsData, isLoading: agentsLoading } = useQuery<{ agents: FubAgent[] }>({
+  const { data: agentsData, isLoading: agentsLoading, error: agentsError } = useQuery<{ agents: FubAgent[] }>({
     queryKey: ["/api/fub/agents"],
     queryFn: async () => {
+      console.log("[Calendar] Fetching agents...");
       const res = await fetch("/api/fub/agents", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch agents");
-      return res.json();
+      if (!res.ok) {
+        console.error("[Calendar] Failed to fetch agents:", res.status, res.statusText);
+        throw new Error("Failed to fetch agents");
+      }
+      const data = await res.json();
+      console.log("[Calendar] Got agents:", data.agents?.length);
+      return data;
     },
     enabled: !!user?.isSuperAdmin,
   });
+
+  console.log("[Calendar] user?.isSuperAdmin:", user?.isSuperAdmin, "agentsData:", agentsData?.agents?.length, "agentsLoading:", agentsLoading, "agentsError:", agentsError);
 
   const calendarUrl = selectedAgentId 
     ? `/api/fub/calendar?startDate=${startDate}&endDate=${endDate}&agentId=${selectedAgentId}`
