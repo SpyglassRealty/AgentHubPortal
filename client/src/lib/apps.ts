@@ -115,9 +115,9 @@ export const apps: AppDefinition[] = [
 
 export const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+  { label: "Calendar", icon: Calendar, href: "/calendar" },
+  { label: "Reports", icon: BarChart3, href: "/reports" },
   { label: "Leads", icon: Users, href: "#" },
   { label: "Properties", icon: Building2, href: "#" },
-  { label: "Calendar", icon: Calendar, href: "#" },
   { label: "Marketing", icon: Megaphone, href: "#" },
-  { label: "Reports", icon: BarChart3, href: "#" },
 ];

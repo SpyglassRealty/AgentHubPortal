@@ -8,6 +8,8 @@ import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
 import DashboardPage from "@/pages/dashboard";
 import AppView from "@/pages/app-view";
+import CalendarPage from "@/pages/calendar";
+import ReportsPage from "@/pages/reports";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -31,6 +33,8 @@ function Router() {
         <>
           <Route path="/" component={DashboardPage} />
           <Route path="/dashboard" component={DashboardPage} />
+          <Route path="/calendar" component={CalendarPage} />
+          <Route path="/reports" component={ReportsPage} />
           <Route path="/app/:id" component={AppView} />
         </>
       )}
