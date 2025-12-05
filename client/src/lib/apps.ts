@@ -10,7 +10,8 @@ import {
   LogOut,
   Bell,
   Search,
-  BrainCircuit
+  BrainCircuit,
+  BookOpen
 } from "lucide-react";
 
 export interface AppDefinition {
@@ -24,6 +25,15 @@ export interface AppDefinition {
 }
 
 export const apps: AppDefinition[] = [
+  {
+    id: "realty-hack-ai",
+    name: "RealtyHack AI",
+    description: "AI Training Assistant. Instant answers from your training library, handbook, and resources.",
+    icon: BookOpen,
+    category: "Core",
+    color: "bg-orange-100 text-orange-700",
+    url: "https://www.realtyhack.com/ai/"
+  },
   {
     id: "home-review-ai",
     name: "Home Review AI",
