@@ -139,7 +139,11 @@ class FubClient {
       const params: Record<string, string> = { limit: "100" };
       if (userId) params.assignedUserId = userId.toString();
 
+      console.log(`[FUB] getDeals called with userId: ${userId}, params:`, params);
+
       const data = await this.request<{ deals: any[] }>("/deals", params);
+      
+      console.log(`[FUB] getDeals returned ${data.deals?.length || 0} deals`);
       
       return (data.deals || []).map((deal: any) => ({
         id: deal.id,

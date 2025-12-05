@@ -110,6 +110,8 @@ export async function registerRoutes(
       let fubUserId: number | null = null;
       const requestedAgentId = req.query.agentId as string;
 
+      console.log(`[FUB Deals] requestedAgentId: ${requestedAgentId}, isSuperAdmin: ${user.isSuperAdmin}`);
+
       if (requestedAgentId && user.isSuperAdmin) {
         fubUserId = parseInt(requestedAgentId, 10);
       } else {
@@ -123,6 +125,8 @@ export async function registerRoutes(
           }
         }
       }
+
+      console.log(`[FUB Deals] Using fubUserId: ${fubUserId}`);
 
       if (!fubUserId) {
         return res.json({ deals: [], message: "No Follow Up Boss account linked" });
