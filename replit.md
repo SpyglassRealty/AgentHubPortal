@@ -78,9 +78,22 @@ Preferred communication style: Simple, everyday language.
 - Built-in migration system via drizzle-kit
 
 **Schema Design**:
-- `users` table: Stores user profiles synchronized from OIDC authentication (id, email, names, profile image, timestamps)
+- `users` table: Stores user profiles synchronized from OIDC authentication (id, email, names, profile image, fubUserId, isSuperAdmin, timestamps)
 - `sessions` table: Stores express-session data (managed by connect-pg-simple)
 - UUID generation uses PostgreSQL's `gen_random_uuid()` for primary keys
+
+### Follow Up Boss Integration
+
+**API Client**: Custom FUB client (`server/fubClient.ts`) handles all API communication using HTTP Basic Auth with the broker-level API key stored in `FUB_API_KEY` secret.
+
+**Endpoints**:
+- `/api/fub/calendar` - Returns events and tasks for the authenticated user (or impersonated agent)
+- `/api/fub/deals` - Returns deals with summary statistics
+- `/api/fub/agents` - Super admin only, returns list of all active FUB users
+
+**Agent Linking**: Users are automatically linked to their FUB account by email on first API request. The `fubUserId` is cached in the database for subsequent requests.
+
+**Super Admin Feature**: Users with `isSuperAdmin=true` can view any agent's data via an agent selector dropdown on Calendar and Reports pages. The selected agent ID is passed to API endpoints via `agentId` query parameter.
 
 **Database Configuration**: Connection via `DATABASE_URL` environment variable, with connection pooling through `node-postgres` (pg).
 

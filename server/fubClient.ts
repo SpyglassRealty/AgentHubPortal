@@ -172,9 +172,11 @@ class FubClient {
           offset: ((page - 1) * 100).toString()
         });
         
+        console.log(`[FUB] Fetched ${data.users?.length || 0} users on page ${page}`);
+        
         const users = data.users || [];
         for (const user of users) {
-          if (user.status === 'active' || !user.status) {
+          if (!user.isDeleted && user.isActive !== false) {
             allAgents.push({
               id: user.id,
               name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
@@ -189,6 +191,7 @@ class FubClient {
         if (page > 10) break;
       }
 
+      console.log(`[FUB] Total agents found: ${allAgents.length}`);
       return allAgents.sort((a, b) => a.name.localeCompare(b.name));
     } catch (error) {
       console.error("Error fetching FUB agents:", error);
