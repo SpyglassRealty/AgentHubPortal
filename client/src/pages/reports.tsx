@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   TrendingUp, 
   DollarSign, 
@@ -12,10 +13,13 @@ import {
   ExternalLink,
   CheckCircle2,
   Clock,
-  Calendar
+  Calendar,
+  Users
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { useState } from "react";
 import type { FubDeal } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
 
 interface DealsResponse {
   deals: FubDeal[];
@@ -30,6 +34,12 @@ interface DealsResponse {
   message?: string;
 }
 
+interface FubAgent {
+  id: number;
+  name: string;
+  email: string;
+}
+
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -40,14 +50,35 @@ function formatCurrency(amount: number): string {
 }
 
 export default function ReportsPage() {
-  const { data, isLoading, error } = useQuery<DealsResponse>({
-    queryKey: ["/api/fub/deals"],
+  const { user } = useAuth();
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+
+  const { data: agentsData, isLoading: agentsLoading } = useQuery<{ agents: FubAgent[] }>({
+    queryKey: ["/api/fub/agents"],
     queryFn: async () => {
-      const res = await fetch("/api/fub/deals", { credentials: "include" });
+      const res = await fetch("/api/fub/agents", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch agents");
+      return res.json();
+    },
+    enabled: !!user?.isSuperAdmin,
+  });
+
+  const dealsUrl = selectedAgentId 
+    ? `/api/fub/deals?agentId=${selectedAgentId}`
+    : `/api/fub/deals`;
+
+  const { data, isLoading, error } = useQuery<DealsResponse>({
+    queryKey: ["/api/fub/deals", { agentId: selectedAgentId }],
+    queryFn: async () => {
+      const res = await fetch(dealsUrl, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch deals");
       return res.json();
     },
   });
+
+  const selectedAgent = selectedAgentId 
+    ? agentsData?.agents.find(a => a.id.toString() === selectedAgentId) 
+    : null;
 
   const currentYear = new Date().getFullYear();
 
@@ -80,14 +111,49 @@ export default function ReportsPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-display font-bold" data-testid="text-reports-title">Reports</h1>
-            <p className="text-muted-foreground mt-1">Your deal performance from Follow Up Boss</p>
+            <p className="text-muted-foreground mt-1">
+              {selectedAgent 
+                ? `Viewing ${selectedAgent.name}'s deals` 
+                : "Your deal performance from Follow Up Boss"}
+            </p>
           </div>
-          <a href="https://app.followupboss.com/deals" target="_blank" rel="noopener noreferrer">
-            <Button variant="outline" className="border-[hsl(28,94%,54%)]/30 hover:bg-[hsl(28,94%,54%)]/10">
-              Open in Follow Up Boss
-              <ExternalLink className="ml-2 h-4 w-4" />
-            </Button>
-          </a>
+          <div className="flex items-center gap-3">
+            {user?.isSuperAdmin && (
+              <Select 
+                value={selectedAgentId || "my-data"} 
+                onValueChange={(value) => setSelectedAgentId(value === "my-data" ? null : value)}
+              >
+                <SelectTrigger className="w-[220px]" data-testid="select-agent">
+                  <Users className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="Select agent" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="my-data" data-testid="option-agent-my-data">
+                    My Data
+                  </SelectItem>
+                  {agentsLoading ? (
+                    <SelectItem value="loading" disabled>Loading agents...</SelectItem>
+                  ) : (
+                    agentsData?.agents.map(agent => (
+                      <SelectItem 
+                        key={agent.id} 
+                        value={agent.id.toString()}
+                        data-testid={`option-agent-${agent.id}`}
+                      >
+                        {agent.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            )}
+            <a href="https://app.followupboss.com/deals" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" className="border-[hsl(28,94%,54%)]/30 hover:bg-[hsl(28,94%,54%)]/10">
+                Open in Follow Up Boss
+                <ExternalLink className="ml-2 h-4 w-4" />
+              </Button>
+            </a>
+          </div>
         </div>
 
         {data?.message && (
@@ -204,7 +270,9 @@ export default function ReportsPage() {
                 <Clock className="h-5 w-5 text-blue-500" />
                 Under Contract
               </CardTitle>
-              <CardDescription>Active deals pending closing</CardDescription>
+              <CardDescription>
+                {selectedAgent ? `${selectedAgent.name}'s active deals` : "Active deals pending closing"}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -263,7 +331,9 @@ export default function ReportsPage() {
                 <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                 Recently Closed
               </CardTitle>
-              <CardDescription>Deals closed this year</CardDescription>
+              <CardDescription>
+                {selectedAgent ? `${selectedAgent.name}'s closed deals` : "Deals closed this year"}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (

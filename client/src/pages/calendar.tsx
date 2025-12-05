@@ -4,10 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar as CalendarIcon, Clock, User, ChevronLeft, ChevronRight, AlertCircle, ExternalLink } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar as CalendarIcon, Clock, User, ChevronLeft, ChevronRight, AlertCircle, ExternalLink, Users } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, parseISO } from "date-fns";
 import { useState } from "react";
 import type { FubEvent } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
 
 interface CalendarResponse {
   events: FubEvent[];
@@ -15,22 +17,46 @@ interface CalendarResponse {
   message?: string;
 }
 
+interface FubAgent {
+  id: number;
+  name: string;
+  email: string;
+}
+
 export default function CalendarPage() {
+  const { user } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   
   const startDate = format(startOfMonth(currentMonth), "yyyy-MM-dd");
   const endDate = format(endOfMonth(currentMonth), "yyyy-MM-dd");
 
-  const { data, isLoading, error } = useQuery<CalendarResponse>({
-    queryKey: ["/api/fub/calendar", { startDate, endDate }],
+  const { data: agentsData, isLoading: agentsLoading } = useQuery<{ agents: FubAgent[] }>({
+    queryKey: ["/api/fub/agents"],
     queryFn: async () => {
-      const res = await fetch(`/api/fub/calendar?startDate=${startDate}&endDate=${endDate}`, {
-        credentials: "include",
-      });
+      const res = await fetch("/api/fub/agents", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch agents");
+      return res.json();
+    },
+    enabled: !!user?.isSuperAdmin,
+  });
+
+  const calendarUrl = selectedAgentId 
+    ? `/api/fub/calendar?startDate=${startDate}&endDate=${endDate}&agentId=${selectedAgentId}`
+    : `/api/fub/calendar?startDate=${startDate}&endDate=${endDate}`;
+
+  const { data, isLoading, error } = useQuery<CalendarResponse>({
+    queryKey: ["/api/fub/calendar", { startDate, endDate, agentId: selectedAgentId }],
+    queryFn: async () => {
+      const res = await fetch(calendarUrl, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch calendar");
       return res.json();
     },
   });
+
+  const selectedAgent = selectedAgentId 
+    ? agentsData?.agents.find(a => a.id.toString() === selectedAgentId) 
+    : null;
 
   const allItems = [...(data?.events || []), ...(data?.tasks || [])];
   
@@ -86,14 +112,49 @@ export default function CalendarPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-display font-bold" data-testid="text-calendar-title">Calendar</h1>
-            <p className="text-muted-foreground mt-1">Your appointments and tasks from Follow Up Boss</p>
+            <p className="text-muted-foreground mt-1">
+              {selectedAgent 
+                ? `Viewing ${selectedAgent.name}'s calendar` 
+                : "Your appointments and tasks from Follow Up Boss"}
+            </p>
           </div>
-          <a href="https://app.followupboss.com/calendar" target="_blank" rel="noopener noreferrer">
-            <Button variant="outline" className="border-[hsl(28,94%,54%)]/30 hover:bg-[hsl(28,94%,54%)]/10">
-              Open in Follow Up Boss
-              <ExternalLink className="ml-2 h-4 w-4" />
-            </Button>
-          </a>
+          <div className="flex items-center gap-3">
+            {user?.isSuperAdmin && (
+              <Select 
+                value={selectedAgentId || "my-data"} 
+                onValueChange={(value) => setSelectedAgentId(value === "my-data" ? null : value)}
+              >
+                <SelectTrigger className="w-[220px]" data-testid="select-agent">
+                  <Users className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="Select agent" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="my-data" data-testid="option-agent-my-data">
+                    My Data
+                  </SelectItem>
+                  {agentsLoading ? (
+                    <SelectItem value="loading" disabled>Loading agents...</SelectItem>
+                  ) : (
+                    agentsData?.agents.map(agent => (
+                      <SelectItem 
+                        key={agent.id} 
+                        value={agent.id.toString()}
+                        data-testid={`option-agent-${agent.id}`}
+                      >
+                        {agent.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            )}
+            <a href="https://app.followupboss.com/calendar" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" className="border-[hsl(28,94%,54%)]/30 hover:bg-[hsl(28,94%,54%)]/10">
+                Open in Follow Up Boss
+                <ExternalLink className="ml-2 h-4 w-4" />
+              </Button>
+            </a>
+          </div>
         </div>
 
         {data?.message && (
@@ -223,7 +284,9 @@ export default function CalendarPage() {
                   <Clock className="h-4 w-4" />
                   Upcoming
                 </CardTitle>
-                <CardDescription>Your next 5 items</CardDescription>
+                <CardDescription>
+                  {selectedAgent ? `${selectedAgent.name}'s next 5 items` : "Your next 5 items"}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {isLoading ? (
