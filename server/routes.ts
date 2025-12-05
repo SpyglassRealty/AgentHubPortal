@@ -21,6 +21,28 @@ export async function registerRoutes(
     }
   });
 
+  app.get('/api/fub/agents', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isSuperAdmin) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const fubClient = getFubClient();
+      if (!fubClient) {
+        return res.status(503).json({ message: "Follow Up Boss integration not configured" });
+      }
+
+      const agents = await fubClient.getAllAgents();
+      res.json({ agents });
+    } catch (error) {
+      console.error("Error fetching FUB agents:", error);
+      res.status(500).json({ message: "Failed to fetch agents" });
+    }
+  });
+
   app.get('/api/fub/calendar', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -35,13 +57,20 @@ export async function registerRoutes(
         return res.status(503).json({ message: "Follow Up Boss integration not configured" });
       }
 
-      let fubUserId = user.fubUserId;
-      
-      if (!fubUserId && user.email) {
-        const fubUser = await fubClient.getUserByEmail(user.email);
-        if (fubUser) {
-          fubUserId = fubUser.id;
-          await storage.updateUserFubId(userId, fubUserId);
+      let fubUserId: number | null = null;
+      const requestedAgentId = req.query.agentId as string;
+
+      if (requestedAgentId && user.isSuperAdmin) {
+        fubUserId = parseInt(requestedAgentId, 10);
+      } else {
+        fubUserId = user.fubUserId;
+        
+        if (!fubUserId && user.email) {
+          const fubUser = await fubClient.getUserByEmail(user.email);
+          if (fubUser) {
+            fubUserId = fubUser.id;
+            await storage.updateUserFubId(userId, fubUserId);
+          }
         }
       }
 
@@ -78,13 +107,20 @@ export async function registerRoutes(
         return res.status(503).json({ message: "Follow Up Boss integration not configured" });
       }
 
-      let fubUserId = user.fubUserId;
-      
-      if (!fubUserId && user.email) {
-        const fubUser = await fubClient.getUserByEmail(user.email);
-        if (fubUser) {
-          fubUserId = fubUser.id;
-          await storage.updateUserFubId(userId, fubUserId);
+      let fubUserId: number | null = null;
+      const requestedAgentId = req.query.agentId as string;
+
+      if (requestedAgentId && user.isSuperAdmin) {
+        fubUserId = parseInt(requestedAgentId, 10);
+      } else {
+        fubUserId = user.fubUserId;
+        
+        if (!fubUserId && user.email) {
+          const fubUser = await fubClient.getUserByEmail(user.email);
+          if (fubUser) {
+            fubUserId = fubUser.id;
+            await storage.updateUserFubId(userId, fubUserId);
+          }
         }
       }
 

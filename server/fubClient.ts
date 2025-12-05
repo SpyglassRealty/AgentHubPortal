@@ -8,6 +8,12 @@ interface FubApiOptions {
   systemKey?: string;
 }
 
+export interface FubAgent {
+  id: number;
+  name: string;
+  email: string;
+}
+
 class FubClient {
   private apiKey: string;
   private systemName: string;
@@ -150,6 +156,42 @@ class FubClient {
       }));
     } catch (error) {
       console.error("Error fetching FUB deals:", error);
+      return [];
+    }
+  }
+
+  async getAllAgents(): Promise<FubAgent[]> {
+    try {
+      const allAgents: FubAgent[] = [];
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const data = await this.request<{ users: any[]; _metadata?: { total: number } }>("/users", { 
+          limit: "100",
+          offset: ((page - 1) * 100).toString()
+        });
+        
+        const users = data.users || [];
+        for (const user of users) {
+          if (user.status === 'active' || !user.status) {
+            allAgents.push({
+              id: user.id,
+              name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+              email: user.email,
+            });
+          }
+        }
+
+        hasMore = users.length === 100;
+        page++;
+        
+        if (page > 10) break;
+      }
+
+      return allAgents.sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) {
+      console.error("Error fetching FUB agents:", error);
       return [];
     }
   }
