@@ -54,7 +54,7 @@ export async function registerRoutes(
 
       const [events, tasks] = await Promise.all([
         fubClient.getEvents(fubUserId, startDate, endDate),
-        fubClient.getTasks(fubUserId),
+        fubClient.getTasks(fubUserId, startDate, endDate),
       ]);
 
       res.json({ events, tasks });

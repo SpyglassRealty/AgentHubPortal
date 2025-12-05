@@ -92,14 +92,14 @@ class FubClient {
     }
   }
 
-  async getTasks(userId?: number): Promise<FubEvent[]> {
+  async getTasks(userId?: number, startDate?: string, endDate?: string): Promise<FubEvent[]> {
     try {
       const params: Record<string, string> = {};
       if (userId) params.assignedTo = userId.toString();
 
       const data = await this.request<{ tasks: any[] }>("/tasks", params);
       
-      return (data.tasks || []).map((task: any) => ({
+      let tasks = (data.tasks || []).map((task: any) => ({
         id: task.id,
         title: task.name || task.subject || "Untitled Task",
         description: task.description || task.body,
@@ -109,6 +109,19 @@ class FubClient {
         personId: task.personId,
         personName: task.personName,
       }));
+
+      if (startDate || endDate) {
+        const start = startDate ? new Date(startDate) : null;
+        const end = endDate ? new Date(endDate) : null;
+        tasks = tasks.filter(task => {
+          const taskDate = new Date(task.startDate);
+          if (start && taskDate < start) return false;
+          if (end && taskDate > end) return false;
+          return true;
+        });
+      }
+
+      return tasks;
     } catch (error) {
       console.error("Error fetching FUB tasks:", error);
       return [];
