@@ -12,7 +12,8 @@ import {
   Search,
   BrainCircuit,
   BookOpen,
-  Mail
+  Mail,
+  MessageSquare
 } from "lucide-react";
 
 export interface AppDefinition {
@@ -26,6 +27,15 @@ export interface AppDefinition {
 }
 
 export const apps: AppDefinition[] = [
+  {
+    id: "rechat",
+    name: "ReChat",
+    description: "The Real Estate Super App. CRM, Marketing, and Transaction Management in one.",
+    icon: MessageSquare,
+    category: "Core",
+    color: "bg-violet-100 text-violet-700",
+    url: "https://app.rechat.com"
+  },
   {
     id: "blog-email-automator",
     name: "Blog to Email Automator",
