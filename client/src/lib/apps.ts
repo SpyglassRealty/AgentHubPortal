@@ -9,7 +9,8 @@ import {
   Settings, 
   LogOut,
   Bell,
-  Search
+  Search,
+  BrainCircuit
 } from "lucide-react";
 
 export interface AppDefinition {
@@ -19,9 +20,19 @@ export interface AppDefinition {
   icon: any;
   category: "Core" | "Marketing" | "Sales" | "Admin";
   color: string;
+  url?: string;
 }
 
 export const apps: AppDefinition[] = [
+  {
+    id: "home-review-ai",
+    name: "Home Review AI",
+    description: "Generate comprehensive annual real estate market reviews with AI-driven insights.",
+    icon: BrainCircuit,
+    category: "Core",
+    color: "bg-sky-100 text-sky-700",
+    url: "https://home-review-ai-ryan1648.replit.app"
+  },
   {
     id: "lead-command",
     name: "LeadCommand",

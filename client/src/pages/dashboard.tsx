@@ -1,5 +1,6 @@
 import Layout from "@/components/layout";
 import { apps } from "@/lib/apps";
+import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,32 +78,34 @@ export default function DashboardPage() {
           >
             {apps.map((app) => (
               <motion.div key={app.id} variants={item}>
-                <Card className="group relative overflow-hidden border-border/60 hover:border-accent/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer bg-card">
-                  <div className={`absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity`}>
-                    <ArrowUpRight className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <CardHeader className="pb-4">
-                    <div className={`w-12 h-12 rounded-lg ${app.color} flex items-center justify-center mb-4 shadow-inner`}>
-                      <app.icon className="h-6 w-6" />
+                <Link href={`/app/${app.id}`}>
+                  <Card className="group relative overflow-hidden border-border/60 hover:border-accent/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer bg-card h-full">
+                    <div className={`absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity`}>
+                      <ArrowUpRight className="h-5 w-5 text-muted-foreground" />
                     </div>
-                    <CardTitle className="font-sans text-lg">{app.name}</CardTitle>
-                    <CardDescription className="line-clamp-2 mt-1.5">
-                      {app.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs font-normal bg-secondary/50">
-                        {app.category}
-                      </Badge>
-                      {app.id === "lead-command" && (
-                        <Badge variant="outline" className="text-xs font-normal border-accent/50 text-accent-foreground">
-                          3 Notifications
+                    <CardHeader className="pb-4">
+                      <div className={`w-12 h-12 rounded-lg ${app.color} flex items-center justify-center mb-4 shadow-inner`}>
+                        <app.icon className="h-6 w-6" />
+                      </div>
+                      <CardTitle className="font-sans text-lg">{app.name}</CardTitle>
+                      <CardDescription className="line-clamp-2 mt-1.5">
+                        {app.description}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs font-normal bg-secondary/50">
+                          {app.category}
                         </Badge>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                        {app.id === "lead-command" && (
+                          <Badge variant="outline" className="text-xs font-normal border-accent/50 text-accent-foreground">
+                            3 Notifications
+                          </Badge>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
               </motion.div>
             ))}
             
