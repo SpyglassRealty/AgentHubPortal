@@ -16,7 +16,9 @@ import {
   MessageSquare,
   UserPlus,
   Wrench,
-  Contact
+  Contact,
+  Building,
+  Hash
 } from "lucide-react";
 
 export interface AppDefinition {
@@ -92,6 +94,24 @@ export const apps: AppDefinition[] = [
     category: "Marketing",
     color: "bg-teal-100 text-teal-700",
     url: "https://www.austinhomesaleguide.com/tools"
+  },
+  {
+    id: "rezen",
+    name: "ReZen",
+    description: "Real Brokerage's agent portal for transactions, commissions, and more.",
+    icon: Building,
+    category: "Core",
+    color: "bg-blue-100 text-blue-700",
+    url: "https://bolt.therealbrokerage.com/"
+  },
+  {
+    id: "slack",
+    name: "Slack",
+    description: "Team communication and collaboration hub.",
+    icon: Hash,
+    category: "Core",
+    color: "bg-purple-100 text-purple-700",
+    url: "https://app.slack.com/client/T08T7BSLZV4"
   },
   {
     id: "lead-command",
