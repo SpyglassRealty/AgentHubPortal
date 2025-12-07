@@ -13,7 +13,10 @@ import {
   BrainCircuit,
   BookOpen,
   Mail,
-  MessageSquare
+  MessageSquare,
+  UserPlus,
+  Wrench,
+  Contact
 } from "lucide-react";
 
 export interface AppDefinition {
@@ -62,6 +65,33 @@ export const apps: AppDefinition[] = [
     category: "Core",
     color: "bg-sky-100 text-sky-700",
     url: "https://home-review-ai-ryan1648.replit.app"
+  },
+  {
+    id: "follow-up-boss",
+    name: "Follow Up Boss",
+    description: "Your CRM for managing leads, contacts, and follow-ups. Opens in a new tab.",
+    icon: Contact,
+    category: "Sales",
+    color: "bg-green-100 text-green-700",
+    url: "https://login.followupboss.com/login"
+  },
+  {
+    id: "ylopo-add-lead",
+    name: "Ylopo Add Lead",
+    description: "Quickly add new leads to your Ylopo account.",
+    icon: UserPlus,
+    category: "Sales",
+    color: "bg-cyan-100 text-cyan-700",
+    url: "https://stars.ylopo.com/auth"
+  },
+  {
+    id: "ylopo-tools",
+    name: "Ylopo Tools",
+    description: "Access Ylopo marketing tools and resources.",
+    icon: Wrench,
+    category: "Marketing",
+    color: "bg-teal-100 text-teal-700",
+    url: "https://www.austinhomesaleguide.com/tools"
   },
   {
     id: "lead-command",
