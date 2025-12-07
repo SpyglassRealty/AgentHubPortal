@@ -26,22 +26,16 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      console.log(`[FUB Agents] User ${user?.email}, isSuperAdmin: ${user?.isSuperAdmin}`);
-      
       if (!user?.isSuperAdmin) {
-        console.log(`[FUB Agents] Access denied for user ${user?.email}`);
         return res.status(403).json({ message: "Access denied" });
       }
 
       const fubClient = getFubClient();
       if (!fubClient) {
-        console.log(`[FUB Agents] FUB client not configured`);
         return res.status(503).json({ message: "Follow Up Boss integration not configured" });
       }
 
-      console.log(`[FUB Agents] Fetching agents...`);
       const agents = await fubClient.getAllAgents();
-      console.log(`[FUB Agents] Found ${agents.length} agents`);
       res.json({ agents });
     } catch (error) {
       console.error("Error fetching FUB agents:", error);
