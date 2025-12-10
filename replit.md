@@ -95,6 +95,17 @@ Preferred communication style: Simple, everyday language.
 
 **Super Admin Feature**: Users with `isSuperAdmin=true` can view any agent's data via an agent selector dropdown on Calendar and Reports pages. The selected agent ID is passed to API endpoints via `agentId` query parameter.
 
+### ReZen Integration
+
+**API Client**: Custom ReZen client (`server/rezenClient.ts`) handles API communication with the ReZen/Real Brokerage platform.
+
+**Authentication**: Uses `x-api-key` header (no Bearer prefix) with the API key stored in `REZEN_API_KEY` secret.
+
+**Endpoints**:
+- `/api/rezen/transactions` - Returns closed transactions for a given agent yentaId
+
+**Usage**: Each agent's yentaId is found in their ReZen profile URL (e.g., `0d71597f-e3af-47bd-9645-59fc2910656e`). Query params: `yentaId` (required), `dateFrom`, `dateTo`.
+
 **Database Configuration**: Connection via `DATABASE_URL` environment variable, with connection pooling through `node-postgres` (pg).
 
 **Migration Strategy**: Schema changes are managed through Drizzle Kit:
