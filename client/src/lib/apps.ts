@@ -19,7 +19,8 @@ import {
   Contact,
   Building,
   Hash,
-  Palette
+  Palette,
+  Database
 } from "lucide-react";
 
 export interface AppDefinition {
@@ -122,6 +123,15 @@ export const apps: AppDefinition[] = [
     category: "Marketing",
     color: "bg-violet-100 text-violet-700",
     url: "https://www.canva.com/projects"
+  },
+  {
+    id: "client-data",
+    name: "Client Data",
+    description: "Access and manage client property data and listings.",
+    icon: Database,
+    category: "Sales",
+    color: "bg-indigo-100 text-indigo-700",
+    url: "https://idx-grid-data-ryan1648.replit.app"
   },
   {
     id: "lead-command",
