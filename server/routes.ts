@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { getFubClient } from "./fubClient";
+import { getRezenClient } from "./rezenClient";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -160,6 +161,29 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching FUB deals:", error);
       res.status(500).json({ message: "Failed to fetch deals data" });
+    }
+  });
+
+  app.get('/api/rezen/transactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const rezenClient = getRezenClient();
+      if (!rezenClient) {
+        return res.status(503).json({ message: "ReZen integration not configured" });
+      }
+
+      const yentaId = req.query.yentaId as string;
+      if (!yentaId) {
+        return res.status(400).json({ message: "yentaId is required" });
+      }
+
+      const dateFrom = req.query.dateFrom as string;
+      const dateTo = req.query.dateTo as string;
+
+      const transactions = await rezenClient.getClosedTransactions(yentaId, dateFrom, dateTo);
+      res.json({ transactions });
+    } catch (error) {
+      console.error("Error fetching ReZen transactions:", error);
+      res.status(500).json({ message: "Failed to fetch ReZen transactions" });
     }
   });
 
