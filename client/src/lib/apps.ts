@@ -18,7 +18,8 @@ import {
   Wrench,
   Contact,
   Building,
-  Hash
+  Hash,
+  Palette
 } from "lucide-react";
 
 export interface AppDefinition {
@@ -112,6 +113,15 @@ export const apps: AppDefinition[] = [
     category: "Core",
     color: "bg-purple-100 text-purple-700",
     url: "https://app.slack.com/client/T08T7BSLZV4"
+  },
+  {
+    id: "canva",
+    name: "Canva",
+    description: "Create beautiful marketing materials, flyers, and social media graphics.",
+    icon: Palette,
+    category: "Marketing",
+    color: "bg-violet-100 text-violet-700",
+    url: "https://www.canva.com/projects"
   },
   {
     id: "lead-command",
