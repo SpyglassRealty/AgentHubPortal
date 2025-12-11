@@ -20,7 +20,8 @@ import {
   Building,
   Hash,
   Palette,
-  Database
+  Database,
+  Handshake
 } from "lucide-react";
 
 export interface AppDefinition {
@@ -132,6 +133,15 @@ export const apps: AppDefinition[] = [
     category: "Sales",
     color: "bg-indigo-100 text-indigo-700",
     url: "https://idx-grid-data-ryan1648.replit.app"
+  },
+  {
+    id: "jointly",
+    name: "Jointly",
+    description: "Collaborate with clients and partners on real estate transactions.",
+    icon: Handshake,
+    category: "Sales",
+    color: "bg-teal-100 text-teal-700",
+    url: "https://app.jointly.com/login"
   },
   {
     id: "lead-command",
