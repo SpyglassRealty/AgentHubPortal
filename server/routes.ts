@@ -279,25 +279,39 @@ export async function registerRoutes(
         return res.status(503).json({ message: "Market data API key not configured" });
       }
 
-      const response = await fetch('https://idx-grid-data-ryan1648.replit.app/api/inventory/summary', {
+      const baseUrl = 'https://api.repliers.io/listings';
+      const url = `${baseUrl}?aggregates=lastStatus&listings=false&status=A&status=U`;
+
+      const response = await fetch(url, {
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey
+          'REPLIERS-API-KEY': apiKey
         }
       });
       
       if (!response.ok) {
         console.error(`Market pulse API error: ${response.status}`);
+        const text = await response.text();
+        console.error(`Response body: ${text.substring(0, 500)}`);
         return res.status(response.status).json({ 
           message: "Failed to fetch market data from external source" 
         });
       }
       
       const data = await response.json();
+      
+      const statusAggregates = data.aggregates?.lastStatus || {};
+      const active = statusAggregates['New'] || 0;
+      const underContract = (statusAggregates['Sc'] || 0) + (statusAggregates['Pc'] || 0);
+      const sold = statusAggregates['Sld'] || 0;
+      const total = data.count || (active + underContract + sold);
+
       res.json({
-        ...data,
-        lastUpdatedAt: data.lastUpdatedAt || new Date().toISOString()
+        totalProperties: total,
+        active,
+        underContract,
+        sold,
+        lastUpdatedAt: new Date().toISOString()
       });
     } catch (error) {
       console.error("Error fetching market pulse data:", error);

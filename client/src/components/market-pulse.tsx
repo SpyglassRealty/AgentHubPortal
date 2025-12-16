@@ -6,18 +6,10 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { format } from "date-fns";
 
 interface MarketPulseData {
-  dataSource: string;
-  totalCount: number;
-  countsByStatus: {
-    Active?: number;
-    "Under Contract"?: number;
-    Closed?: number;
-  };
-  countsBySubtype: {
-    "Single Family Residence"?: number;
-    Condominium?: number;
-    Townhouse?: number;
-  };
+  totalProperties: number;
+  active: number;
+  underContract: number;
+  sold: number;
   lastUpdatedAt: string;
 }
 
@@ -35,28 +27,16 @@ export default function MarketPulse() {
     retry: 1,
   });
 
-  const singleFamily = data?.countsBySubtype?.['Single Family Residence'] || 0;
-  const condos = data?.countsBySubtype?.['Condominium'] || 0;
-  const townhouse = data?.countsBySubtype?.['Townhouse'] || 0;
-
   const chartData = data ? [
-    {
-      name: 'Single Family',
-      count: singleFamily,
-    },
-    {
-      name: 'Condos',
-      count: condos,
-    },
-    {
-      name: 'Townhouse',
-      count: townhouse,
-    },
+    { name: 'Active', count: data.active, fill: 'hsl(142, 76%, 36%)' },
+    { name: 'Under Contract', count: data.underContract, fill: 'hsl(45, 93%, 47%)' },
+    { name: 'Sold', count: data.sold, fill: 'hsl(217, 91%, 60%)' },
   ].filter(item => item.count > 0) : [];
 
-  const totalListings = data?.totalCount || 0;
-  const totalActive = data?.countsByStatus?.Active || 0;
-  const totalUnderContract = data?.countsByStatus?.['Under Contract'] || 0;
+  const totalProperties = data?.totalProperties || 0;
+  const totalActive = data?.active || 0;
+  const totalUnderContract = data?.underContract || 0;
+  const totalSold = data?.sold || 0;
 
   if (isLoading) {
     return (
@@ -192,7 +172,7 @@ export default function MarketPulse() {
                 Total Listings
               </div>
               <p className="text-xl font-bold" data-testid="text-total-listings">
-                {totalListings.toLocaleString()}
+                {totalProperties.toLocaleString()}
               </p>
             </CardContent>
           </Card>
