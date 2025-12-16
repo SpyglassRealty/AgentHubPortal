@@ -14,6 +14,32 @@ export interface FubAgent {
   email: string;
 }
 
+export interface FubPerson {
+  id: number;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  stage?: string;
+  source?: string;
+  created: string;
+  lastActivity?: string;
+  assignedUserId?: number;
+  customFields?: Record<string, any>;
+  homePurchaseAnniversary?: string;
+}
+
+export interface FubTask {
+  id: number;
+  name: string;
+  dueDate: string;
+  completed: boolean;
+  personId?: number;
+  personName?: string;
+  assignedUserId?: number;
+}
+
 class FubClient {
   private apiKey: string;
   private systemName: string;
@@ -199,6 +225,117 @@ class FubClient {
       return allAgents.sort((a, b) => a.name.localeCompare(b.name));
     } catch (error) {
       console.error("Error fetching FUB agents:", error);
+      return [];
+    }
+  }
+
+  async getPeople(userId?: number): Promise<FubPerson[]> {
+    try {
+      const params: Record<string, string> = { limit: "200" };
+      if (userId) params.assignedUserId = userId.toString();
+
+      const data = await this.request<{ people: any[] }>("/people", params);
+      
+      return (data.people || []).map((person: any) => ({
+        id: person.id,
+        name: person.name || `${person.firstName || ''} ${person.lastName || ''}`.trim() || 'Unknown',
+        firstName: person.firstName,
+        lastName: person.lastName,
+        email: person.emails?.[0]?.value || person.email,
+        phone: person.phones?.[0]?.value || person.phone,
+        stage: person.stage,
+        source: person.source,
+        created: person.created,
+        lastActivity: person.lastActivity,
+        assignedUserId: person.assignedUserId,
+        customFields: person.customFields || {},
+        homePurchaseAnniversary: person.customFields?.['Home Purchase Anniversary'] || 
+                                  person.customFields?.['homePurchaseAnniversary'] ||
+                                  person.customFields?.['Closing Date'] ||
+                                  person.customFields?.['closingDate'],
+      }));
+    } catch (error) {
+      console.error("Error fetching FUB people:", error);
+      return [];
+    }
+  }
+
+  async getAnniversaryLeads(userId: number): Promise<FubPerson[]> {
+    const people = await this.getPeople(userId);
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentDay = today.getDate();
+    
+    return people.filter(person => {
+      if (!person.homePurchaseAnniversary) return false;
+      try {
+        const anniversary = new Date(person.homePurchaseAnniversary);
+        const daysUntilAnniversary = this.getDaysUntilAnniversary(anniversary, today);
+        return daysUntilAnniversary >= -7 && daysUntilAnniversary <= 30;
+      } catch {
+        return false;
+      }
+    }).sort((a, b) => {
+      const dateA = new Date(a.homePurchaseAnniversary!);
+      const dateB = new Date(b.homePurchaseAnniversary!);
+      return this.getDaysUntilAnniversary(dateA, today) - this.getDaysUntilAnniversary(dateB, today);
+    });
+  }
+
+  private getDaysUntilAnniversary(anniversaryDate: Date, today: Date): number {
+    const thisYearAnniversary = new Date(today.getFullYear(), anniversaryDate.getMonth(), anniversaryDate.getDate());
+    const nextYearAnniversary = new Date(today.getFullYear() + 1, anniversaryDate.getMonth(), anniversaryDate.getDate());
+    
+    const diffThis = Math.floor((thisYearAnniversary.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const diffNext = Math.floor((nextYearAnniversary.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    return Math.abs(diffThis) < Math.abs(diffNext) ? diffThis : diffNext;
+  }
+
+  async getRecentActivityLeads(userId: number): Promise<FubPerson[]> {
+    const people = await this.getPeople(userId);
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+    
+    return people.filter(person => {
+      if (!person.created || !person.lastActivity) return false;
+      
+      const createdDate = new Date(person.created);
+      const lastActivityDate = new Date(person.lastActivity);
+      
+      return createdDate < thirtyDaysAgo && lastActivityDate > threeDaysAgo;
+    }).sort((a, b) => {
+      const dateA = new Date(a.lastActivity!);
+      const dateB = new Date(b.lastActivity!);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }
+
+  async getDueTasks(userId: number): Promise<FubTask[]> {
+    try {
+      const params: Record<string, string> = {
+        assignedTo: userId.toString(),
+        status: 'incomplete'
+      };
+
+      const data = await this.request<{ tasks: any[] }>("/tasks", params);
+      
+      const now = new Date();
+      return (data.tasks || [])
+        .filter((task: any) => !task.completed && task.dueDate)
+        .map((task: any) => ({
+          id: task.id,
+          name: task.name || task.subject || "Untitled Task",
+          dueDate: task.dueDate,
+          completed: task.completed || false,
+          personId: task.personId,
+          personName: task.personName,
+          assignedUserId: task.assignedUserId,
+        }))
+        .sort((a: FubTask, b: FubTask) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+    } catch (error) {
+      console.error("Error fetching FUB tasks:", error);
       return [];
     }
   }
