@@ -46,7 +46,6 @@ const questions = [
     options: [
       { value: "grow_pipeline", label: "Grow My Pipeline", description: "Generate more leads and opportunities" },
       { value: "close_deals", label: "Close More Deals", description: "Focus on conversions and closings" },
-      { value: "build_team", label: "Build My Team", description: "Recruit and train team members" },
       { value: "improve_systems", label: "Improve Systems", description: "Better processes and efficiency" },
     ]
   }
