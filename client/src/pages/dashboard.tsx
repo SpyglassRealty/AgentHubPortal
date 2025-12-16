@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Layout from "@/components/layout";
 import { apps } from "@/lib/apps";
 import { Link } from "wouter";
@@ -5,11 +7,48 @@ import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpRight, Plus, ExternalLink } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ArrowUpRight, Plus, ExternalLink, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { OnboardingModal } from "@/components/onboarding-modal";
+import { SuggestionCard } from "@/components/suggestion-card";
+import type { ContextSuggestion, AgentProfile } from "@shared/schema";
+
+interface ProfileResponse {
+  profile: AgentProfile | null;
+  needsOnboarding: boolean;
+}
+
+interface SuggestionsResponse {
+  suggestions: ContextSuggestion[];
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const [showAllApps, setShowAllApps] = useState(false);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
+
+  const { data: profileData, isLoading: profileLoading } = useQuery<ProfileResponse>({
+    queryKey: ["/api/context/profile"],
+    queryFn: async () => {
+      const res = await fetch("/api/context/profile", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch profile");
+      return res.json();
+    },
+  });
+
+  const { data: suggestionsData, isLoading: suggestionsLoading } = useQuery<SuggestionsResponse>({
+    queryKey: ["/api/context/suggestions"],
+    queryFn: async () => {
+      const res = await fetch("/api/context/suggestions", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch suggestions");
+      return res.json();
+    },
+    enabled: !profileData?.needsOnboarding || onboardingComplete,
+  });
+
+  const showOnboarding = profileData?.needsOnboarding && !onboardingComplete;
+  const suggestions = suggestionsData?.suggestions || [];
   
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -39,19 +78,53 @@ export default function DashboardPage() {
     <Layout>
       <div className="max-w-6xl mx-auto space-y-8">
         
+        <OnboardingModal 
+          open={showOnboarding || false} 
+          onComplete={() => setOnboardingComplete(true)} 
+        />
+
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-display font-bold text-foreground">
               {getGreeting()}, {firstName}
             </h1>
-            <p className="text-muted-foreground mt-1">Welcome to Mission Control. What would you like to work on today?</p>
+            <p className="text-muted-foreground mt-1">
+              {suggestions.length > 0 
+                ? "Here's what you should focus on right now."
+                : "Welcome to Mission Control. What would you like to work on today?"}
+            </p>
           </div>
         </div>
 
+        {suggestionsLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : suggestions.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+              <h2 className="text-xl font-display font-semibold tracking-tight">Your Action Items</h2>
+              <Badge className="bg-[hsl(28,94%,54%)] text-white">{suggestions.length}</Badge>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {suggestions.slice(0, 4).map((suggestion) => (
+                <SuggestionCard key={suggestion.id} suggestion={suggestion} />
+              ))}
+            </div>
+            {suggestions.length > 4 && (
+              <p className="text-sm text-center text-muted-foreground">
+                +{suggestions.length - 4} more action items
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
+            { label: "Action Items", value: suggestions.length.toString(), sublabel: "To Review" },
             { label: "Active Apps", value: apps.filter(a => a.url).length.toString(), sublabel: "Connected" },
-            { label: "Team Members", value: "100+", sublabel: "Agents" },
             { label: "Resources", value: "24/7", sublabel: "Available" },
           ].map((stat, i) => (
             <Card key={i} className="bg-card border-border shadow-sm hover:shadow-md transition-all">
