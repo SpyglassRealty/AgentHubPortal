@@ -10,6 +10,7 @@ import DashboardPage from "@/pages/dashboard";
 import AppView from "@/pages/app-view";
 import CalendarPage from "@/pages/calendar";
 import ReportsPage from "@/pages/reports";
+import LeadsPage from "@/pages/leads";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -35,6 +36,7 @@ function Router() {
           <Route path="/dashboard" component={DashboardPage} />
           <Route path="/calendar" component={CalendarPage} />
           <Route path="/reports" component={ReportsPage} />
+          <Route path="/leads" component={LeadsPage} />
           <Route path="/app/:id" component={AppView} />
         </>
       )}

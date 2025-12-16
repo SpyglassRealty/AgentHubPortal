@@ -197,7 +197,7 @@ export const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { label: "Calendar", icon: Calendar, href: "/calendar" },
   { label: "Reports", icon: BarChart3, href: "/reports" },
-  { label: "Leads", icon: Users, href: "#" },
+  { label: "Leads", icon: Users, href: "/leads" },
   { label: "Properties", icon: Building2, href: "#" },
   { label: "Marketing", icon: Megaphone, href: "#" },
 ];
