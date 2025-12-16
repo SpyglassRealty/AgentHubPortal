@@ -13,7 +13,8 @@ import {
   AlertCircle,
   PartyPopper,
   Activity,
-  ListTodo
+  ListTodo,
+  Cake
 } from "lucide-react";
 import { format, formatDistanceToNow, differenceInDays, isToday, isPast } from "date-fns";
 
@@ -27,6 +28,7 @@ interface Lead {
   created: string;
   lastActivity?: string;
   homePurchaseAnniversary?: string;
+  birthday?: string;
 }
 
 interface Task {
@@ -38,24 +40,27 @@ interface Task {
   personName?: string;
 }
 
-function LeadCard({ lead, type }: { lead: Lead; type: 'anniversary' | 'activity' }) {
-  const getAnniversaryInfo = () => {
-    if (!lead.homePurchaseAnniversary) return null;
-    const anniversary = new Date(lead.homePurchaseAnniversary);
-    const today = new Date();
-    const thisYearAnniversary = new Date(today.getFullYear(), anniversary.getMonth(), anniversary.getDate());
-    const nextYearAnniversary = new Date(today.getFullYear() + 1, anniversary.getMonth(), anniversary.getDate());
+function LeadCard({ lead, type }: { lead: Lead; type: 'anniversary' | 'activity' | 'birthday' }) {
+  const getDateInfo = (dateStr: string | undefined) => {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return null;
     
-    const diffThis = differenceInDays(thisYearAnniversary, today);
-    const diffNext = differenceInDays(nextYearAnniversary, today);
+    const today = new Date();
+    const thisYearDate = new Date(today.getFullYear(), date.getMonth(), date.getDate());
+    const nextYearDate = new Date(today.getFullYear() + 1, date.getMonth(), date.getDate());
+    
+    const diffThis = differenceInDays(thisYearDate, today);
+    const diffNext = differenceInDays(nextYearDate, today);
     
     const daysUntil = Math.abs(diffThis) < Math.abs(diffNext) ? diffThis : diffNext;
-    const yearsAgo = today.getFullYear() - anniversary.getFullYear();
+    const yearsAgo = today.getFullYear() - date.getFullYear();
     
-    return { daysUntil, yearsAgo, originalDate: anniversary };
+    return { daysUntil, yearsAgo, originalDate: date };
   };
 
-  const anniversaryInfo = type === 'anniversary' ? getAnniversaryInfo() : null;
+  const anniversaryInfo = type === 'anniversary' ? getDateInfo(lead.homePurchaseAnniversary) : null;
+  const birthdayInfo = type === 'birthday' ? getDateInfo(lead.birthday) : null;
 
   return (
     <Card className="hover:bg-accent/50 transition-colors" data-testid={`card-lead-${lead.id}`}>
@@ -117,6 +122,27 @@ function LeadCard({ lead, type }: { lead: Lead; type: 'anniversary' | 'activity'
               </div>
               <div className="text-xs text-muted-foreground">
                 {format(anniversaryInfo.originalDate, 'MMM d, yyyy')}
+              </div>
+            </div>
+          )}
+
+          {type === 'birthday' && birthdayInfo && (
+            <div className="text-right shrink-0">
+              <div className="flex items-center gap-1 text-pink-500">
+                <Cake className="h-4 w-4" />
+                <span className="font-semibold">Turning {birthdayInfo.yearsAgo + (birthdayInfo.daysUntil >= 0 ? 1 : 0)}</span>
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {birthdayInfo.daysUntil === 0 ? (
+                  <span className="text-pink-500 font-medium">Today!</span>
+                ) : birthdayInfo.daysUntil > 0 ? (
+                  <span>In {birthdayInfo.daysUntil} days</span>
+                ) : (
+                  <span>{Math.abs(birthdayInfo.daysUntil)} days ago</span>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {format(birthdayInfo.originalDate, 'MMM d')}
               </div>
             </div>
           )}
@@ -207,9 +233,19 @@ export default function LeadsPage() {
     }
   });
 
+  const { data: birthdayData, isLoading: loadingBirthdays } = useQuery({
+    queryKey: ['/api/fub/leads/birthdays'],
+    queryFn: async () => {
+      const res = await fetch('/api/fub/leads/birthdays');
+      if (!res.ok) throw new Error('Failed to fetch birthday leads');
+      return res.json();
+    }
+  });
+
   const anniversaryLeads: Lead[] = anniversaryData?.leads || [];
   const recentActivityLeads: Lead[] = recentActivityData?.leads || [];
   const dueTasks: Task[] = tasksData?.tasks || [];
+  const birthdayLeads: Lead[] = birthdayData?.leads || [];
 
   return (
     <Layout>
@@ -222,12 +258,19 @@ export default function LeadsPage() {
         </div>
 
         <Tabs defaultValue="anniversary" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
             <TabsTrigger value="anniversary" className="gap-2" data-testid="tab-anniversary">
               <PartyPopper className="h-4 w-4" />
               <span className="hidden sm:inline">Anniversary</span>
               {anniversaryLeads.length > 0 && (
                 <Badge variant="secondary" className="ml-1">{anniversaryLeads.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="birthdays" className="gap-2" data-testid="tab-birthdays">
+              <Cake className="h-4 w-4" />
+              <span className="hidden sm:inline">Birthdays</span>
+              {birthdayLeads.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{birthdayLeads.length}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="recent" className="gap-2" data-testid="tab-recent-activity">
@@ -270,6 +313,37 @@ export default function LeadsPage() {
                   <div className="space-y-3">
                     {anniversaryLeads.map((lead) => (
                       <LeadCard key={lead.id} lead={lead} type="anniversary" />
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="birthdays" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Cake className="h-5 w-5 text-pink-500" />
+                  Client Birthdays
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingBirthdays ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
+                    ))}
+                  </div>
+                ) : birthdayLeads.length === 0 ? (
+                  <EmptyState 
+                    icon={Cake} 
+                    message="No upcoming birthdays found. Make sure your leads have the Birthday field set in Follow Up Boss." 
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    {birthdayLeads.map((lead) => (
+                      <LeadCard key={lead.id} lead={lead} type="birthday" />
                     ))}
                   </div>
                 )}
