@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { getFubClient } from "./fubClient";
 import { getRezenClient } from "./rezenClient";
+import { generateSuggestionsForUser } from "./contextEngine";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -184,6 +185,90 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching ReZen transactions:", error);
       res.status(500).json({ message: "Failed to fetch ReZen transactions" });
+    }
+  });
+
+  app.get('/api/context/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getAgentProfile(userId);
+      res.json({ profile: profile || null, needsOnboarding: !profile });
+    } catch (error) {
+      console.error("Error fetching agent profile:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  app.post('/api/context/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { missionFocus, experienceLevel, primaryGoal, onboardingAnswers } = req.body;
+      
+      const profile = await storage.upsertAgentProfile({
+        userId,
+        missionFocus,
+        experienceLevel,
+        primaryGoal,
+        onboardingAnswers,
+        lastSurveyedAt: new Date(),
+      });
+      
+      res.json({ profile });
+    } catch (error) {
+      console.error("Error saving agent profile:", error);
+      res.status(500).json({ message: "Failed to save profile" });
+    }
+  });
+
+  app.get('/api/context/suggestions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const fubClient = getFubClient();
+      let fubUserId = user.fubUserId;
+      
+      if (!fubUserId && user.email && fubClient) {
+        const fubUser = await fubClient.getUserByEmail(user.email);
+        if (fubUser) {
+          fubUserId = fubUser.id;
+          await storage.updateUserFubId(userId, fubUserId);
+        }
+      }
+
+      await generateSuggestionsForUser(userId, fubUserId);
+      
+      const suggestions = await storage.getActiveSuggestions(userId);
+      res.json({ suggestions });
+    } catch (error) {
+      console.error("Error fetching suggestions:", error);
+      res.status(500).json({ message: "Failed to fetch suggestions" });
+    }
+  });
+
+  app.post('/api/context/suggestions/:id/dismiss', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const suggestion = await storage.updateSuggestionStatus(id, "dismissed");
+      res.json({ suggestion });
+    } catch (error) {
+      console.error("Error dismissing suggestion:", error);
+      res.status(500).json({ message: "Failed to dismiss suggestion" });
+    }
+  });
+
+  app.post('/api/context/suggestions/:id/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const suggestion = await storage.updateSuggestionStatus(id, "completed");
+      res.json({ suggestion });
+    } catch (error) {
+      console.error("Error completing suggestion:", error);
+      res.status(500).json({ message: "Failed to complete suggestion" });
     }
   });
 
