@@ -95,6 +95,35 @@ Preferred communication style: Simple, everyday language.
 
 **Super Admin Feature**: Users with `isSuperAdmin=true` can view any agent's data via an agent selector dropdown on Calendar and Reports pages. The selected agent ID is passed to API endpoints via `agentId` query parameter.
 
+### Context-Aware Mission Control
+
+**Philosophy**: Transforms the dashboard from "What do you want to work on?" to "Here's what you should work on right now."
+
+**Components**:
+- `agent_profiles` table: Stores agent onboarding answers (missionFocus, experienceLevel, primaryGoal)
+- `context_suggestions` table: Stores generated action items with priority, type, and recommended app
+- `ContextEngine` (`server/contextEngine.ts`): Rule-based engine that analyzes FUB data and generates suggestions
+
+**Onboarding Flow**: First-time users see a 3-question modal:
+1. Primary focus (buyers, sellers, both, team lead)
+2. Experience level (new, experienced, veteran)
+3. Top priority this quarter (grow pipeline, close deals, build team, improve systems)
+
+**Suggestion Types**:
+- `deal_action`: Buyers in inspection stage requiring attention
+- `closing_soon`: Deals closing within the next 7 days
+- `pipeline_empty`: No active deals detected
+- `task_overdue`: Incomplete tasks past due date
+- `appointments_today`: Events scheduled for today
+- `deal_summary`: Overview of current under-contract volume
+
+**API Endpoints**:
+- `GET /api/context/profile` - Returns agent profile and onboarding status
+- `POST /api/context/profile` - Saves onboarding answers
+- `GET /api/context/suggestions` - Regenerates and returns active suggestions
+- `POST /api/context/suggestions/:id/dismiss` - Dismisses a suggestion
+- `POST /api/context/suggestions/:id/complete` - Marks a suggestion as completed
+
 ### ReZen Integration
 
 **API Client**: Custom ReZen client (`server/rezenClient.ts`) handles API communication with the ReZen/Real Brokerage platform.
