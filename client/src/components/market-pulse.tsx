@@ -35,27 +35,28 @@ export default function MarketPulse() {
     retry: 1,
   });
 
+  const singleFamily = data?.countsBySubtype?.['Single Family Residence'] || 0;
+  const condos = data?.countsBySubtype?.['Condominium'] || 0;
+  const townhouse = data?.countsBySubtype?.['Townhouse'] || 0;
+
   const chartData = data ? [
     {
-      name: 'Active',
-      'Single Family': data.countsBySubtype?.['Single Family Residence'] || 0,
-      'Condos': data.countsBySubtype?.['Condominium'] || 0,
+      name: 'Single Family',
+      count: singleFamily,
     },
     {
-      name: 'Under Contract',
-      'Single Family': Math.round((data.countsBySubtype?.['Single Family Residence'] || 0) * 0.15),
-      'Condos': Math.round((data.countsBySubtype?.['Condominium'] || 0) * 0.12),
+      name: 'Condos',
+      count: condos,
     },
     {
-      name: 'Sold (30 Days)',
-      'Single Family': Math.round((data.countsBySubtype?.['Single Family Residence'] || 0) * 0.08),
-      'Condos': Math.round((data.countsBySubtype?.['Condominium'] || 0) * 0.06),
+      name: 'Townhouse',
+      count: townhouse,
     },
-  ] : [];
+  ].filter(item => item.count > 0) : [];
 
-  const totalActive = data?.countsByStatus?.Active || data?.totalCount || 0;
+  const totalListings = data?.totalCount || 0;
+  const totalActive = data?.countsByStatus?.Active || 0;
   const totalUnderContract = data?.countsByStatus?.['Under Contract'] || 0;
-  const totalClosed = data?.countsByStatus?.Closed || 0;
 
   if (isLoading) {
     return (
@@ -175,13 +176,8 @@ export default function MarketPulse() {
                 iconType="square"
               />
               <Bar 
-                dataKey="Single Family" 
+                dataKey="count" 
                 fill="hsl(28, 94%, 54%)" 
-                radius={[4, 4, 0, 0]}
-              />
-              <Bar 
-                dataKey="Condos" 
-                fill="hsl(217, 91%, 60%)" 
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
@@ -193,7 +189,18 @@ export default function MarketPulse() {
             <CardContent className="p-3 text-center">
               <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1">
                 <Home className="h-3 w-3" />
-                Total Active
+                Total Listings
+              </div>
+              <p className="text-xl font-bold" data-testid="text-total-listings">
+                {totalListings.toLocaleString()}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="bg-muted/50">
+            <CardContent className="p-3 text-center">
+              <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1">
+                <TrendingUp className="h-3 w-3" />
+                Active
               </div>
               <p className="text-xl font-bold" data-testid="text-total-active">
                 {totalActive.toLocaleString()}
@@ -208,17 +215,6 @@ export default function MarketPulse() {
               </div>
               <p className="text-xl font-bold" data-testid="text-under-contract">
                 {totalUnderContract.toLocaleString()}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-muted/50">
-            <CardContent className="p-3 text-center">
-              <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1">
-                <TrendingUp className="h-3 w-3" />
-                Sold (30d)
-              </div>
-              <p className="text-xl font-bold" data-testid="text-total-sold">
-                {totalClosed.toLocaleString()}
               </p>
             </CardContent>
           </Card>
