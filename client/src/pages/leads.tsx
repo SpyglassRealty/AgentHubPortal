@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Layout from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AgentSelector } from "@/components/agent-selector";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   Calendar, 
   Clock, 
@@ -206,37 +209,44 @@ function EmptyState({ icon: Icon, message }: { icon: any; message: string }) {
 }
 
 export default function LeadsPage() {
+  const { user } = useAuth();
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+
+  const getUrl = (base: string) => {
+    return selectedAgentId ? `${base}?agentId=${selectedAgentId}` : base;
+  };
+
   const { data: anniversaryData, isLoading: loadingAnniversary } = useQuery({
-    queryKey: ['/api/fub/leads/anniversary'],
+    queryKey: ['/api/fub/leads/anniversary', selectedAgentId],
     queryFn: async () => {
-      const res = await fetch('/api/fub/leads/anniversary');
+      const res = await fetch(getUrl('/api/fub/leads/anniversary'));
       if (!res.ok) throw new Error('Failed to fetch anniversary leads');
       return res.json();
     }
   });
 
   const { data: recentActivityData, isLoading: loadingActivity } = useQuery({
-    queryKey: ['/api/fub/leads/recent-activity'],
+    queryKey: ['/api/fub/leads/recent-activity', selectedAgentId],
     queryFn: async () => {
-      const res = await fetch('/api/fub/leads/recent-activity');
+      const res = await fetch(getUrl('/api/fub/leads/recent-activity'));
       if (!res.ok) throw new Error('Failed to fetch recent activity leads');
       return res.json();
     }
   });
 
   const { data: tasksData, isLoading: loadingTasks } = useQuery({
-    queryKey: ['/api/fub/tasks/due'],
+    queryKey: ['/api/fub/tasks/due', selectedAgentId],
     queryFn: async () => {
-      const res = await fetch('/api/fub/tasks/due');
+      const res = await fetch(getUrl('/api/fub/tasks/due'));
       if (!res.ok) throw new Error('Failed to fetch tasks');
       return res.json();
     }
   });
 
   const { data: birthdayData, isLoading: loadingBirthdays } = useQuery({
-    queryKey: ['/api/fub/leads/birthdays'],
+    queryKey: ['/api/fub/leads/birthdays', selectedAgentId],
     queryFn: async () => {
-      const res = await fetch('/api/fub/leads/birthdays');
+      const res = await fetch(getUrl('/api/fub/leads/birthdays'));
       if (!res.ok) throw new Error('Failed to fetch birthday leads');
       return res.json();
     }
@@ -250,11 +260,21 @@ export default function LeadsPage() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-display font-bold" data-testid="text-page-title">Leads</h1>
-          <p className="text-muted-foreground mt-1">
-            Smart lists to help you stay connected with your clients
-          </p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-display font-bold" data-testid="text-page-title">Leads</h1>
+            <p className="text-muted-foreground mt-1">
+              {selectedAgentId 
+                ? "Viewing selected agent's leads" 
+                : "Smart lists to help you stay connected with your clients"}
+            </p>
+          </div>
+          {user?.isSuperAdmin && (
+            <AgentSelector
+              selectedAgentId={selectedAgentId}
+              onAgentChange={setSelectedAgentId}
+            />
+          )}
         </div>
 
         <Tabs defaultValue="anniversary" className="w-full">

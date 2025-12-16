@@ -4,8 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar as CalendarIcon, Clock, User, ChevronLeft, ChevronRight, AlertCircle, ExternalLink, Users } from "lucide-react";
+import { AgentSelector } from "@/components/agent-selector";
+import { Calendar as CalendarIcon, Clock, User, ChevronLeft, ChevronRight, AlertCircle, ExternalLink } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, parseISO } from "date-fns";
 import { useState } from "react";
 import type { FubEvent } from "@shared/schema";
@@ -17,12 +17,6 @@ interface CalendarResponse {
   message?: string;
 }
 
-interface FubAgent {
-  id: number;
-  name: string;
-  email: string;
-}
-
 export default function CalendarPage() {
   const { user } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -30,16 +24,6 @@ export default function CalendarPage() {
   
   const startDate = format(startOfMonth(currentMonth), "yyyy-MM-dd");
   const endDate = format(endOfMonth(currentMonth), "yyyy-MM-dd");
-
-  const { data: agentsData, isLoading: agentsLoading } = useQuery<{ agents: FubAgent[] }>({
-    queryKey: ["/api/fub/agents"],
-    queryFn: async () => {
-      const res = await fetch("/api/fub/agents", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch agents");
-      return res.json();
-    },
-    enabled: !!user?.isSuperAdmin,
-  });
 
   const calendarUrl = selectedAgentId 
     ? `/api/fub/calendar?startDate=${startDate}&endDate=${endDate}&agentId=${selectedAgentId}`
@@ -53,10 +37,6 @@ export default function CalendarPage() {
       return res.json();
     },
   });
-
-  const selectedAgent = selectedAgentId 
-    ? agentsData?.agents.find(a => a.id.toString() === selectedAgentId) 
-    : null;
 
   const allItems = [...(data?.events || []), ...(data?.tasks || [])];
   
@@ -113,40 +93,17 @@ export default function CalendarPage() {
           <div>
             <h1 className="text-3xl font-display font-bold" data-testid="text-calendar-title">Calendar</h1>
             <p className="text-muted-foreground mt-1">
-              {selectedAgent 
-                ? `Viewing ${selectedAgent.name}'s calendar` 
+              {selectedAgentId 
+                ? "Viewing selected agent's calendar" 
                 : "Your appointments and tasks from Follow Up Boss"}
             </p>
           </div>
           <div className="flex items-center gap-3">
             {user?.isSuperAdmin && (
-              <Select 
-                value={selectedAgentId || "my-data"} 
-                onValueChange={(value) => setSelectedAgentId(value === "my-data" ? null : value)}
-              >
-                <SelectTrigger className="w-[220px]" data-testid="select-agent">
-                  <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="Select agent" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="my-data" data-testid="option-agent-my-data">
-                    My Data
-                  </SelectItem>
-                  {agentsLoading ? (
-                    <SelectItem value="loading" disabled>Loading agents...</SelectItem>
-                  ) : (
-                    agentsData?.agents.map(agent => (
-                      <SelectItem 
-                        key={agent.id} 
-                        value={agent.id.toString()}
-                        data-testid={`option-agent-${agent.id}`}
-                      >
-                        {agent.name}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+              <AgentSelector
+                selectedAgentId={selectedAgentId}
+                onAgentChange={setSelectedAgentId}
+              />
             )}
             <a href="https://app.followupboss.com/calendar" target="_blank" rel="noopener noreferrer">
               <Button variant="outline" className="border-[hsl(28,94%,54%)]/30 hover:bg-[hsl(28,94%,54%)]/10">
@@ -285,7 +242,7 @@ export default function CalendarPage() {
                   Upcoming
                 </CardTitle>
                 <CardDescription>
-                  {selectedAgent ? `${selectedAgent.name}'s next 5 items` : "Your next 5 items"}
+                  {selectedAgentId ? "Agent's next 5 items" : "Your next 5 items"}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
