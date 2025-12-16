@@ -263,28 +263,64 @@ class FubClient {
   async getAnniversaryLeads(userId: number): Promise<FubPerson[]> {
     const people = await this.getPeople(userId);
     const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentDay = today.getDate();
+    today.setHours(0, 0, 0, 0);
     
     return people.filter(person => {
       if (!person.homePurchaseAnniversary) return false;
-      try {
-        const anniversary = new Date(person.homePurchaseAnniversary);
-        const daysUntilAnniversary = this.getDaysUntilAnniversary(anniversary, today);
-        return daysUntilAnniversary >= -7 && daysUntilAnniversary <= 30;
-      } catch {
-        return false;
-      }
+      const parsed = this.parseAnniversaryDate(person.homePurchaseAnniversary);
+      if (!parsed) return false;
+      
+      const daysUntilAnniversary = this.getDaysUntilAnniversary(parsed.month, parsed.day, today);
+      return daysUntilAnniversary >= -7 && daysUntilAnniversary <= 30;
     }).sort((a, b) => {
-      const dateA = new Date(a.homePurchaseAnniversary!);
-      const dateB = new Date(b.homePurchaseAnniversary!);
-      return this.getDaysUntilAnniversary(dateA, today) - this.getDaysUntilAnniversary(dateB, today);
+      const parsedA = this.parseAnniversaryDate(a.homePurchaseAnniversary!);
+      const parsedB = this.parseAnniversaryDate(b.homePurchaseAnniversary!);
+      if (!parsedA || !parsedB) return 0;
+      return this.getDaysUntilAnniversary(parsedA.month, parsedA.day, today) - 
+             this.getDaysUntilAnniversary(parsedB.month, parsedB.day, today);
     });
   }
 
-  private getDaysUntilAnniversary(anniversaryDate: Date, today: Date): number {
-    const thisYearAnniversary = new Date(today.getFullYear(), anniversaryDate.getMonth(), anniversaryDate.getDate());
-    const nextYearAnniversary = new Date(today.getFullYear() + 1, anniversaryDate.getMonth(), anniversaryDate.getDate());
+  private parseAnniversaryDate(dateStr: string): { month: number; day: number; year?: number } | null {
+    if (!dateStr) return null;
+    
+    const mmddPattern = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/;
+    const mmddMatch = dateStr.match(mmddPattern);
+    if (mmddMatch) {
+      const month = parseInt(mmddMatch[1], 10) - 1;
+      const day = parseInt(mmddMatch[2], 10);
+      const year = mmddMatch[3] ? parseInt(mmddMatch[3], 10) : undefined;
+      if (month >= 0 && month <= 11 && day >= 1 && day <= 31) {
+        return { month, day, year };
+      }
+    }
+    
+    const isoPattern = /^(\d{4})-(\d{2})-(\d{2})/;
+    const isoMatch = dateStr.match(isoPattern);
+    if (isoMatch) {
+      const year = parseInt(isoMatch[1], 10);
+      const month = parseInt(isoMatch[2], 10) - 1;
+      const day = parseInt(isoMatch[3], 10);
+      if (month >= 0 && month <= 11 && day >= 1 && day <= 31) {
+        return { month, day, year };
+      }
+    }
+    
+    try {
+      const date = new Date(dateStr);
+      if (!isNaN(date.getTime())) {
+        return { month: date.getMonth(), day: date.getDate(), year: date.getFullYear() };
+      }
+    } catch {
+      return null;
+    }
+    
+    return null;
+  }
+
+  private getDaysUntilAnniversary(month: number, day: number, today: Date): number {
+    const thisYearAnniversary = new Date(today.getFullYear(), month, day);
+    const nextYearAnniversary = new Date(today.getFullYear() + 1, month, day);
     
     const diffThis = Math.floor((thisYearAnniversary.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     const diffNext = Math.floor((nextYearAnniversary.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
@@ -295,6 +331,7 @@ class FubClient {
   async getRecentActivityLeads(userId: number): Promise<FubPerson[]> {
     const people = await this.getPeople(userId);
     const now = new Date();
+    now.setHours(0, 0, 0, 0);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
     
@@ -304,7 +341,12 @@ class FubClient {
       const createdDate = new Date(person.created);
       const lastActivityDate = new Date(person.lastActivity);
       
-      return createdDate < thirtyDaysAgo && lastActivityDate > threeDaysAgo;
+      if (isNaN(createdDate.getTime()) || isNaN(lastActivityDate.getTime())) return false;
+      
+      const createdMoreThan30DaysAgo = createdDate <= thirtyDaysAgo;
+      const hadRecentActivity = lastActivityDate >= threeDaysAgo;
+      
+      return createdMoreThan30DaysAgo && hadRecentActivity;
     }).sort((a, b) => {
       const dateA = new Date(a.lastActivity!);
       const dateB = new Date(b.lastActivity!);
