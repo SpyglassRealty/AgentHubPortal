@@ -272,6 +272,33 @@ export async function registerRoutes(
     }
   });
 
+  app.get('/api/market-pulse', isAuthenticated, async (req: any, res) => {
+    try {
+      const response = await fetch('https://idx-grid-data-ryan1648.replit.app/api/inventory/summary', {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        console.error(`Market pulse API error: ${response.status}`);
+        return res.status(response.status).json({ 
+          message: "Failed to fetch market data from external source" 
+        });
+      }
+      
+      const data = await response.json();
+      res.json({
+        ...data,
+        lastUpdatedAt: data.lastUpdatedAt || new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error fetching market pulse data:", error);
+      res.status(503).json({ message: "Market data service unavailable" });
+    }
+  });
+
   app.get('/api/fub/leads/anniversary', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
