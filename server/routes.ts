@@ -274,10 +274,16 @@ export async function registerRoutes(
 
   app.get('/api/market-pulse', isAuthenticated, async (req: any, res) => {
     try {
+      const apiKey = process.env.IDX_GRID_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ message: "Market data API key not configured" });
+      }
+
       const response = await fetch('https://idx-grid-data-ryan1648.replit.app/api/inventory/summary', {
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey
         }
       });
       
