@@ -28,6 +28,7 @@ export interface FubPerson {
   assignedUserId?: number;
   customFields?: Record<string, any>;
   homePurchaseAnniversary?: string;
+  birthday?: string;
 }
 
 export interface FubTask {
@@ -253,6 +254,11 @@ class FubClient {
                                   person.customFields?.['homePurchaseAnniversary'] ||
                                   person.customFields?.['Closing Date'] ||
                                   person.customFields?.['closingDate'],
+        birthday: person.customFields?.['Birthday'] ||
+                  person.customFields?.['birthday'] ||
+                  person.customFields?.['Birth Date'] ||
+                  person.customFields?.['birthDate'] ||
+                  person.customFields?.['DOB'],
       }));
     } catch (error) {
       console.error("Error fetching FUB people:", error);
@@ -326,6 +332,27 @@ class FubClient {
     const diffNext = Math.floor((nextYearAnniversary.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     
     return Math.abs(diffThis) < Math.abs(diffNext) ? diffThis : diffNext;
+  }
+
+  async getBirthdayLeads(userId: number): Promise<FubPerson[]> {
+    const people = await this.getPeople(userId);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return people.filter(person => {
+      if (!person.birthday) return false;
+      const parsed = this.parseAnniversaryDate(person.birthday);
+      if (!parsed) return false;
+      
+      const daysUntilBirthday = this.getDaysUntilAnniversary(parsed.month, parsed.day, today);
+      return daysUntilBirthday >= -7 && daysUntilBirthday <= 30;
+    }).sort((a, b) => {
+      const parsedA = this.parseAnniversaryDate(a.birthday!);
+      const parsedB = this.parseAnniversaryDate(b.birthday!);
+      if (!parsedA || !parsedB) return 0;
+      return this.getDaysUntilAnniversary(parsedA.month, parsedA.day, today) - 
+             this.getDaysUntilAnniversary(parsedB.month, parsedB.day, today);
+    });
   }
 
   async getRecentActivityLeads(userId: number): Promise<FubPerson[]> {

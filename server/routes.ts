@@ -311,6 +311,45 @@ export async function registerRoutes(
     }
   });
 
+  app.get('/api/fub/leads/birthdays', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const fubClient = getFubClient();
+      if (!fubClient) {
+        return res.status(503).json({ message: "Follow Up Boss integration not configured" });
+      }
+
+      let fubUserId = user.fubUserId;
+      const requestedAgentId = req.query.agentId as string;
+
+      if (requestedAgentId && user.isSuperAdmin) {
+        fubUserId = parseInt(requestedAgentId, 10);
+      } else if (!fubUserId && user.email) {
+        const fubUser = await fubClient.getUserByEmail(user.email);
+        if (fubUser) {
+          fubUserId = fubUser.id;
+          await storage.updateUserFubId(userId, fubUserId);
+        }
+      }
+
+      if (!fubUserId) {
+        return res.json({ leads: [], message: "No Follow Up Boss account linked" });
+      }
+
+      const leads = await fubClient.getBirthdayLeads(fubUserId);
+      res.json({ leads });
+    } catch (error) {
+      console.error("Error fetching birthday leads:", error);
+      res.status(500).json({ message: "Failed to fetch birthday leads" });
+    }
+  });
+
   app.get('/api/fub/leads/recent-activity', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
