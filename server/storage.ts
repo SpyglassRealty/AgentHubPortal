@@ -1,12 +1,31 @@
-import { users, type User, type UpsertUser } from "@shared/schema";
+import { 
+  users, 
+  agentProfiles, 
+  contextSuggestions,
+  type User, 
+  type UpsertUser,
+  type AgentProfile,
+  type InsertAgentProfile,
+  type ContextSuggestion,
+  type InsertContextSuggestion
+} from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserFubId(userId: string, fubUserId: number): Promise<User | undefined>;
+  
+  getAgentProfile(userId: string): Promise<AgentProfile | undefined>;
+  upsertAgentProfile(profile: InsertAgentProfile): Promise<AgentProfile>;
+  
+  getActiveSuggestions(userId: string): Promise<ContextSuggestion[]>;
+  createSuggestion(suggestion: InsertContextSuggestion): Promise<ContextSuggestion>;
+  createSuggestions(suggestions: InsertContextSuggestion[]): Promise<ContextSuggestion[]>;
+  updateSuggestionStatus(id: string, status: string): Promise<ContextSuggestion | undefined>;
+  clearUserSuggestions(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -42,6 +61,57 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  async getAgentProfile(userId: string): Promise<AgentProfile | undefined> {
+    const [profile] = await db.select().from(agentProfiles).where(eq(agentProfiles.userId, userId));
+    return profile;
+  }
+
+  async upsertAgentProfile(profileData: InsertAgentProfile): Promise<AgentProfile> {
+    const existing = await this.getAgentProfile(profileData.userId);
+    if (existing) {
+      const [profile] = await db
+        .update(agentProfiles)
+        .set({ ...profileData, updatedAt: new Date() })
+        .where(eq(agentProfiles.userId, profileData.userId))
+        .returning();
+      return profile;
+    } else {
+      const [profile] = await db.insert(agentProfiles).values(profileData).returning();
+      return profile;
+    }
+  }
+
+  async getActiveSuggestions(userId: string): Promise<ContextSuggestion[]> {
+    return db.select().from(contextSuggestions)
+      .where(and(
+        eq(contextSuggestions.userId, userId),
+        eq(contextSuggestions.status, "active")
+      ));
+  }
+
+  async createSuggestion(suggestion: InsertContextSuggestion): Promise<ContextSuggestion> {
+    const [created] = await db.insert(contextSuggestions).values(suggestion).returning();
+    return created;
+  }
+
+  async createSuggestions(suggestions: InsertContextSuggestion[]): Promise<ContextSuggestion[]> {
+    if (suggestions.length === 0) return [];
+    return db.insert(contextSuggestions).values(suggestions).returning();
+  }
+
+  async updateSuggestionStatus(id: string, status: string): Promise<ContextSuggestion | undefined> {
+    const [suggestion] = await db
+      .update(contextSuggestions)
+      .set({ status })
+      .where(eq(contextSuggestions.id, id))
+      .returning();
+    return suggestion;
+  }
+
+  async clearUserSuggestions(userId: string): Promise<void> {
+    await db.delete(contextSuggestions).where(eq(contextSuggestions.userId, userId));
   }
 }
 
