@@ -12,6 +12,7 @@ import { ArrowUpRight, Plus, ExternalLink, Sparkles, ChevronDown, ChevronUp } fr
 import { useAuth } from "@/hooks/useAuth";
 import { OnboardingModal } from "@/components/onboarding-modal";
 import { SuggestionCard } from "@/components/suggestion-card";
+import MarketPulse from "@/components/market-pulse";
 import type { ContextSuggestion, AgentProfile } from "@shared/schema";
 
 interface ProfileResponse {
@@ -96,30 +97,42 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {suggestionsLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </div>
-        ) : suggestions.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-[hsl(28,94%,54%)]" />
-              <h2 className="text-xl font-display font-semibold tracking-tight">Your Action Items</h2>
-              <Badge className="bg-[hsl(28,94%,54%)] text-white">{suggestions.length}</Badge>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <MarketPulse />
+          
+          {suggestionsLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {suggestions.slice(0, 4).map((suggestion) => (
-                <SuggestionCard key={suggestion.id} suggestion={suggestion} />
-              ))}
+          ) : suggestions.length > 0 ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+                <h2 className="text-xl font-display font-semibold tracking-tight">Your Action Items</h2>
+                <Badge className="bg-[hsl(28,94%,54%)] text-white">{suggestions.length}</Badge>
+              </div>
+              <div className="space-y-3">
+                {suggestions.slice(0, 3).map((suggestion) => (
+                  <SuggestionCard key={suggestion.id} suggestion={suggestion} />
+                ))}
+              </div>
+              {suggestions.length > 3 && (
+                <p className="text-sm text-center text-muted-foreground">
+                  +{suggestions.length - 3} more action items
+                </p>
+              )}
             </div>
-            {suggestions.length > 4 && (
-              <p className="text-sm text-center text-muted-foreground">
-                +{suggestions.length - 4} more action items
-              </p>
-            )}
-          </div>
-        )}
+          ) : (
+            <Card className="flex items-center justify-center h-full min-h-[200px]">
+              <CardContent className="text-center text-muted-foreground">
+                <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>No action items right now</p>
+                <p className="text-sm">Check back later for personalized suggestions</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
