@@ -145,6 +145,77 @@ const suggestionRules: SuggestionRule[] = [
       }
       return [];
     }
+  },
+  {
+    type: "new_agent_calls",
+    check: (data) => {
+      if (data.profile?.experienceLevel === "new") {
+        return [{
+          userId: "",
+          suggestionType: "daily_action",
+          title: "Call 20 leads a day",
+          description: "Build your pipeline by making consistent outreach calls",
+          priority: 80,
+          payload: { actionType: "call_leads" },
+          recommendedAppId: "follow-up-boss",
+        }];
+      }
+      return [];
+    }
+  },
+  {
+    type: "experienced_grow_pipeline",
+    check: (data) => {
+      const isExperienced = data.profile?.experienceLevel === "experienced" || data.profile?.experienceLevel === "veteran";
+      const wantsGrowth = data.profile?.primaryGoal === "grow_pipeline";
+      if (isExperienced && wantsGrowth) {
+        return [{
+          userId: "",
+          suggestionType: "daily_action",
+          title: "Add 5 contacts a day to CRM",
+          description: "Grow your database by adding new contacts and reaching out via call or text",
+          priority: 75,
+          payload: { actionType: "add_contacts" },
+          recommendedAppId: "follow-up-boss",
+        }];
+      }
+      return [];
+    }
+  },
+  {
+    type: "past_client_outreach",
+    check: (data) => {
+      const goal = data.profile?.primaryGoal;
+      if (goal === "grow_pipeline" || goal === "close_deals") {
+        return [{
+          userId: "",
+          suggestionType: "daily_action",
+          title: "Contact 5 Past Clients or Prospects",
+          description: "Nurture relationships and generate referrals from your sphere",
+          priority: 78,
+          payload: { actionType: "past_client_outreach" },
+          recommendedAppId: "follow-up-boss",
+        }];
+      }
+      return [];
+    }
+  },
+  {
+    type: "improve_systems_training",
+    check: (data) => {
+      if (data.profile?.primaryGoal === "improve_systems") {
+        return [{
+          userId: "",
+          suggestionType: "daily_action",
+          title: "Watch One Video on RealtyHackAI",
+          description: "Improve your skills and systems with daily training",
+          priority: 70,
+          payload: { actionType: "training" },
+          recommendedAppId: "realtyhack-ai",
+        }];
+      }
+      return [];
+    }
   }
 ];
 
