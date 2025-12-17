@@ -280,31 +280,87 @@ export async function registerRoutes(
       }
 
       const baseUrl = 'https://api.repliers.io/listings';
-      const url = `${baseUrl}?aggregates=lastStatus&listings=false&status=A&status=U`;
-
-      const response = await fetch(url, {
-        headers: {
-          'Accept': 'application/json',
-          'REPLIERS-API-KEY': apiKey
-        }
+      
+      // Query 1: Active listings - Residential only (homes, condos, townhomes)
+      // Filter by class=Residential to exclude commercial properties
+      // The API key is scoped to ACTRIS MLS (Austin area) already
+      const activeParams = new URLSearchParams({
+        aggregates: 'lastStatus',
+        listings: 'false',
+        class: 'Residential',
+        type: 'Sale',
+        status: 'A'
       });
       
-      if (!response.ok) {
-        console.error(`Market pulse API error: ${response.status}`);
-        const text = await response.text();
+      const activeUrl = `${baseUrl}?${activeParams.toString()}`;
+      
+      // Query 2: Under Contract listings - Residential only
+      const pendingParams = new URLSearchParams({
+        aggregates: 'lastStatus',
+        listings: 'false',
+        class: 'Residential',
+        type: 'Sale',
+        status: 'U'
+      });
+      pendingParams.append('lastStatus', 'Sc');
+      pendingParams.append('lastStatus', 'Pc');
+      
+      const pendingUrl = `${baseUrl}?${pendingParams.toString()}`;
+      
+      // Query 3: Sold listings in last 30 days - Residential only
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const minSoldDate = thirtyDaysAgo.toISOString().split('T')[0];
+      
+      const soldParams = new URLSearchParams({
+        aggregates: 'lastStatus',
+        listings: 'false',
+        class: 'Residential',
+        type: 'Sale',
+        status: 'U',
+        lastStatus: 'Sld',
+        minSoldDate: minSoldDate
+      });
+      
+      const soldUrl = `${baseUrl}?${soldParams.toString()}`;
+
+      console.log(`[Market Pulse] Active URL: ${activeUrl}`);
+      console.log(`[Market Pulse] Pending URL: ${pendingUrl}`);
+      console.log(`[Market Pulse] Sold URL: ${soldUrl}`);
+
+      const headers = {
+        'Accept': 'application/json',
+        'REPLIERS-API-KEY': apiKey
+      };
+
+      // Fetch all three queries in parallel
+      const [activeResponse, pendingResponse, soldResponse] = await Promise.all([
+        fetch(activeUrl, { headers }),
+        fetch(pendingUrl, { headers }),
+        fetch(soldUrl, { headers })
+      ]);
+      
+      if (!activeResponse.ok) {
+        console.error(`Market pulse active API error: ${activeResponse.status}`);
+        const text = await activeResponse.text();
         console.error(`Response body: ${text.substring(0, 500)}`);
-        return res.status(response.status).json({ 
+        return res.status(activeResponse.status).json({ 
           message: "Failed to fetch market data from external source" 
         });
       }
       
-      const data = await response.json();
+      const activeData = await activeResponse.json();
+      const pendingData = pendingResponse.ok ? await pendingResponse.json() : { count: 0 };
+      const soldData = soldResponse.ok ? await soldResponse.json() : { count: 0 };
       
-      const statusAggregates = data.aggregates?.lastStatus || {};
-      const active = statusAggregates['New'] || 0;
-      const underContract = (statusAggregates['Sc'] || 0) + (statusAggregates['Pc'] || 0);
-      const sold = statusAggregates['Sld'] || 0;
-      const total = data.count || (active + underContract + sold);
+      console.log(`[Market Pulse] Active data count: ${activeData.count}`);
+      console.log(`[Market Pulse] Pending (under contract) count: ${pendingData.count}`);
+      console.log(`[Market Pulse] Sold data count: ${soldData.count}`);
+
+      const active = activeData.count || 0;
+      const underContract = pendingData.count || 0;
+      const sold = soldData.count || 0;
+      const total = active + underContract;
 
       res.json({
         totalProperties: total,
