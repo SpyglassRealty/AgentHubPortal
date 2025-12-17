@@ -232,34 +232,57 @@ class FubClient {
 
   async getPeople(userId?: number): Promise<FubPerson[]> {
     try {
-      const params: Record<string, string> = { limit: "200" };
-      if (userId) params.assignedUserId = userId.toString();
+      const allPeople: FubPerson[] = [];
+      let page = 1;
+      let hasMore = true;
 
-      const data = await this.request<{ people: any[] }>("/people", params);
-      
-      return (data.people || []).map((person: any) => ({
-        id: person.id,
-        name: person.name || `${person.firstName || ''} ${person.lastName || ''}`.trim() || 'Unknown',
-        firstName: person.firstName,
-        lastName: person.lastName,
-        email: person.emails?.[0]?.value || person.email,
-        phone: person.phones?.[0]?.value || person.phone,
-        stage: person.stage,
-        source: person.source,
-        created: person.created,
-        lastActivity: person.lastActivity,
-        assignedUserId: person.assignedUserId,
-        customFields: person.customFields || {},
-        homePurchaseAnniversary: person.customFields?.['Home Purchase Anniversary'] || 
-                                  person.customFields?.['homePurchaseAnniversary'] ||
-                                  person.customFields?.['Closing Date'] ||
-                                  person.customFields?.['closingDate'],
-        birthday: person.customFields?.['Birthday'] ||
-                  person.customFields?.['birthday'] ||
-                  person.customFields?.['Birth Date'] ||
-                  person.customFields?.['birthDate'] ||
-                  person.customFields?.['DOB'],
-      }));
+      while (hasMore) {
+        const params: Record<string, string> = { 
+          limit: "100",
+          offset: ((page - 1) * 100).toString()
+        };
+        if (userId) params.assignedUserId = userId.toString();
+
+        const data = await this.request<{ people: any[] }>("/people", params);
+        
+        console.log(`[FUB] Fetched ${data.people?.length || 0} people on page ${page}`);
+        
+        const people = data.people || [];
+        for (const person of people) {
+          allPeople.push({
+            id: person.id,
+            name: person.name || `${person.firstName || ''} ${person.lastName || ''}`.trim() || 'Unknown',
+            firstName: person.firstName,
+            lastName: person.lastName,
+            email: person.emails?.[0]?.value || person.email,
+            phone: person.phones?.[0]?.value || person.phone,
+            stage: person.stage,
+            source: person.source,
+            created: person.created,
+            lastActivity: person.lastActivity,
+            assignedUserId: person.assignedUserId,
+            customFields: person.customFields || {},
+            homePurchaseAnniversary: person.customFields?.['Home Purchase Anniversary'] || 
+                                      person.customFields?.['homePurchaseAnniversary'] ||
+                                      person.customFields?.['Closing Date'] ||
+                                      person.customFields?.['closingDate'],
+            birthday: person.customFields?.['Birthday'] ||
+                      person.customFields?.['birthday'] ||
+                      person.customFields?.['Birth Date'] ||
+                      person.customFields?.['birthDate'] ||
+                      person.customFields?.['DOB'],
+          });
+        }
+
+        hasMore = people.length === 100;
+        page++;
+        
+        // Safety limit to prevent infinite loops
+        if (page > 50) break;
+      }
+
+      console.log(`[FUB] Total people found: ${allPeople.length}`);
+      return allPeople;
     } catch (error) {
       console.error("Error fetching FUB people:", error);
       return [];
