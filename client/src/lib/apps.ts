@@ -51,7 +51,7 @@ export const apps: AppDefinition[] = [
     icon: Mail,
     category: "Marketing",
     color: "bg-pink-100 text-pink-700",
-    url: "https://blog-to-email-automator--ryan1648.replit.app"
+    url: "https://blog-to-email-automator-2--caleb254.replit.app"
   },
   {
     id: "realty-hack-ai",
