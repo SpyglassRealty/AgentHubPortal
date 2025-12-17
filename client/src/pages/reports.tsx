@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AgentSelector } from "@/components/agent-selector";
 import { 
   TrendingUp, 
   DollarSign, 
@@ -13,8 +13,7 @@ import {
   ExternalLink,
   CheckCircle2,
   Clock,
-  Calendar,
-  Users
+  Calendar
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useState } from "react";
@@ -34,12 +33,6 @@ interface DealsResponse {
   message?: string;
 }
 
-interface FubAgent {
-  id: number;
-  name: string;
-  email: string;
-}
-
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -53,16 +46,6 @@ export default function ReportsPage() {
   const { user } = useAuth();
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
 
-  const { data: agentsData, isLoading: agentsLoading } = useQuery<{ agents: FubAgent[] }>({
-    queryKey: ["/api/fub/agents"],
-    queryFn: async () => {
-      const res = await fetch("/api/fub/agents", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch agents");
-      return res.json();
-    },
-    enabled: !!user?.isSuperAdmin,
-  });
-
   const dealsUrl = selectedAgentId 
     ? `/api/fub/deals?agentId=${selectedAgentId}`
     : `/api/fub/deals`;
@@ -75,10 +58,6 @@ export default function ReportsPage() {
       return res.json();
     },
   });
-
-  const selectedAgent = selectedAgentId 
-    ? agentsData?.agents.find(a => a.id.toString() === selectedAgentId) 
-    : null;
 
   const currentYear = new Date().getFullYear();
 
@@ -112,40 +91,17 @@ export default function ReportsPage() {
           <div>
             <h1 className="text-3xl font-display font-bold" data-testid="text-reports-title">Reports</h1>
             <p className="text-muted-foreground mt-1">
-              {selectedAgent 
-                ? `Viewing ${selectedAgent.name}'s deals` 
+              {selectedAgentId 
+                ? "Viewing agent's deals" 
                 : "Your deal performance from Follow Up Boss"}
             </p>
           </div>
           <div className="flex items-center gap-3">
             {user?.isSuperAdmin && (
-              <Select 
-                value={selectedAgentId || "my-data"} 
-                onValueChange={(value) => setSelectedAgentId(value === "my-data" ? null : value)}
-              >
-                <SelectTrigger className="w-[220px]" data-testid="select-agent">
-                  <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="Select agent" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="my-data" data-testid="option-agent-my-data">
-                    My Data
-                  </SelectItem>
-                  {agentsLoading ? (
-                    <SelectItem value="loading" disabled>Loading agents...</SelectItem>
-                  ) : (
-                    agentsData?.agents.map(agent => (
-                      <SelectItem 
-                        key={agent.id} 
-                        value={agent.id.toString()}
-                        data-testid={`option-agent-${agent.id}`}
-                      >
-                        {agent.name}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+              <AgentSelector 
+                selectedAgentId={selectedAgentId}
+                onAgentChange={setSelectedAgentId}
+              />
             )}
             <a href="https://app.followupboss.com/deals" target="_blank" rel="noopener noreferrer">
               <Button variant="outline" className="border-[hsl(28,94%,54%)]/30 hover:bg-[hsl(28,94%,54%)]/10">
@@ -271,7 +227,7 @@ export default function ReportsPage() {
                 Under Contract
               </CardTitle>
               <CardDescription>
-                {selectedAgent ? `${selectedAgent.name}'s active deals` : "Active deals pending closing"}
+                {selectedAgentId ? "Selected agent's active deals" : "Active deals pending closing"}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -332,7 +288,7 @@ export default function ReportsPage() {
                 Recently Closed
               </CardTitle>
               <CardDescription>
-                {selectedAgent ? `${selectedAgent.name}'s closed deals` : "Deals closed this year"}
+                {selectedAgentId ? "Selected agent's closed deals" : "Deals closed this year"}
               </CardDescription>
             </CardHeader>
             <CardContent>
