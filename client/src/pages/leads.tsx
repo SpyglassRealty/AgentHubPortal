@@ -17,7 +17,8 @@ import {
   PartyPopper,
   Activity,
   ListTodo,
-  Cake
+  Cake,
+  ExternalLink
 } from "lucide-react";
 import { format, formatDistanceToNow, differenceInDays, isToday, isPast } from "date-fns";
 
@@ -71,7 +72,16 @@ function LeadCard({ lead, type }: { lead: Lead; type: 'anniversary' | 'activity'
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-medium truncate" data-testid={`text-lead-name-${lead.id}`}>{lead.name}</h3>
+              <a 
+                href={`https://app.followupboss.com/2/people/view/${lead.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium truncate hover:text-[hsl(28,94%,54%)] hover:underline transition-colors flex items-center gap-1.5 group"
+                data-testid={`link-lead-${lead.id}`}
+              >
+                {lead.name}
+                <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+              </a>
               {lead.stage && (
                 <Badge variant="secondary" className="text-xs shrink-0">
                   {lead.stage}
@@ -169,7 +179,20 @@ function TaskCard({ task }: { task: Task }) {
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <h3 className="font-medium" data-testid={`text-task-name-${task.id}`}>{task.name}</h3>
-            {task.personName && (
+            {task.personName && task.personId && (
+              <a 
+                href={`https://app.followupboss.com/2/people/view/${task.personId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-sm text-muted-foreground mt-1 hover:text-[hsl(28,94%,54%)] hover:underline transition-colors group"
+                data-testid={`link-task-person-${task.personId}`}
+              >
+                <User className="h-3 w-3" />
+                <span>{task.personName}</span>
+                <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </a>
+            )}
+            {task.personName && !task.personId && (
               <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                 <User className="h-3 w-3" />
                 <span>{task.personName}</span>
