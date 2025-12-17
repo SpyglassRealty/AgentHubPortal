@@ -31,6 +31,7 @@ interface Lead {
   source?: string;
   created: string;
   lastActivity?: string;
+  lastLeadActivity?: string;
   homePurchaseAnniversary?: string;
   birthday?: string;
 }
@@ -110,10 +111,10 @@ function LeadCard({ lead, type }: { lead: Lead; type: 'anniversary' | 'activity'
               )}
             </div>
 
-            {type === 'activity' && lead.lastActivity && (
+            {type === 'activity' && (lead.lastLeadActivity || lead.lastActivity) && (
               <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
                 <Activity className="h-3 w-3" />
-                <span>Last activity: {formatDistanceToNow(new Date(lead.lastActivity), { addSuffix: true })}</span>
+                <span>Last activity: {formatDistanceToNow(new Date(lead.lastLeadActivity || lead.lastActivity!), { addSuffix: true })}</span>
               </div>
             )}
           </div>

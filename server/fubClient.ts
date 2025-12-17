@@ -25,6 +25,7 @@ export interface FubPerson {
   source?: string;
   created: string;
   lastActivity?: string;
+  lastLeadActivity?: string;
   assignedUserId?: number;
   customFields?: Record<string, any>;
   homePurchaseAnniversary?: string;
@@ -239,7 +240,8 @@ class FubClient {
       while (hasMore) {
         const params: Record<string, string> = { 
           limit: "100",
-          offset: ((page - 1) * 100).toString()
+          offset: ((page - 1) * 100).toString(),
+          fields: "id,name,firstName,lastName,emails,phones,stage,source,created,lastActivity,lastLeadActivity,assignedUserId,customFields"
         };
         if (userId) params.assignedUserId = userId.toString();
 
@@ -260,6 +262,7 @@ class FubClient {
             source: person.source,
             created: person.created,
             lastActivity: person.lastActivity,
+            lastLeadActivity: person.lastLeadActivity,
             assignedUserId: person.assignedUserId,
             customFields: person.customFields || {},
             homePurchaseAnniversary: person.customFields?.['Home Purchase Anniversary'] || 
@@ -386,20 +389,20 @@ class FubClient {
     const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
     
     return people.filter(person => {
-      if (!person.created || !person.lastActivity) return false;
+      if (!person.created || !person.lastLeadActivity) return false;
       
       const createdDate = new Date(person.created);
-      const lastActivityDate = new Date(person.lastActivity);
+      const lastLeadActivityDate = new Date(person.lastLeadActivity);
       
-      if (isNaN(createdDate.getTime()) || isNaN(lastActivityDate.getTime())) return false;
+      if (isNaN(createdDate.getTime()) || isNaN(lastLeadActivityDate.getTime())) return false;
       
       const createdMoreThan30DaysAgo = createdDate <= thirtyDaysAgo;
-      const hadRecentActivity = lastActivityDate >= threeDaysAgo;
+      const hadRecentClientActivity = lastLeadActivityDate >= threeDaysAgo;
       
-      return createdMoreThan30DaysAgo && hadRecentActivity;
+      return createdMoreThan30DaysAgo && hadRecentClientActivity;
     }).sort((a, b) => {
-      const dateA = new Date(a.lastActivity!);
-      const dateB = new Date(b.lastActivity!);
+      const dateA = new Date(a.lastLeadActivity!);
+      const dateB = new Date(b.lastLeadActivity!);
       return dateB.getTime() - dateA.getTime();
     });
   }
