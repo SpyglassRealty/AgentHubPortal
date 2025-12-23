@@ -334,6 +334,14 @@ export async function registerRoutes(
 
       const baseUrl = 'https://api.repliers.io/listings';
       
+      // Five-county Austin MSA counties
+      const msaCounties = ['Travis', 'Williamson', 'Hays', 'Bastrop', 'Caldwell'];
+      
+      // Helper function to add county filters to params
+      const addCountyFilters = (params: URLSearchParams) => {
+        msaCounties.forEach(county => params.append('county', county));
+      };
+      
       // Query 1: Active SFR listings - using class=Residential for ACTRIS MLS
       const activeSfrParams = new URLSearchParams({
         listings: 'false',
@@ -341,6 +349,7 @@ export async function registerRoutes(
         status: 'A',
         class: 'Residential'
       });
+      addCountyFilters(activeSfrParams);
       const activeSfrUrl = `${baseUrl}?${activeSfrParams.toString()}`;
       
       // Query 2: Active Condo listings - using class=Condo for ACTRIS MLS
@@ -350,6 +359,7 @@ export async function registerRoutes(
         status: 'A',
         class: 'Condo'
       });
+      addCountyFilters(activeCondoParams);
       const activeCondoUrl = `${baseUrl}?${activeCondoParams.toString()}`;
       
       // Query 3: Under Contract SFR listings
@@ -361,6 +371,7 @@ export async function registerRoutes(
       });
       pendingSfrParams.append('lastStatus', 'Sc');
       pendingSfrParams.append('lastStatus', 'Pc');
+      addCountyFilters(pendingSfrParams);
       const pendingSfrUrl = `${baseUrl}?${pendingSfrParams.toString()}`;
       
       // Query 4: Under Contract Condo listings
@@ -372,6 +383,7 @@ export async function registerRoutes(
       });
       pendingCondoParams.append('lastStatus', 'Sc');
       pendingCondoParams.append('lastStatus', 'Pc');
+      addCountyFilters(pendingCondoParams);
       const pendingCondoUrl = `${baseUrl}?${pendingCondoParams.toString()}`;
       
       // Query 5: Sold listings in last 30 days
@@ -387,6 +399,7 @@ export async function registerRoutes(
         lastStatus: 'Sld',
         minSoldDate: minSoldDate
       });
+      addCountyFilters(soldSfrParams);
       const soldSfrUrl = `${baseUrl}?${soldSfrParams.toString()}`;
       
       const soldCondoParams = new URLSearchParams({
@@ -397,6 +410,7 @@ export async function registerRoutes(
         lastStatus: 'Sld',
         minSoldDate: minSoldDate
       });
+      addCountyFilters(soldCondoParams);
       const soldCondoUrl = `${baseUrl}?${soldCondoParams.toString()}`;
 
       console.log(`[Market Pulse] Active SFR URL: ${activeSfrUrl}`);
