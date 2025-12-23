@@ -144,6 +144,15 @@ export const apps: AppDefinition[] = [
     url: "https://app.jointly.com/login"
   },
   {
+    id: "create-transaction",
+    name: "Create Transaction",
+    description: "Create and manage real estate transactions quickly and efficiently.",
+    icon: FileText,
+    category: "Admin",
+    color: "bg-amber-100 text-amber-700",
+    url: "https://contract-conduit--ryan1648.replit.app"
+  },
+  {
     id: "lead-command",
     name: "LeadCommand",
     description: "Manage your client relationships and pipeline.",
