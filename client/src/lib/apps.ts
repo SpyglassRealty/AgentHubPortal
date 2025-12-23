@@ -6,10 +6,6 @@ import {
   FileText, 
   Calendar, 
   BarChart3, 
-  Settings, 
-  LogOut,
-  Bell,
-  Search,
   BrainCircuit,
   BookOpen,
   Mail,
@@ -32,6 +28,7 @@ export interface AppDefinition {
   category: "Core" | "Marketing" | "Sales" | "Admin";
   color: string;
   url?: string;
+  noIframe?: boolean;
 }
 
 export const apps: AppDefinition[] = [
@@ -78,16 +75,18 @@ export const apps: AppDefinition[] = [
     icon: Contact,
     category: "Sales",
     color: "bg-green-100 text-green-700",
-    url: "https://login.followupboss.com/login"
+    url: "https://login.followupboss.com/login",
+    noIframe: true
   },
   {
     id: "ylopo-add-lead",
     name: "Ylopo Add Lead",
-    description: "Quickly add new leads to your Ylopo account.",
+    description: "Quickly add new leads to your Ylopo account. Opens in a new tab.",
     icon: UserPlus,
     category: "Sales",
     color: "bg-cyan-100 text-cyan-700",
-    url: "https://stars.ylopo.com/auth"
+    url: "https://stars.ylopo.com/auth",
+    noIframe: true
   },
   {
     id: "ylopo-tools",
@@ -110,20 +109,22 @@ export const apps: AppDefinition[] = [
   {
     id: "slack",
     name: "Slack",
-    description: "Team communication and collaboration hub.",
+    description: "Team communication and collaboration hub. Opens in a new tab.",
     icon: Hash,
     category: "Core",
     color: "bg-purple-100 text-purple-700",
-    url: "https://app.slack.com/client/T08T7BSLZV4"
+    url: "https://app.slack.com/client/T08T7BSLZV4",
+    noIframe: true
   },
   {
     id: "canva",
     name: "Canva",
-    description: "Create beautiful marketing materials, flyers, and social media graphics.",
+    description: "Create beautiful marketing materials, flyers, and social media graphics. Opens in a new tab.",
     icon: Palette,
     category: "Marketing",
     color: "bg-violet-100 text-violet-700",
-    url: "https://www.canva.com/projects"
+    url: "https://www.canva.com/projects",
+    noIframe: true
   },
   {
     id: "client-data",
@@ -152,54 +153,6 @@ export const apps: AppDefinition[] = [
     color: "bg-amber-100 text-amber-700",
     url: "https://contract-conduit--ryan1648.replit.app"
   },
-  {
-    id: "lead-command",
-    name: "LeadCommand",
-    description: "Manage your client relationships and pipeline.",
-    icon: Users,
-    category: "Sales",
-    color: "bg-blue-100 text-blue-700"
-  },
-  {
-    id: "proplist",
-    name: "PropList",
-    description: "MLS integration and listing management tool.",
-    icon: Building2,
-    category: "Core",
-    color: "bg-emerald-100 text-emerald-700"
-  },
-  {
-    id: "market-mate",
-    name: "MarketMate",
-    description: "Create flyers, social posts, and email campaigns.",
-    icon: Megaphone,
-    category: "Marketing",
-    color: "bg-purple-100 text-purple-700"
-  },
-  {
-    id: "docu-flow",
-    name: "DocuFlow",
-    description: "Digital signatures and contract management.",
-    icon: FileText,
-    category: "Admin",
-    color: "bg-amber-100 text-amber-700"
-  },
-  {
-    id: "show-time",
-    name: "ShowTime",
-    description: "Schedule and manage property viewings.",
-    icon: Calendar,
-    category: "Sales",
-    color: "bg-rose-100 text-rose-700"
-  },
-  {
-    id: "analytics",
-    name: "AgentStats",
-    description: "Performance metrics and commission tracking.",
-    icon: BarChart3,
-    category: "Admin",
-    color: "bg-indigo-100 text-indigo-700"
-  }
 ];
 
 export const navItems = [
