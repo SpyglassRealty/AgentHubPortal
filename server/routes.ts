@@ -281,33 +281,35 @@ export async function registerRoutes(
 
       const baseUrl = 'https://api.repliers.io/listings';
       
-      // Query 1: Active listings - Residential only (homes, condos, townhomes)
-      // Filter by class=Residential to exclude commercial properties
+      // Query 1: Active listings - All residential types (homes, condos, townhomes)
+      // Include both 'Residential' and 'condo' classes to match MLS totals
       // The API key is scoped to ACTRIS MLS (Austin area) already
       const activeParams = new URLSearchParams({
         aggregates: 'lastStatus',
         listings: 'false',
-        class: 'Residential',
         type: 'Sale',
         status: 'A'
       });
+      activeParams.append('class', 'Residential');
+      activeParams.append('class', 'condo');
       
       const activeUrl = `${baseUrl}?${activeParams.toString()}`;
       
-      // Query 2: Under Contract listings - Residential only
+      // Query 2: Under Contract listings - All residential types
       const pendingParams = new URLSearchParams({
         aggregates: 'lastStatus',
         listings: 'false',
-        class: 'Residential',
         type: 'Sale',
         status: 'U'
       });
+      pendingParams.append('class', 'Residential');
+      pendingParams.append('class', 'condo');
       pendingParams.append('lastStatus', 'Sc');
       pendingParams.append('lastStatus', 'Pc');
       
       const pendingUrl = `${baseUrl}?${pendingParams.toString()}`;
       
-      // Query 3: Sold listings in last 30 days - Residential only
+      // Query 3: Sold listings in last 30 days - All residential types
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const minSoldDate = thirtyDaysAgo.toISOString().split('T')[0];
@@ -315,12 +317,13 @@ export async function registerRoutes(
       const soldParams = new URLSearchParams({
         aggregates: 'lastStatus',
         listings: 'false',
-        class: 'Residential',
         type: 'Sale',
         status: 'U',
         lastStatus: 'Sld',
         minSoldDate: minSoldDate
       });
+      soldParams.append('class', 'Residential');
+      soldParams.append('class', 'condo');
       
       const soldUrl = `${baseUrl}?${soldParams.toString()}`;
 
