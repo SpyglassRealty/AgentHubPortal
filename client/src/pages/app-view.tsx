@@ -73,7 +73,7 @@ export default function AppView() {
         </div>
 
         <div className="flex-1 bg-background border border-border rounded-xl overflow-hidden shadow-sm relative">
-          {app.id === "follow-up-boss" ? (
+          {app.noIframe ? (
             <div className="w-full h-full flex items-center justify-center bg-muted/20">
               <div className="text-center p-8 max-w-md">
                 <div className={`mx-auto w-16 h-16 rounded-xl ${app.color} flex items-center justify-center mb-4`}>
@@ -81,11 +81,11 @@ export default function AppView() {
                 </div>
                 <h3 className="text-lg font-display font-medium mb-2">{app.name}</h3>
                 <p className="text-muted-foreground mb-4">
-                  Follow Up Boss opens in a new browser tab for the best experience.
+                  {app.name} opens in a new browser tab for the best experience.
                 </p>
                 <Button className="bg-[hsl(28,94%,54%)] hover:bg-[hsl(28,94%,48%)]" asChild>
                   <a href={app.url} target="_blank" rel="noopener noreferrer">
-                    Open Follow Up Boss
+                    Open {app.name}
                     <ExternalLink className="ml-2 h-4 w-4" />
                   </a>
                 </Button>
