@@ -272,6 +272,59 @@ export async function registerRoutes(
     }
   });
 
+  app.get('/api/market-pulse/property-types', isAuthenticated, async (req: any, res) => {
+    try {
+      const apiKey = process.env.IDX_GRID_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ message: "Market data API key not configured" });
+      }
+
+      const headers = {
+        'Accept': 'application/json',
+        'REPLIERS-API-KEY': apiKey
+      };
+
+      // Get aggregates on class field
+      const aggregatesUrl = `https://api.repliers.io/listings?aggregates=class,details.propertyType&listings=false&status=A&type=Sale&pageNum=1&resultsPerPage=1`;
+      const aggregatesResponse = await fetch(aggregatesUrl, { headers });
+      
+      if (!aggregatesResponse.ok) {
+        const text = await aggregatesResponse.text();
+        console.error('[Market Pulse] Aggregates error:', text.substring(0, 500));
+        return res.status(aggregatesResponse.status).json({ message: "Failed to fetch property types" });
+      }
+      
+      const aggregatesData = await aggregatesResponse.json();
+      console.log('[Market Pulse] Aggregates:', JSON.stringify(aggregatesData.aggregates, null, 2));
+      
+      // Also get a sample listing to see field structure
+      const sampleUrl = `https://api.repliers.io/listings?status=A&type=Sale&class=Residential&pageNum=1&resultsPerPage=1`;
+      const sampleResponse = await fetch(sampleUrl, { headers });
+      let sampleListing = null;
+      if (sampleResponse.ok) {
+        const sampleData = await sampleResponse.json();
+        if (sampleData.listings && sampleData.listings.length > 0) {
+          const listing = sampleData.listings[0];
+          sampleListing = {
+            class: listing.class,
+            type: listing.type,
+            details: listing.details,
+            propertyType: listing.propertyType
+          };
+        }
+      }
+      
+      res.json({ 
+        aggregates: aggregatesData.aggregates, 
+        count: aggregatesData.count,
+        sampleListing
+      });
+    } catch (error) {
+      console.error("Error fetching property types:", error);
+      res.status(503).json({ message: "Service unavailable" });
+    }
+  });
+
   app.get('/api/market-pulse', isAuthenticated, async (req: any, res) => {
     try {
       const apiKey = process.env.IDX_GRID_API_KEY;
@@ -281,21 +334,21 @@ export async function registerRoutes(
 
       const baseUrl = 'https://api.repliers.io/listings';
       
-      // Query 1: Active SFR listings
+      // Query 1: Active SFR listings - using propertyType filter for accuracy
       const activeSfrParams = new URLSearchParams({
         listings: 'false',
         type: 'Sale',
         status: 'A',
-        class: 'Residential'
+        propertyType: 'Single Family Residence'
       });
       const activeSfrUrl = `${baseUrl}?${activeSfrParams.toString()}`;
       
-      // Query 2: Active Condo listings
+      // Query 2: Active Condo listings - using propertyType filter
       const activeCondoParams = new URLSearchParams({
         listings: 'false',
         type: 'Sale',
         status: 'A',
-        class: 'condo'
+        propertyType: 'Condominium'
       });
       const activeCondoUrl = `${baseUrl}?${activeCondoParams.toString()}`;
       
@@ -304,7 +357,7 @@ export async function registerRoutes(
         listings: 'false',
         type: 'Sale',
         status: 'U',
-        class: 'Residential'
+        propertyType: 'Single Family Residence'
       });
       pendingSfrParams.append('lastStatus', 'Sc');
       pendingSfrParams.append('lastStatus', 'Pc');
@@ -315,13 +368,13 @@ export async function registerRoutes(
         listings: 'false',
         type: 'Sale',
         status: 'U',
-        class: 'condo'
+        propertyType: 'Condominium'
       });
       pendingCondoParams.append('lastStatus', 'Sc');
       pendingCondoParams.append('lastStatus', 'Pc');
       const pendingCondoUrl = `${baseUrl}?${pendingCondoParams.toString()}`;
       
-      // Query 5: Sold listings in last 30 days (combined for simplicity)
+      // Query 5: Sold listings in last 30 days
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const minSoldDate = thirtyDaysAgo.toISOString().split('T')[0];
@@ -330,7 +383,7 @@ export async function registerRoutes(
         listings: 'false',
         type: 'Sale',
         status: 'U',
-        class: 'Residential',
+        propertyType: 'Single Family Residence',
         lastStatus: 'Sld',
         minSoldDate: minSoldDate
       });
@@ -340,7 +393,7 @@ export async function registerRoutes(
         listings: 'false',
         type: 'Sale',
         status: 'U',
-        class: 'condo',
+        propertyType: 'Condominium',
         lastStatus: 'Sld',
         minSoldDate: minSoldDate
       });
