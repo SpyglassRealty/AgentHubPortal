@@ -31,20 +31,6 @@ export default function MarketPulse() {
     retry: 1,
   });
 
-  // Debug query to discover property types
-  const { data: propertyTypesData } = useQuery({
-    queryKey: ['/api/market-pulse/property-types'],
-    queryFn: async () => {
-      const res = await fetch('/api/market-pulse/property-types');
-      if (!res.ok) throw new Error('Failed to fetch property types');
-      const data = await res.json();
-      console.log('[Market Pulse Debug] Property Types:', data);
-      return data;
-    },
-    staleTime: 60 * 60 * 1000,
-    retry: 1,
-  });
-
   const chartData = data ? [
     { name: 'Active SFR', count: data.activeSfr, fill: 'hsl(142, 76%, 36%)' },
     { name: 'Active Condo', count: data.activeCondo, fill: 'hsl(142, 76%, 50%)' },
