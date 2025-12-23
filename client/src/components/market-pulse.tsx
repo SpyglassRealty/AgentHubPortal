@@ -10,6 +10,10 @@ interface MarketPulseData {
   active: number;
   underContract: number;
   sold: number;
+  activeSfr: number;
+  activeCondo: number;
+  underContractSfr: number;
+  underContractCondo: number;
   lastUpdatedAt: string;
 }
 
@@ -28,14 +32,17 @@ export default function MarketPulse() {
   });
 
   const chartData = data ? [
-    { name: 'Active', count: data.active, fill: 'hsl(142, 76%, 36%)' },
-    { name: 'Under Contract', count: data.underContract, fill: 'hsl(45, 93%, 47%)' },
-    { name: 'Sold', count: data.sold, fill: 'hsl(217, 91%, 60%)' },
+    { name: 'Active SFR', count: data.activeSfr, fill: 'hsl(142, 76%, 36%)' },
+    { name: 'Active Condo', count: data.activeCondo, fill: 'hsl(142, 76%, 50%)' },
+    { name: 'Pending SFR', count: data.underContractSfr, fill: 'hsl(45, 93%, 47%)' },
+    { name: 'Pending Condo', count: data.underContractCondo, fill: 'hsl(45, 93%, 60%)' },
   ].filter(item => item.count > 0) : [];
 
   const totalProperties = data?.totalProperties || 0;
-  const totalActive = data?.active || 0;
-  const totalUnderContract = data?.underContract || 0;
+  const activeSfr = data?.activeSfr || 0;
+  const activeCondo = data?.activeCondo || 0;
+  const underContractSfr = data?.underContractSfr || 0;
+  const underContractCondo = data?.underContractCondo || 0;
   const totalSold = data?.sold || 0;
 
   if (isLoading) {
@@ -164,38 +171,49 @@ export default function MarketPulse() {
           </ResponsiveContainer>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          <Card className="bg-muted/50">
-            <CardContent className="p-3 text-center">
-              <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1">
+        <div className="grid grid-cols-2 gap-3">
+          <Card className="bg-emerald-50 border-emerald-200">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-1 text-emerald-700 text-xs font-medium mb-2">
                 <Home className="h-3 w-3" />
-                Total Listings
+                Active Listings
               </div>
-              <p className="text-xl font-bold" data-testid="text-total-listings">
-                {totalProperties.toLocaleString()}
-              </p>
+              <div className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">SFR</span>
+                  <span className="font-bold" data-testid="text-active-sfr">{activeSfr.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Condo</span>
+                  <span className="font-bold" data-testid="text-active-condo">{activeCondo.toLocaleString()}</span>
+                </div>
+                <div className="border-t pt-1 flex justify-between items-center">
+                  <span className="text-sm font-medium">Total</span>
+                  <span className="font-bold text-emerald-700" data-testid="text-total-active">{(activeSfr + activeCondo).toLocaleString()}</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
-          <Card className="bg-muted/50">
-            <CardContent className="p-3 text-center">
-              <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1">
-                <TrendingUp className="h-3 w-3" />
-                Active
-              </div>
-              <p className="text-xl font-bold" data-testid="text-total-active">
-                {totalActive.toLocaleString()}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-muted/50">
-            <CardContent className="p-3 text-center">
-              <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1">
+          <Card className="bg-amber-50 border-amber-200">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-1 text-amber-700 text-xs font-medium mb-2">
                 <Building2 className="h-3 w-3" />
                 Under Contract
               </div>
-              <p className="text-xl font-bold" data-testid="text-under-contract">
-                {totalUnderContract.toLocaleString()}
-              </p>
+              <div className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">SFR</span>
+                  <span className="font-bold" data-testid="text-pending-sfr">{underContractSfr.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Condo</span>
+                  <span className="font-bold" data-testid="text-pending-condo">{underContractCondo.toLocaleString()}</span>
+                </div>
+                <div className="border-t pt-1 flex justify-between items-center">
+                  <span className="text-sm font-medium">Total</span>
+                  <span className="font-bold text-amber-700" data-testid="text-total-pending">{(underContractSfr + underContractCondo).toLocaleString()}</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
