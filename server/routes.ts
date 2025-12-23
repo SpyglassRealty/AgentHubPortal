@@ -334,21 +334,21 @@ export async function registerRoutes(
 
       const baseUrl = 'https://api.repliers.io/listings';
       
-      // Query 1: Active SFR listings - using propertyType filter for accuracy
+      // Query 1: Active SFR listings - using class=Residential for ACTRIS MLS
       const activeSfrParams = new URLSearchParams({
         listings: 'false',
         type: 'Sale',
         status: 'A',
-        propertyType: 'Single Family Residence'
+        class: 'Residential'
       });
       const activeSfrUrl = `${baseUrl}?${activeSfrParams.toString()}`;
       
-      // Query 2: Active Condo listings - using propertyType filter
+      // Query 2: Active Condo listings - using class=Condo for ACTRIS MLS
       const activeCondoParams = new URLSearchParams({
         listings: 'false',
         type: 'Sale',
         status: 'A',
-        propertyType: 'Condominium'
+        class: 'Condo'
       });
       const activeCondoUrl = `${baseUrl}?${activeCondoParams.toString()}`;
       
@@ -357,7 +357,7 @@ export async function registerRoutes(
         listings: 'false',
         type: 'Sale',
         status: 'U',
-        propertyType: 'Single Family Residence'
+        class: 'Residential'
       });
       pendingSfrParams.append('lastStatus', 'Sc');
       pendingSfrParams.append('lastStatus', 'Pc');
@@ -368,7 +368,7 @@ export async function registerRoutes(
         listings: 'false',
         type: 'Sale',
         status: 'U',
-        propertyType: 'Condominium'
+        class: 'Condo'
       });
       pendingCondoParams.append('lastStatus', 'Sc');
       pendingCondoParams.append('lastStatus', 'Pc');
@@ -383,7 +383,7 @@ export async function registerRoutes(
         listings: 'false',
         type: 'Sale',
         status: 'U',
-        propertyType: 'Single Family Residence',
+        class: 'Residential',
         lastStatus: 'Sld',
         minSoldDate: minSoldDate
       });
@@ -393,7 +393,7 @@ export async function registerRoutes(
         listings: 'false',
         type: 'Sale',
         status: 'U',
-        propertyType: 'Condominium',
+        class: 'Condo',
         lastStatus: 'Sld',
         minSoldDate: minSoldDate
       });
