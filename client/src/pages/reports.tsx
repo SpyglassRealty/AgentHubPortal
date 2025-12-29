@@ -142,10 +142,10 @@ export default function ReportsPage() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-3xl font-display font-bold text-blue-900">
-                    {data?.summary.underContractCount || 0}
+                    {data?.summary?.underContractCount || 0}
                   </p>
                   <p className="text-lg font-semibold text-blue-700">
-                    {formatCurrency(data?.summary.underContractValue || 0)}
+                    {formatCurrency(data?.summary?.underContractValue || 0)}
                   </p>
                 </div>
               </CardContent>
@@ -164,10 +164,10 @@ export default function ReportsPage() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-3xl font-display font-bold text-emerald-900">
-                    {data?.summary.closedThisYearCount || 0}
+                    {data?.summary?.closedThisYearCount || 0}
                   </p>
                   <p className="text-lg font-semibold text-emerald-700">
-                    {formatCurrency(data?.summary.closedThisYearValue || 0)}
+                    {formatCurrency(data?.summary?.closedThisYearValue || 0)}
                   </p>
                 </div>
               </CardContent>
@@ -186,10 +186,10 @@ export default function ReportsPage() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-3xl font-display font-bold text-slate-900">
-                    {data?.summary.closedLastYearCount || 0}
+                    {data?.summary?.closedLastYearCount || 0}
                   </p>
                   <p className="text-lg font-semibold text-slate-700">
-                    {formatCurrency(data?.summary.closedLastYearValue || 0)}
+                    {formatCurrency(data?.summary?.closedLastYearValue || 0)}
                   </p>
                 </div>
               </CardContent>
@@ -208,10 +208,10 @@ export default function ReportsPage() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-3xl font-display font-bold text-[hsl(28,50%,25%)]">
-                    {(data?.summary.closedThisYearCount || 0) + (data?.summary.underContractCount || 0)}
+                    {(data?.summary?.closedThisYearCount || 0) + (data?.summary?.underContractCount || 0)}
                   </p>
                   <p className="text-lg font-semibold text-[hsl(28,50%,35%)]">
-                    {formatCurrency((data?.summary.closedThisYearValue || 0) + (data?.summary.underContractValue || 0))}
+                    {formatCurrency((data?.summary?.closedThisYearValue || 0) + (data?.summary?.underContractValue || 0))}
                   </p>
                 </div>
               </CardContent>
