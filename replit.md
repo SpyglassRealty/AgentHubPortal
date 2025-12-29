@@ -134,11 +134,16 @@ Preferred communication style: Simple, everyday language.
 
 **Endpoints**:
 - `/api/rezen/transactions` - Returns transactions for a given agent yentaId
-  - Query params: `yentaId` (required), `status` (OPEN, CLOSED, TERMINATED - default: CLOSED), `pageSize`
+  - Query params: `yentaId` (required), `status` (OPEN, CLOSED, TERMINATED - default: CLOSED), `pageSize`, `pageNumber`, `sortBy`, `sortDirection`
   - Returns: `transactions`, `totalCount`, `hasNext`, `pageNumber`
 - `/api/rezen/income` - Returns current year income overview for a given agent yentaId
   - Query params: `yentaId` (required)
   - Returns: `incomeOverview` with gross commission, net payout, transaction count
+- `/api/rezen/performance` - Returns aggregated performance metrics for authenticated user
+  - Uses user's stored `rezenYentaId` from database
+  - Returns: `summary` (GCI YTD, L12M, pending, avg per deal), `dealBreakdown` (buyer/seller counts and volumes), `insights` (YoY change, avg days to close), `pendingPipeline` (open transaction list)
+- `POST /api/rezen/link` - Links user's ReZen account by storing their yentaId
+  - Body: `{ yentaId: string }` (UUID from ReZen profile URL)
 
 **Transaction Object Fields**:
 - `id`, `code`, `address.oneLine`, `price.amount`
@@ -148,7 +153,14 @@ Preferred communication style: Simple, everyday language.
 - `lifecycleState.state`, `complianceStatus`
 - `participants[]` array with roles: BUYERS_AGENT, SELLERS_AGENT, PRO_TEAM_LEADER, etc.
 
-**Usage**: Each agent's yentaId is found in their ReZen profile URL (e.g., `0d71597f-e3af-47bd-9645-59fc2910656e`).
+**Usage**: Each agent's yentaId is found in their ReZen profile URL (e.g., `0d71597f-e3af-47bd-9645-59fc2910656e`). Users can link their account via the "My Performance" dashboard widget.
+
+**My Performance Dashboard Widget** (`client/src/components/my-performance.tsx`):
+- GCI Summary Cards: GCI YTD, GCI L12M, Pending GCI, Avg per Deal
+- Deal Breakdown: Buyer vs Seller side analysis with percentage bar and volume comparison
+- Performance Insights: Year-over-Year comparison, Avg Days to Close, Active Pipeline count
+- Pending Pipeline Table: Shows OPEN transactions with address, price, GCI, close date, and side (buyer/seller)
+- Account Linking: Dialog for users to enter their ReZen yentaId if not already linked
 
 **Database Configuration**: Connection via `DATABASE_URL` environment variable, with connection pooling through `node-postgres` (pg).
 
