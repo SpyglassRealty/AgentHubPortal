@@ -103,7 +103,7 @@ function formatFullCurrency(amount: number): string {
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "TBD";
   const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 }
 
 type SortKey = 'address' | 'price' | 'closingDate' | 'gci' | 'status';
