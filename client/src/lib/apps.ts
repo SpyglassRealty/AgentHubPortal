@@ -18,7 +18,8 @@ import {
   Palette,
   Database,
   Handshake,
-  TrendingUp
+  TrendingUp,
+  Settings
 } from "lucide-react";
 
 export interface AppDefinition {
@@ -164,4 +165,5 @@ export const navItems = [
   { label: "Leads", icon: Users, href: "/leads" },
   { label: "Properties", icon: Building2, href: "#" },
   { label: "Marketing", icon: Megaphone, href: "#" },
+  { label: "Settings", icon: Settings, href: "/settings" },
 ];

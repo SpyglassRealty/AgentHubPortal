@@ -413,11 +413,10 @@ export default function MyPerformancePage() {
 
   const disconnectMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/rezen/link", {
+      const res = await fetch("/api/rezen/unlink", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ yentaId: "" }),
       });
       if (!res.ok) throw new Error("Failed to disconnect");
       return res.json();
