@@ -27,6 +27,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   fubUserId: integer("fub_user_id"),
+  rezenYentaId: varchar("rezen_yenta_id"),
   isSuperAdmin: boolean("is_super_admin").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
