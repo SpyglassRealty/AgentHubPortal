@@ -204,7 +204,7 @@ export default function MyPerformancePage() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Yenta ID</label>
                     <Input
-                      placeholder="e.g., 0d71597f-e3af-47bd-9645-59fc2910656e"
+                      placeholder="e.g., xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                       value={yentaIdInput}
                       onChange={(e) => setYentaIdInput(e.target.value)}
                       data-testid="input-yenta-id"
