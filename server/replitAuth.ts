@@ -1,5 +1,6 @@
 import * as client from "openid-client";
 import { Strategy, type VerifyFunction } from "openid-client/passport";
+import { Strategy as GoogleStrategy, Profile as GoogleProfile } from "passport-google-oauth20";
 
 import passport from "passport";
 import session from "express-session";
@@ -7,6 +8,7 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
+import { nanoid } from "nanoid";
 
 const getOidcConfig = memoize(
   async () => {
@@ -99,6 +101,67 @@ export async function setupAuth(app: Express) {
     }
   };
 
+  // Google OAuth Strategy
+  const googleClientId = process.env.GOOGLE_CLIENT_ID;
+  const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  
+  if (googleClientId && googleClientSecret) {
+    // Use passReqToCallback to dynamically set callback URL based on request
+    passport.use(
+      "google",
+      new GoogleStrategy(
+        {
+          clientID: googleClientId,
+          clientSecret: googleClientSecret,
+          callbackURL: "/api/auth/google/callback",
+          scope: ["profile", "email"],
+        },
+        async (accessToken, refreshToken, profile, done) => {
+          try {
+            const email = profile.emails?.[0]?.value;
+            const userId = `google_${profile.id}`;
+            
+            await storage.upsertUser({
+              id: userId,
+              email: email || null,
+              firstName: profile.name?.givenName || profile.displayName?.split(' ')[0] || null,
+              lastName: profile.name?.familyName || profile.displayName?.split(' ').slice(1).join(' ') || null,
+              profileImageUrl: profile.photos?.[0]?.value || null,
+            });
+
+            const user: any = {
+              claims: {
+                sub: userId,
+                email: email,
+                first_name: profile.name?.givenName,
+                last_name: profile.name?.familyName,
+                profile_image_url: profile.photos?.[0]?.value,
+              },
+              access_token: accessToken,
+              refresh_token: refreshToken,
+              expires_at: Math.floor(Date.now() / 1000) + 86400, // 24 hour session
+              provider: 'google',
+            };
+
+            done(null, user);
+          } catch (error) {
+            done(error as Error);
+          }
+        }
+      )
+    );
+
+    app.get("/api/auth/google", passport.authenticate("google", {
+      scope: ["profile", "email"],
+      prompt: "select_account",
+    }));
+
+    app.get("/api/auth/google/callback", passport.authenticate("google", {
+      successRedirect: "/",
+      failureRedirect: "/?error=google_auth_failed",
+    }));
+  }
+
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
@@ -119,13 +182,24 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/logout", (req, res) => {
+    const user = req.user as any;
+    const isGoogleUser = user?.provider === 'google';
+    
     req.logout(() => {
-      res.redirect(
-        client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
-      );
+      req.session.destroy((err) => {
+        if (isGoogleUser) {
+          // Google users just redirect to home
+          res.redirect("/");
+        } else {
+          // Replit OIDC users need to call end session endpoint
+          res.redirect(
+            client.buildEndSessionUrl(config, {
+              client_id: process.env.REPL_ID!,
+              post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
+            }).href
+          );
+        }
+      });
     });
   });
 }
@@ -133,7 +207,23 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  if (!req.isAuthenticated() || !user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  // Google OAuth users have a different token structure
+  if (user.provider === 'google') {
+    const now = Math.floor(Date.now() / 1000);
+    if (now <= user.expires_at) {
+      return next();
+    }
+    // For Google users, just extend the session since we don't have refresh token handling
+    user.expires_at = Math.floor(Date.now() / 1000) + 3600;
+    return next();
+  }
+
+  // Replit OIDC users
+  if (!user.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
