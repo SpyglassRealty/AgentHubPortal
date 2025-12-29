@@ -1,4 +1,4 @@
-import { HttpsProxyAgent } from "https-proxy-agent";
+import { ProxyAgent } from "undici";
 
 const REZEN_API_KEY = process.env.REZEN_API_KEY;
 const REZEN_BASE_URL = "https://arrakis.therealbrokerage.com/api/v1";
@@ -73,11 +73,11 @@ export type TransactionStatus = "OPEN" | "CLOSED" | "TERMINATED";
 
 export class RezenClient {
   private apiKey: string;
-  private proxyAgent: HttpsProxyAgent<string>;
+  private proxyAgent: ProxyAgent;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
-    this.proxyAgent = new HttpsProxyAgent(REZEN_PROXY_URL);
+    this.proxyAgent = new ProxyAgent(REZEN_PROXY_URL);
   }
 
   private async request<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
@@ -88,7 +88,7 @@ export class RezenClient {
       });
     }
 
-    console.log(`[ReZen] Request: ${url.toString()}`);
+    console.log(`[ReZen] Request via proxy: ${url.toString()}`);
 
     const response = await fetch(url.toString(), {
       method: "GET",
@@ -96,8 +96,8 @@ export class RezenClient {
         "X-API-KEY": this.apiKey,
         "Accept": "application/json",
       },
-      // @ts-ignore - Node.js fetch supports agent option
-      agent: this.proxyAgent,
+      // @ts-ignore - undici dispatcher for proxy support
+      dispatcher: this.proxyAgent,
     });
 
     if (!response.ok) {
