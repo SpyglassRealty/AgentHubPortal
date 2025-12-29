@@ -177,14 +177,53 @@ export async function registerRoutes(
         return res.status(400).json({ message: "yentaId is required" });
       }
 
-      const dateFrom = req.query.dateFrom as string;
-      const dateTo = req.query.dateTo as string;
+      const status = (req.query.status as string)?.toUpperCase() || "CLOSED";
+      const validStatuses = ["OPEN", "CLOSED", "TERMINATED"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ message: "status must be OPEN, CLOSED, or TERMINATED" });
+      }
 
-      const transactions = await rezenClient.getClosedTransactions(yentaId, dateFrom, dateTo);
-      res.json({ transactions });
+      const pageNumber = parseInt(req.query.pageNumber as string) || 0;
+      const pageSize = parseInt(req.query.pageSize as string) || 50;
+      const sortBy = (req.query.sortBy as string) || "ESCROW_CLOSING_DATE";
+      const sortDirection = ((req.query.sortDirection as string)?.toUpperCase() === "ASC" ? "ASC" : "DESC") as "ASC" | "DESC";
+
+      const result = await rezenClient.getTransactions(yentaId, status as any, { 
+        pageNumber, 
+        pageSize, 
+        sortBy, 
+        sortDirection 
+      });
+      
+      res.json({
+        transactions: result.transactions,
+        totalCount: result.totalCount,
+        hasNext: result.hasNext,
+        pageNumber: result.pageNumber
+      });
     } catch (error) {
       console.error("Error fetching ReZen transactions:", error);
       res.status(500).json({ message: "Failed to fetch ReZen transactions" });
+    }
+  });
+
+  app.get('/api/rezen/income', isAuthenticated, async (req: any, res) => {
+    try {
+      const rezenClient = getRezenClient();
+      if (!rezenClient) {
+        return res.status(503).json({ message: "ReZen integration not configured" });
+      }
+
+      const yentaId = req.query.yentaId as string;
+      if (!yentaId) {
+        return res.status(400).json({ message: "yentaId is required" });
+      }
+
+      const incomeOverview = await rezenClient.getIncomeOverview(yentaId);
+      res.json({ incomeOverview });
+    } catch (error) {
+      console.error("Error fetching ReZen income:", error);
+      res.status(500).json({ message: "Failed to fetch ReZen income data" });
     }
   });
 

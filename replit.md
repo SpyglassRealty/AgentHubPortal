@@ -128,12 +128,27 @@ Preferred communication style: Simple, everyday language.
 
 **API Client**: Custom ReZen client (`server/rezenClient.ts`) handles API communication with the ReZen/Real Brokerage platform.
 
-**Authentication**: Uses `x-api-key` header (no Bearer prefix) with the API key stored in `REZEN_API_KEY` secret.
+**Base URL**: `https://arrakis.therealbrokerage.com/api/v1`
+
+**Authentication**: Uses `X-API-KEY` header with the API key stored in `REZEN_API_KEY` secret.
 
 **Endpoints**:
-- `/api/rezen/transactions` - Returns closed transactions for a given agent yentaId
+- `/api/rezen/transactions` - Returns transactions for a given agent yentaId
+  - Query params: `yentaId` (required), `status` (OPEN, CLOSED, TERMINATED - default: CLOSED), `pageSize`
+  - Returns: `transactions`, `totalCount`, `hasNext`, `pageNumber`
+- `/api/rezen/income` - Returns current year income overview for a given agent yentaId
+  - Query params: `yentaId` (required)
+  - Returns: `incomeOverview` with gross commission, net payout, transaction count
 
-**Usage**: Each agent's yentaId is found in their ReZen profile URL (e.g., `0d71597f-e3af-47bd-9645-59fc2910656e`). Query params: `yentaId` (required), `dateFrom`, `dateTo`.
+**Transaction Object Fields**:
+- `id`, `code`, `address.oneLine`, `price.amount`
+- `transactionType` (SALE/LEASE), `propertyType`, `listing` (true=listing side)
+- `closingDateEstimated`, `closedAt`, `firmDate` (contract date)
+- `grossCommission.amount`, `myNetPayout.amount`
+- `lifecycleState.state`, `complianceStatus`
+- `participants[]` array with roles: BUYERS_AGENT, SELLERS_AGENT, PRO_TEAM_LEADER, etc.
+
+**Usage**: Each agent's yentaId is found in their ReZen profile URL (e.g., `0d71597f-e3af-47bd-9645-59fc2910656e`).
 
 **Database Configuration**: Connection via `DATABASE_URL` environment variable, with connection pooling through `node-postgres` (pg).
 

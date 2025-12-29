@@ -1,15 +1,72 @@
 const REZEN_API_KEY = process.env.REZEN_API_KEY;
 const REZEN_BASE_URL = "https://arrakis.therealbrokerage.com/api/v1";
 
+export interface RezenAddress {
+  oneLine: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+}
+
+export interface RezenAmount {
+  amount: number;
+  currency?: string;
+}
+
+export interface RezenParticipant {
+  firstName?: string;
+  lastName?: string;
+  emailAddress?: string;
+  company?: string;
+  participantRole: string;
+  yentaUserId?: string;
+  payment?: {
+    amount?: number;
+    percent?: number;
+  };
+}
+
 export interface RezenTransaction {
   id: string;
-  address?: string;
-  price?: number;
-  closeDate?: string;
-  status?: string;
-  commission?: number;
+  code?: string;
+  address?: RezenAddress;
+  price?: RezenAmount;
+  transactionType?: "SALE" | "LEASE";
+  propertyType?: string;
+  closingDateEstimated?: string;
+  closedAt?: number;
+  firmDate?: string;
+  closed?: boolean;
+  terminated?: boolean;
+  listing?: boolean;
+  grossCommission?: RezenAmount;
+  saleCommissionAmount?: RezenAmount;
+  listingCommissionAmount?: RezenAmount;
+  myNetPayout?: RezenAmount;
+  lifecycleState?: {
+    state: string;
+  };
+  complianceStatus?: string;
+  participants?: RezenParticipant[];
+}
+
+export interface RezenTransactionsResponse {
+  pageNumber: number;
+  pageSize: number;
+  hasNext: boolean;
+  totalCount: number;
+  transactions: RezenTransaction[];
+}
+
+export interface RezenIncomeOverview {
+  totalGrossCommission?: RezenAmount;
+  totalNetPayout?: RezenAmount;
+  transactionCount?: number;
   [key: string]: any;
 }
+
+export type TransactionStatus = "OPEN" | "CLOSED" | "TERMINATED";
 
 export class RezenClient {
   private apiKey: string;
@@ -26,30 +83,75 @@ export class RezenClient {
       });
     }
 
+    console.log(`[ReZen] Request: ${url.toString()}`);
+
     const response = await fetch(url.toString(), {
       method: "GET",
       headers: {
-        "x-api-key": this.apiKey,
+        "X-API-KEY": this.apiKey,
         "Accept": "application/json",
-        "Content-Type": "application/json",
       },
     });
 
     if (!response.ok) {
       const text = await response.text();
+      console.error(`[ReZen] API error ${response.status}: ${text.substring(0, 500)}`);
       throw new Error(`ReZen API error ${response.status}: ${text}`);
     }
 
     return response.json();
   }
 
-  async getClosedTransactions(yentaId: string, dateFrom?: string, dateTo?: string): Promise<RezenTransaction[]> {
-    const params: Record<string, string> = {};
-    if (dateFrom) params.dateFrom = dateFrom;
-    if (dateTo) params.dateTo = dateTo;
+  async getTransactions(
+    yentaId: string,
+    status: TransactionStatus = "OPEN",
+    options: {
+      pageNumber?: number;
+      pageSize?: number;
+      sortBy?: string;
+      sortDirection?: "ASC" | "DESC";
+    } = {}
+  ): Promise<RezenTransactionsResponse> {
+    const {
+      pageNumber = 0,
+      pageSize = 50,
+      sortBy = "ESCROW_CLOSING_DATE",
+      sortDirection = "DESC"
+    } = options;
 
-    const result = await this.request<any>(`/reports/${yentaId}/transactions/closed`, params);
-    return Array.isArray(result) ? result : result.transactions || result.data || [];
+    const params: Record<string, string> = {
+      pageNumber: pageNumber.toString(),
+      pageSize: pageSize.toString(),
+      sortBy,
+      sortDirection
+    };
+
+    const result = await this.request<RezenTransactionsResponse>(
+      `/transactions/participant/${yentaId}/transactions/${status}`,
+      params
+    );
+
+    return result;
+  }
+
+  async getOpenTransactions(yentaId: string, pageSize = 50): Promise<RezenTransactionsResponse> {
+    return this.getTransactions(yentaId, "OPEN", { pageSize, sortDirection: "ASC" });
+  }
+
+  async getClosedTransactions(yentaId: string, pageSize = 50): Promise<RezenTransactionsResponse> {
+    return this.getTransactions(yentaId, "CLOSED", { pageSize, sortDirection: "DESC" });
+  }
+
+  async getTerminatedTransactions(yentaId: string, pageSize = 50): Promise<RezenTransactionsResponse> {
+    return this.getTransactions(yentaId, "TERMINATED", { pageSize, sortDirection: "DESC" });
+  }
+
+  async getIncomeOverview(yentaId: string): Promise<RezenIncomeOverview> {
+    return this.request<RezenIncomeOverview>(`/income/overview/${yentaId}/current`);
+  }
+
+  async getTransactionDetails(transactionId: string): Promise<RezenTransaction> {
+    return this.request<RezenTransaction>(`/transactions/${transactionId}`);
   }
 }
 
