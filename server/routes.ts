@@ -370,6 +370,17 @@ export async function registerRoutes(
     }
   });
 
+  app.post('/api/rezen/unlink', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.updateUserRezenYentaId(userId, null);
+      res.json({ success: true, user });
+    } catch (error) {
+      console.error("Error unlinking ReZen account:", error);
+      res.status(500).json({ message: "Failed to unlink ReZen account" });
+    }
+  });
+
   app.get('/api/context/profile', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
