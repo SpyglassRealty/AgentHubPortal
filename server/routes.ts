@@ -227,6 +227,149 @@ export async function registerRoutes(
     }
   });
 
+  app.get('/api/rezen/performance', isAuthenticated, async (req: any, res) => {
+    try {
+      const rezenClient = getRezenClient();
+      if (!rezenClient) {
+        return res.status(503).json({ message: "ReZen integration not configured" });
+      }
+
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.rezenYentaId) {
+        return res.json({ 
+          configured: false,
+          message: "ReZen account not linked. Please add your Yenta ID in settings."
+        });
+      }
+
+      const yentaId = user.rezenYentaId;
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const startOfYear = new Date(currentYear, 0, 1).getTime();
+      const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000).getTime();
+      const lastYearStart = new Date(currentYear - 1, 0, 1).getTime();
+      const lastYearSameDay = new Date(currentYear - 1, now.getMonth(), now.getDate()).getTime();
+
+      const [openResult, closedResult] = await Promise.all([
+        rezenClient.getTransactions(yentaId, "OPEN", { pageSize: 100 }),
+        rezenClient.getTransactions(yentaId, "CLOSED", { pageSize: 200 }),
+      ]);
+
+      const openTransactions = openResult.transactions || [];
+      const closedTransactions = closedResult.transactions || [];
+
+      const getClosedAtMs = (t: any): number => {
+        if (!t.closedAt) return 0;
+        if (typeof t.closedAt === 'number') return t.closedAt;
+        return new Date(t.closedAt).getTime();
+      };
+
+      const closedYTD = closedTransactions.filter(t => {
+        const closedMs = getClosedAtMs(t);
+        return closedMs >= startOfYear;
+      });
+      const closedL12M = closedTransactions.filter(t => {
+        const closedMs = getClosedAtMs(t);
+        return closedMs >= oneYearAgo;
+      });
+      const closedLastYearYTD = closedTransactions.filter(t => {
+        const closedMs = getClosedAtMs(t);
+        return closedMs >= lastYearStart && closedMs < startOfYear;
+      });
+
+      const gciYTD = closedYTD.reduce((sum, t) => sum + (t.grossCommission?.amount || 0), 0);
+      const gciL12M = closedL12M.reduce((sum, t) => sum + (t.grossCommission?.amount || 0), 0);
+      const pendingGCI = openTransactions.reduce((sum, t) => sum + (t.grossCommission?.amount || 0), 0);
+      const totalDealsYTD = closedYTD.length;
+      const avgPerDeal = totalDealsYTD > 0 ? gciYTD / totalDealsYTD : 0;
+
+      const buyerDealsYTD = closedYTD.filter(t => t.listing === false);
+      const sellerDealsYTD = closedYTD.filter(t => t.listing === true);
+      const buyerVolume = buyerDealsYTD.reduce((sum, t) => sum + (t.price?.amount || 0), 0);
+      const sellerVolume = sellerDealsYTD.reduce((sum, t) => sum + (t.price?.amount || 0), 0);
+      const totalVolume = buyerVolume + sellerVolume;
+      const avgSalePrice = totalDealsYTD > 0 ? totalVolume / totalDealsYTD : 0;
+
+      let avgDaysToClose = 0;
+      const dealsWithDates = closedYTD.filter(t => t.closedAt && t.firmDate);
+      if (dealsWithDates.length > 0) {
+        const totalDays = dealsWithDates.reduce((sum, t) => {
+          const firmDateMs = new Date(t.firmDate!).getTime();
+          const closedDateMs = getClosedAtMs(t);
+          return sum + Math.max(0, (closedDateMs - firmDateMs) / (1000 * 60 * 60 * 24));
+        }, 0);
+        avgDaysToClose = Math.round(totalDays / dealsWithDates.length);
+      }
+
+      const gciLastYearYTD = closedLastYearYTD.reduce((sum, t) => sum + (t.grossCommission?.amount || 0), 0);
+      const yoyChange = gciLastYearYTD > 0 
+        ? ((gciYTD - gciLastYearYTD) / gciLastYearYTD) * 100 
+        : gciYTD > 0 ? 100 : 0;
+
+      const pendingPipeline = openTransactions.map(t => ({
+        id: t.id,
+        address: t.address?.oneLine || "Address not available",
+        price: t.price?.amount || 0,
+        closingDate: t.closingDateEstimated || null,
+        gci: t.grossCommission?.amount || 0,
+        status: t.lifecycleState?.state || "OPEN",
+        listing: t.listing || false,
+      }));
+
+      res.json({
+        configured: true,
+        summary: {
+          gciYTD,
+          gciL12M,
+          pendingGCI,
+          avgPerDeal,
+          totalDealsYTD,
+        },
+        dealBreakdown: {
+          buyerCount: buyerDealsYTD.length,
+          buyerVolume,
+          sellerCount: sellerDealsYTD.length,
+          sellerVolume,
+          totalVolume,
+          avgSalePrice,
+        },
+        insights: {
+          yoyChange,
+          avgDaysToClose,
+          pendingCount: openTransactions.length,
+        },
+        pendingPipeline,
+      });
+    } catch (error) {
+      console.error("Error fetching ReZen performance:", error);
+      res.status(500).json({ message: "Failed to fetch performance data" });
+    }
+  });
+
+  app.post('/api/rezen/link', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { yentaId } = req.body;
+      
+      if (!yentaId || typeof yentaId !== 'string') {
+        return res.status(400).json({ message: "yentaId is required" });
+      }
+
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(yentaId)) {
+        return res.status(400).json({ message: "Invalid yentaId format. It should be a UUID from your ReZen profile URL." });
+      }
+
+      const user = await storage.updateUserRezenYentaId(userId, yentaId);
+      res.json({ success: true, user });
+    } catch (error) {
+      console.error("Error linking ReZen account:", error);
+      res.status(500).json({ message: "Failed to link ReZen account" });
+    }
+  });
+
   app.get('/api/context/profile', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
