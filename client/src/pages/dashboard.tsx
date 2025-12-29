@@ -13,7 +13,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { OnboardingModal } from "@/components/onboarding-modal";
 import { SuggestionCard } from "@/components/suggestion-card";
 import MarketPulse from "@/components/market-pulse";
-import { MyPerformance } from "@/components/my-performance";
 import type { ContextSuggestion, AgentProfile } from "@shared/schema";
 
 interface ProfileResponse {
@@ -134,8 +133,6 @@ export default function DashboardPage() {
             </Card>
           )}
         </div>
-
-        <MyPerformance />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[

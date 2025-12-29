@@ -17,7 +17,8 @@ import {
   Hash,
   Palette,
   Database,
-  Handshake
+  Handshake,
+  TrendingUp
 } from "lucide-react";
 
 export interface AppDefinition {
@@ -157,6 +158,7 @@ export const apps: AppDefinition[] = [
 
 export const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+  { label: "My Performance", icon: TrendingUp, href: "/my-performance" },
   { label: "Calendar", icon: Calendar, href: "/calendar" },
   { label: "Reports", icon: BarChart3, href: "/reports" },
   { label: "Leads", icon: Users, href: "/leads" },
