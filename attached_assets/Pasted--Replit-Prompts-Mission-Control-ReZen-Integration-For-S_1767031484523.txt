@@ -1,0 +1,1216 @@
+# Replit Prompts: Mission Control - ReZen Integration
+## For Spyglass Realty Agent Hub Portal
+## December 2025
+
+---
+
+# HOW TO USE THIS DOCUMENT
+
+Copy and paste each prompt into Replit Agent one at a time. Wait for each to complete before moving to the next. Start with Prompt 1 (API Setup & Testing) to verify the connection works.
+
+---
+
+# PROMPT 1: API SETUP & CONNECTION TEST
+
+Copy and paste this into Replit:
+
+```
+## Mission Control - ReZen API Setup & Connection Test
+
+### Step 1: Add Environment Variables
+Add these to your Secrets/Environment Variables:
+
+REZEN_API_KEY=real_L5gzS8vJEAJX1OpIPaYVCCRaFXV1RlJkY8MF
+REZEN_BASE_URL=https://arrakis.therealbrokerage.com
+
+### Step 2: Create API Test Endpoint
+Create a test endpoint to verify the ReZen connection works.
+
+Test with Ryan's Yenta ID: 0d71597f-e3af-47bd-9645-59fc2910656e
+
+### API Endpoint Pattern:
+GET {REZEN_BASE_URL}/api/v1/transactions/participant/{yentaId}/transactions/{status}
+
+Status options: OPEN, CLOSED, TERMINATED
+Query params: pageNumber, pageSize, sortBy, sortDirection
+
+### Test Code (Node.js/Express):
+```javascript
+// routes/api/rezen-test.js
+const express = require('express');
+const router = express.Router();
+
+router.get('/test-connection/:yentaId', async (req, res) => {
+  const { yentaId } = req.params;
+  
+  try {
+    const response = await fetch(
+      `${process.env.REZEN_BASE_URL}/api/v1/transactions/participant/${yentaId}/transactions/CLOSED?pageNumber=0&pageSize=3`,
+      {
+        headers: {
+          'X-API-KEY': process.env.REZEN_API_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error(`ReZen API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    res.json({
+      success: true,
+      message: 'ReZen connection successful!',
+      totalClosedDeals: data.totalCount,
+      sampleTransaction: data.transactions?.[0] ? {
+        address: data.transactions[0].address?.oneLine,
+        price: data.transactions[0].price?.amount,
+        closedAt: data.transactions[0].closedAt
+      } : null
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'ReZen connection failed',
+      error: error.message
+    });
+  }
+});
+
+module.exports = router;
+```
+
+### Step 3: Test the Connection
+After implementing, test by visiting:
+GET /api/rezen/test-connection/0d71597f-e3af-47bd-9645-59fc2910656e
+
+Expected Response:
+```json
+{
+  "success": true,
+  "message": "ReZen connection successful!",
+  "totalClosedDeals": 1271,
+  "sampleTransaction": {
+    "address": "5717 Beverly Prairie Road, Del Valle, TX, 78617",
+    "price": 334215,
+    "closedAt": 1737504000000
+  }
+}
+```
+
+Please implement this test endpoint and verify the connection works.
+```
+
+---
+
+# PROMPT 2: SETTINGS PAGE WITH "CONNECT YOUR REZEN ACCOUNT" SECTION
+
+Copy and paste this into Replit:
+
+```
+## Mission Control - Add Settings Page with ReZen Connection
+
+Create a new "Settings" page in the sidebar navigation with a "Connect Your ReZen Account" section.
+
+### Navigation Update:
+Add "Settings" to the sidebar menu with a gear icon ⚙️
+Position: Near the bottom of the sidebar, before any logout option
+
+### Settings Page Structure:
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Settings                                                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│ ┌─────────────────────────────────────────────────────────────────────┐ │
+│ │ 🔗 Integrations                                                     │ │
+│ ├─────────────────────────────────────────────────────────────────────┤ │
+│ │                                                                     │ │
+│ │  ┌───────────────────────────────────────────────────────────────┐  │ │
+│ │  │ [ReZen Logo]  Connect Your ReZen Account                      │  │ │
+│ │  │                                                               │  │ │
+│ │  │ Link your ReZen account to see your transaction data,        │  │ │
+│ │  │ GCI metrics, and performance insights.                       │  │ │
+│ │  │                                                               │  │ │
+│ │  │ Yenta ID: [________________________] [ℹ️]                     │  │ │
+│ │  │                                                               │  │ │
+│ │  │ [Connect Account]  or  [Disconnect] (if connected)           │  │ │
+│ │  │                                                               │  │ │
+│ │  │ Status: ● Connected (Last sync: 12/30/25 10:30 AM)           │  │ │
+│ │  │    or  ○ Not Connected                                       │  │ │
+│ │  └───────────────────────────────────────────────────────────────┘  │ │
+│ │                                                                     │ │
+│ └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                         │
+│ ┌─────────────────────────────────────────────────────────────────────┐ │
+│ │ 👤 Profile                                                          │ │
+│ │ (Future: Profile settings, notifications, etc.)                    │ │
+│ └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### ReZen Connection Card Specifications:
+
+1. CARD HEADER:
+   - ReZen logo (or placeholder icon)
+   - Title: "Connect Your ReZen Account"
+   - Subtitle: "Link your ReZen account to see your transaction data, GCI metrics, and performance insights."
+
+2. YENTA ID INPUT:
+   - Label: "Yenta ID"
+   - Input field: Text input for the Yenta ID
+   - Info icon (ℹ️) with tooltip: "Your Yenta ID can be found in your ReZen profile settings or by asking your team leader."
+   - Placeholder text: "e.g., 0d71597f-e3af-47bd-9645-59fc2910656e"
+
+3. CONNECT BUTTON:
+   - Text: "Connect Account"
+   - Color: Spyglass orange (#E03103)
+   - On click: Test the connection and save if successful
+
+4. CONNECTION STATUS:
+   - Connected: Green dot ● + "Connected" + last sync time
+   - Not Connected: Gray dot ○ + "Not Connected"
+   - Error: Red dot ● + "Connection Failed" + error message
+
+5. DISCONNECT OPTION:
+   - Show "Disconnect" link/button when connected
+   - Confirmation dialog: "Are you sure you want to disconnect your ReZen account?"
+
+### Data Storage:
+Store the agent's Yenta ID in the database:
+- Table: user_settings or agent_profiles
+- Fields: user_id, rezen_yenta_id, rezen_connected_at, rezen_last_sync
+
+### Validation Flow:
+1. User enters Yenta ID
+2. Click "Connect Account"
+3. Call ReZen API to validate: GET /api/v1/transactions/participant/{yentaId}/transactions/CLOSED?pageSize=1
+4. If successful: Save Yenta ID, show success message, update status to Connected
+5. If failed: Show error message, don't save
+
+### CSS Styling:
+```css
+.settings-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.settings-section {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.settings-section-header {
+  background: #f8f9fa;
+  padding: 16px 20px;
+  border-bottom: 1px solid #eee;
+  font-weight: 600;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.integration-card {
+  padding: 24px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  margin: 16px;
+}
+
+.integration-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.integration-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+}
+
+.integration-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.integration-description {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.yenta-id-input {
+  margin-bottom: 16px;
+}
+
+.yenta-id-input label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #333;
+}
+
+.yenta-id-input input {
+  width: 100%;
+  max-width: 450px;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: monospace;
+}
+
+.yenta-id-input input:focus {
+  border-color: #E03103;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(224, 49, 3, 0.1);
+}
+
+.connect-btn {
+  background: #E03103;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.connect-btn:hover {
+  background: #c42a03;
+}
+
+.connect-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+  font-size: 14px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.status-dot.connected { background: #28a745; }
+.status-dot.disconnected { background: #6c757d; }
+.status-dot.error { background: #dc3545; }
+
+.disconnect-link {
+  color: #dc3545;
+  text-decoration: none;
+  font-size: 13px;
+  margin-left: 16px;
+}
+
+.disconnect-link:hover {
+  text-decoration: underline;
+}
+```
+
+### React Component Structure:
+```jsx
+// pages/Settings.jsx
+function Settings() {
+  return (
+    <div className="settings-page">
+      <h1>Settings</h1>
+      
+      <div className="settings-section">
+        <div className="settings-section-header">
+          🔗 Integrations
+        </div>
+        <ReZenConnectionCard />
+      </div>
+      
+      <div className="settings-section">
+        <div className="settings-section-header">
+          👤 Profile
+        </div>
+        <p style={{padding: '20px', color: '#666'}}>
+          Profile settings coming soon...
+        </p>
+      </div>
+    </div>
+  );
+}
+```
+
+Please implement this Settings page with the ReZen connection card.
+```
+
+---
+
+# PROMPT 3: REZEN CONNECTION COMPONENT WITH VALIDATION
+
+Copy and paste this into Replit:
+
+```
+## Mission Control - ReZen Connection Component
+
+Create the ReZenConnectionCard component with full validation and state management.
+
+### Component: ReZenConnectionCard.jsx
+
+```jsx
+import React, { useState, useEffect } from 'react';
+import './ReZenConnectionCard.css';
+
+function ReZenConnectionCard() {
+  const [yentaId, setYentaId] = useState('');
+  const [isConnected, setIsConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [lastSync, setLastSync] = useState(null);
+  const [agentInfo, setAgentInfo] = useState(null);
+
+  // Load saved connection on mount
+  useEffect(() => {
+    loadSavedConnection();
+  }, []);
+
+  const loadSavedConnection = async () => {
+    try {
+      const response = await fetch('/api/settings/rezen-connection');
+      const data = await response.json();
+      if (data.connected) {
+        setYentaId(data.yentaId);
+        setIsConnected(true);
+        setLastSync(data.lastSync);
+        setAgentInfo(data.agentInfo);
+      }
+    } catch (err) {
+      console.error('Failed to load saved connection:', err);
+    }
+  };
+
+  const handleConnect = async () => {
+    if (!yentaId.trim()) {
+      setError('Please enter your Yenta ID');
+      return;
+    }
+
+    // Basic UUID format validation
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(yentaId.trim())) {
+      setError('Invalid Yenta ID format. It should look like: 0d71597f-e3af-47bd-9645-59fc2910656e');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/settings/rezen-connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ yentaId: yentaId.trim() })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setIsConnected(true);
+        setLastSync(new Date().toISOString());
+        setAgentInfo(data.agentInfo);
+        setError('');
+      } else {
+        setError(data.message || 'Failed to connect. Please check your Yenta ID.');
+      }
+    } catch (err) {
+      setError('Connection failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!window.confirm('Are you sure you want to disconnect your ReZen account?')) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      await fetch('/api/settings/rezen-disconnect', { method: 'POST' });
+      setIsConnected(false);
+      setYentaId('');
+      setLastSync(null);
+      setAgentInfo(null);
+    } catch (err) {
+      setError('Failed to disconnect. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatLastSync = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'numeric',
+      day: 'numeric',
+      year: '2-digit',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  return (
+    <div className="integration-card">
+      <div className="integration-header">
+        <div className="integration-logo rezen-logo">
+          {/* ReZen Logo or placeholder */}
+          <svg viewBox="0 0 40 40" fill="none">
+            <rect width="40" height="40" rx="8" fill="#1a1a2e"/>
+            <text x="50%" y="55%" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold">RZ</text>
+          </svg>
+        </div>
+        <div>
+          <div className="integration-title">Connect Your ReZen Account</div>
+        </div>
+      </div>
+
+      <p className="integration-description">
+        Link your ReZen account to see your transaction data, GCI metrics, and performance insights.
+      </p>
+
+      {!isConnected ? (
+        <>
+          <div className="yenta-id-input">
+            <label htmlFor="yentaId">
+              Yenta ID
+              <span className="info-tooltip" title="Your Yenta ID can be found in your ReZen profile settings or by asking your team leader.">
+                ℹ️
+              </span>
+            </label>
+            <input
+              type="text"
+              id="yentaId"
+              value={yentaId}
+              onChange={(e) => setYentaId(e.target.value)}
+              placeholder="e.g., 0d71597f-e3af-47bd-9645-59fc2910656e"
+              disabled={isLoading}
+            />
+            <p className="input-help">
+              Your Yenta ID can be found in your ReZen profile or ask your team leader.
+            </p>
+          </div>
+
+          {error && <div className="error-message">{error}</div>}
+
+          <button 
+            className="connect-btn" 
+            onClick={handleConnect}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Connecting...' : 'Connect Account'}
+          </button>
+        </>
+      ) : (
+        <>
+          {agentInfo && (
+            <div className="connected-info">
+              <p><strong>Connected as:</strong> {agentInfo.name || 'Agent'}</p>
+              <p><strong>Total Closed Deals:</strong> {agentInfo.totalDeals?.toLocaleString() || 'N/A'}</p>
+            </div>
+          )}
+
+          <div className="connection-status">
+            <span className="status-dot connected"></span>
+            <span>Connected</span>
+            {lastSync && (
+              <span className="last-sync">Last sync: {formatLastSync(lastSync)}</span>
+            )}
+            <button className="disconnect-link" onClick={handleDisconnect}>
+              Disconnect
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default ReZenConnectionCard;
+```
+
+### Backend API Endpoints:
+
+```javascript
+// routes/api/settings.js
+
+// GET /api/settings/rezen-connection
+// Returns current connection status
+router.get('/rezen-connection', async (req, res) => {
+  const userId = req.user.id; // Assumes auth middleware
+  
+  try {
+    // Get from database
+    const settings = await db.query(
+      'SELECT rezen_yenta_id, rezen_connected_at, rezen_last_sync FROM user_settings WHERE user_id = $1',
+      [userId]
+    );
+    
+    if (settings.rows[0]?.rezen_yenta_id) {
+      res.json({
+        connected: true,
+        yentaId: settings.rows[0].rezen_yenta_id,
+        lastSync: settings.rows[0].rezen_last_sync
+      });
+    } else {
+      res.json({ connected: false });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load settings' });
+  }
+});
+
+// POST /api/settings/rezen-connect
+// Validates and saves ReZen connection
+router.post('/rezen-connect', async (req, res) => {
+  const { yentaId } = req.body;
+  const userId = req.user.id;
+  
+  try {
+    // Test the connection with ReZen API
+    const testResponse = await fetch(
+      `${process.env.REZEN_BASE_URL}/api/v1/transactions/participant/${yentaId}/transactions/CLOSED?pageNumber=0&pageSize=1`,
+      {
+        headers: {
+          'X-API-KEY': process.env.REZEN_API_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    
+    if (!testResponse.ok) {
+      return res.json({
+        success: false,
+        message: 'Invalid Yenta ID or connection failed. Please check your ID and try again.'
+      });
+    }
+    
+    const data = await testResponse.json();
+    
+    // Save to database
+    await db.query(
+      `INSERT INTO user_settings (user_id, rezen_yenta_id, rezen_connected_at, rezen_last_sync)
+       VALUES ($1, $2, NOW(), NOW())
+       ON CONFLICT (user_id) 
+       DO UPDATE SET rezen_yenta_id = $2, rezen_connected_at = NOW(), rezen_last_sync = NOW()`,
+      [userId, yentaId]
+    );
+    
+    res.json({
+      success: true,
+      message: 'ReZen account connected successfully!',
+      agentInfo: {
+        totalDeals: data.totalCount
+      }
+    });
+    
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Connection failed. Please try again.'
+    });
+  }
+});
+
+// POST /api/settings/rezen-disconnect
+// Removes ReZen connection
+router.post('/rezen-disconnect', async (req, res) => {
+  const userId = req.user.id;
+  
+  try {
+    await db.query(
+      'UPDATE user_settings SET rezen_yenta_id = NULL, rezen_connected_at = NULL WHERE user_id = $1',
+      [userId]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to disconnect' });
+  }
+});
+```
+
+### Test Connection with Ryan's Yenta ID:
+After implementing, test by entering this Yenta ID:
+0d71597f-e3af-47bd-9645-59fc2910656e
+
+Expected result: Should connect successfully and show total closed deals.
+
+Please implement this ReZen connection component and backend endpoints.
+```
+
+---
+
+# PROMPT 4: MY PERFORMANCE DASHBOARD (GCI METRICS)
+
+Copy and paste this into Replit:
+
+```
+## Mission Control - My Performance Dashboard
+
+Add a "My Performance" section to the Dashboard that shows GCI and transaction metrics from ReZen.
+
+### Requirements:
+- Only show this section if the user has connected their ReZen account
+- If not connected, show a prompt to connect in Settings
+
+### Dashboard Layout:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Good morning, [Agent Name]                                                  │
+│ Welcome to Mission Control. What would you like to work on today?           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 📊 My Performance                                    Last updated: 10:30 AM │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌───────────────┐ ┌───────────────┐ ┌───────────────┐ ┌───────────────┐   │
+│  │   $425,000    │ │   $380,000    │ │    $85,000    │ │    $12,500    │   │
+│  │   GCI YTD     │ │   GCI L12M    │ │  Pending GCI  │ │  Avg per Deal │   │
+│  │   ↑ 15% YoY   │ │               │ │   (4 deals)   │ │               │   │
+│  └───────────────┘ └───────────────┘ └───────────────┘ └───────────────┘   │
+│                                                                             │
+│  ┌─────────────────────────────────┐ ┌─────────────────────────────────┐   │
+│  │ 🏠 Buyer Side                   │ │ 🏷️ Seller Side (Listings)       │   │
+│  │ 28 deals         $9.8M volume   │ │ 12 deals         $4.2M volume   │   │
+│  │ ████████████████░░░░ 70%        │ │ ██████░░░░░░░░░░░░░░ 30%        │   │
+│  └─────────────────────────────────┘ └─────────────────────────────────┘   │
+│                                                                             │
+│  Average Sale Price: $350,000       Avg Days to Close: 32 days             │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 📋 Pending Pipeline                                                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Address                    │ Price      │ Est. Close │ My GCI   │ Status    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 123 Main St, Austin        │ $450,000   │ Jan 15     │ $13,500  │ Pending   │
+│ 456 Oak Ave, Round Rock    │ $325,000   │ Jan 22     │ $9,750   │ Under C.  │
+│ 789 Elm Dr, Cedar Park     │ $580,000   │ Feb 1      │ $17,400  │ Pending   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 📈 Year-over-Year Performance                                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ You're UP 15% compared to this time last year!                              │
+│ 2025 YTD: $425,000  vs  2024 YTD: $370,000                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### If Not Connected - Show This Instead:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 📊 My Performance                                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                       │  │
+│  │     🔗 Connect your ReZen account to see your performance metrics    │  │
+│  │                                                                       │  │
+│  │     Track your GCI, closed deals, pending pipeline, and more.        │  │
+│  │                                                                       │  │
+│  │                    [Connect ReZen Account]                            │  │
+│  │                                                                       │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### API Endpoint for Performance Data:
+
+```javascript
+// GET /api/performance/summary
+router.get('/summary', async (req, res) => {
+  const userId = req.user.id;
+  
+  // Get user's Yenta ID
+  const settings = await db.query(
+    'SELECT rezen_yenta_id FROM user_settings WHERE user_id = $1',
+    [userId]
+  );
+  
+  const yentaId = settings.rows[0]?.rezen_yenta_id;
+  
+  if (!yentaId) {
+    return res.json({ connected: false });
+  }
+  
+  try {
+    // Fetch CLOSED transactions
+    const closedResponse = await fetch(
+      `${process.env.REZEN_BASE_URL}/api/v1/transactions/participant/${yentaId}/transactions/CLOSED?pageNumber=0&pageSize=100&sortBy=ESCROW_CLOSING_DATE&sortDirection=DESC`,
+      {
+        headers: {
+          'X-API-KEY': process.env.REZEN_API_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    const closedData = await closedResponse.json();
+    
+    // Fetch OPEN transactions (pending pipeline)
+    const openResponse = await fetch(
+      `${process.env.REZEN_BASE_URL}/api/v1/transactions/participant/${yentaId}/transactions/OPEN?pageNumber=0&pageSize=20`,
+      {
+        headers: {
+          'X-API-KEY': process.env.REZEN_API_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    const openData = await openResponse.json();
+    
+    // Calculate metrics
+    const currentYear = new Date().getFullYear();
+    const ytdTransactions = closedData.transactions.filter(t => {
+      const closeDate = new Date(t.closedAt);
+      return closeDate.getFullYear() === currentYear;
+    });
+    
+    const gciYTD = ytdTransactions.reduce((sum, t) => sum + (t.grossCommission?.amount || 0), 0);
+    const pendingGCI = openData.transactions.reduce((sum, t) => sum + (t.grossCommission?.amount || 0), 0);
+    
+    // Buyer vs Seller breakdown
+    const buyerDeals = ytdTransactions.filter(t => !t.listing);
+    const sellerDeals = ytdTransactions.filter(t => t.listing);
+    
+    const buyerVolume = buyerDeals.reduce((sum, t) => sum + (t.price?.amount || 0), 0);
+    const sellerVolume = sellerDeals.reduce((sum, t) => sum + (t.price?.amount || 0), 0);
+    
+    // Average sale price
+    const totalVolume = ytdTransactions.reduce((sum, t) => sum + (t.price?.amount || 0), 0);
+    const avgSalePrice = ytdTransactions.length > 0 ? totalVolume / ytdTransactions.length : 0;
+    
+    // Average days to close
+    const daysToClose = ytdTransactions
+      .filter(t => t.closedAt && t.firmDate)
+      .map(t => {
+        const closed = new Date(t.closedAt);
+        const contract = new Date(t.firmDate);
+        return Math.round((closed - contract) / (1000 * 60 * 60 * 24));
+      });
+    const avgDaysToClose = daysToClose.length > 0 
+      ? Math.round(daysToClose.reduce((a, b) => a + b, 0) / daysToClose.length)
+      : 0;
+    
+    res.json({
+      connected: true,
+      gciYTD,
+      gciL12M: closedData.transactions.reduce((sum, t) => sum + (t.grossCommission?.amount || 0), 0),
+      pendingGCI,
+      pendingDealsCount: openData.totalCount,
+      avgPerDeal: ytdTransactions.length > 0 ? gciYTD / ytdTransactions.length : 0,
+      buyerSide: {
+        count: buyerDeals.length,
+        volume: buyerVolume,
+        percentage: ytdTransactions.length > 0 ? (buyerDeals.length / ytdTransactions.length) * 100 : 0
+      },
+      sellerSide: {
+        count: sellerDeals.length,
+        volume: sellerVolume,
+        percentage: ytdTransactions.length > 0 ? (sellerDeals.length / ytdTransactions.length) * 100 : 0
+      },
+      avgSalePrice,
+      avgDaysToClose,
+      pendingPipeline: openData.transactions.slice(0, 5).map(t => ({
+        address: t.address?.oneLine,
+        price: t.price?.amount,
+        estClose: t.closingDateEstimated,
+        gci: t.grossCommission?.amount,
+        status: t.lifecycleState?.state
+      })),
+      totalClosedYTD: ytdTransactions.length,
+      totalClosedAllTime: closedData.totalCount
+    });
+    
+  } catch (err) {
+    console.error('Performance API error:', err);
+    res.status(500).json({ error: 'Failed to fetch performance data' });
+  }
+});
+```
+
+### CSS for Performance Cards:
+```css
+.performance-section {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.performance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.performance-title {
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.last-updated {
+  font-size: 12px;
+  color: #999;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.metric-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+}
+
+.metric-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #E03103;
+}
+
+.metric-label {
+  font-size: 13px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.metric-change {
+  font-size: 12px;
+  color: #28a745;
+  margin-top: 4px;
+}
+
+.metric-change.negative {
+  color: #dc3545;
+}
+
+.breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.breakdown-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.breakdown-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.breakdown-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.progress-bar {
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #E03103;
+  border-radius: 4px;
+}
+```
+
+Please implement the My Performance dashboard section with ReZen data.
+```
+
+---
+
+# PROMPT 5: PENDING PIPELINE TABLE
+
+Copy and paste this into Replit:
+
+```
+## Mission Control - Pending Pipeline Table
+
+Add a detailed pending pipeline table showing all open/under contract deals.
+
+### Table Design:
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 📋 Pending Pipeline                                           View All →    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Property              │ Price      │ Est. Close │ My GCI    │ Status        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ 123 Main St           │ $450,000   │ Jan 15     │ $13,500   │ 🟠 Pending    │
+│ Austin, TX 78704      │            │            │           │               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ 456 Oak Avenue        │ $325,000   │ Jan 22     │ $9,750    │ 🟡 Under Cont │
+│ Round Rock, TX 78664  │            │            │           │               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ 789 Elm Drive         │ $580,000   │ Feb 1      │ $17,400   │ 🟠 Pending    │
+│ Cedar Park, TX 78613  │            │            │           │               │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Component:
+
+```jsx
+function PendingPipelineTable({ transactions }) {
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'TBD';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const getStatusBadge = (status) => {
+    const statusMap = {
+      'APPROVED_FOR_CLOSING': { label: 'Pending', color: '#fd7e14' },
+      'UNDER_CONTRACT': { label: 'Under Contract', color: '#ffc107' },
+      'PRE_OFFER': { label: 'Pre-Offer', color: '#6c757d' },
+      'ACTIVE': { label: 'Active', color: '#28a745' }
+    };
+    const config = statusMap[status] || { label: status, color: '#6c757d' };
+    return (
+      <span className="status-badge" style={{ background: config.color }}>
+        {config.label}
+      </span>
+    );
+  };
+
+  if (!transactions || transactions.length === 0) {
+    return (
+      <div className="pipeline-empty">
+        <p>No pending deals at this time.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pipeline-section">
+      <div className="pipeline-header">
+        <h3>📋 Pending Pipeline</h3>
+        <a href="/pipeline" className="view-all">View All →</a>
+      </div>
+      <table className="pipeline-table">
+        <thead>
+          <tr>
+            <th>Property</th>
+            <th>Price</th>
+            <th>Est. Close</th>
+            <th>My GCI</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {transactions.map((t, index) => (
+            <tr key={index}>
+              <td className="property-cell">
+                <div className="property-address">{t.address?.split(',')[0]}</div>
+                <div className="property-city">{t.address?.split(',').slice(1).join(',')}</div>
+              </td>
+              <td>{formatCurrency(t.price)}</td>
+              <td>{formatDate(t.estClose)}</td>
+              <td className="gci-cell">{formatCurrency(t.gci)}</td>
+              <td>{getStatusBadge(t.status)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+```
+
+### CSS:
+```css
+.pipeline-section {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.pipeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.pipeline-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.view-all {
+  color: #E03103;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.view-all:hover {
+  text-decoration: underline;
+}
+
+.pipeline-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pipeline-table th {
+  text-align: left;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #666;
+  font-weight: 600;
+}
+
+.pipeline-table td {
+  padding: 16px;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+}
+
+.pipeline-table tr:last-child td {
+  border-bottom: none;
+}
+
+.pipeline-table tr:hover {
+  background: #f8f9fa;
+}
+
+.property-cell {
+  max-width: 200px;
+}
+
+.property-address {
+  font-weight: 500;
+  color: #333;
+}
+
+.property-city {
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
+}
+
+.gci-cell {
+  font-weight: 600;
+  color: #E03103;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+}
+
+.pipeline-empty {
+  padding: 40px;
+  text-align: center;
+  color: #999;
+}
+```
+
+Please implement this pending pipeline table component.
+```
+
+---
+
+# SUMMARY: ORDER OF IMPLEMENTATION
+
+1. **PROMPT 1** - API Setup & Test (verify connection works)
+2. **PROMPT 2** - Settings Page with ReZen Connection Section
+3. **PROMPT 3** - ReZen Connection Component with Validation
+4. **PROMPT 4** - My Performance Dashboard (GCI Metrics)
+5. **PROMPT 5** - Pending Pipeline Table
+
+---
+
+# TEST DATA
+
+Use Ryan's Yenta ID for testing:
+```
+0d71597f-e3af-47bd-9645-59fc2910656e
+```
+
+Expected results:
+- Total Closed Deals: ~1,271
+- Should return transaction data with addresses, prices, commissions
+- Sample address: "5717 Beverly Prairie Road, Del Valle, TX, 78617"
+
+---
+
+# ENVIRONMENT VARIABLES NEEDED
+
+```
+REZEN_API_KEY=real_L5gzS8vJEAJX1OpIPaYVCCRaFXV1RlJkY8MF
+REZEN_BASE_URL=https://arrakis.therealbrokerage.com
+```

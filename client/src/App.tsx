@@ -11,6 +11,7 @@ import AppView from "@/pages/app-view";
 import CalendarPage from "@/pages/calendar";
 import ReportsPage from "@/pages/reports";
 import LeadsPage from "@/pages/leads";
+import MyPerformancePage from "@/pages/my-performance";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -34,6 +35,7 @@ function Router() {
         <>
           <Route path="/" component={DashboardPage} />
           <Route path="/dashboard" component={DashboardPage} />
+          <Route path="/my-performance" component={MyPerformancePage} />
           <Route path="/calendar" component={CalendarPage} />
           <Route path="/reports" component={ReportsPage} />
           <Route path="/leads" component={LeadsPage} />
