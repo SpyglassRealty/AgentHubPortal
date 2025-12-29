@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Layout from "@/components/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -19,7 +20,12 @@ import {
   ArrowDownRight,
   Building2,
   RefreshCw,
-  Unlink
+  Unlink,
+  Search,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  X
 } from "lucide-react";
 import {
   Table,
@@ -98,6 +104,268 @@ function formatDate(dateStr: string | null): string {
   if (!dateStr) return "TBD";
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+type SortKey = 'address' | 'price' | 'closingDate' | 'gci' | 'status';
+type SortDirection = 'asc' | 'desc' | null;
+
+interface PipelineTransaction {
+  id: string;
+  address: string;
+  price: number;
+  closingDate: string | null;
+  gci: number;
+  status: string;
+  listing: boolean;
+}
+
+function PendingPipelineTable({ pendingPipeline }: { pendingPipeline: PipelineTransaction[] }) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection }>({ 
+    key: 'closingDate', 
+    direction: 'asc' 
+  });
+  const [itemsPerPage, setItemsPerPage] = useState<number | 'all'>(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const handleSort = (key: SortKey) => {
+    let direction: SortDirection = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    } else if (sortConfig.key === key && sortConfig.direction === 'desc') {
+      direction = null;
+    }
+    setSortConfig({ key, direction });
+    setCurrentPage(1);
+  };
+
+  const getSortIcon = (key: SortKey) => {
+    if (sortConfig.key !== key || !sortConfig.direction) {
+      return <ArrowUpDown className="h-4 w-4 text-muted-foreground" />;
+    }
+    if (sortConfig.direction === 'asc') {
+      return <ArrowUp className="h-4 w-4 text-[hsl(28,94%,54%)]" />;
+    }
+    return <ArrowDown className="h-4 w-4 text-[hsl(28,94%,54%)]" />;
+  };
+
+  const filteredAndSortedTransactions = useMemo(() => {
+    let result = [...pendingPipeline];
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(t =>
+        t.address?.toLowerCase().includes(term) ||
+        t.status?.toLowerCase().includes(term) ||
+        t.price?.toString().includes(term) ||
+        t.gci?.toString().includes(term)
+      );
+    }
+
+    if (sortConfig.key && sortConfig.direction) {
+      result.sort((a, b) => {
+        let aVal: any = a[sortConfig.key];
+        let bVal: any = b[sortConfig.key];
+
+        if (sortConfig.key === 'price' || sortConfig.key === 'gci') {
+          aVal = parseFloat(aVal) || 0;
+          bVal = parseFloat(bVal) || 0;
+        } else if (sortConfig.key === 'closingDate') {
+          aVal = new Date(aVal || '9999-12-31').getTime();
+          bVal = new Date(bVal || '9999-12-31').getTime();
+        } else {
+          aVal = (aVal || '').toString().toLowerCase();
+          bVal = (bVal || '').toString().toLowerCase();
+        }
+
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [pendingPipeline, searchTerm, sortConfig]);
+
+  const totalPages = itemsPerPage === 'all'
+    ? 1
+    : Math.ceil(filteredAndSortedTransactions.length / itemsPerPage);
+
+  const paginatedTransactions = itemsPerPage === 'all'
+    ? filteredAndSortedTransactions
+    : filteredAndSortedTransactions.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+      );
+
+  if (pendingPipeline.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card data-testid="card-pipeline">
+      <CardHeader>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <CardTitle className="text-lg font-display flex items-center gap-2">
+              <Clock className="h-5 w-5 text-amber-500" />
+              Pending Pipeline
+            </CardTitle>
+            <CardDescription>
+              {filteredAndSortedTransactions.length} active transaction{filteredAndSortedTransactions.length !== 1 ? 's' : ''}
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search transactions..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-9 w-[200px]"
+                data-testid="input-pipeline-search"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <Select
+              value={itemsPerPage.toString()}
+              onValueChange={(val) => {
+                setItemsPerPage(val === 'all' ? 'all' : parseInt(val));
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="w-[100px]" data-testid="select-items-per-page">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="all">All</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="rounded-lg border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50 select-none"
+                  onClick={() => handleSort('address')}
+                >
+                  <div className="flex items-center gap-2">
+                    Address {getSortIcon('address')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="text-right cursor-pointer hover:bg-muted/50 select-none"
+                  onClick={() => handleSort('price')}
+                >
+                  <div className="flex items-center justify-end gap-2">
+                    Price {getSortIcon('price')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="text-center cursor-pointer hover:bg-muted/50 select-none"
+                  onClick={() => handleSort('closingDate')}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    Est. Close {getSortIcon('closingDate')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="text-right cursor-pointer hover:bg-muted/50 select-none"
+                  onClick={() => handleSort('gci')}
+                >
+                  <div className="flex items-center justify-end gap-2">
+                    My GCI {getSortIcon('gci')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="text-center cursor-pointer hover:bg-muted/50 select-none"
+                  onClick={() => handleSort('status')}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    Status {getSortIcon('status')}
+                  </div>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedTransactions.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    {searchTerm ? 'No transactions found matching your search.' : 'No pending transactions.'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedTransactions.map((deal) => (
+                  <TableRow key={deal.id} data-testid={`row-pipeline-${deal.id}`}>
+                    <TableCell className="font-medium max-w-[250px] truncate">
+                      {deal.address}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatFullCurrency(deal.price)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {formatDate(deal.closingDate)}
+                    </TableCell>
+                    <TableCell className="text-right text-emerald-600 font-medium">
+                      {formatFullCurrency(deal.gci)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={deal.listing ? "default" : "secondary"}>
+                        {deal.status === "OPEN" ? (deal.listing ? "Listing" : "Pending") : deal.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {itemsPerPage !== 'all' && totalPages > 1 && (
+          <div className="flex items-center justify-center gap-4 mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              data-testid="button-prev-page"
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              data-testid="button-next-page"
+            >
+              Next
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function MyPerformancePage() {
@@ -456,60 +724,7 @@ export default function MyPerformancePage() {
           </Card>
         </div>
 
-        {pendingPipeline && pendingPipeline.length > 0 && (
-          <Card data-testid="card-pipeline">
-            <CardHeader>
-              <CardTitle className="text-lg font-display flex items-center gap-2">
-                <Clock className="h-5 w-5 text-amber-500" />
-                Pending Pipeline
-              </CardTitle>
-              <CardDescription>Your active transactions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-lg border overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Address</TableHead>
-                      <TableHead className="text-right">Price</TableHead>
-                      <TableHead className="text-center">Est. Close</TableHead>
-                      <TableHead className="text-right">My GCI</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pendingPipeline.map((deal) => (
-                      <TableRow key={deal.id} data-testid={`row-pipeline-${deal.id}`}>
-                        <TableCell className="font-medium max-w-[250px] truncate">
-                          {deal.address}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatFullCurrency(deal.price)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {formatDate(deal.closingDate)}
-                        </TableCell>
-                        <TableCell className="text-right text-emerald-600 font-medium">
-                          {formatFullCurrency(deal.gci)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant={deal.listing ? "default" : "secondary"}>
-                            {deal.status === "OPEN" ? (deal.listing ? "Listing" : "Pending") : deal.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              {pendingPipeline.length > 10 && (
-                <p className="text-sm text-center text-muted-foreground mt-4">
-                  Showing first 10 of {pendingPipeline.length} transactions
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
+        <PendingPipelineTable pendingPipeline={pendingPipeline || []} />
       </div>
     </Layout>
   );
