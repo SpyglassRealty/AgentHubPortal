@@ -1,0 +1,73 @@
+Looking at the screenshots, I can see Mission Control is working but the **My Performance** section is pulling from a single/global YentaID rather than per-user. Here's a detailed prompt for Replit Agent:
+
+---
+
+## Replit Agent Prompt: Fix Per-User YentaID Storage for My Performance
+
+### Problem Summary
+The My Performance page currently uses a single YentaID for all users. When Joey Wilkes views her Performance page, she sees Ryan's data because the YentaID is stored globally, not per-user. The disconnect button also fails because it sends an empty string to an endpoint requiring a valid UUID.
+
+### What Needs to Change
+
+**1. Per-User YentaID Storage**
+- Each logged-in user must have their OWN YentaID stored in the database
+- The `users` table (or equivalent) needs a `yentaId` column
+- When a user links their ReZen account, save the YentaID to THEIR user record
+- When fetching Performance data, use the CURRENT logged-in user's YentaID, not a global value
+
+**2. Fix the Settings Page**
+- The Settings page should show the CURRENT USER's linked YentaID (if any)
+- Allow users to enter/update their own YentaID
+- Show a "Linked" status indicator if they have a YentaID saved
+- Include a working Disconnect button
+
+**3. Fix the Disconnect Button**
+- Create a proper `/api/rezen/unlink` endpoint that:
+  - Clears the YentaID from the current user's record (sets to NULL)
+  - Does NOT require a UUID in the request body
+  - Returns success even when unlinking
+- Update the frontend disconnect button to call this unlink endpoint
+
+**4. Fix My Performance Data Fetching**
+- When loading `/my-performance`, check if the CURRENT USER has a linked YentaID
+- If no YentaID linked: Show a prompt to "Connect your ReZen account in Settings"
+- If YentaID exists: Fetch and display THAT user's ReZen data
+
+### Database Schema Change Needed
+```sql
+-- Add yentaId column to users table if not exists
+ALTER TABLE users ADD COLUMN yenta_id VARCHAR(255) DEFAULT NULL;
+```
+
+### API Endpoints to Update/Create
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/rezen/link` | POST | Save YentaID to current user's record |
+| `/api/rezen/unlink` | POST | Clear YentaID from current user's record |
+| `/api/rezen/status` | GET | Return current user's linked YentaID (or null) |
+| `/api/rezen/performance` | GET | Fetch ReZen data using current user's YentaID |
+
+### Expected User Flow
+1. Joey logs into Mission Control
+2. Goes to Settings → sees "Not connected to ReZen"
+3. Enters her YentaID → clicks Connect
+4. System saves YentaID to Joey's user record
+5. Goes to My Performance → sees HER ReZen data
+6. Ryan logs in separately → sees HIS data (different YentaID)
+
+### Key Technical Notes
+- ReZen API base: `https://arrakis.therealbrokerage.com/api/v1`
+- Auth: `X-API-KEY` header (from REZEN_API_KEY secret)
+- Proxy required: `http://BYA60NevyDFEbx0n:AAV9Jl4YiAKLwPvZ@geo.iproyal.com:12321`
+- YentaID format: UUID (e.g., `abc123-def456-...`)
+
+### Success Criteria
+- [ ] Joey and Ryan see DIFFERENT data on My Performance
+- [ ] Each user can link/unlink their own YentaID in Settings
+- [ ] Disconnect button works without errors
+- [ ] Unlinked users see a prompt to connect, not an error
+
+---
+
+Want me to also create a testing checklist you can use to verify this works correctly once implemented?
