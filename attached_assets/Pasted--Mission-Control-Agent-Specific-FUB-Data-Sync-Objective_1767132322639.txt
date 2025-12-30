@@ -1,0 +1,129 @@
+# Mission Control — Agent-Specific FUB Data Sync
+
+## Objective
+When an agent logs into Mission Control, their Leads, Calendar, and Deals sections (left sidebar) should display only their personally assigned data from Follow Up Boss. The logged-in user's identity must be mapped to their FUB agent profile so all API calls are scoped to that specific agent.
+
+## Current Context
+- Mission Control is a centralized dashboard for Spyglass Realty agents
+- User authentication exists (agents log in with their credentials)
+- FUB API integration is available with API key
+- Left sidebar contains: Leads, Calendar, Deals sections that need agent-specific data
+
+## Implementation Requirements
+
+### 1. Agent Identity Resolution
+Create a service/function that maps the logged-in Mission Control user to their FUB Agent ID:
+
+- On login (or first FUB data request), call `GET /users` from FUB API
+- Match the logged-in user's email address to a FUB user record
+- Extract and store the FUB `id` field for that user
+- Cache this mapping in the user's session or local storage (FUB agent IDs are stable)
+- Handle edge case: if no matching email found, display error message and log for admin review
+
+**FUB Endpoint**: `GET https://api.followupboss.com/v1/users`
+
+### 2. Leads Section
+Display all leads/contacts assigned to the logged-in agent.
+
+**FUB Endpoint**: `GET /people`
+
+**Parameters**:
+- `assignedUserId={agentId}` — filter to this agent only
+- `limit=100` — paginate if more results
+- `sort=lastContacted` — or `created`, depending on preference
+
+**Fields to display**:
+- Name (firstName, lastName)
+- Email, Phone
+- Stage
+- Source
+- Last contacted date
+- Created date
+
+### 3. Calendar Section
+Display appointments and tasks for the logged-in agent.
+
+**Appointments Endpoint**: `GET /appointments`
+- `userId={agentId}`
+- Filter to upcoming appointments (today forward)
+
+**Tasks Endpoint**: `GET /tasks`
+- `assignedTo={agentId}`
+- `status=incomplete` — show only pending tasks
+
+**Display**: Combine appointments and tasks into unified chronological view showing:
+- Title/description
+- Date/time
+- Type (appointment vs task)
+- Associated contact (if any)
+
+### 4. Deals Section
+Display all deals assigned to the logged-in agent.
+
+**FUB Endpoint**: `GET /deals`
+
+**Parameters**:
+- `assignedUserId={agentId}`
+- `limit=100`
+
+**Fields to display**:
+- Property address
+- Deal stage
+- Price
+- Expected close date
+- Associated contacts
+
+## Technical Specifications
+
+**FUB API Base URL**: `https://api.followupboss.com/v1`
+
+**Authentication**: Basic Auth
+- Username: FUB API Key
+- Password: (blank)
+
+**Pagination**: FUB returns max 100 records per request. Check for `_metadata.nextLink` in response and follow if present.
+
+**Error Handling**:
+- 401: Invalid API key
+- 404: Endpoint not found
+- 429: Rate limited (implement exponential backoff)
+- No matching user: Display "Unable to sync with FUB. Contact admin."
+
+## Data Flow Summary
+
+```
+User Login (email: joey@spyglassrealty.com)
+    ↓
+Resolve FUB Agent ID
+    → GET /users → find match by email → extract id (e.g., 12345)
+    → Store agentId in session
+    ↓
+User clicks "Leads"
+    → GET /people?assignedUserId=12345
+    → Render leads list
+    ↓
+User clicks "Calendar"
+    → GET /appointments?userId=12345
+    → GET /tasks?assignedTo=12345
+    → Merge & render timeline
+    ↓
+User clicks "Deals"
+    → GET /deals?assignedUserId=12345
+    → Render deals list
+```
+
+## Test Case
+**User**: Joey Wilkes
+**Login Email**: [joey's Mission Control email]
+**Expected Behavior**:
+1. System resolves Joey's FUB agent ID on login
+2. Leads section shows only leads where Joey is assignedUser
+3. Calendar shows only Joey's appointments and tasks
+4. Deals section shows only deals assigned to Joey
+5. No data from other agents appears in any section
+
+## Optional Enhancements
+- Real-time sync via FUB webhooks for instant updates
+- Local caching with background refresh to improve load times
+- "Last synced" timestamp display
+- Manual refresh button per section
