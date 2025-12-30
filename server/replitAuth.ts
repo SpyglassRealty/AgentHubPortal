@@ -121,6 +121,8 @@ export async function setupAuth(app: Express) {
             const email = profile.emails?.[0]?.value;
             const userId = `google_${profile.id}`;
             
+            console.log(`[Google OAuth] Login attempt - email: ${email}, googleId: ${profile.id}, userId: ${userId}`);
+            
             await storage.upsertUser({
               id: userId,
               email: email || null,
@@ -128,6 +130,8 @@ export async function setupAuth(app: Express) {
               lastName: profile.name?.familyName || profile.displayName?.split(' ').slice(1).join(' ') || null,
               profileImageUrl: profile.photos?.[0]?.value || null,
             });
+            
+            console.log(`[Google OAuth] User upserted successfully: ${userId}`);
 
             const user: any = {
               claims: {
@@ -145,6 +149,7 @@ export async function setupAuth(app: Express) {
 
             done(null, user);
           } catch (error) {
+            console.error(`[Google OAuth] Error during login:`, error);
             done(error as Error);
           }
         }
