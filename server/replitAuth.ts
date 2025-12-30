@@ -105,7 +105,10 @@ export async function setupAuth(app: Express) {
   const googleClientId = process.env.GOOGLE_CLIENT_ID;
   const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
   
+  console.log(`[Auth Setup] Google OAuth configured: ${!!googleClientId && !!googleClientSecret}`);
+  
   if (googleClientId && googleClientSecret) {
+    console.log(`[Auth Setup] Registering Google OAuth routes...`);
     // Use passReqToCallback to dynamically set callback URL based on request
     passport.use(
       "google",
