@@ -120,10 +120,15 @@ export async function registerRoutes(
         fubUserId = user.fubUserId;
         
         if (!fubUserId && user.email) {
+          console.log(`[FUB Deals] Looking up FUB user by email: ${user.email}`);
           const fubUser = await fubClient.getUserByEmail(user.email);
+          console.log(`[FUB Deals] FUB user lookup result:`, fubUser);
           if (fubUser) {
             fubUserId = fubUser.id;
             await storage.updateUserFubId(userId, fubUserId);
+            console.log(`[FUB Deals] Linked FUB user ID ${fubUserId} to user ${userId}`);
+          } else {
+            console.log(`[FUB Deals] No FUB user found for email: ${user.email}`);
           }
         }
       }
