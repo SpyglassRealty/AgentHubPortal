@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -28,22 +28,27 @@ function Router() {
     );
   }
 
+  if (!isAuthenticated) {
+    return (
+      <Switch>
+        <Route path="/" component={LandingPage} />
+        <Route>
+          <Redirect to="/" />
+        </Route>
+      </Switch>
+    );
+  }
+
   return (
     <Switch>
-      {!isAuthenticated ? (
-        <Route path="/" component={LandingPage} />
-      ) : (
-        <>
-          <Route path="/" component={DashboardPage} />
-          <Route path="/dashboard" component={DashboardPage} />
-          <Route path="/my-performance" component={MyPerformancePage} />
-          <Route path="/calendar" component={CalendarPage} />
-          <Route path="/reports" component={ReportsPage} />
-          <Route path="/leads" component={LeadsPage} />
-          <Route path="/settings" component={SettingsPage} />
-          <Route path="/app/:id" component={AppView} />
-        </>
-      )}
+      <Route path="/" component={DashboardPage} />
+      <Route path="/dashboard" component={DashboardPage} />
+      <Route path="/my-performance" component={MyPerformancePage} />
+      <Route path="/calendar" component={CalendarPage} />
+      <Route path="/reports" component={ReportsPage} />
+      <Route path="/leads" component={LeadsPage} />
+      <Route path="/settings" component={SettingsPage} />
+      <Route path="/app/:id" component={AppView} />
       <Route component={NotFound} />
     </Switch>
   );
