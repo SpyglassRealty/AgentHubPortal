@@ -540,79 +540,57 @@ export async function registerRoutes(
         msaCounties.forEach(county => params.append('county', county));
       };
       
-      // Query 1: Active SFR listings - using class=Residential for ACTRIS MLS
-      const activeSfrParams = new URLSearchParams({
+      // Using RESO-compliant standardStatus for accurate property categorization
+      // Reference: https://help.repliers.com/en/article/filtering-listings-by-status-16fc4yd/
+      
+      // Query 1: Active listings (on-market, available for sale)
+      const activeParams = new URLSearchParams({
         listings: 'false',
         type: 'Sale',
-        status: 'A',
-        class: 'Residential'
+        standardStatus: 'Active'
       });
-      addCountyFilters(activeSfrParams);
-      const activeSfrUrl = `${baseUrl}?${activeSfrParams.toString()}`;
+      addCountyFilters(activeParams);
+      const activeUrl = `${baseUrl}?${activeParams.toString()}`;
       
-      // Query 2: Active Condo listings - using class=Condo for ACTRIS MLS
-      const activeCondoParams = new URLSearchParams({
+      // Query 2: Active Under Contract (under contract but still accepting backup offers)
+      const activeUnderContractParams = new URLSearchParams({
         listings: 'false',
         type: 'Sale',
-        status: 'A',
-        class: 'Condo'
+        standardStatus: 'Active Under Contract'
       });
-      addCountyFilters(activeCondoParams);
-      const activeCondoUrl = `${baseUrl}?${activeCondoParams.toString()}`;
+      addCountyFilters(activeUnderContractParams);
+      const activeUnderContractUrl = `${baseUrl}?${activeUnderContractParams.toString()}`;
       
-      // Query 3: Under Contract SFR listings
-      const pendingSfrParams = new URLSearchParams({
+      // Query 3: Pending listings (under contract, progressing toward closing)
+      const pendingParams = new URLSearchParams({
         listings: 'false',
         type: 'Sale',
-        status: 'U',
-        class: 'Residential'
+        standardStatus: 'Pending'
       });
-      pendingSfrParams.append('lastStatus', 'Sc');
-      pendingSfrParams.append('lastStatus', 'Pc');
-      addCountyFilters(pendingSfrParams);
-      const pendingSfrUrl = `${baseUrl}?${pendingSfrParams.toString()}`;
+      addCountyFilters(pendingParams);
+      const pendingUrl = `${baseUrl}?${pendingParams.toString()}`;
       
-      // Query 4: Under Contract Condo listings
-      const pendingCondoParams = new URLSearchParams({
-        listings: 'false',
-        type: 'Sale',
-        status: 'U',
-        class: 'Condo'
-      });
-      pendingCondoParams.append('lastStatus', 'Sc');
-      pendingCondoParams.append('lastStatus', 'Pc');
-      addCountyFilters(pendingCondoParams);
-      const pendingCondoUrl = `${baseUrl}?${pendingCondoParams.toString()}`;
-      
-      // Query 5: Sold listings in last 30 days
+      // Query 4: Closed listings (completed sales in last 30 days)
+      // Note: Using legacy status=U + lastStatus=Sld approach for closed listings 
+      // because minSoldDate filter works reliably with this method
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const minSoldDate = thirtyDaysAgo.toISOString().split('T')[0];
       
-      const soldSfrParams = new URLSearchParams({
+      const closedParams = new URLSearchParams({
         listings: 'false',
         type: 'Sale',
         status: 'U',
-        class: 'Residential',
         lastStatus: 'Sld',
         minSoldDate: minSoldDate
       });
-      addCountyFilters(soldSfrParams);
-      const soldSfrUrl = `${baseUrl}?${soldSfrParams.toString()}`;
-      
-      const soldCondoParams = new URLSearchParams({
-        listings: 'false',
-        type: 'Sale',
-        status: 'U',
-        class: 'Condo',
-        lastStatus: 'Sld',
-        minSoldDate: minSoldDate
-      });
-      addCountyFilters(soldCondoParams);
-      const soldCondoUrl = `${baseUrl}?${soldCondoParams.toString()}`;
+      addCountyFilters(closedParams);
+      const closedUrl = `${baseUrl}?${closedParams.toString()}`;
 
-      console.log(`[Market Pulse] Active SFR URL: ${activeSfrUrl}`);
-      console.log(`[Market Pulse] Active Condo URL: ${activeCondoUrl}`);
+      console.log(`[Market Pulse] Active URL: ${activeUrl}`);
+      console.log(`[Market Pulse] Active Under Contract URL: ${activeUnderContractUrl}`);
+      console.log(`[Market Pulse] Pending URL: ${pendingUrl}`);
+      console.log(`[Market Pulse] Closed (last 30 days) URL: ${closedUrl}`);
 
       const headers = {
         'Accept': 'application/json',
@@ -621,62 +599,50 @@ export async function registerRoutes(
 
       // Fetch all queries in parallel
       const [
-        activeSfrResponse, 
-        activeCondoResponse, 
-        pendingSfrResponse, 
-        pendingCondoResponse,
-        soldSfrResponse,
-        soldCondoResponse
+        activeResponse, 
+        activeUnderContractResponse, 
+        pendingResponse, 
+        closedResponse
       ] = await Promise.all([
-        fetch(activeSfrUrl, { headers }),
-        fetch(activeCondoUrl, { headers }),
-        fetch(pendingSfrUrl, { headers }),
-        fetch(pendingCondoUrl, { headers }),
-        fetch(soldSfrUrl, { headers }),
-        fetch(soldCondoUrl, { headers })
+        fetch(activeUrl, { headers }),
+        fetch(activeUnderContractUrl, { headers }),
+        fetch(pendingUrl, { headers }),
+        fetch(closedUrl, { headers })
       ]);
       
-      if (!activeSfrResponse.ok) {
-        console.error(`Market pulse active SFR API error: ${activeSfrResponse.status}`);
-        const text = await activeSfrResponse.text();
+      if (!activeResponse.ok) {
+        console.error(`Market pulse active API error: ${activeResponse.status}`);
+        const text = await activeResponse.text();
         console.error(`Response body: ${text.substring(0, 500)}`);
-        return res.status(activeSfrResponse.status).json({ 
+        return res.status(activeResponse.status).json({ 
           message: "Failed to fetch market data from external source" 
         });
       }
       
-      const activeSfrData = await activeSfrResponse.json();
-      const activeCondoData = activeCondoResponse.ok ? await activeCondoResponse.json() : { count: 0 };
-      const pendingSfrData = pendingSfrResponse.ok ? await pendingSfrResponse.json() : { count: 0 };
-      const pendingCondoData = pendingCondoResponse.ok ? await pendingCondoResponse.json() : { count: 0 };
-      const soldSfrData = soldSfrResponse.ok ? await soldSfrResponse.json() : { count: 0 };
-      const soldCondoData = soldCondoResponse.ok ? await soldCondoResponse.json() : { count: 0 };
+      const activeData = await activeResponse.json();
+      const activeUnderContractData = activeUnderContractResponse.ok ? await activeUnderContractResponse.json() : { count: 0 };
+      const pendingData = pendingResponse.ok ? await pendingResponse.json() : { count: 0 };
+      const closedData = closedResponse.ok ? await closedResponse.json() : { count: 0 };
       
-      const activeSfr = activeSfrData.count || 0;
-      const activeCondo = activeCondoData.count || 0;
-      const pendingSfr = pendingSfrData.count || 0;
-      const pendingCondo = pendingCondoData.count || 0;
-      const soldSfr = soldSfrData.count || 0;
-      const soldCondo = soldCondoData.count || 0;
+      const active = activeData.count || 0;
+      const activeUnderContract = activeUnderContractData.count || 0;
+      const pending = pendingData.count || 0;
+      const closed = closedData.count || 0;
       
-      console.log(`[Market Pulse] Active SFR: ${activeSfr}, Condo: ${activeCondo}`);
-      console.log(`[Market Pulse] Pending SFR: ${pendingSfr}, Condo: ${pendingCondo}`);
-      console.log(`[Market Pulse] Sold SFR: ${soldSfr}, Condo: ${soldCondo}`);
+      console.log(`[Market Pulse] Active: ${active}`);
+      console.log(`[Market Pulse] Active Under Contract: ${activeUnderContract}`);
+      console.log(`[Market Pulse] Pending: ${pending}`);
+      console.log(`[Market Pulse] Closed (last 30 days): ${closed}`);
 
-      const active = activeSfr + activeCondo;
-      const underContract = pendingSfr + pendingCondo;
-      const sold = soldSfr + soldCondo;
-      const total = active + underContract;
+      // Total current market inventory (excludes closed/historical)
+      const totalInventory = active + activeUnderContract + pending;
 
       res.json({
-        totalProperties: total,
+        totalProperties: totalInventory,
         active,
-        underContract,
-        sold,
-        activeSfr,
-        activeCondo,
-        underContractSfr: pendingSfr,
-        underContractCondo: pendingCondo,
+        activeUnderContract,
+        pending,
+        closed,
         lastUpdatedAt: new Date().toISOString()
       });
     } catch (error) {

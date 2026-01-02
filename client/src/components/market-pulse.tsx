@@ -1,19 +1,16 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, TrendingUp, Home, Building2 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { RefreshCw, TrendingUp, Home, FileCheck, Clock, CheckCircle2 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { format } from "date-fns";
 
 interface MarketPulseData {
   totalProperties: number;
   active: number;
-  underContract: number;
-  sold: number;
-  activeSfr: number;
-  activeCondo: number;
-  underContractSfr: number;
-  underContractCondo: number;
+  activeUnderContract: number;
+  pending: number;
+  closed: number;
   lastUpdatedAt: string;
 }
 
@@ -32,18 +29,17 @@ export default function MarketPulse() {
   });
 
   const chartData = data ? [
-    { name: 'Active SFR', count: data.activeSfr, fill: 'hsl(142, 76%, 36%)' },
-    { name: 'Active Condo', count: data.activeCondo, fill: 'hsl(142, 76%, 50%)' },
-    { name: 'Pending SFR', count: data.underContractSfr, fill: 'hsl(45, 93%, 47%)' },
-    { name: 'Pending Condo', count: data.underContractCondo, fill: 'hsl(45, 93%, 60%)' },
+    { name: 'Active', count: data.active, fill: 'hsl(142, 76%, 36%)' },
+    { name: 'Under Contract', count: data.activeUnderContract, fill: 'hsl(210, 76%, 50%)' },
+    { name: 'Pending', count: data.pending, fill: 'hsl(45, 93%, 47%)' },
+    { name: 'Closed', count: data.closed, fill: 'hsl(0, 0%, 45%)' },
   ].filter(item => item.count > 0) : [];
 
   const totalProperties = data?.totalProperties || 0;
-  const activeSfr = data?.activeSfr || 0;
-  const activeCondo = data?.activeCondo || 0;
-  const underContractSfr = data?.underContractSfr || 0;
-  const underContractCondo = data?.underContractCondo || 0;
-  const totalSold = data?.sold || 0;
+  const active = data?.active || 0;
+  const activeUnderContract = data?.activeUnderContract || 0;
+  const pending = data?.pending || 0;
+  const closed = data?.closed || 0;
 
   if (isLoading) {
     return (
@@ -139,7 +135,7 @@ export default function MarketPulse() {
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis 
                 dataKey="name" 
-                tick={{ fontSize: 12 }} 
+                tick={{ fontSize: 11 }} 
                 axisLine={{ stroke: 'hsl(var(--border))' }}
                 tickLine={false}
               />
@@ -158,15 +154,14 @@ export default function MarketPulse() {
                 }}
                 formatter={(value: number) => value.toLocaleString()}
               />
-              <Legend 
-                wrapperStyle={{ fontSize: '12px' }}
-                iconType="square"
-              />
               <Bar 
                 dataKey="count" 
-                fill="hsl(28, 94%, 54%)" 
                 radius={[4, 4, 0, 0]}
-              />
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -178,44 +173,53 @@ export default function MarketPulse() {
                 <Home className="h-3 w-3" />
                 Active Listings
               </div>
-              <div className="space-y-1">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">SFR</span>
-                  <span className="font-bold" data-testid="text-active-sfr">{activeSfr.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Condo</span>
-                  <span className="font-bold" data-testid="text-active-condo">{activeCondo.toLocaleString()}</span>
-                </div>
-                <div className="border-t pt-1 flex justify-between items-center">
-                  <span className="text-sm font-medium">Total</span>
-                  <span className="font-bold text-emerald-700" data-testid="text-total-active">{(activeSfr + activeCondo).toLocaleString()}</span>
-                </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">On Market</span>
+                <span className="font-bold text-emerald-700 text-lg" data-testid="text-active">{active.toLocaleString()}</span>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-1 text-blue-700 text-xs font-medium mb-2">
+                <FileCheck className="h-3 w-3" />
+                Active Under Contract
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Backup Offers</span>
+                <span className="font-bold text-blue-700 text-lg" data-testid="text-active-under-contract">{activeUnderContract.toLocaleString()}</span>
               </div>
             </CardContent>
           </Card>
           <Card className="bg-amber-50 border-amber-200">
             <CardContent className="p-3">
               <div className="flex items-center gap-1 text-amber-700 text-xs font-medium mb-2">
-                <Building2 className="h-3 w-3" />
-                Under Contract
+                <Clock className="h-3 w-3" />
+                Pending
               </div>
-              <div className="space-y-1">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">SFR</span>
-                  <span className="font-bold" data-testid="text-pending-sfr">{underContractSfr.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Condo</span>
-                  <span className="font-bold" data-testid="text-pending-condo">{underContractCondo.toLocaleString()}</span>
-                </div>
-                <div className="border-t pt-1 flex justify-between items-center">
-                  <span className="text-sm font-medium">Total</span>
-                  <span className="font-bold text-amber-700" data-testid="text-total-pending">{(underContractSfr + underContractCondo).toLocaleString()}</span>
-                </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Closing Soon</span>
+                <span className="font-bold text-amber-700 text-lg" data-testid="text-pending">{pending.toLocaleString()}</span>
               </div>
             </CardContent>
           </Card>
+          <Card className="bg-gray-50 border-gray-200">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-1 text-gray-700 text-xs font-medium mb-2">
+                <CheckCircle2 className="h-3 w-3" />
+                Closed (30 Days)
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Recent Sales</span>
+                <span className="font-bold text-gray-700 text-lg" data-testid="text-closed">{closed.toLocaleString()}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="text-center pt-2 border-t">
+          <span className="text-sm text-muted-foreground">Total Active Inventory: </span>
+          <span className="font-bold text-lg" data-testid="text-total-properties">{totalProperties.toLocaleString()}</span>
         </div>
       </CardContent>
     </Card>
