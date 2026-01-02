@@ -162,6 +162,42 @@ Preferred communication style: Simple, everyday language.
 - Pending Pipeline Table: Shows OPEN transactions with address, price, GCI, close date, and side (buyer/seller)
 - Account Linking: Dialog for users to enter their ReZen yentaId if not already linked
 
+### Market Pulse (Repliers API Integration)
+
+**Purpose**: Displays real-time Austin Metro Area property inventory statistics using the Repliers API.
+
+**Data Source**: Repliers API (`api.repliers.io`) using the `IDX_GRID_API_KEY` secret.
+
+**Geographic Coverage**: 5-county Austin MSA (Travis, Williamson, Hays, Bastrop, Caldwell counties)
+
+**Property Categories** (RESO-compliant standardStatus):
+- **Active**: On-market listings available for sale
+- **Active Under Contract**: Under contract but accepting backup offers
+- **Pending**: Under contract, progressing toward closing
+- **Closed (30 Days)**: Recently sold properties (uses legacy status=U + lastStatus=Sld for accurate date filtering)
+
+**Caching & Scheduling**:
+- Data is cached in `market_pulse_snapshots` table for fast retrieval
+- **Scheduled Refresh**: Daily at 12:00 AM Central Time (America/Chicago) via `node-cron`
+- **Startup Validation**: Server checks if cached data is older than 24 hours on startup and refreshes if needed
+- **Manual Refresh**: Users can click "Refresh" button to force-fetch fresh data from API
+
+**Service Architecture**:
+- `server/marketPulseService.ts`: Centralized API logic with retry (3 attempts, exponential backoff)
+- `server/scheduler.ts`: Initializes node-cron jobs and runs startup freshness checks
+- `server/routes.ts`: `/api/market-pulse` endpoint with optional `?refresh=true` query param
+
+**API Endpoint**:
+- `GET /api/market-pulse` - Returns cached snapshot (or fetches fresh if none exists)
+- `GET /api/market-pulse?refresh=true` - Force-refreshes data from Repliers API
+
+**Frontend Component**: `client/src/components/market-pulse.tsx` displays:
+- Bar chart visualization of all 4 property categories
+- Individual stat cards with counts
+- Total Active Inventory summary
+- Last updated timestamp
+- Manual refresh button
+
 **Database Configuration**: Connection via `DATABASE_URL` environment variable, with connection pooling through `node-postgres` (pg).
 
 **Migration Strategy**: Schema changes are managed through Drizzle Kit:

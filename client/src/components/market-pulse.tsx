@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, TrendingUp, Home, FileCheck, Clock, CheckCircle2 } from "lucide-react";
@@ -27,6 +27,19 @@ export default function MarketPulse() {
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
+  
+  const refreshMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/market-pulse?refresh=true');
+      if (!res.ok) throw new Error('Failed to refresh market data');
+      return res.json();
+    },
+    onSuccess: (freshData) => {
+      queryClient.setQueryData(['/api/market-pulse'], freshData);
+    },
+  });
+  
+  const isRefreshing = isFetching || refreshMutation.isPending;
 
   const chartData = data ? [
     { name: 'Active', count: data.active, fill: 'hsl(142, 76%, 36%)' },
@@ -116,12 +129,12 @@ export default function MarketPulse() {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => refetch()}
-              disabled={isFetching}
+              onClick={() => refreshMutation.mutate()}
+              disabled={isRefreshing}
               className="gap-2"
               data-testid="button-refresh-market"
             >
-              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>

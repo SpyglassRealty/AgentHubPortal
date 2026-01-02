@@ -95,3 +95,17 @@ export const contextSuggestions = pgTable("context_suggestions", {
 
 export type ContextSuggestion = typeof contextSuggestions.$inferSelect;
 export type InsertContextSuggestion = typeof contextSuggestions.$inferInsert;
+
+export const marketPulseSnapshots = pgTable("market_pulse_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  totalProperties: integer("total_properties").notNull(),
+  active: integer("active").notNull(),
+  activeUnderContract: integer("active_under_contract").notNull(),
+  pending: integer("pending").notNull(),
+  closed: integer("closed").notNull(),
+  lastUpdatedAt: timestamp("last_updated_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type MarketPulseSnapshot = typeof marketPulseSnapshots.$inferSelect;
+export type InsertMarketPulseSnapshot = typeof marketPulseSnapshots.$inferInsert;

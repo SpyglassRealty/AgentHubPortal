@@ -2,15 +2,18 @@ import {
   users, 
   agentProfiles, 
   contextSuggestions,
+  marketPulseSnapshots,
   type User, 
   type UpsertUser,
   type AgentProfile,
   type InsertAgentProfile,
   type ContextSuggestion,
-  type InsertContextSuggestion
+  type InsertContextSuggestion,
+  type MarketPulseSnapshot,
+  type InsertMarketPulseSnapshot
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, ne, desc } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -27,6 +30,9 @@ export interface IStorage {
   createSuggestions(suggestions: InsertContextSuggestion[]): Promise<ContextSuggestion[]>;
   updateSuggestionStatus(id: string, status: string): Promise<ContextSuggestion | undefined>;
   clearUserSuggestions(userId: string): Promise<void>;
+  
+  getLatestMarketPulseSnapshot(): Promise<MarketPulseSnapshot | undefined>;
+  saveMarketPulseSnapshot(snapshot: InsertMarketPulseSnapshot): Promise<MarketPulseSnapshot>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -122,6 +128,20 @@ export class DatabaseStorage implements IStorage {
 
   async clearUserSuggestions(userId: string): Promise<void> {
     await db.delete(contextSuggestions).where(eq(contextSuggestions.userId, userId));
+  }
+
+  async getLatestMarketPulseSnapshot(): Promise<MarketPulseSnapshot | undefined> {
+    const [snapshot] = await db
+      .select()
+      .from(marketPulseSnapshots)
+      .orderBy(desc(marketPulseSnapshots.lastUpdatedAt))
+      .limit(1);
+    return snapshot;
+  }
+
+  async saveMarketPulseSnapshot(snapshot: InsertMarketPulseSnapshot): Promise<MarketPulseSnapshot> {
+    const [saved] = await db.insert(marketPulseSnapshots).values(snapshot).returning();
+    return saved;
   }
 }
 
