@@ -13,6 +13,8 @@ import ReportsPage from "@/pages/reports";
 import LeadsPage from "@/pages/leads";
 import MyPerformancePage from "@/pages/my-performance";
 import SettingsPage from "@/pages/settings";
+import PropertiesPage from "@/pages/properties";
+import MarketingPage from "@/pages/marketing";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -47,6 +49,8 @@ function Router() {
       <Route path="/calendar" component={CalendarPage} />
       <Route path="/reports" component={ReportsPage} />
       <Route path="/leads" component={LeadsPage} />
+      <Route path="/properties" component={PropertiesPage} />
+      <Route path="/marketing" component={MarketingPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/app/:id" component={AppView} />
       <Route component={NotFound} />

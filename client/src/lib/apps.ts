@@ -163,7 +163,7 @@ export const navItems = [
   { label: "Calendar", icon: Calendar, href: "/calendar" },
   { label: "Reports", icon: BarChart3, href: "/reports" },
   { label: "Leads", icon: Users, href: "/leads" },
-  { label: "Properties", icon: Building2, href: "#" },
-  { label: "Marketing", icon: Megaphone, href: "#" },
+  { label: "Properties", icon: Building2, href: "/properties" },
+  { label: "Marketing", icon: Megaphone, href: "/marketing" },
   { label: "Settings", icon: Settings, href: "/settings" },
 ];
