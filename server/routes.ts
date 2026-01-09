@@ -15,7 +15,20 @@ export async function registerRoutes(
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const email = req.user.claims.email;
+      
+      // First try to find by ID
+      let user = await storage.getUser(userId);
+      
+      // If not found by ID but we have an email (Google OAuth case), look up by email
+      if (!user && email) {
+        user = await storage.getUserByEmail(email);
+      }
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
