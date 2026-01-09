@@ -5,6 +5,24 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { getFubClient } from "./fubClient";
 import { getRezenClient } from "./rezenClient";
 import { generateSuggestionsForUser } from "./contextEngine";
+import type { User } from "@shared/schema";
+
+// Helper function to get the actual database user from request
+// Handles both regular auth (ID lookup) and Google OAuth (email lookup)
+async function getDbUser(req: any): Promise<User | undefined> {
+  const sessionUserId = req.user?.claims?.sub;
+  const email = req.user?.claims?.email;
+  
+  // First try to find by session user ID
+  let user = await storage.getUser(sessionUserId);
+  
+  // If not found by ID but we have an email (Google OAuth case), look up by email
+  if (!user && email) {
+    user = await storage.getUserByEmail(email);
+  }
+  
+  return user;
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -401,8 +419,11 @@ export async function registerRoutes(
 
   app.get('/api/context/profile', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const profile = await storage.getAgentProfile(userId);
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const profile = await storage.getAgentProfile(user.id);
       res.json({ profile: profile || null, needsOnboarding: !profile });
     } catch (error) {
       console.error("Error fetching agent profile:", error);
@@ -412,11 +433,14 @@ export async function registerRoutes(
 
   app.post('/api/context/profile', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
       const { missionFocus, experienceLevel, primaryGoal, onboardingAnswers } = req.body;
       
       const profile = await storage.upsertAgentProfile({
-        userId,
+        userId: user.id,
         missionFocus,
         experienceLevel,
         primaryGoal,
@@ -433,8 +457,7 @@ export async function registerRoutes(
 
   app.get('/api/context/suggestions', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getDbUser(req);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -447,13 +470,13 @@ export async function registerRoutes(
         const fubUser = await fubClient.getUserByEmail(user.email);
         if (fubUser) {
           fubUserId = fubUser.id;
-          await storage.updateUserFubId(userId, fubUserId);
+          await storage.updateUserFubId(user.id, fubUserId);
         }
       }
 
-      await generateSuggestionsForUser(userId, fubUserId);
+      await generateSuggestionsForUser(user.id, fubUserId);
       
-      const suggestions = await storage.getActiveSuggestions(userId);
+      const suggestions = await storage.getActiveSuggestions(user.id);
       res.json({ suggestions });
     } catch (error) {
       console.error("Error fetching suggestions:", error);
