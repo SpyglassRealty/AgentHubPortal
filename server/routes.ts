@@ -270,8 +270,7 @@ export async function registerRoutes(
         return res.status(503).json({ message: "ReZen integration not configured" });
       }
 
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getDbUser(req);
       
       if (!user?.rezenYentaId) {
         return res.json({ 
@@ -386,7 +385,11 @@ export async function registerRoutes(
 
   app.post('/api/rezen/link', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const dbUser = await getDbUser(req);
+      if (!dbUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
       const { yentaId } = req.body;
       
       if (!yentaId || typeof yentaId !== 'string') {
@@ -398,7 +401,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Invalid yentaId format. It should be a UUID from your ReZen profile URL." });
       }
 
-      const user = await storage.updateUserRezenYentaId(userId, yentaId);
+      const user = await storage.updateUserRezenYentaId(dbUser.id, yentaId);
       res.json({ success: true, user });
     } catch (error) {
       console.error("Error linking ReZen account:", error);
@@ -408,8 +411,11 @@ export async function registerRoutes(
 
   app.post('/api/rezen/unlink', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.updateUserRezenYentaId(userId, null);
+      const dbUser = await getDbUser(req);
+      if (!dbUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const user = await storage.updateUserRezenYentaId(dbUser.id, null);
       res.json({ success: true, user });
     } catch (error) {
       console.error("Error unlinking ReZen account:", error);
