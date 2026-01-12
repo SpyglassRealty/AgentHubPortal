@@ -35,6 +35,15 @@ export interface AppDefinition {
 
 export const apps: AppDefinition[] = [
   {
+    id: "contract-conduit",
+    name: "Contract Conduit",
+    description: "Your first step to entering a transaction.",
+    icon: FileText,
+    category: "Core",
+    color: "bg-amber-100 text-amber-700",
+    url: "https://contract-conduit--ryan1648.replit.app"
+  },
+  {
     id: "rechat",
     name: "ReChat",
     description: "The Real Estate Super App. CRM, Marketing, and Transaction Management in one.",
@@ -145,15 +154,6 @@ export const apps: AppDefinition[] = [
     category: "Sales",
     color: "bg-teal-100 text-teal-700",
     url: "https://app.jointly.com/login"
-  },
-  {
-    id: "create-transaction",
-    name: "Create Transaction",
-    description: "Create and manage real estate transactions quickly and efficiently.",
-    icon: FileText,
-    category: "Admin",
-    color: "bg-amber-100 text-amber-700",
-    url: "https://contract-conduit--ryan1648.replit.app"
   },
 ];
 
