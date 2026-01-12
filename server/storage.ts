@@ -47,11 +47,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    // First check if a user with this email already exists
+    // First check if a user with this email already exists (handles auth provider switches)
     if (userData.email) {
       const existingUser = await this.getUserByEmail(userData.email);
       if (existingUser && existingUser.id !== userData.id) {
-        // User exists with different ID (e.g., switching auth providers)
+        // User exists with different ID (e.g., switching from Replit to Google auth)
         // Update the existing user record instead of creating a new one
         const [user] = await db
           .update(users)
@@ -67,19 +67,40 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    // Standard upsert by ID
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return user;
+    // Standard upsert by ID, with fallback handling for email conflicts (race condition safety)
+    try {
+      const [user] = await db
+        .insert(users)
+        .values(userData)
+        .onConflictDoUpdate({
+          target: users.id,
+          set: {
+            ...userData,
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
+      return user;
+    } catch (error: any) {
+      // Handle race condition: if email unique constraint violated, update existing user by email
+      if (error.code === '23505' && error.constraint === 'users_email_unique' && userData.email) {
+        const existingUser = await this.getUserByEmail(userData.email);
+        if (existingUser) {
+          const [user] = await db
+            .update(users)
+            .set({
+              firstName: userData.firstName || existingUser.firstName,
+              lastName: userData.lastName || existingUser.lastName,
+              profileImageUrl: userData.profileImageUrl || existingUser.profileImageUrl,
+              updatedAt: new Date(),
+            })
+            .where(eq(users.id, existingUser.id))
+            .returning();
+          return user;
+        }
+      }
+      throw error;
+    }
   }
 
   async updateUserFubId(userId: string, fubUserId: number): Promise<User | undefined> {
