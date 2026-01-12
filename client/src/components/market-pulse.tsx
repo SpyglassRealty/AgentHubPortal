@@ -198,8 +198,7 @@ export default function MarketPulse() {
                 <FileCheck className="h-3 w-3" />
                 Active Under Contract
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Backup Offers</span>
+              <div className="flex justify-end items-center">
                 <span className="font-bold text-blue-700 text-lg" data-testid="text-active-under-contract">{activeUnderContract.toLocaleString()}</span>
               </div>
             </CardContent>
