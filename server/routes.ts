@@ -56,8 +56,7 @@ export async function registerRoutes(
 
   app.get('/api/fub/agents', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getDbUser(req);
       
       if (!user?.isSuperAdmin) {
         return res.status(403).json({ message: "Access denied" });
@@ -78,8 +77,7 @@ export async function registerRoutes(
 
   app.get('/api/fub/calendar', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getDbUser(req);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -102,7 +100,7 @@ export async function registerRoutes(
           const fubUser = await fubClient.getUserByEmail(user.email);
           if (fubUser) {
             fubUserId = fubUser.id;
-            await storage.updateUserFubId(userId, fubUserId);
+            await storage.updateUserFubId(user.id, fubUserId);
           }
         }
       }
@@ -128,8 +126,7 @@ export async function registerRoutes(
 
   app.get('/api/fub/deals', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getDbUser(req);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -156,8 +153,8 @@ export async function registerRoutes(
           console.log(`[FUB Deals] FUB user lookup result:`, fubUser);
           if (fubUser) {
             fubUserId = fubUser.id;
-            await storage.updateUserFubId(userId, fubUserId);
-            console.log(`[FUB Deals] Linked FUB user ID ${fubUserId} to user ${userId}`);
+            await storage.updateUserFubId(user.id, fubUserId);
+            console.log(`[FUB Deals] Linked FUB user ID ${fubUserId} to user ${user.id}`);
           } else {
             console.log(`[FUB Deals] No FUB user found for email: ${user.email}`);
           }
@@ -580,8 +577,7 @@ export async function registerRoutes(
 
   app.get('/api/fub/leads/anniversary', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getDbUser(req);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -601,7 +597,7 @@ export async function registerRoutes(
         const fubUser = await fubClient.getUserByEmail(user.email);
         if (fubUser) {
           fubUserId = fubUser.id;
-          await storage.updateUserFubId(userId, fubUserId);
+          await storage.updateUserFubId(user.id, fubUserId);
         }
       }
 
@@ -619,8 +615,7 @@ export async function registerRoutes(
 
   app.get('/api/fub/leads/birthdays', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getDbUser(req);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -640,7 +635,7 @@ export async function registerRoutes(
         const fubUser = await fubClient.getUserByEmail(user.email);
         if (fubUser) {
           fubUserId = fubUser.id;
-          await storage.updateUserFubId(userId, fubUserId);
+          await storage.updateUserFubId(user.id, fubUserId);
         }
       }
 
@@ -658,8 +653,7 @@ export async function registerRoutes(
 
   app.get('/api/fub/leads/recent-activity', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getDbUser(req);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -679,7 +673,7 @@ export async function registerRoutes(
         const fubUser = await fubClient.getUserByEmail(user.email);
         if (fubUser) {
           fubUserId = fubUser.id;
-          await storage.updateUserFubId(userId, fubUserId);
+          await storage.updateUserFubId(user.id, fubUserId);
         }
       }
 
@@ -697,8 +691,7 @@ export async function registerRoutes(
 
   app.get('/api/fub/tasks/due', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getDbUser(req);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -718,7 +711,7 @@ export async function registerRoutes(
         const fubUser = await fubClient.getUserByEmail(user.email);
         if (fubUser) {
           fubUserId = fubUser.id;
-          await storage.updateUserFubId(userId, fubUserId);
+          await storage.updateUserFubId(user.id, fubUserId);
         }
       }
 
