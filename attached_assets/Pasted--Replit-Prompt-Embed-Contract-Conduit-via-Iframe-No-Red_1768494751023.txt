@@ -1,0 +1,655 @@
+## Replit Prompt: Embed Contract Conduit via Iframe (No Redirect)
+
+---
+
+**Task: Display Contract Conduit in an Iframe Instead of Redirecting**
+
+Currently, when users click "Contract Conduit" in the Mission Control app list, it opens in a new browser tab. We want to embed it directly within Mission Control using an iframe for a seamless, integrated experience.
+
+**Contract Conduit URL:** `https://mission-control-contract-conduit.onrender.com/`
+
+---
+
+### Current Behavior
+- User clicks "Contract Conduit" app card → Opens new tab with redirect
+- User loses context of Mission Control portal
+
+### Desired Behavior
+- User clicks "Contract Conduit" app card → App loads in iframe within Mission Control
+- User stays within the portal experience
+- Back button returns to app list (not browser back)
+
+---
+
+### Implementation
+
+**1. Create App Container Component with Iframe Support**
+
+```typescript
+// components/AppContainer.tsx
+
+import { useState } from 'react';
+import { ArrowLeft, ExternalLink, Maximize2, Minimize2 } from 'lucide-react';
+
+interface AppContainerProps {
+  appName: string;
+  appDescription: string;
+  appUrl: string;
+  appIcon: React.ReactNode;
+  onBack: () => void;
+}
+
+export function AppContainer({ 
+  appName, 
+  appDescription, 
+  appUrl, 
+  appIcon,
+  onBack 
+}: AppContainerProps) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  const handleIframeLoad = () => {
+    setIsLoading(false);
+  };
+
+  const handleIframeError = () => {
+    setIsLoading(false);
+    setLoadError(true);
+  };
+
+  const openInNewTab = () => {
+    window.open(appUrl, '_blank');
+  };
+
+  return (
+    <div className={`app-container ${isFullscreen ? 'fullscreen' : ''}`}>
+      {/* Header Bar */}
+      <div className="app-header">
+        <div className="app-header-left">
+          <button onClick={onBack} className="back-button">
+            <ArrowLeft size={20} />
+            <span>Back</span>
+          </button>
+          <div className="app-info">
+            <div className="app-icon">{appIcon}</div>
+            <div>
+              <h2>{appName}</h2>
+              <p>{appDescription}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="app-header-right">
+          <button 
+            onClick={() => setIsFullscreen(!isFullscreen)} 
+            className="header-action-btn"
+            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+          >
+            {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+          </button>
+          <button 
+            onClick={openInNewTab} 
+            className="header-action-btn"
+            title="Open in New Tab"
+          >
+            <ExternalLink size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Iframe Container */}
+      <div className="iframe-wrapper">
+        {isLoading && (
+          <div className="iframe-loading">
+            <div className="loading-spinner"></div>
+            <p>Loading {appName}...</p>
+          </div>
+        )}
+        
+        {loadError ? (
+          <div className="iframe-error">
+            <div className="error-icon">⚠️</div>
+            <h3>Unable to load {appName}</h3>
+            <p>This app cannot be displayed in an embedded view.</p>
+            <button onClick={openInNewTab} className="open-external-btn">
+              <ExternalLink size={16} />
+              Open in New Tab
+            </button>
+          </div>
+        ) : (
+          <iframe
+            src={appUrl}
+            title={appName}
+            className="app-iframe"
+            onLoad={handleIframeLoad}
+            onError={handleIframeError}
+            allow="clipboard-write; clipboard-read"
+            sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-downloads"
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+**2. Update the Dashboard/App List Page**
+
+```typescript
+// pages/Dashboard.tsx or components/AppList.tsx
+
+import { useState } from 'react';
+import { AppContainer } from '@/components/AppContainer';
+import { FileText, MessageSquare, Mail } from 'lucide-react';
+
+// Define your apps
+const APPS = [
+  {
+    id: 'contract-conduit',
+    name: 'Contract Conduit',
+    description: 'Your first step to entering a transaction.',
+    url: 'https://mission-control-contract-conduit.onrender.com/',
+    icon: <FileText className="app-card-icon" />,
+    tags: ['Core', 'Live'],
+    embedEnabled: true  // Can be embedded in iframe
+  },
+  {
+    id: 'rechat',
+    name: 'ReChat',
+    description: 'The Real Estate Super App. CRM, Marketing, and Transaction Management in one.',
+    url: 'https://rechat.com',
+    icon: <MessageSquare className="app-card-icon" />,
+    tags: ['Core', 'Live'],
+    embedEnabled: false  // Opens in new tab (external app)
+  },
+  {
+    id: 'blog-automator',
+    name: 'Blog to Email Automator',
+    description: 'Automatically convert your blog posts into engaging email newsletters.',
+    url: 'https://blog-automator.example.com',
+    icon: <Mail className="app-card-icon" />,
+    tags: ['Marketing', 'Live'],
+    embedEnabled: true
+  }
+];
+
+export function Dashboard() {
+  const [activeApp, setActiveApp] = useState<typeof APPS[0] | null>(null);
+
+  const handleAppClick = (app: typeof APPS[0]) => {
+    if (app.embedEnabled) {
+      // Show in iframe
+      setActiveApp(app);
+    } else {
+      // Open in new tab for external apps
+      window.open(app.url, '_blank');
+    }
+  };
+
+  const handleBackToApps = () => {
+    setActiveApp(null);
+  };
+
+  // If an app is active, show the iframe container
+  if (activeApp) {
+    return (
+      <AppContainer
+        appName={activeApp.name}
+        appDescription={activeApp.description}
+        appUrl={activeApp.url}
+        appIcon={activeApp.icon}
+        onBack={handleBackToApps}
+      />
+    );
+  }
+
+  // Otherwise, show the app list/dashboard
+  return (
+    <div className="dashboard">
+      {/* Stats Cards */}
+      <div className="stats-grid">
+        {/* ... your existing stats ... */}
+      </div>
+
+      {/* Your Applications */}
+      <section className="apps-section">
+        <h2>Your Applications</h2>
+        <div className="apps-grid">
+          {APPS.map((app) => (
+            <div 
+              key={app.id} 
+              className="app-card"
+              onClick={() => handleAppClick(app)}
+            >
+              <div className="app-card-icon-wrapper">
+                {app.icon}
+              </div>
+              <h3>{app.name}</h3>
+              <p>{app.description}</p>
+              <div className="app-tags">
+                {app.tags.map((tag) => (
+                  <span key={tag} className={`tag tag-${tag.toLowerCase()}`}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+```
+
+**3. Add Required Styles**
+
+```css
+/* styles/app-container.css */
+
+/* App Container - Fullscreen capable */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 64px); /* Adjust based on your main nav height */
+  background: #1a1a1a;
+}
+
+.app-container.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100vh;
+  z-index: 1000;
+}
+
+/* App Header */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: #242424;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.back-button:hover {
+  background: #333;
+  border-color: #555;
+}
+
+.app-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-info .app-icon {
+  width: 40px;
+  height: 40px;
+  background: #d4a574;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1a1a1a;
+}
+
+.app-info h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.app-info p {
+  margin: 0;
+  font-size: 13px;
+  color: #888;
+}
+
+.app-header-right {
+  display: flex;
+  gap: 8px;
+}
+
+.header-action-btn {
+  padding: 8px;
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.header-action-btn:hover {
+  background: #333;
+  border-color: #555;
+  color: #fff;
+}
+
+/* Iframe Wrapper */
+.iframe-wrapper {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.app-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #fff;
+}
+
+/* Loading State */
+.iframe-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a1a;
+  gap: 16px;
+}
+
+.iframe-loading .loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #333;
+  border-top-color: #d4a574;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.iframe-loading p {
+  color: #888;
+  font-size: 14px;
+}
+
+/* Error State */
+.iframe-error {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a1a;
+  gap: 12px;
+  text-align: center;
+}
+
+.iframe-error .error-icon {
+  font-size: 48px;
+}
+
+.iframe-error h3 {
+  color: #fff;
+  margin: 0;
+}
+
+.iframe-error p {
+  color: #888;
+  margin: 0;
+}
+
+.open-external-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #d4a574;
+  border: none;
+  border-radius: 8px;
+  color: #1a1a1a;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background 0.2s;
+}
+
+.open-external-btn:hover {
+  background: #c49564;
+}
+
+/* App Cards Grid */
+.apps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.app-card {
+  background: #242424;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.app-card:hover {
+  border-color: #444;
+  transform: translateY(-2px);
+}
+
+.app-card-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  background: #d4a574;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.app-card-icon {
+  color: #1a1a1a;
+  width: 24px;
+  height: 24px;
+}
+
+.app-card h3 {
+  margin: 0 0 8px 0;
+  color: #fff;
+  font-size: 18px;
+}
+
+.app-card p {
+  margin: 0 0 16px 0;
+  color: #888;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.app-tags {
+  display: flex;
+  gap: 8px;
+}
+
+.tag {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tag-core {
+  background: #2a2a2a;
+  color: #888;
+}
+
+.tag-live {
+  background: rgba(234, 179, 8, 0.1);
+  color: #eab308;
+}
+
+.tag-marketing {
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+}
+```
+
+**4. Configure Contract Conduit for Iframe Embedding**
+
+On the **Contract Conduit** Render app, you may need to update headers to allow iframe embedding:
+
+```typescript
+// In Contract Conduit's server (e.g., server/index.ts or middleware)
+
+// Allow embedding from Mission Control domain
+app.use((req, res, next) => {
+  // Allow iframe embedding from your Mission Control domain
+  res.setHeader('X-Frame-Options', 'ALLOW-FROM https://your-mission-control-domain.replit.dev');
+  
+  // Or use Content-Security-Policy for more control
+  res.setHeader(
+    'Content-Security-Policy', 
+    "frame-ancestors 'self' https://your-mission-control-domain.replit.dev https://*.replit.dev https://*.onrender.com"
+  );
+  
+  next();
+});
+```
+
+**Alternative: If using Express with Helmet:**
+```typescript
+import helmet from 'helmet';
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        frameAncestors: [
+          "'self'",
+          "https://your-mission-control-domain.replit.dev",
+          "https://*.replit.dev",
+          "https://*.onrender.com"
+        ]
+      }
+    },
+    frameguard: false // Disable X-Frame-Options to use CSP instead
+  })
+);
+```
+
+---
+
+### Important: Cross-Origin Considerations
+
+If Contract Conduit and Mission Control are on different domains, you'll need to handle:
+
+1. **CORS Headers** on Contract Conduit to allow requests from Mission Control
+2. **Frame Ancestors** CSP directive to allow iframe embedding
+3. **Authentication** - If Contract Conduit requires login, consider:
+   - Shared authentication (same auth provider)
+   - Token passing via URL params or postMessage
+   - SSO implementation
+
+**For Authentication Sharing (Optional):**
+
+```typescript
+// When opening the iframe, pass auth token
+const getAppUrl = (baseUrl: string) => {
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    return `${baseUrl}?token=${encodeURIComponent(token)}`;
+  }
+  return baseUrl;
+};
+
+// In AppContainer
+<iframe
+  src={getAppUrl(appUrl)}
+  // ...
+/>
+```
+
+---
+
+### Files to Create/Modify
+
+**Mission Control (AgentHubPortal):**
+- `components/AppContainer.tsx` - New component for iframe display
+- `pages/Dashboard.tsx` - Update to handle app selection
+- `styles/app-container.css` - Styles for embedded app view
+
+**Contract Conduit (Render App):**
+- `server/index.ts` or middleware - Add frame-ancestors CSP header
+
+---
+
+### Acceptance Criteria
+
+- [ ] Clicking "Contract Conduit" app card loads the app in an iframe (no redirect)
+- [ ] Loading spinner shows while iframe loads
+- [ ] Back button returns to app list
+- [ ] "Open in New Tab" button still available as fallback
+- [ ] Fullscreen toggle works
+- [ ] Error state displays gracefully if iframe fails to load
+- [ ] Contract Conduit functions properly within iframe (navigation, forms, etc.)
+- [ ] No CORS or X-Frame-Options errors in console
+
+---
+
+### Fallback Behavior
+
+If iframe embedding fails due to security restrictions:
+1. Show friendly error message
+2. Provide "Open in New Tab" button
+3. Log error for debugging
+
+```typescript
+// The error state in AppContainer handles this automatically
+{loadError && (
+  <div className="iframe-error">
+    <h3>Unable to load {appName}</h3>
+    <p>This app cannot be displayed in an embedded view.</p>
+    <button onClick={openInNewTab}>
+      Open in New Tab
+    </button>
+  </div>
+)}
+```
+
+---
+
+Copy this into Replit to implement iframe embedding for Contract Conduit!
