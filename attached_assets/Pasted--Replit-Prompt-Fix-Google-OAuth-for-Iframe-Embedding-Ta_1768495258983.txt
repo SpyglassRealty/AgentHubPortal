@@ -1,0 +1,410 @@
+## Replit Prompt: Fix Google OAuth for Iframe Embedding
+
+---
+
+**Task: Enable Google Sign-in for Contract Conduit When Embedded in Mission Control**
+
+Google blocks OAuth **redirects** inside iframes, but there are workarounds. The main solution is to use **popup-based authentication** instead of redirect-based authentication.
+
+---
+
+### Why It's Blocked (And Why It Can Be Fixed)
+
+**What Google blocks:**
+- OAuth redirect flow inside an iframe (the iframe trying to navigate to accounts.google.com)
+- This is blocked via `X-Frame-Options` on Google's login page
+
+**What Google ALLOWS:**
+- Opening Google sign-in in a **popup window** from within an iframe
+- The popup authenticates, then communicates back to the iframe via `postMessage`
+
+---
+
+### Solution: Popup-Based Google Authentication
+
+**1. Update Contract Conduit's Google Sign-in to Use Popup Mode**
+
+If using **Google Identity Services (new):**
+
+```typescript
+// In Contract Conduit - auth/googleAuth.ts
+
+export function initGoogleAuth() {
+  google.accounts.id.initialize({
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    callback: handleCredentialResponse,
+    // This is key - use popup instead of redirect
+    ux_mode: 'popup',  // <-- USE POPUP MODE
+    context: 'signin',
+  });
+}
+
+// Trigger sign-in (works inside iframe!)
+export function signInWithGoogle() {
+  google.accounts.id.prompt(); // Shows the One Tap or popup
+}
+
+function handleCredentialResponse(response: google.accounts.id.CredentialResponse) {
+  // Send the credential to your backend
+  fetch('/api/auth/google', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ credential: response.credential }),
+  })
+  .then(res => res.json())
+  .then(data => {
+    // Store token, redirect to dashboard, etc.
+    localStorage.setItem('authToken', data.token);
+    window.location.href = '/dashboard';
+  });
+}
+```
+
+**2. If Using Firebase Auth:**
+
+```typescript
+// Firebase Auth with popup (works in iframes!)
+import { getAuth, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+
+const auth = getAuth();
+const provider = new GoogleAuthProvider();
+
+export async function signInWithGoogle() {
+  try {
+    // Use signInWithPopup instead of signInWithRedirect
+    const result = await signInWithPopup(auth, provider);  // <-- POPUP MODE
+    
+    // User signed in successfully
+    const user = result.user;
+    const token = await user.getIdToken();
+    
+    // Store and proceed
+    localStorage.setItem('authToken', token);
+    return user;
+    
+  } catch (error) {
+    console.error('Google sign-in error:', error);
+    throw error;
+  }
+}
+
+// DON'T use this inside iframes:
+// signInWithRedirect(auth, provider);  // <-- This gets blocked
+```
+
+**3. If Using NextAuth.js:**
+
+```typescript
+// pages/api/auth/[...nextauth].ts
+import NextAuth from 'next-auth';
+import GoogleProvider from 'next-auth/providers/google';
+
+export default NextAuth({
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          prompt: 'select_account',
+        },
+      },
+    }),
+  ],
+});
+
+// In your sign-in component - use popup approach
+// Create a custom sign-in that opens popup
+export function GoogleSignInButton() {
+  const handleSignIn = () => {
+    // Open sign-in in popup window
+    const width = 500;
+    const height = 600;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+    
+    const popup = window.open(
+      '/api/auth/signin/google',
+      'google-signin',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+    
+    // Listen for completion
+    window.addEventListener('message', (event) => {
+      if (event.data.type === 'AUTH_COMPLETE') {
+        popup?.close();
+        window.location.reload(); // or handle session update
+      }
+    });
+  };
+
+  return (
+    <button onClick={handleSignIn}>
+      Sign in with Google
+    </button>
+  );
+}
+```
+
+**4. Custom Popup OAuth Flow:**
+
+```typescript
+// auth/googlePopupAuth.ts
+
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+const REDIRECT_URI = `${window.location.origin}/auth/google/callback`;
+
+export function signInWithGooglePopup(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    // Build Google OAuth URL
+    const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    googleAuthUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID!);
+    googleAuthUrl.searchParams.set('redirect_uri', REDIRECT_URI);
+    googleAuthUrl.searchParams.set('response_type', 'code');
+    googleAuthUrl.searchParams.set('scope', 'openid email profile');
+    googleAuthUrl.searchParams.set('prompt', 'select_account');
+
+    // Open popup
+    const width = 500;
+    const height = 600;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+    
+    const popup = window.open(
+      googleAuthUrl.toString(),
+      'google-oauth',
+      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`
+    );
+
+    if (!popup) {
+      reject(new Error('Popup blocked'));
+      return;
+    }
+
+    // Listen for callback message from popup
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      
+      if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+        window.removeEventListener('message', handleMessage);
+        popup.close();
+        resolve(event.data.token);
+      } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
+        window.removeEventListener('message', handleMessage);
+        popup.close();
+        reject(new Error(event.data.error));
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    // Check if popup was closed without completing
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+        window.removeEventListener('message', handleMessage);
+        reject(new Error('Popup closed'));
+      }
+    }, 1000);
+  });
+}
+```
+
+**5. Callback Page (receives the OAuth code and sends back to parent):**
+
+```typescript
+// pages/auth/google/callback.tsx (or a simple HTML page)
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
+
+export default function GoogleCallback() {
+  const router = useRouter();
+  const { code, error } = router.query;
+
+  useEffect(() => {
+    if (error) {
+      // Send error back to parent window
+      if (window.opener) {
+        window.opener.postMessage({ type: 'GOOGLE_AUTH_ERROR', error }, window.location.origin);
+      }
+      return;
+    }
+
+    if (code) {
+      // Exchange code for token on your backend
+      fetch('/api/auth/google/exchange', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          // Send success back to parent window (the iframe)
+          if (window.opener) {
+            window.opener.postMessage(
+              { type: 'GOOGLE_AUTH_SUCCESS', token: data.token },
+              window.location.origin
+            );
+          } else {
+            // If not in popup, redirect normally
+            window.location.href = '/dashboard';
+          }
+        })
+        .catch(err => {
+          if (window.opener) {
+            window.opener.postMessage(
+              { type: 'GOOGLE_AUTH_ERROR', error: err.message },
+              window.location.origin
+            );
+          }
+        });
+    }
+  }, [code, error]);
+
+  return (
+    <div style={{ 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      height: '100vh' 
+    }}>
+      <p>Completing sign-in...</p>
+    </div>
+  );
+}
+```
+
+---
+
+### Alternative: Shared Authentication Between Apps
+
+If Mission Control and Contract Conduit should share the same user session:
+
+**Option A: Pass Token via URL**
+
+```typescript
+// In Mission Control - when opening Contract Conduit iframe
+const token = localStorage.getItem('authToken');
+const contractConduitUrl = `https://mission-control-contract-conduit.onrender.com/?token=${encodeURIComponent(token)}`;
+
+<iframe src={contractConduitUrl} />
+```
+
+```typescript
+// In Contract Conduit - check for token in URL on load
+useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  
+  if (token) {
+    // Validate token with backend, then set session
+    validateAndSetSession(token);
+    // Clean up URL
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+}, []);
+```
+
+**Option B: Use postMessage for Token Exchange**
+
+```typescript
+// In Contract Conduit - request token from parent
+useEffect(() => {
+  if (window.parent !== window) {
+    // We're in an iframe, request auth from parent
+    window.parent.postMessage({ type: 'REQUEST_AUTH' }, '*');
+  }
+}, []);
+
+// Listen for response
+useEffect(() => {
+  const handleMessage = (event: MessageEvent) => {
+    // Verify origin
+    if (!event.origin.includes('your-mission-control-domain')) return;
+    
+    if (event.data.type === 'AUTH_TOKEN') {
+      const { token } = event.data;
+      // Set up authentication with received token
+      setAuthToken(token);
+    }
+  };
+  
+  window.addEventListener('message', handleMessage);
+  return () => window.removeEventListener('message', handleMessage);
+}, []);
+```
+
+```typescript
+// In Mission Control - respond to auth requests from iframe
+useEffect(() => {
+  const handleMessage = (event: MessageEvent) => {
+    if (event.data.type === 'REQUEST_AUTH') {
+      const token = localStorage.getItem('authToken');
+      // Send token to iframe
+      const iframe = document.querySelector('iframe');
+      iframe?.contentWindow?.postMessage(
+        { type: 'AUTH_TOKEN', token },
+        'https://mission-control-contract-conduit.onrender.com'
+      );
+    }
+  };
+  
+  window.addEventListener('message', handleMessage);
+  return () => window.removeEventListener('message', handleMessage);
+}, []);
+```
+
+---
+
+### Quick Implementation Checklist
+
+**For Contract Conduit (the embedded app):**
+
+1. [ ] Change Google sign-in from redirect to popup mode
+2. [ ] If using Firebase: `signInWithPopup()` instead of `signInWithRedirect()`
+3. [ ] If using Google Identity Services: `ux_mode: 'popup'`
+4. [ ] Create callback page that uses `postMessage` to communicate back
+5. [ ] Test sign-in works when app is inside iframe
+
+**For Mission Control (the parent app):**
+
+1. [ ] Update iframe to allow popups: `sandbox="allow-popups allow-scripts ..."`
+2. [ ] Optionally implement token sharing via postMessage
+
+---
+
+### Iframe Sandbox Permissions
+
+Make sure Mission Control's iframe has the right permissions:
+
+```tsx
+<iframe
+  src="https://mission-control-contract-conduit.onrender.com/"
+  sandbox="allow-same-origin allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms"
+  //       ↑ These two are critical for popup OAuth
+  allow="clipboard-write"
+/>
+```
+
+**Key sandbox values:**
+- `allow-popups` - Allows the iframe to open popup windows
+- `allow-popups-to-escape-sandbox` - Allows popups to not inherit sandbox restrictions
+
+---
+
+### Summary
+
+| Method | Works in Iframe? | Complexity |
+|--------|-----------------|------------|
+| Google OAuth Redirect | ❌ No | - |
+| Google OAuth Popup | ✅ Yes | Low |
+| Firebase `signInWithPopup` | ✅ Yes | Low |
+| Token passing from parent | ✅ Yes | Medium |
+| Shared cookies (same domain) | ✅ Yes | Medium |
+
+**Recommended approach:** Switch Contract Conduit's Google auth to popup mode. This is the simplest fix and doesn't require changes to Mission Control.
+
+---
+
+Copy this into Replit to implement popup-based Google OAuth!
