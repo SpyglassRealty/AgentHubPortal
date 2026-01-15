@@ -22,6 +22,11 @@ import {
   Settings
 } from "lucide-react";
 
+export type AppConnectionType = 
+  | 'embedded'      // Works inside portal (iframe)
+  | 'external'      // Opens in new tab, external app
+  | 'redirect';     // Just a link to external site
+
 export interface AppDefinition {
   id: string;
   name: string;
@@ -31,6 +36,7 @@ export interface AppDefinition {
   color: string;
   url?: string;
   noIframe?: boolean;
+  connectionType: AppConnectionType;
 }
 
 export const apps: AppDefinition[] = [
@@ -41,7 +47,8 @@ export const apps: AppDefinition[] = [
     icon: FileText,
     category: "Core",
     color: "bg-amber-100 text-amber-700",
-    url: "https://mission-control-contract-conduit.onrender.com/"
+    url: "https://mission-control-contract-conduit.onrender.com/",
+    connectionType: "embedded"
   },
   {
     id: "rechat",
@@ -50,7 +57,8 @@ export const apps: AppDefinition[] = [
     icon: MessageSquare,
     category: "Core",
     color: "bg-violet-100 text-violet-700",
-    url: "https://app.rechat.com"
+    url: "https://app.rechat.com",
+    connectionType: "external"
   },
   {
     id: "blog-email-automator",
@@ -59,7 +67,8 @@ export const apps: AppDefinition[] = [
     icon: Mail,
     category: "Marketing",
     color: "bg-pink-100 text-pink-700",
-    url: "https://blog-to-email-automator-2--caleb254.replit.app"
+    url: "https://blog-to-email-automator-2--caleb254.replit.app",
+    connectionType: "embedded"
   },
   {
     id: "realty-hack-ai",
@@ -68,7 +77,8 @@ export const apps: AppDefinition[] = [
     icon: BookOpen,
     category: "Core",
     color: "bg-orange-100 text-orange-700",
-    url: "https://www.realtyhack.com/ai/"
+    url: "https://www.realtyhack.com/ai/",
+    connectionType: "external"
   },
   {
     id: "home-review-ai",
@@ -77,7 +87,8 @@ export const apps: AppDefinition[] = [
     icon: BrainCircuit,
     category: "Core",
     color: "bg-sky-100 text-sky-700",
-    url: "https://home-review-ai-ryan1648.replit.app"
+    url: "https://home-review-ai-ryan1648.replit.app",
+    connectionType: "embedded"
   },
   {
     id: "follow-up-boss",
@@ -87,7 +98,8 @@ export const apps: AppDefinition[] = [
     category: "Sales",
     color: "bg-green-100 text-green-700",
     url: "https://login.followupboss.com/login",
-    noIframe: true
+    noIframe: true,
+    connectionType: "redirect"
   },
   {
     id: "ylopo-add-lead",
@@ -97,7 +109,8 @@ export const apps: AppDefinition[] = [
     category: "Sales",
     color: "bg-cyan-100 text-cyan-700",
     url: "https://stars.ylopo.com/auth",
-    noIframe: true
+    noIframe: true,
+    connectionType: "redirect"
   },
   {
     id: "ylopo-tools",
@@ -106,7 +119,8 @@ export const apps: AppDefinition[] = [
     icon: Wrench,
     category: "Marketing",
     color: "bg-teal-100 text-teal-700",
-    url: "https://www.austinhomesaleguide.com/tools"
+    url: "https://www.austinhomesaleguide.com/tools",
+    connectionType: "external"
   },
   {
     id: "rezen",
@@ -115,7 +129,8 @@ export const apps: AppDefinition[] = [
     icon: Building,
     category: "Core",
     color: "bg-blue-100 text-blue-700",
-    url: "https://bolt.therealbrokerage.com/"
+    url: "https://bolt.therealbrokerage.com/",
+    connectionType: "redirect"
   },
   {
     id: "slack",
@@ -125,7 +140,8 @@ export const apps: AppDefinition[] = [
     category: "Core",
     color: "bg-purple-100 text-purple-700",
     url: "https://app.slack.com/client/T08T7BSLZV4",
-    noIframe: true
+    noIframe: true,
+    connectionType: "redirect"
   },
   {
     id: "canva",
@@ -135,7 +151,8 @@ export const apps: AppDefinition[] = [
     category: "Marketing",
     color: "bg-violet-100 text-violet-700",
     url: "https://www.canva.com/projects",
-    noIframe: true
+    noIframe: true,
+    connectionType: "redirect"
   },
   {
     id: "client-data",
@@ -144,7 +161,8 @@ export const apps: AppDefinition[] = [
     icon: Database,
     category: "Sales",
     color: "bg-indigo-100 text-indigo-700",
-    url: "https://idx-grid-data-ryan1648.replit.app"
+    url: "https://idx-grid-data-ryan1648.replit.app",
+    connectionType: "embedded"
   },
   {
     id: "jointly",
@@ -153,7 +171,8 @@ export const apps: AppDefinition[] = [
     icon: Handshake,
     category: "Sales",
     color: "bg-teal-100 text-teal-700",
-    url: "https://app.jointly.com/login"
+    url: "https://app.jointly.com/login",
+    connectionType: "redirect"
   },
 ];
 
