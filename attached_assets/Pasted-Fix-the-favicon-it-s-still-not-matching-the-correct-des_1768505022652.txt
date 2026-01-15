@@ -1,0 +1,75 @@
+Fix the favicon - it's still not matching the correct design.
+
+The CORRECT favicon (like Contract Conduit has):
+- Solid orange background: #d4a574
+- White "S" letter only: #FFFFFF
+- NO black outline or border
+
+The CURRENT favicon on Agent Hub Portal is wrong - it appears to have an outlined/bordered style.
+
+---
+
+## FIX REQUIRED
+
+1. Delete the current favicon files and replace with the EXACT same favicon used in Contract Conduit.
+
+2. If you can't copy from Contract Conduit, recreate with this SVG:
+```svg
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="4" fill="#d4a574"/>
+  <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" 
+        font-family="Arial, sans-serif" font-weight="bold" font-size="22" fill="#FFFFFF">
+    S
+  </text>
+</svg>
+```
+
+3. Make sure there is:
+   - NO black border/outline
+   - NO stroke on the S
+   - JUST solid orange rectangle with white S
+
+4. Generate all sizes:
+   - favicon.ico
+   - favicon-16x16.png
+   - favicon-32x32.png
+   - apple-touch-icon.png (180x180)
+
+5. Replace files in `public/` or `client/public/`
+
+6. Update index.html:
+```html
+<head>
+  <title>Mission Control | Agent Hub Portal</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <meta name="theme-color" content="#d4a574" />
+</head>
+```
+
+7. IMPORTANT: Clear any cached favicons. Add a cache-busting query string if needed:
+```html
+<link rel="icon" type="image/x-icon" href="/favicon.ico?v=2" />
+```
+
+---
+
+## REFERENCE
+
+Look at Contract Conduit's favicon (the tab showing "Mission Control | Spyglass Realty") - that's the CORRECT design. Agent Hub Portal should match it exactly:
+
+✅ Solid orange fill (#d4a574)
+✅ White "S" text (#FFFFFF)
+❌ No outline
+❌ No border
+❌ No black strokes
+
+---
+
+## AFTER UPDATING
+
+- Clear browser cache (Ctrl+Shift+R or Cmd+Shift+R)
+- Check both tabs show identical favicons
+- Deploy to update production
