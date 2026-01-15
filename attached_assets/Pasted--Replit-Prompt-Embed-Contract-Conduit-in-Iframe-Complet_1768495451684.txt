@@ -1,0 +1,520 @@
+## Replit Prompt: Embed Contract Conduit in Iframe (Complete Fix)
+
+---
+
+**Task: Make Contract Conduit Load Inside Mission Control (Not Redirect)**
+
+When clicking "Contract Conduit" in Mission Control's app list, it currently redirects to the Render URL. We want it to display **inside Mission Control** using an iframe.
+
+**This requires changes to TWO projects:**
+1. **Mission Control (AgentHubPortal)** - Display iframe instead of redirecting
+2. **Contract Conduit** - Change Google OAuth to popup mode so it works in iframe
+
+---
+
+## PART 1: Mission Control (AgentHubPortal) Changes
+
+### Step 1: Find the Current Click Handler
+
+Search for where Contract Conduit click is handled. Look for:
+- `window.open` or `window.location` redirecting to Render URL
+- A `Link` or `navigate()` going to `/app/contract-conduit`
+- Click handler on the app card
+
+```bash
+# Search for the redirect code
+grep -r "contract-conduit" --include="*.tsx" --include="*.ts"
+grep -r "onrender.com" --include="*.tsx" --include="*.ts"
+grep -r "window.open" --include="*.tsx" --include="*.ts"
+```
+
+### Step 2: Create the Embedded App View Component
+
+Create a new component to display apps in an iframe:
+
+```typescript
+// components/EmbeddedAppView.tsx
+
+import { useState } from 'react';
+import { ArrowLeft, ExternalLink, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
+
+interface EmbeddedAppViewProps {
+  appName: string;
+  appUrl: string;
+  appIcon?: React.ReactNode;
+  onBack: () => void;
+}
+
+export function EmbeddedAppView({ appName, appUrl, appIcon, onBack }: EmbeddedAppViewProps) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  const handleIframeLoad = () => {
+    setIsLoading(false);
+  };
+
+  const openInNewTab = () => {
+    window.open(appUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const refreshIframe = () => {
+    setIsLoading(true);
+    setHasError(false);
+    const iframe = document.getElementById('embedded-app-iframe') as HTMLIFrameElement;
+    if (iframe) {
+      iframe.src = iframe.src;
+    }
+  };
+
+  return (
+    <div className={`embedded-app-container ${isFullscreen ? 'fullscreen' : ''}`}>
+      {/* Header */}
+      <div className="embedded-app-header">
+        <div className="header-left">
+          <button onClick={onBack} className="back-btn">
+            <ArrowLeft size={18} />
+            <span>Back</span>
+          </button>
+          <div className="app-title">
+            {appIcon && <span className="app-icon">{appIcon}</span>}
+            <h2>{appName}</h2>
+          </div>
+        </div>
+        <div className="header-right">
+          <button onClick={refreshIframe} className="header-btn" title="Refresh">
+            <RefreshCw size={16} />
+          </button>
+          <button onClick={() => setIsFullscreen(!isFullscreen)} className="header-btn" title="Toggle Fullscreen">
+            {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+          </button>
+          <button onClick={openInNewTab} className="header-btn" title="Open in New Tab">
+            <ExternalLink size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Iframe Container */}
+      <div className="iframe-container">
+        {isLoading && (
+          <div className="loading-overlay">
+            <div className="spinner"></div>
+            <p>Loading {appName}...</p>
+          </div>
+        )}
+
+        {hasError ? (
+          <div className="error-state">
+            <p>Failed to load {appName}</p>
+            <button onClick={openInNewTab}>Open in New Tab</button>
+          </div>
+        ) : (
+          <iframe
+            id="embedded-app-iframe"
+            src={appUrl}
+            title={appName}
+            onLoad={handleIframeLoad}
+            onError={() => setHasError(true)}
+            sandbox="allow-same-origin allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms allow-downloads"
+            allow="clipboard-write; clipboard-read"
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+### Step 3: Add the Styles
+
+```css
+/* Add to your styles or create embedded-app.css */
+
+.embedded-app-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px); /* Adjust based on your nav height */
+  background: #1a1a1a;
+}
+
+.embedded-app-container.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100vh;
+  z-index: 9999;
+}
+
+.embedded-app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: #242424;
+  border-bottom: 1px solid #333;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.back-btn:hover {
+  background: #333;
+}
+
+.app-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-title .app-icon {
+  width: 32px;
+  height: 32px;
+  background: #d4a574;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-title h2 {
+  margin: 0;
+  font-size: 16px;
+  color: #fff;
+}
+
+.header-right {
+  display: flex;
+  gap: 8px;
+}
+
+.header-btn {
+  padding: 8px;
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #999;
+  cursor: pointer;
+}
+
+.header-btn:hover {
+  background: #333;
+  color: #fff;
+}
+
+.iframe-container {
+  flex: 1;
+  position: relative;
+}
+
+.iframe-container iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a1a;
+  gap: 16px;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #333;
+  border-top-color: #d4a574;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-overlay p {
+  color: #888;
+}
+
+.error-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a1a;
+  gap: 16px;
+}
+
+.error-state p {
+  color: #fff;
+}
+
+.error-state button {
+  padding: 10px 20px;
+  background: #d4a574;
+  border: none;
+  border-radius: 6px;
+  color: #1a1a1a;
+  cursor: pointer;
+  font-weight: 500;
+}
+```
+
+### Step 4: Update Dashboard/App List to Use Embedded View
+
+```typescript
+// pages/Dashboard.tsx or wherever your app list is
+
+import { useState } from 'react';
+import { EmbeddedAppView } from '@/components/EmbeddedAppView';
+import { FileText, MessageSquare, Mail } from 'lucide-react';
+
+// Define which apps can be embedded vs open in new tab
+const APPS = [
+  {
+    id: 'contract-conduit',
+    name: 'Contract Conduit',
+    description: 'Your first step to entering a transaction.',
+    url: 'https://mission-control-contract-conduit.onrender.com/',
+    icon: <FileText size={20} />,
+    tags: ['Core', 'Live'],
+    canEmbed: true,  // <-- This one embeds
+  },
+  {
+    id: 'rechat',
+    name: 'ReChat', 
+    description: 'The Real Estate Super App.',
+    url: 'https://app.rechat.com',
+    icon: <MessageSquare size={20} />,
+    tags: ['Core', 'Live'],
+    canEmbed: false,  // <-- This one opens in new tab (external)
+  },
+  // ... other apps
+];
+
+export function Dashboard() {
+  const [activeEmbeddedApp, setActiveEmbeddedApp] = useState<typeof APPS[0] | null>(null);
+
+  const handleAppClick = (app: typeof APPS[0]) => {
+    if (app.canEmbed) {
+      // Show embedded iframe view
+      setActiveEmbeddedApp(app);
+    } else {
+      // Open external apps in new tab
+      window.open(app.url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  // If an app is active, show the embedded view
+  if (activeEmbeddedApp) {
+    return (
+      <EmbeddedAppView
+        appName={activeEmbeddedApp.name}
+        appUrl={activeEmbeddedApp.url}
+        appIcon={activeEmbeddedApp.icon}
+        onBack={() => setActiveEmbeddedApp(null)}
+      />
+    );
+  }
+
+  // Otherwise show the dashboard with app cards
+  return (
+    <div className="dashboard">
+      {/* Your stats cards... */}
+      
+      <section className="apps-section">
+        <h2>Your Applications</h2>
+        <div className="apps-grid">
+          {APPS.map((app) => (
+            <div
+              key={app.id}
+              className="app-card"
+              onClick={() => handleAppClick(app)}
+            >
+              <div className="app-card-icon">{app.icon}</div>
+              <h3>{app.name}</h3>
+              <p>{app.description}</p>
+              <div className="tags">
+                {app.tags.map(tag => (
+                  <span key={tag} className={`tag ${tag.toLowerCase()}`}>{tag}</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+```
+
+### Step 5: Remove the Old Intermediate Page/Route
+
+If there's a route like `/app/contract-conduit` that shows the "Open Contract Conduit" button, remove it:
+
+```typescript
+// In your routes file (App.tsx or routes.tsx)
+
+// REMOVE this route:
+// <Route path="/app/contract-conduit" element={<ContractConduitPage />} />
+
+// DELETE the intermediate page file if it exists:
+// pages/ContractConduitPage.tsx
+// pages/apps/ContractConduit.tsx
+```
+
+---
+
+## PART 2: Contract Conduit Changes (Google OAuth Fix)
+
+For the iframe to work, Contract Conduit needs to use **popup-based** Google authentication instead of redirect-based.
+
+### Step 1: Find Current Google Auth Code
+
+```bash
+# In Contract Conduit project, search for:
+grep -r "signInWithRedirect" --include="*.tsx" --include="*.ts"
+grep -r "GoogleAuthProvider" --include="*.tsx" --include="*.ts"
+grep -r "google.accounts" --include="*.tsx" --include="*.ts"
+```
+
+### Step 2: Change to Popup Mode
+
+**If using Firebase Auth:**
+
+```typescript
+// BEFORE (doesn't work in iframe):
+import { signInWithRedirect, GoogleAuthProvider } from 'firebase/auth';
+signInWithRedirect(auth, provider);
+
+// AFTER (works in iframe):
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+
+const handleGoogleSignIn = async () => {
+  const provider = new GoogleAuthProvider();
+  try {
+    const result = await signInWithPopup(auth, provider);  // <-- CHANGE THIS
+    // Handle successful sign in
+    const user = result.user;
+    console.log('Signed in:', user.email);
+  } catch (error) {
+    console.error('Sign in error:', error);
+  }
+};
+```
+
+**If using Google Identity Services:**
+
+```typescript
+// Initialize with popup mode
+google.accounts.id.initialize({
+  client_id: 'YOUR_GOOGLE_CLIENT_ID',
+  callback: handleCredentialResponse,
+  ux_mode: 'popup',  // <-- ADD THIS
+});
+```
+
+**If using @react-oauth/google:**
+
+```typescript
+import { GoogleLogin } from '@react-oauth/google';
+
+// This already uses popup by default, but ensure it's not set to redirect
+<GoogleLogin
+  onSuccess={handleSuccess}
+  onError={handleError}
+  useOneTap={false}  // One Tap can have issues in iframes
+/>
+```
+
+### Step 3: Update Contract Conduit's Headers (Allow Iframe Embedding)
+
+In Contract Conduit's server, add headers to allow embedding from Mission Control:
+
+```typescript
+// server/index.ts or middleware file
+
+app.use((req, res, next) => {
+  // Allow iframe embedding from Mission Control
+  res.setHeader(
+    'Content-Security-Policy',
+    "frame-ancestors 'self' https://*.replit.dev https://*.onrender.com http://localhost:*"
+  );
+  // Remove X-Frame-Options if set elsewhere (CSP takes precedence)
+  res.removeHeader('X-Frame-Options');
+  next();
+});
+```
+
+**If using Helmet:**
+
+```typescript
+import helmet from 'helmet';
+
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      frameAncestors: ["'self'", "https://*.replit.dev", "https://*.onrender.com"]
+    }
+  },
+  frameguard: false  // Disable X-Frame-Options, use CSP instead
+}));
+```
+
+---
+
+## Quick Summary Checklist
+
+### Mission Control (AgentHubPortal):
+- [ ] Create `EmbeddedAppView` component with iframe
+- [ ] Add styles for embedded view
+- [ ] Update Dashboard to show embedded view on Contract Conduit click
+- [ ] Remove old redirect code / intermediate page
+- [ ] Ensure iframe has `allow-popups` in sandbox attribute
+
+### Contract Conduit:
+- [ ] Change `signInWithRedirect` → `signInWithPopup` (Firebase)
+- [ ] Or add `ux_mode: 'popup'` (Google Identity Services)
+- [ ] Add CSP header to allow iframe embedding
+- [ ] Remove `X-Frame-Options: DENY` if present
+- [ ] Deploy changes to Render
+
+---
+
+## Testing
+
+1. Click Contract Conduit in Mission Control
+2. Should see embedded iframe with header bar (Back, Fullscreen, Open in New Tab)
+3. Contract Conduit should load inside the iframe
+4. Click "Sign in with Google" in Contract Conduit
+5. A popup window should open for Google sign-in
+6. After signing in, popup closes and you're authenticated in the iframe
+
+---
+
+Copy this into both Replit projects to implement iframe embedding with working Google OAuth!
