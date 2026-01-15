@@ -41,8 +41,7 @@ export const apps: AppDefinition[] = [
     icon: FileText,
     category: "Core",
     color: "bg-amber-100 text-amber-700",
-    url: "https://mission-control-contract-conduit.onrender.com/",
-    noIframe: true
+    url: "https://mission-control-contract-conduit.onrender.com/"
   },
   {
     id: "rechat",
