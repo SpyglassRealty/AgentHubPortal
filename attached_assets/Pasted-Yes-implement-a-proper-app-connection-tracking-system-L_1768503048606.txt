@@ -1,0 +1,119 @@
+Yes, implement a proper app connection tracking system. Let's do this in phases:
+
+---
+
+## PHASE 1: Simple Approach (No Database)
+
+For now, let's categorize apps by type and show accurate status without database tracking:
+
+### 1. Update App Structure with connection types:
+
+// In apps.ts or wherever apps are defined
+type AppConnectionType = 
+  | 'embedded'      // Contract Conduit - works inside portal
+  | 'external'      // Opens in new tab, no auth needed
+  | 'oauth'         // Requires OAuth connection (future)
+  | 'redirect';     // Just a link to external site
+
+interface App {
+  id: string;
+  name: string;
+  url: string;
+  connectionType: AppConnectionType;
+  isConnected?: boolean;  // For future OAuth apps
+  // ... other fields
+}
+
+const apps = [
+  {
+    id: 'contract-conduit',
+    name: 'Contract Conduit',
+    connectionType: 'embedded',  // Actually embedded in portal
+    // ...
+  },
+  {
+    id: 'slack',
+    name: 'Slack',
+    connectionType: 'redirect',  // Just opens Slack
+    // ...
+  },
+  // ... etc
+];
+
+### 2. Update Dashboard Stats to be accurate:
+
+// Instead of counting all apps with URLs:
+const embeddedApps = apps.filter(a => a.connectionType === 'embedded');
+const externalApps = apps.filter(a => a.connectionType === 'external' || a.connectionType === 'redirect');
+
+// Show something like:
+{ label: "Integrated Apps", value: embeddedApps.length.toString(), sublabel: "In Portal" }
+// or
+{ label: "Available Apps", value: apps.length.toString(), sublabel: "Total" }
+
+### 3. Add Visual Indicators on App Cards:
+
+// Show different badge/indicator based on type:
+- 🟢 Green dot + "Integrated" = embedded apps (Contract Conduit)
+- 🔗 Link icon + "External" = opens in new tab
+- ⚡ "Quick Access" = redirect links
+
+### 4. Update App Card Component:
+
+function AppCard({ app }) {
+  const getStatusBadge = () => {
+    switch (app.connectionType) {
+      case 'embedded':
+        return <span className="badge badge-green">Integrated</span>;
+      case 'external':
+        return <span className="badge badge-blue">External</span>;
+      case 'redirect':
+        return <span className="badge badge-gray">Link</span>;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="app-card">
+      <div className="app-card-header">
+        {app.icon}
+        {getStatusBadge()}
+      </div>
+      <h3>{app.name}</h3>
+      <p>{app.description}</p>
+      {/* ... */}
+    </div>
+  );
+}
+
+### 5. Update the "Active Apps" stat to be meaningful:
+
+Options:
+A) Show "1 Integrated" (just Contract Conduit that's truly embedded)
+B) Show "13 Available" (total apps in portal)
+C) Show "13 Apps" with sublabel "1 Integrated • 12 External"
+
+I recommend Option C for clarity.
+
+---
+
+## PHASE 2 (Future): Database Tracking
+
+For later, if you want to track actual OAuth connections:
+
+- Create user_app_connections table
+- Track when user authenticates with OAuth apps
+- Show real "Connected" status per user
+- This is more complex and can be done later
+
+---
+
+## FOR NOW: Implement Phase 1
+
+Update the apps to have connectionType, fix the dashboard stat to be accurate, and add visual indicators so users know which apps are truly integrated vs external links.
+
+This gives honest, clear UX without overcomplicating things.
+
+Summary:
+Current (Misleading)After Fix (Clear)"13 Connected""13 Apps • 1 Integrated"No visual distinctionBadge: Integrated / External / LinkUser thinks all apps are connectedUser knows what to expect

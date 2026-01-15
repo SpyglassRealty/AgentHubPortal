@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowUpRight, Plus, ExternalLink, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowUpRight, Plus, ExternalLink, Sparkles, ChevronDown, ChevronUp, Plug, Link2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { OnboardingModal } from "@/components/onboarding-modal";
 import { SuggestionCard } from "@/components/suggestion-card";
@@ -137,7 +137,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
             { label: "Action Items", value: suggestions.length.toString(), sublabel: "To Review" },
-            { label: "Active Apps", value: apps.filter(a => a.url).length.toString(), sublabel: "Connected" },
+            { label: "Available Apps", value: apps.length.toString(), sublabel: `${apps.filter(a => a.connectionType === 'embedded').length} Integrated` },
             { label: "Resources", value: "24/7", sublabel: "Available" },
           ].map((stat, i) => (
             <Card key={i} className="bg-card border-border shadow-sm hover:shadow-md transition-all">
@@ -191,9 +191,22 @@ export default function DashboardPage() {
                       <Badge variant="secondary" className="text-xs font-normal bg-secondary/80">
                         {app.category}
                       </Badge>
-                      {app.url && (
-                        <Badge variant="outline" className="text-xs font-normal border-[hsl(28,94%,54%)]/30 text-[hsl(28,94%,54%)]">
-                          Live
+                      {app.connectionType === 'embedded' && (
+                        <Badge variant="outline" className="text-xs font-normal border-emerald-500/30 text-emerald-600 bg-emerald-500/10 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          Integrated
+                        </Badge>
+                      )}
+                      {app.connectionType === 'external' && (
+                        <Badge variant="outline" className="text-xs font-normal border-blue-500/30 text-blue-600 bg-blue-500/10 flex items-center gap-1">
+                          <ExternalLink className="w-3 h-3" />
+                          External
+                        </Badge>
+                      )}
+                      {app.connectionType === 'redirect' && (
+                        <Badge variant="outline" className="text-xs font-normal border-muted-foreground/30 text-muted-foreground flex items-center gap-1">
+                          <Link2 className="w-3 h-3" />
+                          Link
                         </Badge>
                       )}
                     </div>
