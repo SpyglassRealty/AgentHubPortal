@@ -97,7 +97,7 @@ export default function AppView() {
               className="w-full h-full border-0"
               title={app.name}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-muted/20">
