@@ -1,0 +1,80 @@
+Update the favicon and page title for Mission Control.
+
+---
+
+## 1. UPDATE FAVICON
+
+Replace the default Replit favicon with the Spyglass Realty branding.
+
+Steps:
+
+1. Add favicon files to `client/public/` or `public/` folder:
+   - Use the orange "S" icon from the Mission Control sidebar for brand consistency
+   - Create multiple sizes for browser compatibility:
+     * favicon.ico (32x32)
+     * favicon-16x16.png
+     * favicon-32x32.png
+     * apple-touch-icon.png (180x180)
+
+2. Update `index.html` in the <head> section:
+```html
+<head>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+</head>
+```
+
+3. If the orange Spyglass icon isn't available as a separate file, extract it from the sidebar component or use `SpyglassRealty_Logo_Black.png` and create an orange version.
+
+---
+
+## 2. UPDATE PAGE TITLE
+
+Change the browser tab title from any default to "Mission Control":
+
+In `index.html`:
+```html
+<head>
+  <title>Mission Control | Spyglass Realty</title>
+</head>
+```
+
+Or if using React Helmet or similar, update the default title in the app.
+
+---
+
+## 3. ADD META TAGS (Optional but recommended)
+
+For better SEO and social sharing:
+```html
+<head>
+  <title>Mission Control | Spyglass Realty</title>
+  <meta name="description" content="Real estate transaction management for Spyglass Realty agents." />
+  <meta name="theme-color" content="#d4a574" /> <!-- Orange brand color -->
+  
+  <!-- Open Graph for social sharing -->
+  <meta property="og:title" content="Mission Control | Spyglass Realty" />
+  <meta property="og:description" content="Real estate transaction management for Spyglass Realty agents." />
+  <meta property="og:image" content="/og-image.png" />
+</head>
+```
+
+---
+
+## CHECKLIST
+
+- [ ] Create/add favicon.ico (32x32)
+- [ ] Create/add favicon-16x16.png
+- [ ] Create/add favicon-32x32.png  
+- [ ] Create/add apple-touch-icon.png (180x180)
+- [ ] Update index.html with favicon links
+- [ ] Update <title> to "Mission Control | Spyglass Realty"
+- [ ] Add theme-color meta tag (orange: #d4a574)
+- [ ] Test in browser - favicon should show in tab
+
+Use the orange Spyglass "S" icon for brand consistency with the sidebar.
+
+What this fixes:
+BeforeAfterReplit default faviconSpyglass orange "S" iconGeneric page title"Mission Control | Spyglass Realty"No theme colorOrange brand color (#d4a574)
