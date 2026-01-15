@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useRoute } from "wouter";
 import Layout from "@/components/layout";
 import { apps } from "@/lib/apps";
@@ -7,13 +7,22 @@ import { ExternalLink, ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "next-themes";
 
 export default function AppView() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const { resolvedTheme } = useTheme();
   const [, params] = useRoute("/app/:id");
   const appId = params?.id;
   const app = apps.find((a) => a.id === appId);
+
+  const iframeUrl = useMemo(() => {
+    if (!app?.url) return null;
+    const url = new URL(app.url);
+    url.searchParams.set('theme', resolvedTheme || 'dark');
+    return url.toString();
+  }, [app?.url, resolvedTheme]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -91,9 +100,9 @@ export default function AppView() {
                 </Button>
               </div>
             </div>
-          ) : app.url ? (
+          ) : iframeUrl ? (
             <iframe 
-              src={app.url} 
+              src={iframeUrl} 
               className="w-full h-full border-0"
               title={app.name}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
