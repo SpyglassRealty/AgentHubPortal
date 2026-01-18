@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowUpRight, Plus, ExternalLink, Sparkles, ChevronDown, ChevronUp, Plug, Link2 } from "lucide-react";
+import { ArrowUpRight, Plus, ExternalLink, Sparkles, ChevronDown, ChevronUp, Plug, Link2, PlayCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { OnboardingModal } from "@/components/onboarding-modal";
 import { SuggestionCard } from "@/components/suggestion-card";
@@ -22,6 +22,21 @@ interface ProfileResponse {
 
 interface SuggestionsResponse {
   suggestions: ContextSuggestion[];
+}
+
+interface LatestTrainingVideo {
+  title: string;
+  description: string | null;
+  duration: number;
+  durationFormatted: string;
+  createdAt: string;
+  link: string;
+  thumbnail: string | null;
+}
+
+interface VimeoResponse {
+  video: LatestTrainingVideo | null;
+  message?: string;
 }
 
 export default function DashboardPage() {
@@ -46,6 +61,16 @@ export default function DashboardPage() {
       return res.json();
     },
     enabled: !profileData?.needsOnboarding || onboardingComplete,
+  });
+
+  const { data: vimeoData } = useQuery<VimeoResponse>({
+    queryKey: ["/api/vimeo/latest-video"],
+    queryFn: async () => {
+      const res = await fetch("/api/vimeo/latest-video", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch latest video");
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
   });
 
   const showOnboarding = profileData?.needsOnboarding && !onboardingComplete;
@@ -245,32 +270,44 @@ export default function DashboardPage() {
             <h2 className="text-xl font-display font-semibold tracking-tight mb-4">Company Updates</h2>
             <Card>
               <CardContent className="p-0">
-                {[
-                  { 
-                    title: "New Training Module Available",
-                    desc: "Check out the latest contract negotiation training in RealtyHack AI.",
-                    time: "Today"
-                  },
-                  { 
-                    title: "Q4 Goals & Incentives",
-                    desc: "Review the updated commission structure and bonus opportunities for top performers.",
-                    time: "Yesterday"
-                  }
-                ].map((news, i) => (
-                  <div key={i} className="p-6 flex gap-4 border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
-                    <div className="h-12 w-12 rounded-lg bg-[hsl(28,94%,54%)]/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-[hsl(28,94%,54%)] font-display font-bold text-lg">S</span>
+                {vimeoData?.video && (
+                  <a 
+                    href={vimeoData.video.link} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="p-6 flex gap-4 border-b hover:bg-muted/30 transition-colors cursor-pointer block"
+                    data-testid="link-latest-training-video"
+                  >
+                    <div className="h-12 w-12 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                      <PlayCircle className="h-6 w-6 text-purple-600" />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                        <Badge variant="secondary" className="h-5 text-[10px]">Announcement</Badge>
-                        <span>{news.time}</span>
+                        <Badge variant="secondary" className="h-5 text-[10px] bg-purple-100 text-purple-700">New Training</Badge>
+                        <span data-testid="text-video-duration">{vimeoData.video.durationFormatted}</span>
                       </div>
-                      <h3 className="font-medium text-foreground mb-1">{news.title}</h3>
-                      <p className="text-sm text-muted-foreground line-clamp-2">{news.desc}</p>
+                      <h3 className="font-medium text-foreground mb-1" data-testid="text-video-title">{vimeoData.video.title}</h3>
+                      <p className="text-sm text-muted-foreground line-clamp-2" data-testid="text-video-description">
+                        {vimeoData.video.description || "Watch the latest training module from Spyglass Realty."}
+                      </p>
                     </div>
+                  </a>
+                )}
+                <div className="p-6 flex gap-4 border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
+                  <div className="h-12 w-12 rounded-lg bg-[hsl(28,94%,54%)]/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-[hsl(28,94%,54%)] font-display font-bold text-lg">S</span>
                   </div>
-                ))}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                      <Badge variant="secondary" className="h-5 text-[10px]">Announcement</Badge>
+                      <span>Yesterday</span>
+                    </div>
+                    <h3 className="font-medium text-foreground mb-1">Q4 Goals & Incentives</h3>
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      Review the updated commission structure and bonus opportunities for top performers.
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>

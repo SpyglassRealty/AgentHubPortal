@@ -7,6 +7,7 @@ import { getRezenClient } from "./rezenClient";
 import { generateSuggestionsForUser } from "./contextEngine";
 import type { User } from "@shared/schema";
 import OpenAI from "openai";
+import { getLatestTrainingVideo } from "./vimeoClient";
 
 // Helper function to get the actual database user from request
 // Handles both regular auth (ID lookup) and Google OAuth (email lookup)
@@ -725,6 +726,20 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching due tasks:", error);
       res.status(500).json({ message: "Failed to fetch due tasks" });
+    }
+  });
+
+  // Vimeo - Get latest training video
+  app.get('/api/vimeo/latest-video', isAuthenticated, async (req: any, res) => {
+    try {
+      const video = await getLatestTrainingVideo();
+      if (!video) {
+        return res.json({ video: null, message: "No training videos available" });
+      }
+      res.json({ video });
+    } catch (error) {
+      console.error("Error fetching latest training video:", error);
+      res.status(500).json({ message: "Failed to fetch training video" });
     }
   });
 

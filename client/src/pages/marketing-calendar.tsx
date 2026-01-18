@@ -177,32 +177,32 @@ export default function MarketingCalendarPage() {
             </div>
 
             {generateIdeas.data.ideas.map((week, weekIndex) => (
-              <Card key={weekIndex}>
+              <Card key={weekIndex} data-testid={`card-week-${week.week}`}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2" data-testid={`title-week-${week.week}`}>
                     <Badge variant="outline" className="text-[hsl(28,94%,54%)] border-[hsl(28,94%,54%)]/30">
                       Week {week.week}
                     </Badge>
-                    {week.theme}
+                    <span data-testid={`text-theme-week-${week.week}`}>{week.theme}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {week.posts.map((post, postIndex) => {
                     const copyId = `${weekIndex}-${postIndex}`;
                     return (
-                      <div key={postIndex} className="p-4 rounded-lg border hover:bg-muted/30 transition-colors">
+                      <div key={postIndex} className="p-4 rounded-lg border hover:bg-muted/30 transition-colors" data-testid={`post-${copyId}`}>
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 space-y-2">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <Badge className={getPlatformColor(post.platform)}>
+                              <Badge className={getPlatformColor(post.platform)} data-testid={`badge-platform-${copyId}`}>
                                 {getPlatformIcon(post.platform)}
                                 <span className="ml-1">{post.platform}</span>
                               </Badge>
-                              <Badge variant="secondary">{post.type}</Badge>
-                              <span className="text-xs text-muted-foreground">Best time: {post.bestTime}</span>
+                              <Badge variant="secondary" data-testid={`badge-type-${copyId}`}>{post.type}</Badge>
+                              <span className="text-xs text-muted-foreground" data-testid={`text-besttime-${copyId}`}>Best time: {post.bestTime}</span>
                             </div>
-                            <p className="text-sm">{post.caption}</p>
-                            <div className="flex flex-wrap gap-1">
+                            <p className="text-sm" data-testid={`text-caption-${copyId}`}>{post.caption}</p>
+                            <div className="flex flex-wrap gap-1" data-testid={`hashtags-${copyId}`}>
                               {post.hashtags.map((tag, i) => (
                                 <span key={i} className="text-xs text-[hsl(28,94%,54%)]">#{tag}</span>
                               ))}
@@ -230,8 +230,27 @@ export default function MarketingCalendarPage() {
           </div>
         )}
 
-        {!generateIdeas.data && !generateIdeas.isPending && (
-          <Card className="flex items-center justify-center h-64">
+        {generateIdeas.isError && (
+          <Card className="flex items-center justify-center h-64 border-red-200 bg-red-50" data-testid="error-generate-ideas">
+            <CardContent className="text-center text-red-600">
+              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="font-medium">Failed to generate content ideas</p>
+              <p className="text-sm">Please try again or contact support if the issue persists</p>
+              <Button 
+                onClick={handleGenerate} 
+                variant="outline" 
+                className="mt-4 border-red-300 text-red-700 hover:bg-red-100"
+                data-testid="button-retry"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Try Again
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {!generateIdeas.data && !generateIdeas.isPending && !generateIdeas.isError && (
+          <Card className="flex items-center justify-center h-64" data-testid="empty-state-calendar">
             <CardContent className="text-center text-muted-foreground">
               <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p className="font-medium">No content ideas generated yet</p>
