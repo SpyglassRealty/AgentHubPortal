@@ -41,50 +41,6 @@ export default function MarketingPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="bg-gradient-to-br from-pink-50 to-pink-100/50 border-pink-200">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 rounded-lg bg-pink-100">
-                  <Mail className="h-5 w-5 text-pink-700" />
-                </div>
-                <h3 className="font-semibold text-pink-900">Email Campaigns</h3>
-              </div>
-              <p className="text-sm text-pink-700">
-                Convert blog posts to emails and reach your audience with targeted campaigns.
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100/50 border-purple-200">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 rounded-lg bg-purple-100">
-                  <Palette className="h-5 w-5 text-purple-700" />
-                </div>
-                <h3 className="font-semibold text-purple-900">Design Tools</h3>
-              </div>
-              <p className="text-sm text-purple-700">
-                Create stunning visuals for listings, social media, and marketing materials.
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-br from-teal-50 to-teal-100/50 border-teal-200">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 rounded-lg bg-teal-100">
-                  <Share2 className="h-5 w-5 text-teal-700" />
-                </div>
-                <h3 className="font-semibold text-teal-900">Social & Ads</h3>
-              </div>
-              <p className="text-sm text-teal-700">
-                Manage your social presence and run targeted advertising campaigns.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
         <div className="space-y-4">
           <h2 className="text-xl font-display font-semibold tracking-tight">Marketing Apps & Tools</h2>
           
@@ -151,25 +107,49 @@ export default function MarketingPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                { label: "Brand Guidelines", desc: "Logo, colors, and typography standards" },
-                { label: "Email Templates", desc: "Pre-designed templates for common campaigns" },
-                { label: "Social Media Kit", desc: "Ready-to-use graphics for all platforms" },
-                { label: "Marketing Calendar", desc: "Seasonal campaigns and important dates" },
-              ].map((resource, i) => (
-                <div
-                  key={i}
-                  className="p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer group"
-                >
+              <a
+                href="https://docs.google.com/document/d/1LKeF3DPqWelqF-ESWzJe3FEVewVTNaDCt4yv3rMz740/edit?usp=sharing"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">Brand Guidelines</h4>
+                    <p className="text-sm text-muted-foreground">Logo, colors, and typography standards</p>
+                  </div>
+                  <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[hsl(28,94%,54%)] transition-colors" />
+                </div>
+              </a>
+              <div className="p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer group">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">Email Templates</h4>
+                    <p className="text-sm text-muted-foreground">Pre-designed templates for common campaigns</p>
+                  </div>
+                  <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[hsl(28,94%,54%)] transition-colors" />
+                </div>
+              </div>
+              <div className="p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer group">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">Social Media Kit</h4>
+                    <p className="text-sm text-muted-foreground">Ready-to-use graphics for all platforms</p>
+                  </div>
+                  <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[hsl(28,94%,54%)] transition-colors" />
+                </div>
+              </div>
+              <Link href="/marketing-calendar">
+                <div className="p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer group">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-medium">{resource.label}</h4>
-                      <p className="text-sm text-muted-foreground">{resource.desc}</p>
+                      <h4 className="font-medium">Marketing Calendar</h4>
+                      <p className="text-sm text-muted-foreground">AI-powered social media ideas for real estate</p>
                     </div>
                     <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[hsl(28,94%,54%)] transition-colors" />
                   </div>
                 </div>
-              ))}
+              </Link>
             </div>
           </CardContent>
         </Card>
