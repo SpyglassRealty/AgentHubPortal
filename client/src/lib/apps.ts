@@ -5,6 +5,7 @@ import {
   Megaphone, 
   FileText, 
   Calendar, 
+  CalendarDays,
   BarChart3, 
   BrainCircuit,
   BookOpen,
@@ -184,5 +185,6 @@ export const navItems = [
   { label: "Leads", icon: Users, href: "/leads" },
   { label: "Properties", icon: Building2, href: "/properties" },
   { label: "Marketing", icon: Megaphone, href: "/marketing" },
+  { label: "Marketing Calendar", icon: CalendarDays, href: "/marketing-calendar" },
   { label: "Settings", icon: Settings, href: "/settings" },
 ];
