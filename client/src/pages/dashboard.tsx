@@ -280,14 +280,14 @@ export default function DashboardPage() {
             <Card>
               <CardContent className="p-6 space-y-3">
                 {[
-                  { label: "Company Handbook", href: "#" },
-                  { label: "Submit IT Request", href: "#" },
-                  { label: "Marketing Resources", href: "#" },
-                  { label: "Contact Support", href: "#" },
+                  { label: "Company Handbook", href: "https://docs.google.com/document/d/13EJYTRJ9QAXOdJH1H6Vyvh6iBaUsVJcUORxw6PuDcVM/edit?usp=sharing" },
+                  { label: "Marketing Resources", href: "https://app.rechat.com" },
                 ].map((link, i) => (
                   <a 
                     key={i} 
                     href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors group"
                   >
                     <span className="text-sm font-medium">{link.label}</span>
