@@ -6,6 +6,7 @@ import { getFubClient } from "./fubClient";
 import { getRezenClient } from "./rezenClient";
 import { generateSuggestionsForUser } from "./contextEngine";
 import type { User } from "@shared/schema";
+import OpenAI from "openai";
 
 // Helper function to get the actual database user from request
 // Handles both regular auth (ID lookup) and Google OAuth (email lookup)
@@ -724,6 +725,81 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching due tasks:", error);
       res.status(500).json({ message: "Failed to fetch due tasks" });
+    }
+  });
+
+  // Marketing Calendar - AI-powered social media ideas
+  app.post('/api/marketing/social-ideas', isAuthenticated, async (req: any, res) => {
+    try {
+      const { month, year } = req.body;
+      
+      if (!month || !year) {
+        return res.status(400).json({ message: "Month and year are required" });
+      }
+
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const prompt = `Generate a social media content calendar for real estate agents for ${month} ${year}. 
+
+Create content ideas for 4 weeks with the following structure:
+- Each week should have a theme relevant to real estate (e.g., "Market Insights", "Home Buying Tips", "Community Spotlight", "Success Stories")
+- For each week, provide 3-4 post ideas across different platforms (Instagram, Facebook, LinkedIn)
+- Each post should include:
+  - Platform name
+  - Post type (Reel, Carousel, Story, Photo Post, Article)
+  - A ready-to-use caption (2-3 sentences)
+  - 3-5 relevant hashtags
+  - Best posting time
+
+Consider seasonal events, holidays, and real estate market trends for ${month}.
+
+Respond with valid JSON in this exact format:
+{
+  "month": "${month}",
+  "year": ${year},
+  "ideas": [
+    {
+      "week": 1,
+      "theme": "Theme Name",
+      "posts": [
+        {
+          "platform": "Instagram",
+          "type": "Reel",
+          "caption": "Ready-to-post caption text here",
+          "hashtags": ["realestate", "homebuying", "austinrealestate"],
+          "bestTime": "Tuesday 11am"
+        }
+      ]
+    }
+  ]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { 
+            role: "system", 
+            content: "You are a social media marketing expert specializing in real estate content. Generate creative, engaging content ideas that real estate agents can use immediately. Always respond with valid JSON only, no markdown." 
+          },
+          { role: "user", content: prompt }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 4000,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error("No response from AI");
+      }
+
+      const ideas = JSON.parse(content);
+      res.json(ideas);
+    } catch (error) {
+      console.error("Error generating social media ideas:", error);
+      res.status(500).json({ message: "Failed to generate social media ideas" });
     }
   });
 

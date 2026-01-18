@@ -15,6 +15,7 @@ import MyPerformancePage from "@/pages/my-performance";
 import SettingsPage from "@/pages/settings";
 import PropertiesPage from "@/pages/properties";
 import MarketingPage from "@/pages/marketing";
+import MarketingCalendarPage from "@/pages/marketing-calendar";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -51,6 +52,7 @@ function Router() {
       <Route path="/leads" component={LeadsPage} />
       <Route path="/properties" component={PropertiesPage} />
       <Route path="/marketing" component={MarketingPage} />
+      <Route path="/marketing-calendar" component={MarketingCalendarPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/app/:id" component={AppView} />
       <Route component={NotFound} />
