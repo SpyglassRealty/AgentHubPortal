@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpRight, ExternalLink, Building2, Home, MapPin } from "lucide-react";
+import { ArrowUpRight, ExternalLink, Building2 } from "lucide-react";
 import MarketPulse from "@/components/market-pulse";
 
 export default function PropertiesPage() {
@@ -47,50 +47,6 @@ export default function PropertiesPage() {
         </div>
 
         <MarketPulse />
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 rounded-lg bg-emerald-100">
-                  <Home className="h-5 w-5 text-emerald-700" />
-                </div>
-                <h3 className="font-semibold text-emerald-900">Active Listings</h3>
-              </div>
-              <p className="text-sm text-emerald-700">
-                Browse and manage your property listings across the Austin Metro Area.
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 rounded-lg bg-blue-100">
-                  <MapPin className="h-5 w-5 text-blue-700" />
-                </div>
-                <h3 className="font-semibold text-blue-900">Market Analysis</h3>
-              </div>
-              <p className="text-sm text-blue-700">
-                Real-time market data and trends for Travis, Williamson, Hays, Bastrop, and Caldwell counties.
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 rounded-lg bg-amber-100">
-                  <Building2 className="h-5 w-5 text-amber-700" />
-                </div>
-                <h3 className="font-semibold text-amber-900">Property Tools</h3>
-              </div>
-              <p className="text-sm text-amber-700">
-                Access property search, valuation tools, and client data management.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
 
         <div className="space-y-4">
           <h2 className="text-xl font-display font-semibold tracking-tight">Property Apps & Tools</h2>
