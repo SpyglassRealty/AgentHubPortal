@@ -58,16 +58,24 @@ interface PerformanceData {
     totalDealsYTD: number;
   };
   dealBreakdown?: {
-    buyerCount: number;
-    buyerVolume: number;
-    sellerCount: number;
-    sellerVolume: number;
-    totalVolume: number;
-    avgSalePrice: number;
+    // YTD
+    buyerCountYTD: number;
+    buyerVolumeYTD: number;
+    sellerCountYTD: number;
+    sellerVolumeYTD: number;
+    totalVolumeYTD: number;
+    // L12M
+    buyerCountL12M: number;
+    buyerVolumeL12M: number;
+    sellerCountL12M: number;
+    sellerVolumeL12M: number;
+    totalVolumeL12M: number;
+    // L12M-based metrics
+    avgSalePriceL12M: number;
   };
   insights?: {
     yoyChange: number;
-    avgDaysToClose: number;
+    avgDaysToCloseL12M: number;
     pendingCount: number;
   };
   pendingPipeline?: Array<{
@@ -505,8 +513,11 @@ export default function MyPerformancePage() {
   }
 
   const { summary, dealBreakdown, insights, pendingPipeline } = data;
-  const totalDeals = (dealBreakdown?.buyerCount || 0) + (dealBreakdown?.sellerCount || 0);
-  const buyerPercent = totalDeals > 0 ? ((dealBreakdown?.buyerCount || 0) / totalDeals) * 100 : 50;
+  
+  // L12M totals for percentage calculation (main progress bar)
+  const totalDealsL12M = (dealBreakdown?.buyerCountL12M || 0) + (dealBreakdown?.sellerCountL12M || 0);
+  const buyerPercentL12M = totalDealsL12M > 0 ? ((dealBreakdown?.buyerCountL12M || 0) / totalDealsL12M) * 100 : 50;
+  
   const lastYearGCI = insights?.yoyChange && summary?.gciYTD 
     ? summary.gciYTD / (1 + insights.yoyChange / 100) 
     : 0;
@@ -640,16 +651,21 @@ export default function MyPerformancePage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex justify-between items-baseline">
-                  <span className="text-4xl font-bold">{dealBreakdown?.buyerCount || 0}</span>
-                  <span className="text-lg text-muted-foreground">deals</span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">YTD</p>
+                    <p className="text-2xl font-bold">{dealBreakdown?.buyerCountYTD || 0} <span className="text-sm font-normal text-muted-foreground">deals</span></p>
+                    <p className="text-sm text-blue-600 font-medium">{formatCurrency(dealBreakdown?.buyerVolumeYTD || 0)}</p>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                    <p className="text-xs text-blue-600 mb-1">L12M</p>
+                    <p className="text-2xl font-bold">{dealBreakdown?.buyerCountL12M || 0} <span className="text-sm font-normal text-muted-foreground">deals</span></p>
+                    <p className="text-sm text-blue-600 font-medium">{formatCurrency(dealBreakdown?.buyerVolumeL12M || 0)}</p>
+                  </div>
                 </div>
-                <div className="text-2xl font-semibold text-blue-600">
-                  {formatCurrency(dealBreakdown?.buyerVolume || 0)} volume
-                </div>
-                <Progress value={buyerPercent} className="h-3" />
+                <Progress value={buyerPercentL12M} className="h-3" />
                 <p className="text-sm text-muted-foreground text-center">
-                  {Math.round(buyerPercent)}% of your deals
+                  {Math.round(buyerPercentL12M)}% of your deals (L12M)
                 </p>
               </div>
             </CardContent>
@@ -664,16 +680,21 @@ export default function MyPerformancePage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex justify-between items-baseline">
-                  <span className="text-4xl font-bold">{dealBreakdown?.sellerCount || 0}</span>
-                  <span className="text-lg text-muted-foreground">deals</span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">YTD</p>
+                    <p className="text-2xl font-bold">{dealBreakdown?.sellerCountYTD || 0} <span className="text-sm font-normal text-muted-foreground">deals</span></p>
+                    <p className="text-sm text-orange-600 font-medium">{formatCurrency(dealBreakdown?.sellerVolumeYTD || 0)}</p>
+                  </div>
+                  <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
+                    <p className="text-xs text-orange-600 mb-1">L12M</p>
+                    <p className="text-2xl font-bold">{dealBreakdown?.sellerCountL12M || 0} <span className="text-sm font-normal text-muted-foreground">deals</span></p>
+                    <p className="text-sm text-orange-600 font-medium">{formatCurrency(dealBreakdown?.sellerVolumeL12M || 0)}</p>
+                  </div>
                 </div>
-                <div className="text-2xl font-semibold text-orange-600">
-                  {formatCurrency(dealBreakdown?.sellerVolume || 0)} volume
-                </div>
-                <Progress value={100 - buyerPercent} className="h-3 [&>div]:bg-orange-500" />
+                <Progress value={100 - buyerPercentL12M} className="h-3 [&>div]:bg-orange-500" />
                 <p className="text-sm text-muted-foreground text-center">
-                  {Math.round(100 - buyerPercent)}% of your deals
+                  {Math.round(100 - buyerPercentL12M)}% of your deals (L12M)
                 </p>
               </div>
             </CardContent>
@@ -681,16 +702,18 @@ export default function MyPerformancePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
+          <Card data-testid="card-avg-sale-price">
             <CardContent className="p-6">
               <div className="flex justify-between items-center">
                 <div>
                   <p className="text-sm text-muted-foreground">Average Sale Price</p>
-                  <p className="text-2xl font-bold mt-1">{formatCurrency(dealBreakdown?.avgSalePrice || 0)}</p>
+                  <p className="text-2xl font-bold mt-1">{formatCurrency(dealBreakdown?.avgSalePriceL12M || 0)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Last 12 months</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-muted-foreground">Avg Days to Close</p>
-                  <p className="text-2xl font-bold mt-1">{insights?.avgDaysToClose || 0} days</p>
+                  <p className="text-2xl font-bold mt-1">{insights?.avgDaysToCloseL12M || 0} days</p>
+                  <p className="text-xs text-muted-foreground mt-1">Last 12 months</p>
                 </div>
               </div>
             </CardContent>

@@ -1,0 +1,79 @@
+Update My Performance Metrics
+Overview
+Update the My Performance page to modify how Buyer Side, Seller Side, Average Sales Price, and Average Days to Close metrics are displayed. This is HIGH PRIORITY — needs to be completed in the next couple of days.
+Changes Required
+1. Buyer Side & Seller Side Cards
+Current: Shows only YTD data
+Change: Add Last 12 Months (L12M) statistics
+Update the Buyer Side and Seller Side cards to show BOTH:
+
+Year to Date (YTD) — keep existing
+Last 12 Months (L12M) — add this
+
+Layout option A (tabs):
+┌─────────────────────────────────┐
+│ 🏠 Buyer Side                   │
+│ [YTD] [L12M]  ← toggle tabs     │
+│                                 │
+│ 15 deals                        │
+│ $5.2M volume                    │
+│ ████████████░░░ 65% of deals    │
+└─────────────────────────────────┘
+Layout option B (show both):
+┌─────────────────────────────────┐
+│ 🏠 Buyer Side                   │
+│                                 │
+│ YTD: 8 deals / $2.1M            │
+│ L12M: 15 deals / $5.2M          │
+│ ████████████░░░ 65% of deals    │
+└─────────────────────────────────┘
+2. Average Sales Price Card
+Current: Shows YTD
+Change: Show ONLY Last 12 Months (remove YTD)
+┌─────────────────────────────────┐
+│ Average Sale Price              │
+│ $425K                           │
+│ Last 12 months                  │ ← label it clearly
+└─────────────────────────────────┘
+3. Average Days to Close Card
+Current: Shows YTD
+Change: Show ONLY Last 12 Months (remove YTD)
+┌─────────────────────────────────┐
+│ Avg Days to Close               │
+│ 32 days                         │
+│ Last 12 months                  │ ← label it clearly
+└─────────────────────────────────┘
+Data Source
+The data comes from ReZen API. Check how the current metrics are calculated:
+For L12M calculations:
+
+Filter transactions where closedAt is within the last 12 months from today
+Buyer Side: transactions where listing = false
+Seller Side: transactions where listing = true
+
+Average Sales Price (L12M):
+typescriptconst l12mTransactions = transactions.filter(t => 
+  t.closedAt && isWithinLast12Months(t.closedAt)
+);
+const avgPrice = l12mTransactions.reduce((sum, t) => sum + t.price, 0) / l12mTransactions.length;
+Average Days to Close (L12M):
+typescriptconst avgDays = l12mTransactions.reduce((sum, t) => {
+  const contractDate = new Date(t.firmDate || t.contractDate);
+  const closeDate = new Date(t.closedAt);
+  const days = Math.floor((closeDate - contractDate) / (1000 * 60 * 60 * 24));
+  return sum + days;
+}, 0) / l12mTransactions.length;
+Files to Update
+
+client/src/pages/my-performance.tsx (or similar) — Update UI components
+server/routes.ts — Update API to return L12M calculations if not already
+server/rezenClient.ts — May need to add L12M filtering logic
+
+Success Criteria
+
+ Buyer Side card shows both YTD and L12M stats
+ Seller Side card shows both YTD and L12M stats
+ Average Sales Price shows ONLY L12M (no YTD)
+ Average Days to Close shows ONLY L12M (no YTD)
+ Labels clearly indicate the time period
+ Data is accurate based on ReZen transaction dates

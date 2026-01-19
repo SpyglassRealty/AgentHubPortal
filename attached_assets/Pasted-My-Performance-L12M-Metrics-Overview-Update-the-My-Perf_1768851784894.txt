@@ -1,0 +1,127 @@
+My Performance L12M Metrics
+Overview
+Update the My Performance page to add Last 12 Months (L12M) statistics for Buyer Side and Seller Side, and change Average Sales Price and Average Days to Close to show ONLY L12M data.
+Data Source
+ReZen API - transactions are already being fetched. Add L12M filtering logic.
+Changes Required
+1. Backend: Add L12M Calculations (server/rezenClient.ts or routes.ts)
+typescript// Add helper function
+function isWithinLast12Months(closedAt: number | string): boolean {
+  const closedDate = new Date(closedAt);
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+  return closedDate >= twelveMonthsAgo;
+}
+
+// In performance calculation function
+function calculatePerformanceMetrics(transactions: Transaction[]) {
+  const closedTransactions = transactions.filter(tx => tx.closed);
+  
+  // YTD filter (existing)
+  const currentYear = new Date().getFullYear();
+  const ytdTransactions = closedTransactions.filter(tx => 
+    new Date(tx.closedAt).getFullYear() === currentYear
+  );
+  
+  // L12M filter (NEW)
+  const l12mTransactions = closedTransactions.filter(tx => 
+    isWithinLast12Months(tx.closedAt)
+  );
+  
+  // Buyer Side
+  const buyerSideYTD = ytdTransactions.filter(tx => tx.listing === false);
+  const buyerSideL12M = l12mTransactions.filter(tx => tx.listing === false);
+  
+  // Seller Side
+  const sellerSideYTD = ytdTransactions.filter(tx => tx.listing === true);
+  const sellerSideL12M = l12mTransactions.filter(tx => tx.listing === true);
+  
+  // Average Sales Price (L12M ONLY)
+  const avgSalesPriceL12M = l12mTransactions.length > 0
+    ? l12mTransactions.reduce((sum, tx) => sum + (tx.price?.amount || 0), 0) / l12mTransactions.length
+    : 0;
+  
+  // Average Days to Close (L12M ONLY)
+  const avgDaysToCloseL12M = l12mTransactions.length > 0
+    ? l12mTransactions.reduce((sum, tx) => {
+        if (!tx.firmDate || !tx.closedAt) return sum;
+        const contractDate = new Date(tx.firmDate);
+        const closeDate = new Date(tx.closedAt);
+        const days = Math.floor((closeDate.getTime() - contractDate.getTime()) / (1000 * 60 * 60 * 24));
+        return sum + Math.max(0, days); // Prevent negative days
+      }, 0) / l12mTransactions.length
+    : 0;
+  
+  return {
+    buyerSide: {
+      ytd: {
+        deals: buyerSideYTD.length,
+        volume: buyerSideYTD.reduce((sum, tx) => sum + (tx.price?.amount || 0), 0)
+      },
+      l12m: {
+        deals: buyerSideL12M.length,
+        volume: buyerSideL12M.reduce((sum, tx) => sum + (tx.price?.amount || 0), 0)
+      }
+    },
+    sellerSide: {
+      ytd: {
+        deals: sellerSideYTD.length,
+        volume: sellerSideYTD.reduce((sum, tx) => sum + (tx.price?.amount || 0), 0)
+      },
+      l12m: {
+        deals: sellerSideL12M.length,
+        volume: sellerSideL12M.reduce((sum, tx) => sum + (tx.price?.amount || 0), 0)
+      }
+    },
+    avgSalesPrice: avgSalesPriceL12M,  // L12M only
+    avgDaysToClose: Math.round(avgDaysToCloseL12M),  // L12M only
+    // ... other existing metrics
+  };
+}
+```
+
+#### 2. Frontend: Update My Performance Cards
+
+**Buyer Side & Seller Side Cards** — Add toggle or show both:
+```
+┌─────────────────────────────────┐
+│ 🏠 Buyer Side                   │
+│                                 │
+│ YTD        L12M                 │
+│ 8 deals    15 deals             │
+│ $2.1M      $5.2M                │
+│                                 │
+│ ████████████░░░ 65% of deals    │
+└─────────────────────────────────┘
+```
+
+**Average Sales Price Card** — L12M only:
+```
+┌─────────────────────────────────┐
+│ Average Sale Price              │
+│ $425K                           │
+│ Last 12 months                  │
+└─────────────────────────────────┘
+```
+
+**Average Days to Close Card** — L12M only:
+```
+┌─────────────────────────────────┐
+│ Avg Days to Close               │
+│ 32 days                         │
+│ Last 12 months                  │
+└─────────────────────────────────┘
+Files to Update
+
+server/rezenClient.ts or wherever performance metrics are calculated
+server/routes.ts - API response structure
+client/src/pages/my-performance.tsx - UI components
+
+Success Criteria
+
+ Buyer Side shows both YTD and L12M stats
+ Seller Side shows both YTD and L12M stats
+ Average Sales Price shows ONLY L12M (remove YTD)
+ Average Days to Close shows ONLY L12M (remove YTD)
+ Labels clearly indicate time period
+ Data matches ReZen calculations

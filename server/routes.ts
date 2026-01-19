@@ -319,22 +319,33 @@ export async function registerRoutes(
       const totalDealsYTD = closedYTD.length;
       const avgPerDeal = totalDealsYTD > 0 ? gciYTD / totalDealsYTD : 0;
 
+      // YTD buyer/seller breakdowns
       const buyerDealsYTD = closedYTD.filter(t => t.listing === false);
       const sellerDealsYTD = closedYTD.filter(t => t.listing === true);
-      const buyerVolume = buyerDealsYTD.reduce((sum, t) => sum + (t.price?.amount || 0), 0);
-      const sellerVolume = sellerDealsYTD.reduce((sum, t) => sum + (t.price?.amount || 0), 0);
-      const totalVolume = buyerVolume + sellerVolume;
-      const avgSalePrice = totalDealsYTD > 0 ? totalVolume / totalDealsYTD : 0;
+      const buyerVolumeYTD = buyerDealsYTD.reduce((sum, t) => sum + (t.price?.amount || 0), 0);
+      const sellerVolumeYTD = sellerDealsYTD.reduce((sum, t) => sum + (t.price?.amount || 0), 0);
+      const totalVolumeYTD = buyerVolumeYTD + sellerVolumeYTD;
 
-      let avgDaysToClose = 0;
-      const dealsWithDates = closedYTD.filter(t => t.closedAt && t.firmDate);
-      if (dealsWithDates.length > 0) {
-        const totalDays = dealsWithDates.reduce((sum, t) => {
+      // L12M buyer/seller breakdowns
+      const buyerDealsL12M = closedL12M.filter(t => t.listing === false);
+      const sellerDealsL12M = closedL12M.filter(t => t.listing === true);
+      const buyerVolumeL12M = buyerDealsL12M.reduce((sum, t) => sum + (t.price?.amount || 0), 0);
+      const sellerVolumeL12M = sellerDealsL12M.reduce((sum, t) => sum + (t.price?.amount || 0), 0);
+      const totalVolumeL12M = buyerVolumeL12M + sellerVolumeL12M;
+
+      // Average Sale Price - L12M only
+      const avgSalePriceL12M = closedL12M.length > 0 ? totalVolumeL12M / closedL12M.length : 0;
+
+      // Average Days to Close - L12M only
+      let avgDaysToCloseL12M = 0;
+      const dealsWithDatesL12M = closedL12M.filter(t => t.closedAt && t.firmDate);
+      if (dealsWithDatesL12M.length > 0) {
+        const totalDays = dealsWithDatesL12M.reduce((sum, t) => {
           const firmDateMs = new Date(t.firmDate!).getTime();
           const closedDateMs = getClosedAtMs(t);
           return sum + Math.max(0, (closedDateMs - firmDateMs) / (1000 * 60 * 60 * 24));
         }, 0);
-        avgDaysToClose = Math.round(totalDays / dealsWithDates.length);
+        avgDaysToCloseL12M = Math.round(totalDays / dealsWithDatesL12M.length);
       }
 
       const gciLastYearYTD = closedLastYearYTD.reduce((sum, t) => sum + (t.grossCommission?.amount || 0), 0);
@@ -362,16 +373,24 @@ export async function registerRoutes(
           totalDealsYTD,
         },
         dealBreakdown: {
-          buyerCount: buyerDealsYTD.length,
-          buyerVolume,
-          sellerCount: sellerDealsYTD.length,
-          sellerVolume,
-          totalVolume,
-          avgSalePrice,
+          // YTD
+          buyerCountYTD: buyerDealsYTD.length,
+          buyerVolumeYTD,
+          sellerCountYTD: sellerDealsYTD.length,
+          sellerVolumeYTD,
+          totalVolumeYTD,
+          // L12M
+          buyerCountL12M: buyerDealsL12M.length,
+          buyerVolumeL12M,
+          sellerCountL12M: sellerDealsL12M.length,
+          sellerVolumeL12M,
+          totalVolumeL12M,
+          // L12M-based metrics
+          avgSalePriceL12M,
         },
         insights: {
           yoyChange,
-          avgDaysToClose,
+          avgDaysToCloseL12M,
           pendingCount: openTransactions.length,
         },
         pendingPipeline,
