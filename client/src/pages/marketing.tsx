@@ -121,24 +121,20 @@ export default function MarketingPage() {
                   <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[hsl(28,94%,54%)] transition-colors" />
                 </div>
               </a>
-              <div className="p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer group">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium">Email Templates</h4>
-                    <p className="text-sm text-muted-foreground">Pre-designed templates for common campaigns</p>
-                  </div>
-                  <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[hsl(28,94%,54%)] transition-colors" />
-                </div>
-              </div>
-              <div className="p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer group">
+              <a
+                href="https://mission-control-contract-conduit.onrender.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer group"
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-medium">Social Media Kit</h4>
-                    <p className="text-sm text-muted-foreground">Ready-to-use graphics for all platforms</p>
+                    <p className="text-sm text-muted-foreground">Create property graphics via Contract Conduit</p>
                   </div>
                   <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[hsl(28,94%,54%)] transition-colors" />
                 </div>
-              </div>
+              </a>
               <Link href="/marketing-calendar">
                 <div className="p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer group">
                   <div className="flex items-center justify-between">

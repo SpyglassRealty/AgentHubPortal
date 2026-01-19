@@ -1,0 +1,72 @@
+Marketing Section Updates
+Overview
+Update the Marketing page to remove Email Templates and integrate Contract Conduit.
+Changes Required
+1. REMOVE: Email Templates
+Location: Marketing Resources section
+Action: Delete the "Email Templates" card entirely
+2. ADD: Contract Conduit Card
+Location: Marketing Apps & Tools section (alongside Blog to Email, Ylopo, Canva)
+Action: Add new tool card
+┌─────────────────────────────────────────┐
+│ [📄 icon]                            ↗  │
+│                                         │
+│ Contract Conduit                        │
+│ Create CMAs, property graphics, and     │
+│ marketing materials for your listings.  │
+│                                         │
+│ [Marketing] [Live]                      │
+└─────────────────────────────────────────┘
+URL: https://mission-control-contract-conduit.onrender.com/
+3. UPDATE: Social Media Kit
+Location: Marketing Resources section
+Action: Update description and link to Contract Conduit
+Current:
+┌─────────────────────────────────────────┐
+│ Social Media Kit                      ↗ │
+│ Ready-to-use graphics for all platforms │
+└─────────────────────────────────────────┘
+Change to:
+┌─────────────────────────────────────────┐
+│ Social Media Kit                      ↗ │
+│ Create property graphics via Contract   │
+│ Conduit                                 │
+└─────────────────────────────────────────┘
+URL: https://mission-control-contract-conduit.onrender.com/
+
+Final Layout
+Marketing Apps & Tools:
+CardStatusURLBlog to Email Automator✅ Keep(existing)Ylopo Tools✅ Keep(existing)Canva✅ Keep(existing)Contract Conduit➕ ADDhttps://mission-control-contract-conduit.onrender.com/
+Marketing Resources:
+CardStatusDescriptionURLBrand Guidelines✅ KeepLogo, colors, and typography standards(existing)Email Templates❌ REMOVE——Social Media Kit🔄 UPDATE"Create property graphics via Contract Conduit"https://mission-control-contract-conduit.onrender.com/Marketing Calendar✅ KeepAI-powered social media ideas for real estate(existing)
+
+Code Changes
+typescript// Marketing Apps & Tools array - ADD Contract Conduit
+{
+  name: 'Contract Conduit',
+  description: 'Create CMAs, property graphics, and marketing materials for your listings.',
+  icon: FileImage, // or LayoutTemplate, Image, etc.
+  url: 'https://mission-control-contract-conduit.onrender.com/',
+  tags: ['Marketing', 'Live'],
+  external: true // opens in new tab
+}
+
+// Marketing Resources array - UPDATE Social Media Kit
+{
+  name: 'Social Media Kit',
+  description: 'Create property graphics via Contract Conduit',
+  url: 'https://mission-control-contract-conduit.onrender.com/',
+  external: true
+}
+
+// Marketing Resources array - REMOVE Email Templates
+// Delete the Email Templates object entirely
+
+Success Criteria
+
+ Email Templates card is REMOVED
+ Contract Conduit card is ADDED to Marketing Apps & Tools
+ Social Media Kit description updated to "Create property graphics via Contract Conduit"
+ Social Media Kit links to Contract Conduit URL
+ Both Contract Conduit links open in new tab
+ Layout looks clean with 4 tool cards
