@@ -1,0 +1,132 @@
+Add Tooltips to My Performance Cards
+Overview
+Add informational tooltips (hover or click info icon) to each metric card on the My Performance page. Tooltips should explain what the metric means and where the data comes from.
+Implementation
+Add a small info icon (ℹ️ or ?) to the top-right corner of each card. On hover (desktop) or tap (mobile), show a tooltip with the explanation.
+Tooltip Content for Each Card
+CardTooltip TextGCI YTD"Gross Commission Income Year-to-Date. Total commission earned from closed deals since January 1st of this year. Source: ReZen transactions."GCI L12M"Gross Commission Income Last 12 Months. Total commission earned from deals closed in the past 12 months (rolling). Source: ReZen transactions."Pending GCI"Pending Gross Commission Income. Expected commission from deals currently under contract but not yet closed. Source: ReZen open/pending transactions."Avg per Deal"Average Commission per Deal. Your GCI L12M divided by total closed deals in the last 12 months. Source: Calculated from ReZen transactions."Buyer Side (YTD)"Deals where you represented the buyer, closed this year. Volume is total sale price of these transactions. Source: ReZen transactions where listing=false."Buyer Side (L12M)"Deals where you represented the buyer, closed in the last 12 months. Volume is total sale price of these transactions. Source: ReZen transactions where listing=false."Seller Side (YTD)"Listing deals where you represented the seller, closed this year. Volume is total sale price of these transactions. Source: ReZen transactions where listing=true."Seller Side (L12M)"Listing deals where you represented the seller, closed in the last 12 months. Volume is total sale price of these transactions. Source: ReZen transactions where listing=true."Average Sale Price"Average sale price of all your closed deals in the last 12 months. Source: ReZen closed transactions (L12M)."Avg Days to Close"Average number of days from contract date to closing for deals in the last 12 months. Calculated from contract date (firmDate) to close date (closedAt). Source: ReZen closed transactions (L12M)."Year-over-Year"Compares your GCI from this point last year to the same point this year. Shows your growth or decline percentage. Source: ReZen transactions comparison."
+UI Design
+Option A: Info Icon with Hover Tooltip
+┌─────────────────────────────────┐
+│ $ GCI YTD                   ℹ️  │  ← Small info icon
+│ $0                              │
+│ ↘ 100% YoY                      │
+└─────────────────────────────────┘
+
+[Hover on ℹ️ shows tooltip]
+┌─────────────────────────────────────────┐
+│ Gross Commission Income Year-to-Date.   │
+│ Total commission earned from closed     │
+│ deals since January 1st of this year.   │
+│                                         │
+│ Source: ReZen transactions              │
+└─────────────────────────────────────────┘
+Option B: Expandable Info Section
+┌─────────────────────────────────┐
+│ $ GCI YTD                   [?] │
+│ $0                              │
+│ ↘ 100% YoY                      │
+├─────────────────────────────────┤
+│ ℹ️ Gross Commission Income...   │  ← Expands on click
+└─────────────────────────────────┘
+Component Implementation
+typescript// components/InfoTooltip.tsx
+import { Tooltip } from '@/components/ui/tooltip'; // or your UI library
+import { Info } from 'lucide-react'; // or similar icon
+
+interface InfoTooltipProps {
+  content: string;
+  source?: string;
+}
+
+export function InfoTooltip({ content, source }: InfoTooltipProps) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button className="text-gray-400 hover:text-gray-600 ml-1">
+          <Info className="h-4 w-4" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs p-3">
+        <p className="text-sm">{content}</p>
+        {source && (
+          <p className="text-xs text-gray-500 mt-1">Source: {source}</p>
+        )}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+Usage in Card Components
+typescript// In the GCI YTD card
+<Card>
+  <CardHeader className="flex flex-row items-center justify-between">
+    <CardTitle className="text-sm font-medium">
+      <DollarSign className="h-4 w-4 inline mr-1" />
+      GCI YTD
+    </CardTitle>
+    <InfoTooltip 
+      content="Gross Commission Income Year-to-Date. Total commission earned from closed deals since January 1st of this year."
+      source="ReZen transactions"
+    />
+  </CardHeader>
+  <CardContent>
+    <p className="text-2xl font-bold">${gciYTD}</p>
+  </CardContent>
+</Card>
+Tooltip Data Object (Centralized)
+typescript// constants/tooltips.ts
+export const PERFORMANCE_TOOLTIPS = {
+  gciYtd: {
+    content: "Gross Commission Income Year-to-Date. Total commission earned from closed deals since January 1st of this year.",
+    source: "ReZen transactions"
+  },
+  gciL12m: {
+    content: "Gross Commission Income Last 12 Months. Total commission earned from deals closed in the past 12 months (rolling).",
+    source: "ReZen transactions"
+  },
+  pendingGci: {
+    content: "Pending Gross Commission Income. Expected commission from deals currently under contract but not yet closed.",
+    source: "ReZen open/pending transactions"
+  },
+  avgPerDeal: {
+    content: "Average Commission per Deal. Your GCI L12M divided by total closed deals in the last 12 months.",
+    source: "Calculated from ReZen transactions"
+  },
+  buyerSideYtd: {
+    content: "Deals where you represented the buyer, closed this year. Volume is total sale price of these transactions.",
+    source: "ReZen transactions (listing=false)"
+  },
+  buyerSideL12m: {
+    content: "Deals where you represented the buyer, closed in the last 12 months. Volume is total sale price of these transactions.",
+    source: "ReZen transactions (listing=false)"
+  },
+  sellerSideYtd: {
+    content: "Listing deals where you represented the seller, closed this year. Volume is total sale price of these transactions.",
+    source: "ReZen transactions (listing=true)"
+  },
+  sellerSideL12m: {
+    content: "Listing deals where you represented the seller, closed in the last 12 months. Volume is total sale price of these transactions.",
+    source: "ReZen transactions (listing=true)"
+  },
+  avgSalePrice: {
+    content: "Average sale price of all your closed deals in the last 12 months.",
+    source: "ReZen closed transactions (L12M)"
+  },
+  avgDaysToClose: {
+    content: "Average number of days from contract date to closing for deals in the last 12 months. Calculated from contract date (firmDate) to close date (closedAt).",
+    source: "ReZen closed transactions (L12M)"
+  },
+  yearOverYear: {
+    content: "Compares your GCI from this point last year to the same point this year. Shows your growth or decline percentage.",
+    source: "ReZen transactions comparison"
+  }
+};
+Success Criteria
+
+ Each metric card has a small info icon (ℹ️)
+ Hovering/tapping shows a tooltip with explanation
+ Tooltips include what the metric means
+ Tooltips include the data source (ReZen)
+ Works on both desktop (hover) and mobile (tap)
+ Tooltips don't block important content
+ Consistent styling across all cards
