@@ -1,0 +1,103 @@
+Analyze Action Items / Personalized Suggestions Feature
+Task
+Analyze and document how the "Action Items / Personalized Suggestions" section on the Dashboard works. Do NOT make any changes — just investigate and report back.
+What I See
+On the Dashboard, there's a card on the right side that currently shows:
+┌─────────────────────────────────────────┐
+│            ✨                           │
+│                                         │
+│    No action items right now            │
+│    Check back later for personalized    │
+│    suggestions                          │
+│                                         │
+└─────────────────────────────────────────┘
+Questions to Answer
+
+Where is this component defined?
+
+What file(s) contain this UI component?
+What is the component name?
+
+
+What data does it display?
+
+What API endpoint(s) does it call?
+What data structure does it expect?
+
+
+How are "action items" or "suggestions" generated?
+
+Is there backend logic that creates suggestions?
+Does it use AI/contextEngine?
+What triggers a suggestion to appear?
+
+
+What types of suggestions can it show?
+
+Due tasks from FUB?
+Upcoming appointments?
+Deals needing attention?
+AI-generated recommendations?
+Something else?
+
+
+What conditions cause "No action items right now"?
+
+Is it because FUB isn't linked?
+Is it because there's no data?
+Is the feature not fully implemented?
+
+
+Dependencies
+
+Does it require FUB integration to work?
+Does it require ReZen integration?
+Any other dependencies?
+
+
+
+Files to Check
+
+client/src/pages/dashboard.tsx (or similar)
+client/src/components/ — look for action items, suggestions, or recommendations components
+server/routes.ts — look for related API endpoints
+server/contextEngine.ts — mentioned in FUB audit, may generate suggestions
+
+Output Required
+Provide a report with:
+## Action Items / Suggestions Feature Report
+
+### Component Location
+- File: [path]
+- Component name: [name]
+
+### Data Source
+- API endpoint: [endpoint]
+- Data structure: [describe]
+
+### How Suggestions Are Generated
+[Explain the logic]
+
+### Types of Suggestions Supported
+1. [Type 1]
+2. [Type 2]
+...
+
+### Current Status
+- Is it fully implemented? Yes/No
+- Why is it showing "No action items"? [reason]
+
+### Dependencies
+- FUB required: Yes/No
+- ReZen required: Yes/No
+- Other: [list]
+
+### Code Snippets
+[Include relevant code that shows how it works]
+Do NOT:
+
+Make any code changes
+Modify any files
+Add any features
+
+Just analyze and report back so we understand how this feature is supposed to work.
