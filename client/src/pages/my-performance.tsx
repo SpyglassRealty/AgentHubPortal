@@ -46,6 +46,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { InfoTooltip } from "@/components/info-tooltip";
+import { PERFORMANCE_TOOLTIPS } from "@/lib/performance-tooltips";
 
 interface PerformanceData {
   configured: boolean;
@@ -583,9 +585,12 @@ export default function MyPerformancePage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200" data-testid="card-gci-ytd">
             <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <DollarSign className="h-5 w-5 text-emerald-600" />
-                <span className="text-sm font-medium text-emerald-700">GCI YTD</span>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-emerald-600" />
+                  <span className="text-sm font-medium text-emerald-700">GCI YTD</span>
+                </div>
+                <InfoTooltip content={PERFORMANCE_TOOLTIPS.gciYtd.content} source={PERFORMANCE_TOOLTIPS.gciYtd.source} />
               </div>
               <p className="text-3xl font-bold text-emerald-900">
                 {formatCurrency(summary?.gciYTD || 0)}
@@ -605,9 +610,12 @@ export default function MyPerformancePage() {
 
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200" data-testid="card-gci-l12m">
             <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Calendar className="h-5 w-5 text-blue-600" />
-                <span className="text-sm font-medium text-blue-700">GCI L12M</span>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-700">GCI L12M</span>
+                </div>
+                <InfoTooltip content={PERFORMANCE_TOOLTIPS.gciL12m.content} source={PERFORMANCE_TOOLTIPS.gciL12m.source} />
               </div>
               <p className="text-3xl font-bold text-blue-900">
                 {formatCurrency(summary?.gciL12M || 0)}
@@ -618,9 +626,12 @@ export default function MyPerformancePage() {
 
           <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200" data-testid="card-pending-gci">
             <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Clock className="h-5 w-5 text-amber-600" />
-                <span className="text-sm font-medium text-amber-700">Pending GCI</span>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-amber-600" />
+                  <span className="text-sm font-medium text-amber-700">Pending GCI</span>
+                </div>
+                <InfoTooltip content={PERFORMANCE_TOOLTIPS.pendingGci.content} source={PERFORMANCE_TOOLTIPS.pendingGci.source} />
               </div>
               <p className="text-3xl font-bold text-amber-900">
                 {formatCurrency(summary?.pendingGCI || 0)}
@@ -633,9 +644,12 @@ export default function MyPerformancePage() {
 
           <Card className="bg-gradient-to-br from-purple-50 to-purple-100/50 border-purple-200" data-testid="card-avg-per-deal">
             <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Home className="h-5 w-5 text-purple-600" />
-                <span className="text-sm font-medium text-purple-700">Avg per Deal</span>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Home className="h-5 w-5 text-purple-600" />
+                  <span className="text-sm font-medium text-purple-700">Avg per Deal</span>
+                </div>
+                <InfoTooltip content={PERFORMANCE_TOOLTIPS.avgPerDeal.content} source={PERFORMANCE_TOOLTIPS.avgPerDeal.source} />
               </div>
               <p className="text-3xl font-bold text-purple-900">
                 {formatCurrency(summary?.avgPerDeal || 0)}
@@ -651,10 +665,13 @@ export default function MyPerformancePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card data-testid="card-buyer-side-ytd">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-display flex items-center gap-2">
-                  <Home className="h-5 w-5 text-blue-600" />
-                  Buyer Side
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-display flex items-center gap-2">
+                    <Home className="h-5 w-5 text-blue-600" />
+                    Buyer Side
+                  </CardTitle>
+                  <InfoTooltip content={PERFORMANCE_TOOLTIPS.buyerSideYtd.content} source={PERFORMANCE_TOOLTIPS.buyerSideYtd.source} />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -675,10 +692,13 @@ export default function MyPerformancePage() {
 
             <Card data-testid="card-seller-side-ytd">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-display flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-orange-600" />
-                  Seller Side (Listings)
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-display flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-orange-600" />
+                    Seller Side (Listings)
+                  </CardTitle>
+                  <InfoTooltip content={PERFORMANCE_TOOLTIPS.sellerSideYtd.content} source={PERFORMANCE_TOOLTIPS.sellerSideYtd.source} />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -705,10 +725,13 @@ export default function MyPerformancePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card data-testid="card-buyer-side-l12m" className="border-blue-200 bg-blue-50/30">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-display flex items-center gap-2">
-                  <Home className="h-5 w-5 text-blue-600" />
-                  Buyer Side
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-display flex items-center gap-2">
+                    <Home className="h-5 w-5 text-blue-600" />
+                    Buyer Side
+                  </CardTitle>
+                  <InfoTooltip content={PERFORMANCE_TOOLTIPS.buyerSideL12m.content} source={PERFORMANCE_TOOLTIPS.buyerSideL12m.source} />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -729,10 +752,13 @@ export default function MyPerformancePage() {
 
             <Card data-testid="card-seller-side-l12m" className="border-orange-200 bg-orange-50/30">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-display flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-orange-600" />
-                  Seller Side (Listings)
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-display flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-orange-600" />
+                    Seller Side (Listings)
+                  </CardTitle>
+                  <InfoTooltip content={PERFORMANCE_TOOLTIPS.sellerSideL12m.content} source={PERFORMANCE_TOOLTIPS.sellerSideL12m.source} />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -756,14 +782,20 @@ export default function MyPerformancePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card data-testid="card-avg-sale-price">
             <CardContent className="p-6">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-sm text-muted-foreground">Average Sale Price</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">Average Sale Price</p>
+                    <InfoTooltip content={PERFORMANCE_TOOLTIPS.avgSalePrice.content} source={PERFORMANCE_TOOLTIPS.avgSalePrice.source} />
+                  </div>
                   <p className="text-2xl font-bold mt-1">{formatCurrency(dealBreakdown?.avgSalePriceL12M || 0)}</p>
                   <p className="text-xs text-muted-foreground mt-1">Last 12 months</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-muted-foreground">Avg Days to Close</p>
+                  <div className="flex items-center justify-end gap-2">
+                    <p className="text-sm text-muted-foreground">Avg Days to Close</p>
+                    <InfoTooltip content={PERFORMANCE_TOOLTIPS.avgDaysToClose.content} source={PERFORMANCE_TOOLTIPS.avgDaysToClose.source} />
+                  </div>
                   <p className="text-2xl font-bold mt-1">{insights?.avgDaysToCloseL12M || 0} days</p>
                   <p className="text-xs text-muted-foreground mt-1">Last 12 months</p>
                 </div>
@@ -774,7 +806,7 @@ export default function MyPerformancePage() {
           <Card className="bg-gradient-to-br from-slate-50 to-slate-100/50" data-testid="card-yoy">
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
-                <div>
+                <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <TrendingUp className="h-5 w-5 text-slate-600" />
                     <span className="font-medium">Year-over-Year</span>
@@ -783,6 +815,7 @@ export default function MyPerformancePage() {
                     You're {(insights?.yoyChange || 0) >= 0 ? 'UP' : 'DOWN'} {Math.abs(insights?.yoyChange || 0).toFixed(0)}% compared to this time last year!
                   </p>
                 </div>
+                <InfoTooltip content={PERFORMANCE_TOOLTIPS.yearOverYear.content} source={PERFORMANCE_TOOLTIPS.yearOverYear.source} />
               </div>
               <div className="mt-4 pt-4 border-t flex justify-between text-sm">
                 <div>
