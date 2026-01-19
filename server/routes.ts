@@ -114,12 +114,12 @@ export async function registerRoutes(
       const startDate = req.query.startDate as string;
       const endDate = req.query.endDate as string;
 
-      const [events, tasks] = await Promise.all([
-        fubClient.getEvents(fubUserId, startDate, endDate),
+      const [appointments, tasks] = await Promise.all([
+        fubClient.getAppointments(fubUserId, startDate, endDate),
         fubClient.getTasks(fubUserId, startDate, endDate),
       ]);
 
-      res.json({ events, tasks });
+      res.json({ events: appointments, tasks });
     } catch (error) {
       console.error("Error fetching FUB calendar:", error);
       res.status(500).json({ message: "Failed to fetch calendar data" });

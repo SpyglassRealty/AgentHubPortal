@@ -99,29 +99,38 @@ class FubClient {
     }
   }
 
-  async getEvents(userId?: number, startDate?: string, endDate?: string): Promise<FubEvent[]> {
+  async getAppointments(userId?: number, startDate?: string, endDate?: string): Promise<FubEvent[]> {
     try {
       const params: Record<string, string> = {};
       if (userId) params.userId = userId.toString();
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
 
-      const data = await this.request<{ events: any[] }>("/events", params);
+      console.log(`[FUB] Fetching appointments with params:`, params);
+
+      const data = await this.request<{ appointments: any[] }>("/appointments", params);
       
-      return (data.events || []).map((event: any) => ({
-        id: event.id,
-        title: event.title || event.name || "Untitled Event",
-        description: event.description || event.message,
-        startDate: event.startDate || event.created,
-        endDate: event.endDate,
-        allDay: event.allDay || false,
-        type: this.mapEventType(event.type),
-        personId: event.personId,
-        personName: event.personName,
-        dealId: event.dealId,
-      }));
+      console.log(`[FUB] Appointments API returned ${data.appointments?.length || 0} appointments`);
+
+      return (data.appointments || []).map((appt: any) => {
+        const invitee = appt.invitees?.[0];
+        return {
+          id: appt.id,
+          title: appt.title || appt.name || "Untitled Appointment",
+          description: appt.description || appt.notes,
+          startDate: appt.startAt || appt.startDate || appt.created,
+          endDate: appt.endAt || appt.endDate,
+          allDay: appt.allDay || false,
+          type: 'appointment' as const,
+          personId: invitee?.personId || appt.personId,
+          personName: invitee?.name || appt.personName,
+          dealId: appt.dealId,
+          externalEventLink: appt.externalEventLink,
+          originFub: appt.originFub,
+        };
+      });
     } catch (error) {
-      console.error("Error fetching FUB events:", error);
+      console.error("Error fetching FUB appointments:", error);
       return [];
     }
   }
