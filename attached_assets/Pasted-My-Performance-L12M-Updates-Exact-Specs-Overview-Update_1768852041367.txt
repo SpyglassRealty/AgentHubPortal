@@ -1,0 +1,109 @@
+My Performance L12M Updates (Exact Specs)
+Overview
+Update the My Performance page metrics based on these specific requirements from the meeting.
+Exact Changes Required
+1. Buyer Side & Seller Side Section
+Current: Shows one row with Buyer Side and Seller Side
+Change: Add a SECOND row showing Last 12 Months data
+┌─────────────────────────────────┬─────────────────────────────────┐
+│ 🏠 Buyer Side                   │ 🏢 Seller Side (Listings)       │
+│                                 │                                 │
+│ 8 deals              YTD        │ 2 deals              YTD        │
+│ $2.1M volume                    │ $800K volume                    │
+│ ████████████░░░ 80% of deals    │ ████░░░░░░░░░░░ 20% of deals    │
+└─────────────────────────────────┴─────────────────────────────────┘
+
+┌─────────────────────────────────┬─────────────────────────────────┐
+│ 🏠 Buyer Side                   │ 🏢 Seller Side (Listings)       │
+│                                 │                                 │
+│ 15 deals             L12M       │ 5 deals              L12M       │
+│ $5.2M volume                    │ $1.8M volume                    │
+│ ████████████░░░ 75% of deals    │ █████░░░░░░░░░░ 25% of deals    │
+└─────────────────────────────────┴─────────────────────────────────┘
+Layout: Two separate card rows:
+
+Row 1: Buyer Side (YTD) | Seller Side (YTD) — labeled "Year to Date"
+Row 2: Buyer Side (L12M) | Seller Side (L12M) — labeled "Last 12 Months"
+
+2. Average Sale Price
+Current: Shows YTD
+Change: Show ONLY Last 12 Months (REMOVE Year to Date)
+┌─────────────────────────────────┐
+│ Average Sale Price              │
+│ $377K                           │
+│ Last 12 months                  │  ← Add this label
+└─────────────────────────────────┘
+3. Average Days to Close
+Current: Shows YTD
+Change: Show ONLY Last 12 Months (REMOVE Year to Date)
+┌─────────────────────────────────┐
+│ Avg Days to Close               │
+│ 32 days                         │
+│ Last 12 months                  │  ← Add this label
+└─────────────────────────────────┘
+Summary Table
+MetricYTDL12MNotesBuyer Side✅ Keep✅ AddShow both in separate rowsSeller Side✅ Keep✅ AddShow both in separate rowsAverage Sale Price❌ Remove✅ Only thisL12M onlyAvg Days to Close❌ Remove✅ Only thisL12M only
+Backend Calculation Logic
+typescript// Helper: Check if transaction closed within last 12 months
+function isWithinLast12Months(closedAt: number | string): boolean {
+  const closedDate = new Date(closedAt);
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+  return closedDate >= twelveMonthsAgo;
+}
+
+// Helper: Check if transaction closed this year (YTD)
+function isCurrentYear(closedAt: number | string): boolean {
+  return new Date(closedAt).getFullYear() === new Date().getFullYear();
+}
+
+// In performance metrics calculation
+const closedTransactions = allTransactions.filter(tx => tx.closed === true);
+
+// YTD transactions
+const ytdTransactions = closedTransactions.filter(tx => isCurrentYear(tx.closedAt));
+
+// L12M transactions
+const l12mTransactions = closedTransactions.filter(tx => isWithinLast12Months(tx.closedAt));
+
+// Buyer Side = listing === false
+// Seller Side = listing === true
+
+return {
+  buyerSide: {
+    ytd: {
+      deals: ytdTransactions.filter(tx => !tx.listing).length,
+      volume: ytdTransactions.filter(tx => !tx.listing).reduce((sum, tx) => sum + (tx.price?.amount || 0), 0)
+    },
+    l12m: {
+      deals: l12mTransactions.filter(tx => !tx.listing).length,
+      volume: l12mTransactions.filter(tx => !tx.listing).reduce((sum, tx) => sum + (tx.price?.amount || 0), 0)
+    }
+  },
+  sellerSide: {
+    ytd: {
+      deals: ytdTransactions.filter(tx => tx.listing).length,
+      volume: ytdTransactions.filter(tx => tx.listing).reduce((sum, tx) => sum + (tx.price?.amount || 0), 0)
+    },
+    l12m: {
+      deals: l12mTransactions.filter(tx => tx.listing).length,
+      volume: l12mTransactions.filter(tx => tx.listing).reduce((sum, tx) => sum + (tx.price?.amount || 0), 0)
+    }
+  },
+  // L12M ONLY for these:
+  avgSalesPrice: calculateAverage(l12mTransactions, 'price.amount'),
+  avgDaysToClose: calculateAvgDaysToClose(l12mTransactions)
+};
+Files to Update
+
+Backend: Performance calculation logic (add L12M filtering)
+Frontend: my-performance.tsx - Add second row of cards, update labels
+
+Success Criteria
+
+ Buyer Side shows BOTH YTD and L12M in separate card rows
+ Seller Side shows BOTH YTD and L12M in separate card rows
+ Average Sale Price shows ONLY L12M (YTD removed)
+ Average Days to Close shows ONLY L12M (YTD removed)
+ All cards have clear labels ("Year to Date" vs "Last 12 Months")
+ Data calculates correctly based on closedAt and listing fields
