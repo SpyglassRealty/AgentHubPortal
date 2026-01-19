@@ -514,7 +514,11 @@ export default function MyPerformancePage() {
 
   const { summary, dealBreakdown, insights, pendingPipeline } = data;
   
-  // L12M totals for percentage calculation (main progress bar)
+  // YTD totals for percentage calculation
+  const totalDealsYTD = (dealBreakdown?.buyerCountYTD || 0) + (dealBreakdown?.sellerCountYTD || 0);
+  const buyerPercentYTD = totalDealsYTD > 0 ? ((dealBreakdown?.buyerCountYTD || 0) / totalDealsYTD) * 100 : 50;
+  
+  // L12M totals for percentage calculation
   const totalDealsL12M = (dealBreakdown?.buyerCountL12M || 0) + (dealBreakdown?.sellerCountL12M || 0);
   const buyerPercentL12M = totalDealsL12M > 0 ? ((dealBreakdown?.buyerCountL12M || 0) / totalDealsL12M) * 100 : 50;
   
@@ -641,64 +645,112 @@ export default function MyPerformancePage() {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card data-testid="card-buyer-side">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-display flex items-center gap-2">
-                <Home className="h-5 w-5 text-blue-600" />
-                Buyer Side
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-slate-50 rounded-lg p-3">
-                    <p className="text-xs text-muted-foreground mb-1">YTD</p>
-                    <p className="text-2xl font-bold">{dealBreakdown?.buyerCountYTD || 0} <span className="text-sm font-normal text-muted-foreground">deals</span></p>
-                    <p className="text-sm text-blue-600 font-medium">{formatCurrency(dealBreakdown?.buyerVolumeYTD || 0)}</p>
+        {/* Row 1: Year to Date */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Year to Date</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card data-testid="card-buyer-side-ytd">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  <Home className="h-5 w-5 text-blue-600" />
+                  Buyer Side
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-4xl font-bold">{dealBreakdown?.buyerCountYTD || 0}</span>
+                    <span className="text-lg text-muted-foreground">deals</span>
                   </div>
-                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                    <p className="text-xs text-blue-600 mb-1">L12M</p>
-                    <p className="text-2xl font-bold">{dealBreakdown?.buyerCountL12M || 0} <span className="text-sm font-normal text-muted-foreground">deals</span></p>
-                    <p className="text-sm text-blue-600 font-medium">{formatCurrency(dealBreakdown?.buyerVolumeL12M || 0)}</p>
+                  <div className="text-2xl font-semibold text-blue-600">
+                    {formatCurrency(dealBreakdown?.buyerVolumeYTD || 0)} volume
                   </div>
+                  <Progress value={buyerPercentYTD} className="h-3" />
+                  <p className="text-sm text-muted-foreground text-center">
+                    {Math.round(buyerPercentYTD)}% of your deals
+                  </p>
                 </div>
-                <Progress value={buyerPercentL12M} className="h-3" />
-                <p className="text-sm text-muted-foreground text-center">
-                  {Math.round(buyerPercentL12M)}% of your deals (L12M)
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card data-testid="card-seller-side">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-display flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-orange-600" />
-                Seller Side (Listings)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-slate-50 rounded-lg p-3">
-                    <p className="text-xs text-muted-foreground mb-1">YTD</p>
-                    <p className="text-2xl font-bold">{dealBreakdown?.sellerCountYTD || 0} <span className="text-sm font-normal text-muted-foreground">deals</span></p>
-                    <p className="text-sm text-orange-600 font-medium">{formatCurrency(dealBreakdown?.sellerVolumeYTD || 0)}</p>
+            <Card data-testid="card-seller-side-ytd">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-orange-600" />
+                  Seller Side (Listings)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-4xl font-bold">{dealBreakdown?.sellerCountYTD || 0}</span>
+                    <span className="text-lg text-muted-foreground">deals</span>
                   </div>
-                  <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
-                    <p className="text-xs text-orange-600 mb-1">L12M</p>
-                    <p className="text-2xl font-bold">{dealBreakdown?.sellerCountL12M || 0} <span className="text-sm font-normal text-muted-foreground">deals</span></p>
-                    <p className="text-sm text-orange-600 font-medium">{formatCurrency(dealBreakdown?.sellerVolumeL12M || 0)}</p>
+                  <div className="text-2xl font-semibold text-orange-600">
+                    {formatCurrency(dealBreakdown?.sellerVolumeYTD || 0)} volume
                   </div>
+                  <Progress value={100 - buyerPercentYTD} className="h-3 [&>div]:bg-orange-500" />
+                  <p className="text-sm text-muted-foreground text-center">
+                    {Math.round(100 - buyerPercentYTD)}% of your deals
+                  </p>
                 </div>
-                <Progress value={100 - buyerPercentL12M} className="h-3 [&>div]:bg-orange-500" />
-                <p className="text-sm text-muted-foreground text-center">
-                  {Math.round(100 - buyerPercentL12M)}% of your deals (L12M)
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Row 2: Last 12 Months */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Last 12 Months</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card data-testid="card-buyer-side-l12m" className="border-blue-200 bg-blue-50/30">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  <Home className="h-5 w-5 text-blue-600" />
+                  Buyer Side
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-4xl font-bold">{dealBreakdown?.buyerCountL12M || 0}</span>
+                    <span className="text-lg text-muted-foreground">deals</span>
+                  </div>
+                  <div className="text-2xl font-semibold text-blue-600">
+                    {formatCurrency(dealBreakdown?.buyerVolumeL12M || 0)} volume
+                  </div>
+                  <Progress value={buyerPercentL12M} className="h-3" />
+                  <p className="text-sm text-muted-foreground text-center">
+                    {Math.round(buyerPercentL12M)}% of your deals
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-seller-side-l12m" className="border-orange-200 bg-orange-50/30">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-orange-600" />
+                  Seller Side (Listings)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-4xl font-bold">{dealBreakdown?.sellerCountL12M || 0}</span>
+                    <span className="text-lg text-muted-foreground">deals</span>
+                  </div>
+                  <div className="text-2xl font-semibold text-orange-600">
+                    {formatCurrency(dealBreakdown?.sellerVolumeL12M || 0)} volume
+                  </div>
+                  <Progress value={100 - buyerPercentL12M} className="h-3 [&>div]:bg-orange-500" />
+                  <p className="text-sm text-muted-foreground text-center">
+                    {Math.round(100 - buyerPercentL12M)}% of your deals
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
