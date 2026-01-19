@@ -1,0 +1,118 @@
+You are working inside the Spyglass “Mission Control” web app repo. Your job is to produce a clear breakdown of remaining work to get Mission Control to a usable v1 release.
+
+Context (what Mission Control is)
+
+Mission Control is an internal agent dashboard for Spyglass with:
+
+Reports: agent-level deal counts by status (Active / Pending / Closed YTD)
+
+Leads (FUB): agent birthday, home anniversary, recent activity, plus lead listing UI
+
+Client Data / CMA features may exist in related apps, but for Mission Control focus only on the Mission Control navigation and features.
+
+Your output requirements
+
+Create a single deliverable titled:
+
+“Mission Control — Remaining Work Breakdown (v1)”
+
+It must include:
+
+Current State Summary (1–2 paragraphs)
+
+What is already implemented today (based on code & UI you see)
+
+What is partially implemented but incomplete
+
+What’s Left (Prioritized)
+Provide a prioritized list using these categories:
+
+P0 Must-have (blocks release)
+
+P1 Should-have (important, not blocking)
+
+P2 Nice-to-have
+
+Each item must include:
+
+What’s missing (plain English)
+
+Where in code to look (file paths or feature modules)
+
+How to validate it works (a test/checklist step)
+
+Reports Section — Deal Status Reporting
+Specifically answer:
+
+What’s missing to show Active / Pending / Closed YTD per agent
+
+Whether the backend already has a stub for ReZen (or if we must decouple it)
+
+If ReZen endpoints are unknown/403, propose a fallback plan:
+
+“instrument UI network calls” approach (DevTools capture)
+
+mock data mode
+
+feature flag to disable ReZen while keeping UI intact
+
+Leads Tab (FUB)
+Confirm what’s missing for:
+
+Agent Birthday
+
+Home Anniversary
+
+Recent Activity
+
+Tag overflow behavior (“+7”, “+11” should be clickable)
+
+Search UX: autocomplete + Search button behavior
+
+Auth & Access Control
+We want Google Login using Google Cloud Console for all Spyglass apps.
+
+Determine if auth exists today
+
+If not, list what’s required to implement (frontend + backend + session storage)
+
+Ensure role-based access: only Spyglass users can access
+
+Deployment / Domain Constraints
+Ryan said:
+
+“We don’t have access to spyglassrealty DNS — use a realtyhack subdomain”
+
+“Advanced doesn’t work”
+You must:
+
+Identify what “Advanced” refers to in this repo (feature, plan, env, or settings)
+
+Propose a deployment approach that works with current constraints
+
+Final Deliverable Format
+At the end, provide:
+
+A 1-paragraph exec summary
+
+A checkbox QA list for Ryan to verify manually
+
+How to do the work
+
+Inspect the repo structure and identify main routes/tabs (Dashboard / Reports / Leads).
+
+Search codebase for keywords: reports, deals, rezen, fub, followupboss, birthday, anniversary, activity, auth, google, oauth.
+
+If any data is mocked or disabled, call it out explicitly.
+
+If you find errors in console/network, include them in the notes.
+
+Important constraints
+
+Do not guess. If something is unknown, say “UNKNOWN” and show how to verify it.
+
+Be concrete: list file paths and exact next steps.
+
+Keep it scoped to Mission Control (don’t drift into Client Data Portal unless it’s literally inside this repo).
+
+Return the full breakdown in one response.
