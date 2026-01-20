@@ -1,0 +1,118 @@
+Replit Agent Prompt: Fix Back Button for Client Data Portal (Properties Section)
+Problem
+The back button fix was applied and works for most apps, but Client Data Portal (accessed from Properties section) still has issues:
+
+Clicking "Back" does nothing — no navigation happens
+User is stuck on the Client Data Portal page
+
+Context
+Previous fix changed back button to use window.history.back() instead of hardcoded Dashboard link. This works for other apps but NOT for Client Data Portal.
+Investigation Needed
+
+How is Client Data Portal different from other apps?
+
+Is it an iframe/embedded app?
+Does it have its own internal routing?
+Is it a separate React app mounted inside Mission Control?
+
+
+Check how Client Data Portal is loaded:
+
+Does it replace the current route or add to history?
+Is window.history.back() being called but intercepted?
+Does Client Data Portal have its own back button that conflicts?
+
+
+Check browser history state:
+
+When navigating to Client Data Portal, is a history entry being added?
+Is history.pushState() being used or history.replaceState()?
+
+
+
+Possible Causes
+Cause A: No history entry created
+typescript// WRONG - replaces history, nothing to go back to
+navigate('/apps/client-data', { replace: true });
+// or
+window.history.replaceState({}, '', '/apps/client-data');
+
+// CORRECT - adds to history
+navigate('/apps/client-data');
+// or  
+window.history.pushState({}, '', '/apps/client-data');
+Cause B: Iframe capturing back navigation
+If Client Data Portal is in an iframe, the back button might be navigating within the iframe instead of the parent window.
+typescript// Fix for iframe - ensure back navigates parent
+const handleBack = () => {
+  if (window.parent !== window) {
+    window.parent.history.back();
+  } else {
+    window.history.back();
+  }
+};
+Cause C: Client Data Portal has internal routing
+If it's a separate app with its own router, back might be going back within that app's history.
+typescript// Fix - check if there's Mission Control history to go back to
+const handleBack = () => {
+  if (window.history.length > 1) {
+    window.history.back();
+  } else {
+    navigate('/properties'); // Fallback to Properties
+  }
+};
+Cause D: Event listener blocking navigation
+Client Data Portal might have an event listener preventing navigation.
+Files to Check
+
+client/src/pages/properties.tsx — How Client Data Portal link works
+The Client Data Portal app/component itself
+Check if it's loaded via iframe, route, or embedded component
+Look for any beforeunload or popstate event listeners
+
+Fix Approach
+
+First, determine HOW Client Data Portal is integrated:
+
+Route-based? (e.g., /apps/client-data)
+Iframe? (e.g., <iframe src="...">)
+External URL? (e.g., opens separate site)
+
+
+Then apply appropriate fix based on integration type.
+If using iframe, the back button should target parent:
+
+typescript// In the app wrapper/header component
+const handleBack = () => {
+  // Try to go back in parent window history
+  if (window.history.length > 1) {
+    window.history.back();
+  } else {
+    // Fallback to Properties page
+    window.location.href = '/properties';
+  }
+};
+
+Ensure Client Data Portal link from Properties adds to history:
+
+typescript// When clicking Client Data Portal card
+const handleClientDataClick = () => {
+  navigate('/apps/client-data'); // Must NOT use { replace: true }
+};
+Success Criteria
+
+ User on Properties → Clicks Client Data Portal → Hits Back → Returns to Properties
+ Back button performs navigation (not stuck/no action)
+ Works consistently every time
+ Other apps still work correctly
+
+Test Steps
+
+Go to Properties section
+Click "Client Data" card
+Wait for Client Data Portal to load
+Click Back button (or browser back)
+Should return to Properties page
+
+Priority
+🔴 HIGH — Navigation is broken for this specific app
