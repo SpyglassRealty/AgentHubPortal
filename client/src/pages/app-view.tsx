@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo } from "react";
-import { useRoute } from "wouter";
+import React, { useEffect, useMemo, useCallback } from "react";
+import { useRoute, useLocation } from "wouter";
 import Layout from "@/components/layout";
 import { apps } from "@/lib/apps";
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,17 @@ export default function AppView() {
   const { isAuthenticated, isLoading } = useAuth();
   const { resolvedTheme } = useTheme();
   const [, params] = useRoute("/app/:id");
+  const [, setLocation] = useLocation();
   const appId = params?.id;
   const app = apps.find((a) => a.id === appId);
+
+  const handleBack = useCallback(() => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      setLocation("/dashboard");
+    }
+  }, [setLocation]);
 
   const iframeUrl = useMemo(() => {
     if (!app?.url) return null;
@@ -56,12 +65,15 @@ export default function AppView() {
       <div className="h-[calc(100vh-8rem)] flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground hover:text-foreground">
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Back
-              </Button>
-            </Link>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="-ml-2 text-muted-foreground hover:text-foreground"
+              onClick={handleBack}
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
             <div className={`p-2 rounded-lg ${app.color}`}>
               <app.icon className="h-5 w-5" />
             </div>
