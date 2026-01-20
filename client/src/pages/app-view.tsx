@@ -18,13 +18,11 @@ export default function AppView() {
   const appId = params?.id;
   const app = apps.find((a) => a.id === appId);
 
-  const handleBack = useCallback(() => {
-    if (window.history.length > 1) {
-      window.history.back();
-    } else {
-      setLocation("/dashboard");
-    }
-  }, [setLocation]);
+  const handleBack = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.history.back();
+  }, []);
 
   const iframeUrl = useMemo(() => {
     if (!app?.url) return null;
