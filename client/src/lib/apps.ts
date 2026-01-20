@@ -158,7 +158,7 @@ export const apps: AppDefinition[] = [
   {
     id: "contract-conduit-marketing",
     name: "Contract Conduit",
-    description: "Your first step to entering a transaction.",
+    description: "Turn your marketing leads into contracts. Streamline the transition from prospect to signed deal.",
     icon: FileText,
     category: "Marketing",
     color: "bg-amber-100 text-amber-700",
