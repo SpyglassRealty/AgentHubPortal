@@ -3,6 +3,7 @@ import {
   agentProfiles, 
   contextSuggestions,
   marketPulseSnapshots,
+  appUsage,
   type User, 
   type UpsertUser,
   type AgentProfile,
@@ -10,10 +11,11 @@ import {
   type ContextSuggestion,
   type InsertContextSuggestion,
   type MarketPulseSnapshot,
-  type InsertMarketPulseSnapshot
+  type InsertMarketPulseSnapshot,
+  type AppUsage
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, ne, desc } from "drizzle-orm";
+import { eq, and, ne, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -33,6 +35,9 @@ export interface IStorage {
   
   getLatestMarketPulseSnapshot(): Promise<MarketPulseSnapshot | undefined>;
   saveMarketPulseSnapshot(snapshot: InsertMarketPulseSnapshot): Promise<MarketPulseSnapshot>;
+  
+  trackAppUsage(userId: string, appId: string, page: string): Promise<AppUsage>;
+  getAppUsageByPage(userId: string, page: string): Promise<AppUsage[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -184,6 +189,46 @@ export class DatabaseStorage implements IStorage {
   async saveMarketPulseSnapshot(snapshot: InsertMarketPulseSnapshot): Promise<MarketPulseSnapshot> {
     const [saved] = await db.insert(marketPulseSnapshots).values(snapshot).returning();
     return saved;
+  }
+
+  async trackAppUsage(userId: string, appId: string, page: string): Promise<AppUsage> {
+    const existing = await db
+      .select()
+      .from(appUsage)
+      .where(and(
+        eq(appUsage.userId, userId),
+        eq(appUsage.appId, appId),
+        eq(appUsage.page, page)
+      ));
+
+    if (existing.length > 0) {
+      const [updated] = await db
+        .update(appUsage)
+        .set({ 
+          clickCount: sql`${appUsage.clickCount} + 1`,
+          lastUsedAt: new Date()
+        })
+        .where(eq(appUsage.id, existing[0].id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(appUsage)
+        .values({ userId, appId, page, clickCount: 1, lastUsedAt: new Date() })
+        .returning();
+      return created;
+    }
+  }
+
+  async getAppUsageByPage(userId: string, page: string): Promise<AppUsage[]> {
+    return db
+      .select()
+      .from(appUsage)
+      .where(and(
+        eq(appUsage.userId, userId),
+        eq(appUsage.page, page)
+      ))
+      .orderBy(desc(appUsage.clickCount));
   }
 }
 
