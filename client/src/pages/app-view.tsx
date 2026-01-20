@@ -28,6 +28,7 @@ export default function AppView() {
     if (!app?.url) return null;
     const url = new URL(app.url);
     url.searchParams.set('theme', resolvedTheme || 'dark');
+    url.searchParams.set('embedded', 'true');
     return url.toString();
   }, [app?.url, resolvedTheme]);
 

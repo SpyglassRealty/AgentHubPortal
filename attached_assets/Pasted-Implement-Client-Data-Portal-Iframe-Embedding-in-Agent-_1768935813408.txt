@@ -1,0 +1,78 @@
+Implement Client Data Portal Iframe Embedding in Agent Hub Portal
+Goal: Embed the Client Data Portal (MLS Grid IDX Platform) as an iframe inside Agent Hub Portal / Mission Control.
+
+Implementation Steps
+1. Create the Iframe Component
+// components/ClientDataPortalEmbed.tsx
+import { useState, useEffect } from 'react';
+interface ClientDataPortalEmbedProps {
+  className?: string;
+}
+export function ClientDataPortalEmbed({ className = '' }: ClientDataPortalEmbedProps) {
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  
+  // Sync theme with your app's theme state
+  useEffect(() => {
+    const isDark = document.documentElement.classList.contains('dark');
+    setTheme(isDark ? 'dark' : 'light');
+  }, []);
+  // Client Data Portal URL - use production URL
+  const portalUrl = 'https://idx-grid-data-ryan1648.replit.app';
+  
+  // Pass theme parameter so the embedded app knows it's in an iframe
+  const embedUrl = `${portalUrl}?theme=${theme}&embedded=true`;
+  return (
+    <iframe
+      src={embedUrl}
+      className={`w-full h-full border-0 ${className}`}
+      title="Client Data Portal"
+      allow="clipboard-write"
+      style={{ minHeight: '600px' }}
+    />
+  );
+}
+2. Add Route/Page for the Portal
+// pages/ClientPortal.tsx or wherever you want to embed it
+import { ClientDataPortalEmbed } from '@/components/ClientDataPortalEmbed';
+export default function ClientPortalPage() {
+  return (
+    <div className="h-screen w-full">
+      <ClientDataPortalEmbed className="w-full h-full" />
+    </div>
+  );
+}
+3. Add Navigation Link (if using sidebar)
+// In your sidebar/navigation component
+<SidebarMenuItem>
+  <SidebarMenuButton asChild>
+    <Link to="/client-portal">
+      <Database className="w-4 h-4" />
+      <span>Client Data Portal</span>
+    </Link>
+  </SidebarMenuButton>
+</SidebarMenuItem>
+Key Points
+Always pass ?theme=dark or ?theme=light - This tells Client Data Portal it's embedded and triggers popup OAuth instead of redirect auth
+
+The iframe URL must include ?embedded=true or ?theme= - Without this parameter, auth will fail with Google 403 error
+
+Allow popups from the iframe - When users click "Sign in with Google", a popup window will open for authentication
+
+Full height/width recommended - The portal works best when given full available space
+
+URLs
+Production: https://idx-grid-data-ryan1648.replit.app
+Development: https://f58e6159-1bf8-4479-a256-c997461de361-00-1jv089vliph98.riker.replit.dev
+Testing
+Navigate to the embedded portal page
+Click "Continue with Google"
+A popup should open (NOT a redirect)
+Complete Google sign-in in the popup
+Popup closes automatically
+Iframe reloads with authenticated session
+Troubleshooting
+Issue	Solution
+Google 403 error	Ensure ?theme= or ?embedded=true is in the URL
+Popup blocked	User needs to allow popups for your domain
+Session not persisting	Third-party cookies must be enabled in browser
+Blank iframe	Check browser console for CSP errors
