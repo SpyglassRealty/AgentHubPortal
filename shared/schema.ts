@@ -7,6 +7,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
 
@@ -120,6 +121,7 @@ export const appUsage = pgTable("app_usage", {
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_app_usage_user_page").on(table.userId, table.page),
+  uniqueIndex("idx_app_usage_unique").on(table.userId, table.appId, table.page),
 ]);
 
 export type AppUsage = typeof appUsage.$inferSelect;
