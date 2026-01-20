@@ -837,5 +837,43 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // App Usage Tracking - Track app clicks for auto-arrange
+  app.post('/api/app-usage/track', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { appId, page } = req.body;
+      if (!appId || !page) {
+        return res.status(400).json({ message: "appId and page are required" });
+      }
+
+      const usage = await storage.trackAppUsage(user.id, appId, page);
+      res.json({ success: true, usage });
+    } catch (error) {
+      console.error("Error tracking app usage:", error);
+      res.status(500).json({ message: "Failed to track app usage" });
+    }
+  });
+
+  // Get app usage for sorting
+  app.get('/api/app-usage/:page', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { page } = req.params;
+      const usage = await storage.getAppUsageByPage(user.id, page);
+      res.json({ usage });
+    } catch (error) {
+      console.error("Error fetching app usage:", error);
+      res.status(500).json({ message: "Failed to fetch app usage" });
+    }
+  });
+
   return httpServer;
 }
