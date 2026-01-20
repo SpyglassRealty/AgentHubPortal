@@ -173,8 +173,7 @@ export const apps: AppDefinition[] = [
     category: "Sales",
     color: "bg-indigo-100 text-indigo-700",
     url: "https://idx-grid-data-ryan1648.replit.app",
-    noIframe: true,
-    connectionType: "redirect"
+    connectionType: "embedded"
   },
   {
     id: "jointly",
