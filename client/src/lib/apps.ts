@@ -155,17 +155,7 @@ export const apps: AppDefinition[] = [
     noIframe: true,
     connectionType: "redirect"
   },
-  {
-    id: "contract-conduit-marketing",
-    name: "Contract Conduit",
-    description: "Create CMAs, property graphics, and marketing materials for your listings.",
-    icon: FileText,
-    category: "Marketing",
-    color: "bg-amber-100 text-amber-700",
-    url: "https://mission-control-contract-conduit.onrender.com/",
-    connectionType: "embedded"
-  },
-  {
+    {
     id: "client-data",
     name: "Client Data",
     description: "Access and manage client property data and listings.",
