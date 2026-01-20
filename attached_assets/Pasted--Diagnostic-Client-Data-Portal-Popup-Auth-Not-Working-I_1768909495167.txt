@@ -1,0 +1,72 @@
+### Diagnostic: Client Data Portal Popup Auth Not Working
+
+**Issue:**
+Client Data Portal login page loads in iframe, but clicking "Continue with Google" redirects (causing 403) instead of opening a popup window.
+
+**Iframe Configuration Verified:**
+- src: `https://idx-grid-data-ryan1648.replit.app/?theme=dark`
+- sandbox: `allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox`
+
+**Please check:**
+
+### 1. Verify iframe sandbox allows popups
+```typescript// Current sandbox attribute - is this complete?
+sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"// Should also have these if missing:
+// allow-top-navigation (for fallback)
+// allow-modals (for alerts/confirms)
+
+### 2. Check if there's any Content Security Policy blocking popups
+Look for CSP headers or meta tags that might block popups:
+```typescript// Check server response headers for:
+Content-Security-Policy: ...// Check index.html for:
+<meta http-equiv="Content-Security-Policy" content="...">
+
+### 3. Check if app-view.tsx has any popup blocking code
+```typescript// Look for any event listeners that might block popups:
+window.addEventListener('beforeunload', ...)
+// Or any window.open overrides
+
+### 4. Test popup directly from Mission Control console
+In browser console (F12), while on the Client Data page, run:
+```javascript// Test 1: Can Mission Control open popups?
+const testPopup = window.open('about:blank', 'test', 'width=500,height=500');
+console.log('Mission Control popup:', testPopup ? 'WORKS' : 'BLOCKED');
+if (testPopup) testPopup.close();// Test 2: Try to access iframe and trigger popup from parent
+const iframe = document.querySelector('iframe');
+console.log('Iframe found:', !!iframe);
+console.log('Iframe src:', iframe?.src);
+
+### 5. Check if there's a frame-busting script
+Some security scripts prevent iframes from opening popups. Check for:
+```typescript// Any code like this in Mission Control:
+if (window.top !== window.self) {
+// frame-busting code
+}
+
+### 6. Add popup test button (temporary)
+Add a test button in app-view.tsx to verify popups work from the iframe context:
+```typescript<button
+onClick={() => {
+const popup = window.open(
+'https://idx-grid-data-ryan1648.replit.app/auth/google/popup',
+'auth-popup',
+'width=500,height=600'
+);
+console.log('Popup opened from parent:', popup ? 'yes' : 'blocked');
+}}
+
+
+Test Popup from Parent
+</button>
+
+### 7. Check browser console for popup-related errors
+Look for errors like:
+- "Blocked opening 'X' in a new window because the request was made in a sandboxed frame"
+- "Popup blocked"
+- Any CSP violations
+
+**Provide:**
+1. Results of the console tests (Test 1 & 2)
+2. Any CSP headers found
+3. Any popup-related errors in console
+4. Full iframe element HTML including all attributes
