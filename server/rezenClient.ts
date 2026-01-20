@@ -1,6 +1,5 @@
 import { ProxyAgent } from "undici";
 
-const REZEN_API_KEY = process.env.REZEN_API_KEY;
 const REZEN_BASE_URL = "https://arrakis.therealbrokerage.com/api/v1";
 const REZEN_PROXY_URL = "http://BYA60NevyDFEbx0n:AAV9Jl4YiAKLwPvZ@geo.iproyal.com:12321";
 
@@ -163,13 +162,16 @@ export class RezenClient {
 }
 
 let rezenClient: RezenClient | null = null;
+let lastRezenApiKey: string | null = null;
 
 export function getRezenClient(): RezenClient | null {
-  if (!REZEN_API_KEY) {
+  const apiKey = process.env.REZEN_API_KEY;
+  if (!apiKey) {
     return null;
   }
-  if (!rezenClient) {
-    rezenClient = new RezenClient(REZEN_API_KEY);
+  if (!rezenClient || lastRezenApiKey !== apiKey) {
+    rezenClient = new RezenClient(apiKey);
+    lastRezenApiKey = apiKey;
   }
   return rezenClient;
 }
