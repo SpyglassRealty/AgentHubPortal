@@ -5,9 +5,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentSelector } from "@/components/agent-selector";
-import { Calendar as CalendarIcon, Clock, User, ChevronLeft, ChevronRight, AlertCircle, ExternalLink } from "lucide-react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, parseISO } from "date-fns";
-import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Calendar as CalendarIcon, Clock, User, ChevronLeft, ChevronRight, AlertCircle, ExternalLink, MapPin, FileText, X } from "lucide-react";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, parseISO } from "date-fns";
+import { useState, type MouseEvent } from "react";
 import type { FubEvent } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -21,6 +28,9 @@ export default function CalendarPage() {
   const { user } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<FubEvent | null>(null);
+  const [selectedDayEvents, setSelectedDayEvents] = useState<FubEvent[] | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   
   const startDate = format(startOfMonth(currentMonth), "yyyy-MM-dd");
   const endDate = format(endOfMonth(currentMonth), "yyyy-MM-dd");
@@ -58,6 +68,33 @@ export default function CalendarPage() {
       case 'task': return 'bg-amber-100 text-amber-700 border-amber-200';
       case 'deal_closing': return 'bg-orange-100 text-orange-700 border-orange-200';
       default: return 'bg-purple-100 text-purple-700 border-purple-200';
+    }
+  };
+
+  const getEventTypeLabel = (type: FubEvent['type']) => {
+    switch (type) {
+      case 'appointment': return 'Appointment';
+      case 'task': return 'Task';
+      case 'deal_closing': return 'Deal Closing';
+      default: return 'Event';
+    }
+  };
+
+  const handleEventClick = (event: FubEvent, e: MouseEvent) => {
+    e.stopPropagation();
+    setSelectedEvent(event);
+    setSelectedDayEvents(null);
+  };
+
+  const handleDayClick = (date: Date, dayItems: FubEvent[]) => {
+    if (dayItems.length === 0) return;
+    if (dayItems.length === 1) {
+      setSelectedEvent(dayItems[0]);
+      setSelectedDayEvents(null);
+    } else {
+      setSelectedDate(date);
+      setSelectedDayEvents(dayItems);
+      setSelectedEvent(null);
     }
   };
 
@@ -179,12 +216,15 @@ export default function CalendarPage() {
                       
                       {days.map(day => {
                         const dayItems = getItemsForDay(day);
+                        const hasEvents = dayItems.length > 0;
                         return (
                           <div 
                             key={day.toISOString()} 
                             className={`bg-background p-2 min-h-[100px] border-t ${
                               isToday(day) ? 'bg-[hsl(28,94%,54%)]/5' : ''
-                            }`}
+                            } ${hasEvents ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
+                            onClick={() => handleDayClick(day, dayItems)}
+                            data-testid={`day-${format(day, 'yyyy-MM-dd')}`}
                           >
                             <div className={`text-sm font-medium mb-1 ${
                               isToday(day) 
@@ -197,14 +237,16 @@ export default function CalendarPage() {
                               {dayItems.slice(0, 2).map(item => (
                                 <div 
                                   key={item.id} 
-                                  className={`text-xs p-1 rounded truncate border ${getEventTypeColor(item.type)}`}
+                                  className={`text-xs p-1 rounded truncate border cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(item.type)}`}
                                   title={item.title}
+                                  onClick={(e) => handleEventClick(item, e)}
+                                  data-testid={`event-${item.id}`}
                                 >
                                   {item.title}
                                 </div>
                               ))}
                               {dayItems.length > 2 && (
-                                <div className="text-xs text-muted-foreground">
+                                <div className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
                                   +{dayItems.length - 2} more
                                 </div>
                               )}
@@ -258,7 +300,8 @@ export default function CalendarPage() {
                   upcomingItems.map(item => (
                     <div 
                       key={item.id} 
-                      className="p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
+                      className="p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors cursor-pointer"
+                      onClick={() => setSelectedEvent(item)}
                       data-testid={`card-event-${item.id}`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -313,6 +356,136 @@ export default function CalendarPage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-event-details">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-display">
+              <CalendarIcon className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+              Event Details
+            </DialogTitle>
+            <DialogDescription>
+              {selectedEvent && getEventTypeLabel(selectedEvent.type)}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedEvent && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold">{selectedEvent.title}</h3>
+                <Badge className={`mt-2 ${getEventTypeColor(selectedEvent.type)}`}>
+                  {getEventTypeLabel(selectedEvent.type)}
+                </Badge>
+              </div>
+
+              <div className="space-y-3 text-sm">
+                <div className="flex items-start gap-3">
+                  <CalendarIcon className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">Date & Time</p>
+                    <p className="text-muted-foreground">
+                      {format(parseISO(selectedEvent.startDate), "EEEE, MMMM d, yyyy")}
+                    </p>
+                    <p className="text-muted-foreground">
+                      {format(parseISO(selectedEvent.startDate), "h:mm a")}
+                      {selectedEvent.endDate && ` - ${format(parseISO(selectedEvent.endDate), "h:mm a")}`}
+                    </p>
+                  </div>
+                </div>
+
+                {selectedEvent.personName && (
+                  <div className="flex items-start gap-3">
+                    <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Contact</p>
+                      <p className="text-muted-foreground">{selectedEvent.personName}</p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedEvent.description && (
+                  <div className="flex items-start gap-3">
+                    <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Notes</p>
+                      <p className="text-muted-foreground whitespace-pre-wrap">{selectedEvent.description}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t">
+                {selectedEvent.personId && (
+                  <a 
+                    href={`https://app.followupboss.com/people/${selectedEvent.personId}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex-1"
+                  >
+                    <Button variant="outline" className="w-full" data-testid="button-view-in-fub">
+                      View in FUB
+                      <ExternalLink className="ml-2 h-4 w-4" />
+                    </Button>
+                  </a>
+                )}
+                <Button 
+                  variant="secondary" 
+                  className="flex-1"
+                  onClick={() => setSelectedEvent(null)}
+                  data-testid="button-close-modal"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!selectedDayEvents} onOpenChange={() => setSelectedDayEvents(null)}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-day-events">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-display">
+              <CalendarIcon className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+              {selectedDate && format(selectedDate, "EEEE, MMMM d")}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedDayEvents?.length} events on this day
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {selectedDayEvents?.map(item => (
+              <div 
+                key={item.id} 
+                className="p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors cursor-pointer"
+                onClick={() => {
+                  setSelectedEvent(item);
+                  setSelectedDayEvents(null);
+                }}
+                data-testid={`day-event-${item.id}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{item.title}</p>
+                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {format(parseISO(item.startDate), "h:mm a")}
+                    </div>
+                    {item.personName && (
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                        <User className="h-3 w-3" />
+                        {item.personName}
+                      </div>
+                    )}
+                  </div>
+                  <Badge variant="outline" className={`text-[10px] ${getEventTypeColor(item.type)}`}>
+                    {item.type.replace('_', ' ')}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
