@@ -1,0 +1,77 @@
+### Fix Calendar: Add Click-to-View Event Details
+
+**Client Feedback:**
+"Calendar works! I can't click on the day or open up the event for the day but can see something is there... It's showing me previous days appointments but not allowing me to click on past days to remind myself of what I did."
+
+**Issues to Fix:**
+
+#### 1. Add Event Click Handler
+When a user clicks on a calendar event, show the event details in a modal/drawer:
+```typescript
+// When event is clicked, show details
+const handleEventClick = (event) => {
+  setSelectedEvent(event);
+  setShowEventModal(true);
+};
+```
+
+#### 2. Event Detail Modal/Drawer
+Show these details when an event is clicked:
+
+| Field | Source |
+|-------|--------|
+| Title | appointment.title |
+| Date & Time | appointment.start / appointment.end |
+| Type | appointment.type (Showing, Call, Meeting, etc.) |
+| Location | appointment.location |
+| Person/Contact | appointment.person.name |
+| Notes | appointment.description |
+| Status | appointment.outcome |
+
+**Modal Design:**
+┌─────────────────────────────────────────────────────────┐
+│  Appointment Details                               [X]  │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  📅 Showing at 123 Main St                              │
+│                                                         │
+│  Date:     January 14, 2026                             │
+│  Time:     2:00 PM - 3:00 PM                            │
+│  Type:     Property Showing                             │
+│  Location: 123 Main St, Austin, TX 78701                │
+│                                                         │
+│  Contact:  John Smith                                   │
+│  Phone:    (512) 555-1234                               │
+│  Email:    john@email.com                               │
+│                                                         │
+│  Notes:                                                 │
+│  Buyer interested in 3+ bedrooms, budget $500k          │
+│                                                         │
+│  ┌─────────────────┐  ┌─────────────────┐               │
+│  │  View in FUB    │  │     Close       │               │
+│  └─────────────────┘  └─────────────────┘               │
+└─────────────────────────────────────────────────────────┘
+
+#### 3. Allow Clicking Past Days
+Remove any restriction that prevents clicking on past dates. Users should be able to:
+- Click any day (past or future) to see events
+- Click any event (past or future) to see details
+
+#### 4. Check Deals Tab Visibility
+Client reports: "I don't see a tab for Deals"
+
+- Verify Deals/Reports is in the sidebar navigation
+- Check if it's hidden or requires specific permissions
+- Ensure route `/reports` or `/deals` is accessible
+
+### Files to Check
+- `client/src/pages/calendar.tsx` - Calendar component
+- `client/src/components/sidebar.tsx` - Navigation (Deals tab visibility)
+- Any calendar library being used (FullCalendar, react-big-calendar, etc.)
+
+### Success Criteria
+- [ ] Clicking on any calendar event opens a detail modal
+- [ ] Past events are clickable and show details
+- [ ] Past days are clickable
+- [ ] Deals tab is visible in sidebar
+- [ ] Event modal shows all relevant appointment info from FUB
