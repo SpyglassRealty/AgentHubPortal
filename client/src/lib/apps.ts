@@ -167,13 +167,14 @@ export const apps: AppDefinition[] = [
   },
   {
     id: "client-data",
-    name: "Client Data",
-    description: "Access and manage client property data and listings.",
+    name: "Client Data Portal",
+    description: "Access and manage client property data and listings. Opens in new tab for Google sign-in.",
     icon: Database,
     category: "Sales",
     color: "bg-indigo-100 text-indigo-700",
     url: "https://idx-grid-data-ryan1648.replit.app",
-    connectionType: "embedded"
+    noIframe: true,
+    connectionType: "external"
   },
   {
     id: "jointly",
