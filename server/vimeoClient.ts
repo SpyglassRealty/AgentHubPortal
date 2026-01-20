@@ -1,5 +1,8 @@
-const VIMEO_ACCESS_TOKEN = process.env.VIMEO_ACCESS_TOKEN;
 const VIMEO_API_BASE = "https://api.vimeo.com";
+
+function getVimeoToken(): string | undefined {
+  return process.env.VIMEO_ACCESS_TOKEN;
+}
 
 interface VimeoVideo {
   uri: string;
@@ -42,7 +45,8 @@ function formatDuration(seconds: number): string {
 }
 
 export async function getLatestTrainingVideo(): Promise<LatestTrainingVideo | null> {
-  if (!VIMEO_ACCESS_TOKEN) {
+  const token = getVimeoToken();
+  if (!token) {
     console.warn("VIMEO_ACCESS_TOKEN not configured");
     return null;
   }
@@ -50,7 +54,7 @@ export async function getLatestTrainingVideo(): Promise<LatestTrainingVideo | nu
   try {
     const response = await fetch(`${VIMEO_API_BASE}/me/videos?sort=date&direction=desc&per_page=1`, {
       headers: {
-        "Authorization": `Bearer ${VIMEO_ACCESS_TOKEN}`,
+        "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
         "Accept": "application/vnd.vimeo.*+json;version=3.4"
       }
