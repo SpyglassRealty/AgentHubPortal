@@ -1,0 +1,71 @@
+This is exactly what we need. Here's the prompt to apply the same fix to Client Data Portal:
+
+Replit Agent Prompt: Apply Contract Conduit OAuth Fix to Client Data Portal
+Problem
+Client Data Portal shows Google 403 error when embedded as iframe in Mission Control (Agent Hub Portal). Google blocks OAuth redirects inside iframes for security reasons.
+Solution
+Apply the same popup-based authentication fix that was implemented in Contract Conduit.
+Changes Required
+1. Change OAuth from Redirect to Popup Mode
+typescript// BEFORE (blocked in iframe):
+signInWithRedirect(auth, provider);
+
+// AFTER (works in iframe):
+signInWithPopup(auth, provider);
+2. Add Server Headers for Iframe Embedding
+typescript// In Express server middleware
+app.use((req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "frame-ancestors 'self' https://*.replit.dev https://*.replit.app https://*.onrender.com"
+  );
+  next();
+});
+3. Create Popup OAuth Route (if needed)
+Create /api/auth/google/popup route that uses a state parameter to detect popup mode.
+4. Update Session Cookies for Cross-Origin
+typescript// Cookie configuration
+{
+  sameSite: 'none',
+  secure: true
+}
+5. Add Smart Login Detection (Frontend)
+Detect if app is embedded in iframe and use popup auth accordingly:
+typescriptconst isInIframe = window.self !== window.top;
+
+const handleLogin = async () => {
+  if (isInIframe) {
+    // Use popup for iframe
+    await signInWithPopup(auth, provider);
+    window.location.reload(); // Refresh iframe after auth
+  } else {
+    // Use redirect for direct access
+    await signInWithRedirect(auth, provider);
+  }
+};
+6. Page Reload After Popup Auth
+Add window.location.reload() after popup auth completes so the iframe refreshes to show the dashboard.
+7. Theme Sync (Optional - Dark Mode)
+Auto-detect iframe and apply dark theme to match Mission Control:
+typescriptuseEffect(() => {
+  if (window.self !== window.top) {
+    document.documentElement.classList.add('dark');
+  }
+}, []);
+Expected Behavior After Fix
+ScenarioBehaviorDirect access (not iframe)Normal redirect-based Google sign-inEmbedded in iframeOpens popup for Google sign-in, closes after auth, refreshes parent page
+Files to Update
+
+Authentication component/page
+Server configuration (Express middleware or equivalent)
+Cookie/session configuration
+Login handler function
+
+Success Criteria
+
+ Client Data Portal loads in Mission Control iframe without 403 error
+ Google OAuth popup opens when clicking "Sign in with Google"
+ After authentication, popup closes and iframe refreshes
+ User sees the dashboard (not login page) after auth
+ Direct access (non-iframe) still works normally
+ Session persists correctly with cross-origin cookies
