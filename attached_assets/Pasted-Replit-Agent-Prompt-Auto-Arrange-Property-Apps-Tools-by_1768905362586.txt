@@ -1,0 +1,155 @@
+Replit Agent Prompt: Auto-Arrange Property Apps & Tools by User Usage
+Overview
+Implement automatic sorting of Property Apps & Tools cards based on each user's click/usage history. Most frequently used apps appear first, personalized per user.
+How It Should Work
+User clicks "Follow Up Boss" 10 times
+User clicks "Client Data" 25 times
+User clicks "Jointly" 5 times
+User clicks "Ylopo Add Lead" 2 times
+
+Result: Cards display in this order for that user:
+1. Client Data (25 clicks)
+2. Follow Up Boss (10 clicks)
+3. Jointly (5 clicks)
+4. Ylopo Add Lead (2 clicks)
+Implementation
+1. Database: Track App Usage
+Create a table to store usage counts per user per app:
+sqlCREATE TABLE app_usage (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  app_id VARCHAR(100) NOT NULL,  -- e.g., 'follow_up_boss', 'client_data'
+  page VARCHAR(50) NOT NULL,      -- 'properties' or 'marketing'
+  click_count INTEGER DEFAULT 1,
+  last_used TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id, app_id, page)
+);
+2. Backend: API Endpoints
+typescript// POST /api/app-usage/track - Track when user clicks an app
+app.post('/api/app-usage/track', async (req, res) => {
+  const { userId } = req.user;
+  const { appId, page } = req.body; // e.g., { appId: 'follow_up_boss', page: 'properties' }
+  
+  await db.query(`
+    INSERT INTO app_usage (user_id, app_id, page, click_count, last_used)
+    VALUES ($1, $2, $3, 1, NOW())
+    ON CONFLICT (user_id, app_id, page)
+    DO UPDATE SET 
+      click_count = app_usage.click_count + 1,
+      last_used = NOW()
+  `, [userId, appId, page]);
+  
+  res.json({ success: true });
+});
+
+// GET /api/app-usage/:page - Get sorted app order for user
+app.get('/api/app-usage/:page', async (req, res) => {
+  const { userId } = req.user;
+  const { page } = req.params; // 'properties' or 'marketing'
+  
+  const result = await db.query(`
+    SELECT app_id, click_count
+    FROM app_usage
+    WHERE user_id = $1 AND page = $2
+    ORDER BY click_count DESC
+  `, [userId, page]);
+  
+  res.json({ usage: result.rows });
+});
+3. Frontend: Track Clicks and Sort Cards
+typescript// In properties.tsx or marketing.tsx
+
+const [sortedApps, setSortedApps] = useState(defaultApps);
+
+// Fetch user's usage data on page load
+useEffect(() => {
+  async function loadUsageOrder() {
+    const response = await fetch('/api/app-usage/properties');
+    const { usage } = await response.json();
+    
+    if (usage.length > 0) {
+      // Create a map of app_id -> click_count
+      const usageMap = new Map(usage.map(u => [u.app_id, u.click_count]));
+      
+      // Sort apps by usage (most used first), unused apps at the end
+      const sorted = [...defaultApps].sort((a, b) => {
+        const aCount = usageMap.get(a.id) || 0;
+        const bCount = usageMap.get(b.id) || 0;
+        return bCount - aCount;
+      });
+      
+      setSortedApps(sorted);
+    }
+  }
+  loadUsageOrder();
+}, []);
+
+// Track click when user opens an app
+const handleAppClick = async (app) => {
+  // Track usage
+  await fetch('/api/app-usage/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ appId: app.id, page: 'properties' })
+  });
+  
+  // Open the app
+  window.open(app.url, '_blank', 'noopener,noreferrer');
+};
+4. Update App Card Data Structure
+Ensure each app has a unique id for tracking:
+typescriptconst propertyApps = [
+  {
+    id: 'follow_up_boss',
+    name: 'Follow Up Boss',
+    description: 'Your CRM for managing leads, contacts, and follow-ups.',
+    url: 'https://app.followupboss.com',
+    icon: FubIcon,
+    tags: ['Sales', 'Live']
+  },
+  {
+    id: 'ylopo_add_lead',
+    name: 'Ylopo Add Lead',
+    description: 'Quickly add new leads to your Ylopo account.',
+    url: 'https://ylopo.com/...',
+    icon: YlopoIcon,
+    tags: ['Sales', 'Live']
+  },
+  {
+    id: 'client_data',
+    name: 'Client Data',
+    description: 'Access and manage client property data and listings.',
+    url: '...',
+    icon: ClientDataIcon,
+    tags: ['Sales', 'Live']
+  },
+  {
+    id: 'jointly',
+    name: 'Jointly',
+    description: 'Collaborate with clients and partners on real estate transactions.',
+    url: 'https://jointly.com/...',
+    icon: JointlyIcon,
+    tags: ['Sales', 'Live']
+  }
+];
+Apply to Both Pages
+
+Properties page (/properties)
+Marketing page (/marketing)
+
+Default Order (New Users)
+For users with no usage history, display in this default order:
+
+Follow Up Boss
+Ylopo Add Lead
+Client Data
+Jointly
+
+Success Criteria
+
+ Clicking an app tracks the usage in the database
+ Page loads apps sorted by user's click count (most used first)
+ New users see default order
+ Each user sees their own personalized order
+ Works on both Properties and Marketing pages
+ Back button navigation still works correctly
