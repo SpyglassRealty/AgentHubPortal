@@ -1,0 +1,90 @@
+ Investigate & Fix Client Data Portal 403 Error
+Problem
+When accessing Client Data Portal from Properties section (/app/client-data), the embedded app shows a Google 403 error:
+Google
+403. That's an error.
+We're sorry, but you do not have access to this page. That's all we know.
+Context
+
+Contract Conduit is working correctly as an embedded iframe
+Client Data Portal shows this Google authentication error
+Both apps are integrated similarly but only Client Data Portal fails
+
+Screenshots Reference
+
+Contract Conduit URL: /app/contract-conduit → Works fine
+Client Data Portal URL: /app/client-data → Shows 403 error
+
+Investigation Needed
+
+How is Client Data Portal integrated?
+
+Is it an iframe? What URL is being loaded?
+What is the external URL for Client Data Portal?
+
+
+Is this a Google OAuth issue?
+
+Does Client Data Portal use Google Sign-In?
+Is the OAuth flow being blocked because it's in an iframe?
+
+
+What's different between Contract Conduit and Client Data Portal integration?
+
+Different iframe settings?
+Different authentication methods?
+Different domain/CORS configuration?
+
+
+Check iframe configuration:
+
+What src URL is being used for Client Data Portal iframe?
+Are there any sandbox attributes restricting functionality?
+Are headers like X-Frame-Options or Content-Security-Policy blocking it?
+
+
+
+Likely Causes
+Cause A: Google OAuth blocked in iframe
+Google blocks OAuth authentication flows inside iframes for security reasons (anti-clickjacking). If Client Data Portal requires Google login, it will fail when embedded.
+Cause B: X-Frame-Options / CSP headers
+The Client Data Portal server may be sending headers that prevent embedding:
+X-Frame-Options: DENY
+X-Frame-Options: SAMEORIGIN
+Content-Security-Policy: frame-ancestors 'none'
+Cause C: Wrong OAuth redirect URI
+The Google OAuth configuration may not include the iframe/embedded URL as an authorized redirect URI.
+Cause D: Different domain causing CORS/cookie issues
+If Client Data Portal is hosted on a different domain, third-party cookies may be blocked.
+Questions to Answer
+
+What is the actual URL being loaded in the Client Data Portal iframe?
+Does Client Data Portal require Google authentication?
+What authentication method does Contract Conduit use (since it works)?
+Can we see the iframe element and its attributes in the code?
+What response headers does the Client Data Portal URL return?
+
+Possible Solutions
+Solution A: Open in new tab instead of iframe
+If OAuth can't work in iframe, change Client Data Portal to open in a new tab like other external apps:
+typescript// Instead of embedding, open externally
+window.open('https://client-data-portal-url.com', '_blank');
+Solution B: Use popup for authentication
+Trigger OAuth in a popup window, then load the authenticated session in iframe.
+Solution C: Proxy authentication through Mission Control
+Use Mission Control's Google auth token to authenticate with Client Data Portal server-side.
+Solution D: Update OAuth configuration
+Add the Mission Control domain to Google OAuth authorized origins/redirect URIs.
+Files to Check
+
+Client Data Portal app page component
+Iframe configuration for Client Data Portal
+Compare with Contract Conduit integration to find differences
+Check the external Client Data Portal app's authentication setup
+
+Provide in Response
+
+The iframe src URL for Client Data Portal
+How Contract Conduit handles authentication (for comparison)
+Any error messages in browser console
+Recommended fix approach
