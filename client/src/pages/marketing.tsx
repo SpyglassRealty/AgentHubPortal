@@ -5,9 +5,44 @@ import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUpRight, ExternalLink, Megaphone, Mail, Palette, Share2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { apiRequest } from "@/lib/queryClient";
+
+interface AppUsage {
+  appId: string;
+  clickCount: number;
+}
 
 export default function MarketingPage() {
-  const marketingApps = apps.filter(app => app.category === "Marketing");
+  const queryClient = useQueryClient();
+  
+  const { data: usageData } = useQuery<{ usage: AppUsage[] }>({
+    queryKey: ["/api/app-usage/marketing"],
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const trackUsage = useMutation({
+    mutationFn: async (appId: string) => {
+      return apiRequest("POST", "/api/app-usage/track", { appId, page: "marketing" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/app-usage/marketing"] });
+    },
+  });
+
+  const baseApps = apps.filter(app => app.category === "Marketing");
+
+  const marketingApps = useMemo(() => {
+    if (!usageData?.usage?.length) return baseApps;
+    
+    const usageMap = new Map(usageData.usage.map(u => [u.appId, u.clickCount]));
+    return [...baseApps].sort((a, b) => {
+      const countA = usageMap.get(a.id) || 0;
+      const countB = usageMap.get(b.id) || 0;
+      return countB - countA;
+    });
+  }, [baseApps, usageData]);
 
   const container = {
     hidden: { opacity: 0 },
@@ -52,6 +87,7 @@ export default function MarketingPage() {
           >
             {marketingApps.map((app) => {
               const handleAppClick = () => {
+                trackUsage.mutate(app.id);
                 if (app.noIframe && app.url) {
                   window.open(app.url, '_blank', 'noopener,noreferrer');
                 }
@@ -93,7 +129,7 @@ export default function MarketingPage() {
                       {cardContent}
                     </div>
                   ) : (
-                    <Link href={`/app/${app.id}`}>
+                    <Link href={`/app/${app.id}`} onClick={() => trackUsage.mutate(app.id)}>
                       {cardContent}
                     </Link>
                   )}

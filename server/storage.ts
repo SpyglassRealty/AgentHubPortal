@@ -192,32 +192,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async trackAppUsage(userId: string, appId: string, page: string): Promise<AppUsage> {
-    const existing = await db
-      .select()
-      .from(appUsage)
-      .where(and(
-        eq(appUsage.userId, userId),
-        eq(appUsage.appId, appId),
-        eq(appUsage.page, page)
-      ));
-
-    if (existing.length > 0) {
-      const [updated] = await db
-        .update(appUsage)
-        .set({ 
+    const [result] = await db
+      .insert(appUsage)
+      .values({ userId, appId, page, clickCount: 1, lastUsedAt: new Date() })
+      .onConflictDoUpdate({
+        target: [appUsage.userId, appUsage.appId, appUsage.page],
+        set: {
           clickCount: sql`${appUsage.clickCount} + 1`,
           lastUsedAt: new Date()
-        })
-        .where(eq(appUsage.id, existing[0].id))
-        .returning();
-      return updated;
-    } else {
-      const [created] = await db
-        .insert(appUsage)
-        .values({ userId, appId, page, clickCount: 1, lastUsedAt: new Date() })
-        .returning();
-      return created;
-    }
+        }
+      })
+      .returning();
+    return result;
   }
 
   async getAppUsageByPage(userId: string, page: string): Promise<AppUsage[]> {
