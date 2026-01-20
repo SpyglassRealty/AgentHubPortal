@@ -57,38 +57,56 @@ export default function PropertiesPage() {
             animate="show"
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
           >
-            {propertyApps.map((app) => (
-              <motion.div key={app.id} variants={item}>
-                <Link href={`/app/${app.id}`}>
-                  <Card className="group relative overflow-hidden border-border hover:border-[hsl(28,94%,54%)]/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer bg-card h-full" data-testid={`card-property-app-${app.id}`}>
-                    <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {app.url ? <ExternalLink className="h-5 w-5 text-muted-foreground" /> : <ArrowUpRight className="h-5 w-5 text-muted-foreground" />}
+            {propertyApps.map((app) => {
+              const handleAppClick = () => {
+                if (app.noIframe && app.url) {
+                  window.open(app.url, '_blank', 'noopener,noreferrer');
+                }
+              };
+
+              const cardContent = (
+                <Card className="group relative overflow-hidden border-border hover:border-[hsl(28,94%,54%)]/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer bg-card h-full" data-testid={`card-property-app-${app.id}`}>
+                  <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {app.url ? <ExternalLink className="h-5 w-5 text-muted-foreground" /> : <ArrowUpRight className="h-5 w-5 text-muted-foreground" />}
+                  </div>
+                  <CardHeader className="pb-4">
+                    <div className={`w-12 h-12 rounded-xl ${app.color} flex items-center justify-center mb-4`}>
+                      <app.icon className="h-6 w-6" />
                     </div>
-                    <CardHeader className="pb-4">
-                      <div className={`w-12 h-12 rounded-xl ${app.color} flex items-center justify-center mb-4`}>
-                        <app.icon className="h-6 w-6" />
-                      </div>
-                      <CardTitle className="font-display text-lg">{app.name}</CardTitle>
-                      <CardDescription className="line-clamp-2 mt-1.5">
-                        {app.description}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs font-normal bg-secondary/80">
-                          {app.category}
+                    <CardTitle className="font-display text-lg">{app.name}</CardTitle>
+                    <CardDescription className="line-clamp-2 mt-1.5">
+                      {app.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs font-normal bg-secondary/80">
+                        {app.category}
+                      </Badge>
+                      {app.url && (
+                        <Badge variant="outline" className="text-xs font-normal border-[hsl(28,94%,54%)]/30 text-[hsl(28,94%,54%)]">
+                          Live
                         </Badge>
-                        {app.url && (
-                          <Badge variant="outline" className="text-xs font-normal border-[hsl(28,94%,54%)]/30 text-[hsl(28,94%,54%)]">
-                            Live
-                          </Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              </motion.div>
-            ))}
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+
+              return (
+                <motion.div key={app.id} variants={item}>
+                  {app.noIframe && app.url ? (
+                    <div onClick={handleAppClick} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && handleAppClick()}>
+                      {cardContent}
+                    </div>
+                  ) : (
+                    <Link href={`/app/${app.id}`}>
+                      {cardContent}
+                    </Link>
+                  )}
+                </motion.div>
+              );
+            })}
           </motion.div>
         </div>
       </div>
