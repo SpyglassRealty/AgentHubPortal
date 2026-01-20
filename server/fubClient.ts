@@ -484,19 +484,21 @@ class FubClient {
 }
 
 let fubClientInstance: FubClient | null = null;
+let lastFubApiKey: string | null = null;
 
 export function getFubClient(): FubClient | null {
-  if (!fubClientInstance) {
-    const apiKey = process.env.FUB_API_KEY;
-    if (!apiKey) {
-      console.warn("FUB_API_KEY not configured");
-      return null;
-    }
+  const apiKey = process.env.FUB_API_KEY;
+  if (!apiKey) {
+    console.warn("FUB_API_KEY not configured");
+    return null;
+  }
+  if (!fubClientInstance || lastFubApiKey !== apiKey) {
     fubClientInstance = new FubClient({
       apiKey,
       systemName: process.env.FUB_SYSTEM_NAME || "MissionControl",
       systemKey: process.env.FUB_SYSTEM_KEY,
     });
+    lastFubApiKey = apiKey;
   }
   return fubClientInstance;
 }
