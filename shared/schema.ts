@@ -109,3 +109,18 @@ export const marketPulseSnapshots = pgTable("market_pulse_snapshots", {
 
 export type MarketPulseSnapshot = typeof marketPulseSnapshots.$inferSelect;
 export type InsertMarketPulseSnapshot = typeof marketPulseSnapshots.$inferInsert;
+
+export const appUsage = pgTable("app_usage", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  appId: varchar("app_id").notNull(),
+  page: varchar("page").notNull(),
+  clickCount: integer("click_count").default(1),
+  lastUsedAt: timestamp("last_used_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_app_usage_user_page").on(table.userId, table.page),
+]);
+
+export type AppUsage = typeof appUsage.$inferSelect;
+export type InsertAppUsage = typeof appUsage.$inferInsert;
