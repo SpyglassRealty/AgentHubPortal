@@ -1,0 +1,114 @@
+Replit Agent Prompt: Fix Back Button Navigation for Integrated Apps
+Problem
+When a user navigates from Properties or Marketing section to an integrated app (Contract Conduit, Blog to Email Automator, Home Review, Client Data Portal), pressing the browser back button takes them to the Dashboard instead of the section they came from.
+Affected Apps (Integrated/Embedded)
+
+Contract Conduit
+Blog to Email Automator
+Home Review
+Client Data Portal
+
+Current Behavior
+User on Properties page → Clicks "Client Data Portal" → Views app → Hits Back
+Result: Goes to Dashboard (WRONG)
+Expected Behavior
+User on Properties page → Clicks "Client Data Portal" → Views app → Hits Back
+Result: Goes back to Properties page (CORRECT)
+Investigation Needed
+
+How are these integrated apps navigating?
+
+Are they using window.location.href = ...? (replaces history)
+Are they using react-router's navigate() or <Link>?
+Are they using history.replace() instead of history.push()?
+
+
+Is there a redirect through Dashboard?
+
+Check if the app route redirects through /dashboard first
+Check if there's auth middleware redirecting via Dashboard
+
+
+Check the routing configuration
+
+How are these app routes defined?
+Are they nested under a layout that affects history?
+
+
+
+Likely Causes
+Cause A: Using replace instead of push
+typescript// WRONG - replaces history, back button skips this entry
+navigate('/app/client-data', { replace: true });
+
+// CORRECT - adds to history, back button works
+navigate('/app/client-data');
+Cause B: Using window.location instead of router
+typescript// WRONG - replaces entire history context
+window.location.href = '/app/client-data';
+
+// CORRECT - uses React Router
+navigate('/app/client-data');
+Cause C: Redirect chain through Dashboard
+typescript// WRONG - redirects through dashboard first
+/properties → /dashboard → /app/client-data
+// Back button goes: /app/client-data → /dashboard
+
+// CORRECT - direct navigation
+/properties → /app/client-data
+// Back button goes: /app/client-data → /properties
+Files to Check
+
+client/src/pages/properties.tsx — How app cards handle clicks
+client/src/pages/marketing.tsx — Same check
+client/src/App.tsx or router config — Route definitions
+Any shared card/link components for apps
+Check for any useEffect redirects on app pages
+
+Fix
+Update the click handlers for integrated apps to use proper navigation:
+typescript// In properties.tsx or the app card component
+import { useNavigate } from 'react-router-dom';
+
+const navigate = useNavigate();
+
+const handleAppClick = (app) => {
+  if (app.external) {
+    // External apps - open in new tab
+    window.open(app.url, '_blank', 'noopener,noreferrer');
+  } else {
+    // Integrated apps - use router navigation (NOT replace)
+    navigate(app.route); // e.g., navigate('/apps/client-data')
+  }
+};
+Make sure app cards distinguish between:
+typescriptconst propertyApps = [
+  {
+    id: 'follow_up_boss',
+    name: 'Follow Up Boss',
+    url: 'https://app.followupboss.com',
+    external: true  // Opens in new tab
+  },
+  {
+    id: 'client_data',
+    name: 'Client Data',
+    route: '/apps/client-data',
+    external: false  // Internal navigation
+  },
+  {
+    id: 'contract_conduit',
+    name: 'Contract Conduit',
+    route: '/apps/contract-conduit',
+    external: false  // Internal navigation
+  }
+];
+Success Criteria
+
+ User on Properties → Opens integrated app → Back button → Returns to Properties
+ User on Marketing → Opens integrated app → Back button → Returns to Marketing
+ External apps still open in new tab (no change)
+ Browser history is preserved correctly
+ No redirect through Dashboard
+
+Test Cases
+Starting PageApp ClickedBack Button Should Go ToPropertiesClient Data PortalPropertiesPropertiesContract ConduitPropertiesPropertiesHome ReviewPropertiesMarketingBlog to Email AutomatorMarketingMarketingContract ConduitMarketing
