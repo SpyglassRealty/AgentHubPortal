@@ -67,8 +67,10 @@ export async function getLatestTrainingVideo(): Promise<LatestTrainingVideo | nu
     }
 
     const data: VimeoResponse = await response.json();
+    console.log("Vimeo API response:", JSON.stringify(data, null, 2));
     
     if (!data.data || data.data.length === 0) {
+      console.log("Vimeo: No videos found in response");
       return null;
     }
 
