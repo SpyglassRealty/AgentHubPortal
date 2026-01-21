@@ -3,11 +3,17 @@ import { useRoute, useLocation } from "wouter";
 import Layout from "@/components/layout";
 import { apps } from "@/lib/apps";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, ArrowLeft } from "lucide-react";
+import { ExternalLink, ArrowLeft, Smartphone } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
+
+function isMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    (window.innerWidth <= 768);
+}
 
 export default function AppView() {
   const { toast } = useToast();
@@ -17,6 +23,7 @@ export default function AppView() {
   const [, setLocation] = useLocation();
   const appId = params?.id;
   const app = apps.find((a) => a.id === appId);
+  const isMobile = isMobileDevice();
 
   const handleBack = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -102,6 +109,27 @@ export default function AppView() {
                 <h3 className="text-lg font-display font-medium mb-2">{app.name}</h3>
                 <p className="text-muted-foreground mb-4">
                   {app.name} opens in a new browser tab for the best experience.
+                </p>
+                <Button className="bg-[hsl(28,94%,54%)] hover:bg-[hsl(28,94%,48%)]" asChild>
+                  <a href={app.url} target="_blank" rel="noopener noreferrer">
+                    Open {app.name}
+                    <ExternalLink className="ml-2 h-4 w-4" />
+                  </a>
+                </Button>
+              </div>
+            </div>
+          ) : isMobile && iframeUrl ? (
+            <div className="w-full h-full flex items-center justify-center bg-muted/20">
+              <div className="text-center p-8 max-w-md">
+                <div className={`mx-auto w-16 h-16 rounded-xl ${app.color} flex items-center justify-center mb-4`}>
+                  <app.icon className="h-8 w-8" />
+                </div>
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Smartphone className="h-5 w-5 text-muted-foreground" />
+                  <h3 className="text-lg font-display font-medium">{app.name}</h3>
+                </div>
+                <p className="text-muted-foreground mb-4">
+                  For the best experience on mobile, please open this app in a new tab. This ensures sign-in and all features work correctly.
                 </p>
                 <Button className="bg-[hsl(28,94%,54%)] hover:bg-[hsl(28,94%,48%)]" asChild>
                   <a href={app.url} target="_blank" rel="noopener noreferrer">
