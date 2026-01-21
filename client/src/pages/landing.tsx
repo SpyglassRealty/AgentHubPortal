@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Shield, Zap, Users } from "lucide-react";
+import { Shield, Zap, Users } from "lucide-react";
 
 export default function LandingPage() {
   return (
@@ -25,15 +25,6 @@ export default function LandingPage() {
             </div>
           </div>
           
-          <a href="/api/auth/google">
-            <Button 
-              className="bg-[hsl(28,94%,54%)] hover:bg-[hsl(28,94%,48%)] text-white font-semibold px-6"
-              data-testid="button-login"
-            >
-              Sign In
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </a>
         </header>
 
         <main className="container mx-auto px-6 pt-20 pb-32">
