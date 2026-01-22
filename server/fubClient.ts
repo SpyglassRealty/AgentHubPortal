@@ -85,13 +85,35 @@ class FubClient {
 
   async getUserByEmail(email: string): Promise<{ id: number; name: string } | null> {
     try {
+      console.log('[FUB Debug] getUserByEmail called with:', email);
+      
+      // First try exact email query
       const data = await this.request<{ users: any[] }>("/users", { email });
+      console.log('[FUB Debug] Direct email query returned:', data.users?.length || 0, 'users');
+      
       if (data.users && data.users.length > 0) {
+        const user = data.users[0];
+        console.log('[FUB Debug] Found user by direct query:', { id: user.id, email: user.email, name: user.name });
         return {
-          id: data.users[0].id,
-          name: data.users[0].name || `${data.users[0].firstName} ${data.users[0].lastName}`,
+          id: user.id,
+          name: user.name || `${user.firstName} ${user.lastName}`,
         };
       }
+      
+      // If direct query fails, try fetching all users and matching
+      console.log('[FUB Debug] Direct query failed, trying full user list...');
+      const allUsers = await this.getAllAgents();
+      const matchingUser = allUsers.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      
+      if (matchingUser) {
+        console.log('[FUB Debug] Found user by scanning all agents:', { id: matchingUser.id, email: matchingUser.email, name: matchingUser.name });
+        return {
+          id: matchingUser.id,
+          name: matchingUser.name,
+        };
+      }
+      
+      console.log('[FUB Debug] No matching user found for email:', email);
       return null;
     } catch (error) {
       console.error("Error finding FUB user:", error);
