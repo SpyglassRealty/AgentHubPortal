@@ -12,9 +12,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
@@ -309,6 +306,44 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-muted-foreground hover:text-foreground h-9 w-9 min-h-[44px] min-w-[44px]" 
+                  data-testid="button-theme-toggle"
+                >
+                  {currentTheme === "dark" ? (
+                    <Moon className="h-5 w-5" />
+                  ) : currentTheme === "system" ? (
+                    <Monitor className="h-5 w-5" />
+                  ) : (
+                    <Sun className="h-5 w-5" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuLabel>Theme</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleThemeChange("light")}>
+                  <Sun className="mr-2 h-4 w-4" />
+                  Light
+                  {currentTheme === "light" && <Check className="ml-auto h-4 w-4" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleThemeChange("dark")}>
+                  <Moon className="mr-2 h-4 w-4" />
+                  Dark
+                  {currentTheme === "dark" && <Check className="ml-auto h-4 w-4" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleThemeChange("system")}>
+                  <Monitor className="mr-2 h-4 w-4" />
+                  System
+                  {currentTheme === "system" && <Check className="ml-auto h-4 w-4" />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-9 w-9 min-h-[44px] min-w-[44px]" data-testid="button-settings">
                   <Settings className="h-5 w-5" />
                 </Button>
@@ -318,30 +353,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>Profile</DropdownMenuItem>
                 <DropdownMenuItem>Preferences</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <Sun className="mr-2 h-4 w-4" />
-                    Theme
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    <DropdownMenuItem onClick={() => handleThemeChange("light")}>
-                      <Sun className="mr-2 h-4 w-4" />
-                      Light
-                      {currentTheme === "light" && <Check className="ml-auto h-4 w-4" />}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleThemeChange("dark")}>
-                      <Moon className="mr-2 h-4 w-4" />
-                      Dark
-                      {currentTheme === "dark" && <Check className="ml-auto h-4 w-4" />}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleThemeChange("system")}>
-                      <Monitor className="mr-2 h-4 w-4" />
-                      System
-                      {currentTheme === "system" && <Check className="ml-auto h-4 w-4" />}
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild className="text-destructive cursor-pointer">
                   <a href="/api/logout">
