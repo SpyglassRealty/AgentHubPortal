@@ -1,9 +1,23 @@
+### Enhance Training Videos Modal - Professional UX with Full Theme Support
+
+**Goal:** Improve the Training Videos modal with better UX while ensuring full light/dark/system mode support.
+
+**Current State:** Working modal with video player + sidebar list
+
+---
+
+## Implementation
+
+### 1. Theme-Aware Component Setup
+```tsx
+// components/TrainingVideosModal.tsx
+
 import { useState, useEffect, useMemo } from 'react';
 import { 
   X, Play, Clock, Calendar, ChevronRight, ChevronLeft, 
   Loader2, Maximize2, Minimize2, Search 
 } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface VimeoVideo {
   id: string;
@@ -25,8 +39,8 @@ interface TrainingVideosModalProps {
 }
 
 export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: TrainingVideosModalProps) {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   
   const [videos, setVideos] = useState<VimeoVideo[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<VimeoVideo | null>(null);
@@ -37,33 +51,54 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
   const [filter, setFilter] = useState('all');
   const [sortOrder, setSortOrder] = useState('newest');
 
+  // ============================================
+  // THEME CLASSES - Light/Dark/System Support
+  // ============================================
+  
+  // Modal backgrounds
   const modalBg = isDark ? 'bg-gray-900' : 'bg-white';
   const sidebarBg = isDark ? 'bg-gray-800' : 'bg-gray-50';
   const overlayBg = isDark ? 'bg-black/80' : 'bg-black/50';
   
+  // Text colors
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
   const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
   const textMuted = isDark ? 'text-gray-500' : 'text-gray-400';
   
+  // Border colors
   const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+  const borderColorLight = isDark ? 'border-gray-600' : 'border-gray-300';
   
+  // Interactive states
   const hoverBg = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100';
+  const activeBg = isDark ? 'bg-gray-700' : 'bg-orange-50';
   const activeText = isDark ? 'text-orange-400' : 'text-orange-600';
   const activeBorder = isDark ? 'border-orange-500' : 'border-orange-500';
   
+  // Input styling
   const inputBg = isDark ? 'bg-gray-700' : 'bg-white';
   const inputBorder = isDark ? 'border-gray-600' : 'border-gray-300';
   const inputText = isDark ? 'text-white' : 'text-gray-900';
   const inputPlaceholder = isDark ? 'placeholder-gray-400' : 'placeholder-gray-500';
   
+  // Button styling
   const buttonBg = isDark ? 'bg-gray-700' : 'bg-gray-100';
   const buttonHover = isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-200';
   const buttonText = isDark ? 'text-gray-300' : 'text-gray-700';
   
+  // Card styling
+  const cardBg = isDark ? 'bg-gray-800' : 'bg-white';
   const cardHover = isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100';
   const cardActive = isDark ? 'bg-orange-500/20' : 'bg-orange-50';
   
+  // Badge styling
   const badgeBg = isDark ? 'bg-black/80' : 'bg-black/70';
+  const newBadgeBg = 'bg-orange-500';
+  const playingBadgeBg = 'bg-orange-500';
+
+  // ============================================
+  // DATA FETCHING & FILTERING
+  // ============================================
 
   useEffect(() => {
     if (isOpen) {
@@ -81,16 +116,6 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
       }
     }
   }, [videos, initialVideoId]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setSelectedVideo(null);
-      setIsTheaterMode(false);
-      setSearchQuery('');
-      setFilter('all');
-      setSortOrder('newest');
-    }
-  }, [isOpen]);
 
   const fetchVideos = async () => {
     setLoading(true);
@@ -112,9 +137,11 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
     }
   };
 
+  // Filtered and sorted videos
   const filteredVideos = useMemo(() => {
     let result = [...videos];
     
+    // Search filter
     if (searchQuery) {
       result = result.filter(v => 
         v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -122,12 +149,15 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
       );
     }
     
+    // Category filter
     if (filter === 'new') {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       result = result.filter(v => new Date(v.created_time) >= sevenDaysAgo);
     }
+    // Add more category filters as needed based on video tags/naming
     
+    // Sort
     if (sortOrder === 'oldest') {
       result.reverse();
     } else if (sortOrder === 'duration') {
@@ -137,7 +167,12 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
     return result;
   }, [videos, searchQuery, filter, sortOrder]);
 
+  // Current video index
   const currentIndex = filteredVideos.findIndex(v => v.id === selectedVideo?.id);
+
+  // ============================================
+  // HELPER FUNCTIONS
+  // ============================================
 
   const formatDuration = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -193,13 +228,16 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
     }
   };
 
+  // ============================================
+  // RENDER
+  // ============================================
+
   if (!isOpen) return null;
 
   return (
     <div 
       className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${overlayBg}`}
       onClick={onClose}
-      data-testid="modal-training-videos-overlay"
     >
       <div 
         className={`
@@ -209,9 +247,13 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
           transition-all duration-300
         `}
         onClick={(e) => e.stopPropagation()}
-        data-testid="modal-training-videos"
       >
+        {/* ============================================ */}
+        {/* MAIN CONTENT AREA */}
+        {/* ============================================ */}
         <div className="flex-1 flex flex-col min-w-0">
+          
+          {/* Header */}
           <div className={`flex items-center justify-between px-4 py-3 border-b ${borderColor}`}>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
@@ -230,20 +272,19 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
                 onClick={() => setIsTheaterMode(!isTheaterMode)}
                 className={`p-2 rounded-lg ${hoverBg} transition-colors ${textSecondary}`}
                 title={isTheaterMode ? 'Exit theater mode' : 'Theater mode'}
-                data-testid="button-theater-mode"
               >
                 {isTheaterMode ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
               </button>
               <button
                 onClick={onClose}
                 className={`p-2 rounded-lg ${hoverBg} transition-colors ${textSecondary}`}
-                data-testid="button-close-modal"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
           </div>
 
+          {/* Video Player */}
           <div className={`flex-1 ${isDark ? 'bg-black' : 'bg-gray-900'} flex items-center justify-center`}>
             {loading ? (
               <div className="flex flex-col items-center gap-3">
@@ -256,7 +297,6 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
                 <button 
                   onClick={fetchVideos}
                   className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-                  data-testid="button-retry-videos"
                 >
                   Retry
                 </button>
@@ -269,16 +309,17 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
                 allow="autoplay; fullscreen; picture-in-picture"
                 allowFullScreen
                 title={selectedVideo.name}
-                data-testid="iframe-video-player"
               />
             ) : (
               <p className="text-white/50">No video selected</p>
             )}
           </div>
 
+          {/* Video Navigation & Info */}
           {selectedVideo && !loading && (
             <div className={`px-4 py-3 border-t ${borderColor}`}>
               <div className="flex items-center justify-between">
+                {/* Previous Button */}
                 <button
                   onClick={playPrevious}
                   disabled={currentIndex === 0}
@@ -287,16 +328,14 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
                       ? `${textMuted} cursor-not-allowed` 
                       : `${textSecondary} ${hoverBg}`
                     }`}
-                  data-testid="button-previous-video"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   <span className="hidden sm:inline">Previous</span>
                 </button>
                 
+                {/* Video Info */}
                 <div className="text-center flex-1 min-w-0 px-4">
-                  <h3 className={`font-semibold ${textPrimary} truncate`} data-testid="text-selected-video-title">
-                    {selectedVideo.name}
-                  </h3>
+                  <h3 className={`font-semibold ${textPrimary} truncate`}>{selectedVideo.name}</h3>
                   <div className={`flex items-center justify-center gap-3 text-sm ${textSecondary} mt-1`}>
                     <span className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
@@ -312,6 +351,7 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
                   </div>
                 </div>
                 
+                {/* Next Button */}
                 <button
                   onClick={playNext}
                   disabled={currentIndex === filteredVideos.length - 1}
@@ -320,7 +360,6 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
                       ? `${textMuted} cursor-not-allowed` 
                       : `${textSecondary} ${hoverBg}`
                     }`}
-                  data-testid="button-next-video"
                 >
                   <span className="hidden sm:inline">Next</span>
                   <ChevronRight className="w-4 h-4" />
@@ -330,8 +369,13 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
           )}
         </div>
 
+        {/* ============================================ */}
+        {/* SIDEBAR - Video List */}
+        {/* ============================================ */}
         {!isTheaterMode && (
           <div className={`w-80 ${sidebarBg} border-l ${borderColor} flex flex-col`}>
+            
+            {/* Search Box */}
             <div className={`p-3 border-b ${borderColor}`}>
               <div className="relative">
                 <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textMuted}`} />
@@ -341,11 +385,11 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className={`w-full pl-9 pr-3 py-2 ${inputBg} border ${inputBorder} rounded-lg text-sm ${inputText} ${inputPlaceholder} focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors`}
-                  data-testid="input-search-videos"
                 />
               </div>
             </div>
 
+            {/* Filter Tabs */}
             <div className={`flex gap-1 p-2 border-b ${borderColor} overflow-x-auto`}>
               {[
                 { key: 'all', label: 'All' },
@@ -359,17 +403,16 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
                       ? 'bg-orange-500 text-white' 
                       : `${buttonBg} ${buttonText} ${buttonHover}`
                     }`}
-                  data-testid={`button-filter-${tab.key}`}
                 >
                   {tab.label}
                 </button>
               ))}
               
+              {/* Sort Dropdown */}
               <select 
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value)}
                 className={`ml-auto text-xs ${inputBg} border ${inputBorder} ${buttonText} rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-500`}
-                data-testid="select-sort-order"
               >
                 <option value="newest">Newest</option>
                 <option value="oldest">Oldest</option>
@@ -377,6 +420,7 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
               </select>
             </div>
 
+            {/* Video List Header */}
             <div className={`px-3 py-2 border-b ${borderColor}`}>
               <h3 className={`font-medium ${textPrimary} text-sm`}>Training Library</h3>
               <p className={`text-xs ${textSecondary}`}>
@@ -385,6 +429,7 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
               </p>
             </div>
             
+            {/* Video List */}
             <div className="flex-1 overflow-y-auto">
               {loading ? (
                 <div className="flex items-center justify-center py-8">
@@ -407,9 +452,9 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
                           : `${cardHover} border-l-2 border-transparent`
                         }
                       `}
-                      data-testid={`button-video-${video.id}`}
                     >
                       <div className="flex gap-3">
+                        {/* Thumbnail */}
                         <div className="relative flex-shrink-0 w-28 h-16 rounded-lg overflow-hidden bg-gray-800">
                           {getThumbnail(video) ? (
                             <img 
@@ -423,25 +468,29 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
                             </div>
                           )}
                           
+                          {/* Play overlay on hover */}
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <div className="w-8 h-8 bg-white/90 rounded-full flex items-center justify-center">
                               <Play className="w-4 h-4 text-gray-900 fill-gray-900 ml-0.5" />
                             </div>
                           </div>
                           
+                          {/* Duration badge */}
                           <span className={`absolute bottom-1 right-1 px-1.5 py-0.5 ${badgeBg} text-white text-xs rounded font-medium`}>
                             {formatDuration(video.duration)}
                           </span>
                           
+                          {/* NEW badge */}
                           {isNew(video) && (
-                            <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-orange-500 text-white text-xs rounded font-bold">
+                            <span className={`absolute top-1 left-1 px-1.5 py-0.5 ${newBadgeBg} text-white text-xs rounded font-bold`}>
                               NEW
                             </span>
                           )}
                           
+                          {/* Now playing indicator */}
                           {selectedVideo?.id === video.id && (
                             <div className={`absolute inset-0 border-2 ${activeBorder} rounded-lg`}>
-                              <div className="absolute top-1 left-1 flex items-center gap-1 px-1.5 py-0.5 bg-orange-500 rounded text-xs text-white font-medium">
+                              <div className={`absolute top-1 left-1 flex items-center gap-1 px-1.5 py-0.5 ${playingBadgeBg} rounded text-xs text-white font-medium`}>
                                 <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
                                 Playing
                               </div>
@@ -449,6 +498,7 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
                           )}
                         </div>
                         
+                        {/* Video info */}
                         <div className="flex-1 min-w-0 py-0.5">
                           <h4 className={`font-medium text-sm line-clamp-2 ${selectedVideo?.id === video.id ? activeText : textPrimary}`}>
                             {video.name}
@@ -469,3 +519,94 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
     </div>
   );
 }
+```
+
+---
+
+## Theme Classes Reference
+
+| Element | Dark Mode | Light Mode |
+|---------|-----------|------------|
+| Modal Background | `bg-gray-900` | `bg-white` |
+| Sidebar Background | `bg-gray-800` | `bg-gray-50` |
+| Overlay | `bg-black/80` | `bg-black/50` |
+| Primary Text | `text-white` | `text-gray-900` |
+| Secondary Text | `text-gray-400` | `text-gray-600` |
+| Muted Text | `text-gray-500` | `text-gray-400` |
+| Border | `border-gray-700` | `border-gray-200` |
+| Input Background | `bg-gray-700` | `bg-white` |
+| Input Border | `border-gray-600` | `border-gray-300` |
+| Button Background | `bg-gray-700` | `bg-gray-100` |
+| Button Hover | `hover:bg-gray-600` | `hover:bg-gray-200` |
+| Card Hover | `hover:bg-gray-700/50` | `hover:bg-gray-100` |
+| Active Card | `bg-orange-500/20` | `bg-orange-50` |
+| Active Text | `text-orange-400` | `text-orange-600` |
+| Divider | `divide-gray-700` | `divide-gray-200` |
+
+---
+
+## Visual Summary
+
+**Dark Mode:**
+┌─────────────────────────────────────────────────────────────────────────┐
+│  [▶] Training Videos                           [⛶] [X]    │ bg-gray-900 │
+├───────────────────────────────────────────────┬─────────────────────────┤
+│                                               │ [🔍 Search...]          │
+│                                               │ bg-gray-700             │
+│          VIMEO PLAYER                         ├─────────────────────────┤
+│          (black bg)                           │ [All] [New] [Newest ▼]  │
+│                                               │ bg-gray-700 buttons     │
+│                                               ├─────────────────────────┤
+│                                               │ Video cards             │
+│                                               │ bg-gray-800             │
+│                                               │ hover:bg-gray-700       │
+├───────────────────────────────────────────────┤ active:bg-orange-500/20 │
+│  [< Prev]  Video Title  [Next >]              │                         │
+│  text-gray-400                                │ text-white              │
+└───────────────────────────────────────────────┴─────────────────────────┘
+
+**Light Mode:**
+┌─────────────────────────────────────────────────────────────────────────┐
+│  [▶] Training Videos                           [⛶] [X]    │ bg-white    │
+├───────────────────────────────────────────────┬─────────────────────────┤
+│                                               │ [🔍 Search...]          │
+│                                               │ bg-white                │
+│          VIMEO PLAYER                         ├─────────────────────────┤
+│          (dark bg)                            │ [All] [New] [Newest ▼]  │
+│                                               │ bg-gray-100 buttons     │
+│                                               ├─────────────────────────┤
+│                                               │ Video cards             │
+│                                               │ bg-gray-50              │
+│                                               │ hover:bg-gray-100       │
+├───────────────────────────────────────────────┤ active:bg-orange-50     │
+│  [< Prev]  Video Title  [Next >]              │                         │
+│  text-gray-600                                │ text-gray-900           │
+└───────────────────────────────────────────────┴─────────────────────────┘
+
+---
+
+## Testing Checklist
+
+**Functionality:**
+- [ ] Search filters videos by title/description
+- [ ] Filter tabs work (All, New)
+- [ ] Sort dropdown changes order (Newest, Oldest, Duration)
+- [ ] Previous/Next buttons navigate videos
+- [ ] Currently playing video highlighted in sidebar
+- [ ] NEW badge shows on videos less than 7 days old
+- [ ] Playing indicator shows on current video
+- [ ] Hover effects work on video cards
+- [ ] Video count updates with filters
+- [ ] Theater mode hides sidebar
+
+**Theme Support:**
+- [ ] Light mode: All backgrounds are light, text is dark
+- [ ] Dark mode: All backgrounds are dark, text is light
+- [ ] System mode: Follows OS preference
+- [ ] Modal overlay opacity differs by theme
+- [ ] Input fields styled correctly in both modes
+- [ ] Buttons styled correctly in both modes
+- [ ] Active/selected states visible in both modes
+- [ ] Borders visible in both modes
+- [ ] Hover states work in both modes
+- [ ] No white flash when switching themes
