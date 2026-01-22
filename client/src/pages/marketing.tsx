@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Layout from "@/components/layout";
 import { apps } from "@/lib/apps";
 import { Link } from "wouter";
@@ -8,6 +9,8 @@ import { ArrowUpRight, ExternalLink, Megaphone, Mail, Palette, Share2 } from "lu
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { GoogleDocModal } from "@/components/google-doc-modal";
+import { DOCUMENTS } from "@/lib/documents";
 
 interface AppUsage {
   appId: string;
@@ -16,6 +19,7 @@ interface AppUsage {
 
 export default function MarketingPage() {
   const queryClient = useQueryClient();
+  const [showBrandGuidelines, setShowBrandGuidelines] = useState(false);
   
   const { data: usageData } = useQuery<{ usage: AppUsage[] }>({
     queryKey: ["/api/app-usage/marketing"],
@@ -163,11 +167,10 @@ export default function MarketingPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <a
-                href="https://docs.google.com/document/d/1LKeF3DPqWelqF-ESWzJe3FEVewVTNaDCt4yv3rMz740/edit?usp=sharing"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer group"
+              <button
+                onClick={() => setShowBrandGuidelines(true)}
+                className="p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer group text-left"
+                data-testid="button-brand-guidelines"
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -176,7 +179,7 @@ export default function MarketingPage() {
                   </div>
                   <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[hsl(28,94%,54%)] transition-colors" />
                 </div>
-              </a>
+              </button>
               <Link href="/marketing-calendar">
                 <div className="p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer group">
                   <div className="flex items-center justify-between">
@@ -192,6 +195,14 @@ export default function MarketingPage() {
           </CardContent>
         </Card>
       </div>
+
+      <GoogleDocModal
+        isOpen={showBrandGuidelines}
+        onClose={() => setShowBrandGuidelines(false)}
+        title={DOCUMENTS.brandGuidelines.title}
+        docId={DOCUMENTS.brandGuidelines.docId}
+        externalUrl={DOCUMENTS.brandGuidelines.externalUrl}
+      />
     </Layout>
   );
 }

@@ -13,6 +13,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { OnboardingModal } from "@/components/onboarding-modal";
 import { SuggestionCard } from "@/components/suggestion-card";
 import MarketPulse from "@/components/market-pulse";
+import { GoogleDocModal } from "@/components/google-doc-modal";
+import { DOCUMENTS } from "@/lib/documents";
 import type { ContextSuggestion, AgentProfile } from "@shared/schema";
 
 interface ProfileResponse {
@@ -43,6 +45,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [showAllApps, setShowAllApps] = useState(false);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
+  const [showHandbook, setShowHandbook] = useState(false);
 
   const { data: profileData, isLoading: profileLoading } = useQuery<ProfileResponse>({
     queryKey: ["/api/context/profile"],
@@ -325,27 +328,37 @@ export default function DashboardPage() {
             <h2 className="text-xl font-display font-semibold tracking-tight mb-4">Quick Links</h2>
             <Card>
               <CardContent className="p-6 space-y-3">
-                {[
-                  { label: "Company Handbook", href: "https://docs.google.com/document/d/13EJYTRJ9QAXOdJH1H6Vyvh6iBaUsVJcUORxw6PuDcVM/edit?usp=sharing" },
-                  { label: "Marketing Resources", href: "https://app.rechat.com" },
-                ].map((link, i) => (
-                  <a 
-                    key={i} 
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors group"
-                  >
-                    <span className="text-sm font-medium">{link.label}</span>
-                    <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[hsl(28,94%,54%)] transition-colors" />
-                  </a>
-                ))}
+                <button
+                  onClick={() => setShowHandbook(true)}
+                  className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors group text-left"
+                  data-testid="button-company-handbook"
+                >
+                  <span className="text-sm font-medium">Company Handbook</span>
+                  <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[hsl(28,94%,54%)] transition-colors" />
+                </button>
+                <a 
+                  href="https://app.rechat.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors group"
+                >
+                  <span className="text-sm font-medium">Marketing Resources</span>
+                  <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[hsl(28,94%,54%)] transition-colors" />
+                </a>
               </CardContent>
             </Card>
           </div>
         </div>
 
       </div>
+
+      <GoogleDocModal
+        isOpen={showHandbook}
+        onClose={() => setShowHandbook(false)}
+        title={DOCUMENTS.companyHandbook.title}
+        docId={DOCUMENTS.companyHandbook.docId}
+        externalUrl={DOCUMENTS.companyHandbook.externalUrl}
+      />
     </Layout>
   );
 }
