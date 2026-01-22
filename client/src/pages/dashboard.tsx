@@ -162,7 +162,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6">
           {[
             { label: "Action Items", value: suggestions.length.toString(), sublabel: "To Review" },
-            { label: "Apps", value: apps.length.toString(), sublabel: `${apps.filter(a => a.connectionType === 'embedded').length} Int.` },
+            { label: "Apps", value: apps.filter(a => a.id !== 'contract-conduit-marketing').length.toString(), sublabel: `${apps.filter(a => a.id !== 'contract-conduit-marketing' && a.connectionType === 'embedded').length} Int.` },
             { label: "Resources", value: "24/7", sublabel: "Available" },
           ].map((stat, i) => (
             <Card key={i} className="bg-card border-border shadow-sm hover:shadow-md transition-all">
@@ -190,7 +190,7 @@ export default function DashboardPage() {
             animate="show"
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6"
           >
-            {apps.map((app) => {
+            {apps.filter(app => app.id !== 'contract-conduit-marketing').map((app) => {
               const handleAppClick = () => {
                 if (app.noIframe && app.url) {
                   window.open(app.url, '_blank', 'noopener,noreferrer');
