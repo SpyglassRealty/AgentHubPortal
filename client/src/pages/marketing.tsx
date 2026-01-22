@@ -31,7 +31,7 @@ export default function MarketingPage() {
     },
   });
 
-  const baseApps = apps.filter(app => app.categories.includes("Marketing"));
+  const baseApps = apps.filter(app => app.categories.includes("Marketing") && app.id !== 'contract-conduit-marketing');
 
   const marketingApps = useMemo(() => {
     if (!usageData?.usage?.length) return baseApps;
