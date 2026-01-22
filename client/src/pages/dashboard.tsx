@@ -14,6 +14,7 @@ import { OnboardingModal } from "@/components/onboarding-modal";
 import { SuggestionCard } from "@/components/suggestion-card";
 import MarketPulse from "@/components/market-pulse";
 import { GoogleDocModal } from "@/components/google-doc-modal";
+import { TrainingVideosModal } from "@/components/training-videos-modal";
 import { DOCUMENTS } from "@/lib/documents";
 import type { ContextSuggestion, AgentProfile } from "@shared/schema";
 
@@ -46,6 +47,7 @@ export default function DashboardPage() {
   const [showAllApps, setShowAllApps] = useState(false);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [showHandbook, setShowHandbook] = useState(false);
+  const [showTrainingVideos, setShowTrainingVideos] = useState(false);
 
   const { data: profileData, isLoading: profileLoading } = useQuery<ProfileResponse>({
     queryKey: ["/api/context/profile"],
@@ -283,12 +285,10 @@ export default function DashboardPage() {
             <Card>
               <CardContent className="p-0">
                 {vimeoData?.video && (
-                  <a 
-                    href={vimeoData.video.link} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="p-6 flex gap-4 border-b hover:bg-muted/30 transition-colors cursor-pointer block"
-                    data-testid="link-latest-training-video"
+                  <button 
+                    onClick={() => setShowTrainingVideos(true)}
+                    className="p-6 flex gap-4 border-b hover:bg-muted/30 transition-colors cursor-pointer w-full text-left"
+                    data-testid="button-open-training-videos"
                   >
                     <div className="h-12 w-12 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
                       <PlayCircle className="h-6 w-6 text-purple-600" />
@@ -303,7 +303,7 @@ export default function DashboardPage() {
                         {vimeoData.video.description || "Watch the latest training module from Spyglass Realty."}
                       </p>
                     </div>
-                  </a>
+                  </button>
                 )}
                 <div className="p-6 flex gap-4 border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
                   <div className="h-12 w-12 rounded-lg bg-[hsl(28,94%,54%)]/10 flex items-center justify-center flex-shrink-0">
@@ -358,6 +358,11 @@ export default function DashboardPage() {
         title={DOCUMENTS.companyHandbook.title}
         docId={DOCUMENTS.companyHandbook.docId}
         externalUrl={DOCUMENTS.companyHandbook.externalUrl}
+      />
+
+      <TrainingVideosModal
+        isOpen={showTrainingVideos}
+        onClose={() => setShowTrainingVideos(false)}
       />
     </Layout>
   );

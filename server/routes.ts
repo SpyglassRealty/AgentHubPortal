@@ -938,6 +938,58 @@ export async function registerRoutes(
     }
   });
 
+  // Vimeo - Get all training videos for modal
+  app.get('/api/vimeo/training-videos', isAuthenticated, async (req: any, res) => {
+    try {
+      const VIMEO_ACCESS_TOKEN = process.env.VIMEO_ACCESS_TOKEN;
+      const VIMEO_FOLDER_ID = process.env.VIMEO_FOLDER_ID;
+      
+      if (!VIMEO_ACCESS_TOKEN) {
+        return res.status(503).json({ error: 'Vimeo not configured' });
+      }
+
+      const endpoint = VIMEO_FOLDER_ID 
+        ? `https://api.vimeo.com/me/folders/${VIMEO_FOLDER_ID}/videos`
+        : 'https://api.vimeo.com/me/videos';
+      
+      const response = await fetch(`${endpoint}?per_page=50&sort=date&direction=desc`, {
+        headers: {
+          'Authorization': `Bearer ${VIMEO_ACCESS_TOKEN}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/vnd.vimeo.*+json;version=3.4'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch from Vimeo');
+      }
+
+      const data = await response.json();
+      
+      const videos = data.data.map((video: any) => ({
+        id: video.uri.split('/').pop(),
+        name: video.name,
+        description: video.description || '',
+        duration: video.duration,
+        created_time: video.created_time,
+        link: video.link,
+        player_embed_url: video.player_embed_url,
+        pictures: video.pictures
+      }));
+
+      res.json({ 
+        videos,
+        total: data.total,
+        page: data.page,
+        per_page: data.per_page
+      });
+      
+    } catch (error) {
+      console.error('[Vimeo API Error]', error);
+      res.status(500).json({ error: 'Failed to fetch training videos' });
+    }
+  });
+
   // Marketing Calendar - AI-powered social media ideas
   app.post('/api/marketing/social-ideas', isAuthenticated, async (req: any, res) => {
     try {
