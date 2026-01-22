@@ -29,7 +29,7 @@ interface Notification {
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = React.useState(false);
   const { user } = useAuth();
@@ -354,17 +354,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link href="/settings?section=profile">
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </Link>
+                <DropdownMenuItem 
+                  className="cursor-pointer"
+                  onClick={() => setLocation("/settings?section=profile")}
+                >
+                  <User className="mr-2 h-4 w-4" />
+                  Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link href="/settings?section=preferences">
-                    <Sliders className="mr-2 h-4 w-4" />
-                    Preferences
-                  </Link>
+                <DropdownMenuItem 
+                  className="cursor-pointer"
+                  onClick={() => setLocation("/settings?section=preferences")}
+                >
+                  <Sliders className="mr-2 h-4 w-4" />
+                  Preferences
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild className="text-destructive cursor-pointer">
