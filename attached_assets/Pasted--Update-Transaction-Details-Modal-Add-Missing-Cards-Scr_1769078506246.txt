@@ -1,0 +1,432 @@
+### Update Transaction Details Modal - Add Missing Cards & Scroll Fix
+
+**Additional Requirements:**
+
+---
+
+## 1. Make Average Sale Price Card Clickable
+
+The "Average Sale Price" card ($337K) should be clickable and show all transactions used to calculate the average:
+```tsx
+// Add to your card click handlers
+<div 
+  onClick={() => handleCardClick('avg-sale-price', 'Average Sale Price - Last 12 Months')}
+  className="cursor-pointer hover:ring-2 hover:ring-orange-500/50 transition-all rounded-xl"
+>
+  {/* Average Sale Price card - $337K */}
+</div>
+```
+
+**Modal behavior for Average Sale Price:**
+- Show all closed transactions from Last 12 Months
+- Display the sale price prominently for each transaction
+- Show summary: "Average calculated from X transactions"
+
+---
+
+## 2. Make Avg Days to Close Card Clickable
+
+The "Avg Days to Close" card (35 days) should also be clickable:
+```tsx
+<div 
+  onClick={() => handleCardClick('avg-days-close', 'Average Days to Close - Last 12 Months')}
+  className="cursor-pointer hover:ring-2 hover:ring-orange-500/50 transition-all rounded-xl"
+>
+  {/* Avg Days to Close card - 35 days */}
+</div>
+```
+
+**Modal behavior for Avg Days to Close:**
+- Show all closed transactions with their days-to-close calculated
+- Add a "Days to Close" column showing: (Close Date - List Date)
+- Summary: "Average X days across Y transactions"
+
+---
+
+## 3. Make Year-over-Year Card Clickable
+
+The "Year-over-Year" comparison card should be clickable to show comparison details:
+```tsx
+<div 
+  onClick={() => handleCardClick('yoy-comparison', 'Year-over-Year Comparison')}
+  className="cursor-pointer hover:ring-2 hover:ring-orange-500/50 transition-all rounded-xl"
+>
+  {/* Year-over-Year card */}
+</div>
+```
+
+**Modal behavior for YoY:**
+- Show side-by-side comparison of this year vs last year
+- Display transactions from both periods
+- Show monthly breakdown if available
+
+---
+
+## 4. Fix Scrolling for Long Transaction Lists
+
+**Critical:** Ensure the modal properly scrolls when there are many transactions.
+```tsx
+// TransactionDetailsModal.tsx - Update the content section
+
+export function TransactionDetailsModal({ ... }) {
+  // ... existing code
+
+  return (
+    <div 
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${overlayBg}`}
+      onClick={onClose} // Click outside to close
+    >
+      <div 
+        className={`
+          relative 
+          w-full 
+          max-w-4xl 
+          max-h-[90vh]  // Maximum 90% of viewport height
+          rounded-xl 
+          shadow-2xl 
+          ${modalBg} 
+          flex 
+          flex-col
+          overflow-hidden  // Prevent content overflow
+        `}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header - Fixed at top */}
+        <div className={`flex-shrink-0 flex items-center justify-between p-6 border-b ${borderColor}`}>
+          <div>
+            <h2 className={`text-xl font-semibold ${textPrimary}`}>{title}</h2>
+            <p className={`text-sm ${textSecondary} mt-1`}>
+              {transactions.length} transaction{transactions.length !== 1 ? 's' : ''} found
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className={`p-2 rounded-lg ${hoverBg} transition-colors`}
+          >
+            <X className={`w-5 h-5 ${textSecondary}`} />
+          </button>
+        </div>
+
+        {/* Summary Stats Bar - Fixed */}
+        {!loading && transactions.length > 0 && (
+          <div className={`flex-shrink-0 grid grid-cols-3 gap-4 p-4 border-b ${borderColor}`}>
+            {/* ... summary stats ... */}
+          </div>
+        )}
+
+        {/* Scrollable Transaction List */}
+        <div 
+          className={`
+            flex-1 
+            overflow-y-auto  // Enable vertical scrolling
+            p-6
+            min-h-0  // Important: allows flex child to shrink and scroll
+          `}
+          style={{
+            maxHeight: 'calc(90vh - 200px)', // Account for header/footer
+            scrollBehavior: 'smooth'
+          }}
+        >
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className={`w-8 h-8 animate-spin ${textSecondary}`} />
+              <p className={`mt-3 ${textSecondary}`}>Loading transactions...</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <FileText className={`w-12 h-12 ${textSecondary} opacity-50`} />
+              <p className={`mt-3 text-red-500`}>{error}</p>
+              <button
+                onClick={fetchTransactions}
+                className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          ) : transactions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Home className={`w-12 h-12 ${textSecondary} opacity-50`} />
+              <p className={`mt-3 ${textSecondary}`}>No transactions found for this period</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {transactions.map((transaction) => (
+                <TransactionCard 
+                  key={transaction.id} 
+                  transaction={transaction}
+                  cardType={cardType}
+                  theme={theme}
+                />
+              ))}
+              
+              {/* Scroll indicator when list is long */}
+              {transactions.length > 5 && (
+                <div className={`text-center py-4 ${textSecondary} text-sm`}>
+                  — End of {transactions.length} transactions —
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer - Fixed at bottom */}
+        <div className={`flex-shrink-0 p-4 border-t ${borderColor} flex justify-between items-center`}>
+          <p className={`text-sm ${textSecondary}`}>
+            Showing {transactions.length} transaction{transactions.length !== 1 ? 's' : ''}
+          </p>
+          <button
+            onClick={onClose}
+            className={`px-4 py-2 rounded-lg ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'} ${textPrimary} transition-colors`}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## 5. Add Custom Scrollbar Styling (for dark/light mode)
+```css
+/* Add to your global CSS or tailwind */
+
+/* Light mode scrollbar */
+.light-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.light-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+.light-scrollbar::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+.light-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Dark mode scrollbar */
+.dark-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.dark-scrollbar::-webkit-scrollbar-track {
+  background: #1f2937;
+  border-radius: 4px;
+}
+.dark-scrollbar::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 4px;
+}
+.dark-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+```
+
+Apply in component:
+```tsx
+<div 
+  className={`
+    flex-1 
+    overflow-y-auto 
+    p-6
+    min-h-0
+    ${isDark ? 'dark-scrollbar' : 'light-scrollbar'}
+  `}
+>
+```
+
+---
+
+## 6. Update Card Types for API Endpoint
+
+Add the new card types to the API:
+```typescript
+// In the API route handler
+
+switch (cardType) {
+  // ... existing cases ...
+  
+  case 'avg-sale-price':
+    params.set('period', 'l12m');
+    params.set('status', 'closed');
+    // Will show all closed deals, calculate average on frontend
+    break;
+    
+  case 'avg-days-close':
+    params.set('period', 'l12m');
+    params.set('status', 'closed');
+    params.set('includeDaysToClose', 'true'); // Calculate days for each
+    break;
+    
+  case 'yoy-comparison':
+    params.set('period', 'yoy'); // Custom period for year comparison
+    break;
+}
+```
+
+---
+
+## 7. Enhanced Transaction Card for Different Card Types
+
+Show different info based on which card was clicked:
+```tsx
+// TransactionCard component
+
+interface TransactionCardProps {
+  transaction: Transaction;
+  cardType: string;
+  theme: 'light' | 'dark';
+}
+
+function TransactionCard({ transaction, cardType, theme }: TransactionCardProps) {
+  const isDark = theme === 'dark';
+  const cardBg = isDark ? 'bg-gray-800' : 'bg-gray-50';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const hoverBg = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100';
+
+  // Calculate days to close if needed
+  const daysToClose = transaction.listDate && transaction.closeDate
+    ? Math.round((new Date(transaction.closeDate).getTime() - new Date(transaction.listDate).getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+
+  return (
+    <div className={`${cardBg} rounded-lg p-4 ${hoverBg} transition-colors`}>
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <Home className={`w-4 h-4 ${textSecondary}`} />
+            <h3 className={`font-medium ${textPrimary}`}>
+              {transaction.address}
+            </h3>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(transaction.status)}`}>
+              {transaction.status}
+            </span>
+          </div>
+          <p className={`text-sm ${textSecondary} mt-1`}>
+            {transaction.city}, {transaction.state}
+          </p>
+          <div className={`flex items-center gap-4 mt-2 text-sm ${textSecondary}`}>
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              {formatDate(transaction.closeDate)}
+            </span>
+            <span className="flex items-center gap-1">
+              <User className="w-3 h-3" />
+              {transaction.side} Side
+            </span>
+            
+            {/* Show Days to Close for avg-days-close card type */}
+            {cardType === 'avg-days-close' && daysToClose !== null && (
+              <span className="flex items-center gap-1 text-orange-500 font-medium">
+                <Clock className="w-3 h-3" />
+                {daysToClose} days
+              </span>
+            )}
+          </div>
+        </div>
+        
+        <div className="text-right">
+          {/* Emphasize sale price for avg-sale-price card type */}
+          <p className={`font-semibold ${cardType === 'avg-sale-price' ? 'text-lg text-orange-500' : textPrimary}`}>
+            {formatCurrency(transaction.price)}
+          </p>
+          <p className="text-sm text-green-500">
+            GCI: {formatCurrency(transaction.gci)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## 8. Year-over-Year Special Modal Layout
+
+For YoY comparison, show a different layout:
+```tsx
+// Special rendering for YoY card type
+{cardType === 'yoy-comparison' && (
+  <div className="space-y-6">
+    {/* Summary Comparison */}
+    <div className="grid grid-cols-2 gap-4">
+      <div className={`${cardBg} rounded-lg p-4 text-center`}>
+        <p className={`text-sm ${textSecondary}`}>2026 YTD</p>
+        <p className={`text-2xl font-bold ${textPrimary}`}>
+          {formatCurrency(ytdData.current)}
+        </p>
+        <p className={`text-sm ${textSecondary}`}>{ytdData.currentDeals} deals</p>
+      </div>
+      <div className={`${cardBg} rounded-lg p-4 text-center`}>
+        <p className={`text-sm ${textSecondary}`}>2025 YTD (Same Period)</p>
+        <p className={`text-2xl font-bold ${textPrimary}`}>
+          {formatCurrency(ytdData.previous)}
+        </p>
+        <p className={`text-sm ${textSecondary}`}>{ytdData.previousDeals} deals</p>
+      </div>
+    </div>
+    
+    {/* Change Indicator */}
+    <div className={`text-center p-4 rounded-lg ${ytdData.changePercent >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+      <p className={`text-lg font-semibold ${ytdData.changePercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+        {ytdData.changePercent >= 0 ? '↑' : '↓'} {Math.abs(ytdData.changePercent)}% compared to last year
+      </p>
+    </div>
+    
+    {/* Transactions List */}
+    <div>
+      <h4 className={`font-medium ${textPrimary} mb-3`}>2026 Transactions</h4>
+      {/* ... transaction list ... */}
+    </div>
+  </div>
+)}
+```
+
+---
+
+## Summary of All Clickable Cards
+
+| Card | Card Type Key | What It Shows |
+|------|---------------|---------------|
+| GCI YTD | `gci-ytd` | All transactions YTD with GCI |
+| GCI L12M | `gci-l12m` | All transactions Last 12 Months with GCI |
+| Pending | `pending` | All pending/under contract deals |
+| Avg/Deal | `avg-deal` | Transactions with commission breakdown |
+| Buyer Side YTD | `buyer-ytd` | Buyer side transactions YTD |
+| Seller Side YTD | `seller-ytd` | Seller side transactions YTD |
+| Buyer Side L12M | `buyer-l12m` | Buyer side transactions L12M |
+| Seller Side L12M | `seller-l12m` | Seller side transactions L12M |
+| **Average Sale Price** | `avg-sale-price` | All closed transactions with price emphasis |
+| **Avg Days to Close** | `avg-days-close` | Transactions with days-to-close calculated |
+| **Year-over-Year** | `yoy-comparison` | Side-by-side YTD comparison |
+
+---
+
+## Testing Checklist:
+
+- [ ] Average Sale Price card is clickable
+- [ ] Avg Days to Close card is clickable  
+- [ ] Year-over-Year card is clickable
+- [ ] Modal scrolls smoothly with 20+ transactions
+- [ ] Scroll reaches the very bottom of the list
+- [ ] "End of X transactions" indicator shows at bottom
+- [ ] Custom scrollbar matches light/dark theme
+- [ ] Days to Close shows for relevant card type
+- [ ] YoY comparison shows proper layout
+- [ ] All modals respect dark/light mode
+
+This updated prompt adds:
+
+Clickable Average Sale Price card
+Clickable Avg Days to Close card
+Clickable Year-over-Year card
+Proper scrolling with overflow-y-auto and max-height
+Custom scrollbar styling for dark/light modes
+"End of transactions" indicator
+Special layouts for different card types
