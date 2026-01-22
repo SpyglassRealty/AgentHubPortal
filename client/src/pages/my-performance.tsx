@@ -27,6 +27,7 @@ import {
   ArrowDown,
   X
 } from "lucide-react";
+import { TransactionDetailsModal, CardType } from "@/components/performance/TransactionDetailsModal";
 import {
   Table,
   TableBody,
@@ -386,7 +387,14 @@ function PendingPipelineTable({ pendingPipeline }: { pendingPipeline: PipelineTr
 export default function MyPerformancePage() {
   const [yentaIdInput, setYentaIdInput] = useState("");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedCard, setSelectedCard] = useState<{ type: CardType; title: string } | null>(null);
   const queryClient = useQueryClient();
+
+  const handleCardClick = (cardType: CardType, title: string) => {
+    setSelectedCard({ type: cardType, title });
+    setModalOpen(true);
+  };
 
   const { data, isLoading, error, refetch, isFetching } = useQuery<PerformanceData>({
     queryKey: ["/api/rezen/performance"],
@@ -589,7 +597,11 @@ export default function MyPerformancePage() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-          <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200" data-testid="card-gci-ytd">
+          <Card 
+            className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200 cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all" 
+            data-testid="card-gci-ytd"
+            onClick={() => handleCardClick('gci-ytd', 'GCI Year to Date - Transactions')}
+          >
             <CardContent className="p-3 sm:p-5">
               <div className="flex items-center justify-between mb-2 sm:mb-3">
                 <div className="flex items-center gap-1.5 sm:gap-2">
@@ -614,7 +626,11 @@ export default function MyPerformancePage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200" data-testid="card-gci-l12m">
+          <Card 
+            className="bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200 cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all" 
+            data-testid="card-gci-l12m"
+            onClick={() => handleCardClick('gci-l12m', 'GCI Last 12 Months - Transactions')}
+          >
             <CardContent className="p-3 sm:p-5">
               <div className="flex items-center justify-between mb-2 sm:mb-3">
                 <div className="flex items-center gap-1.5 sm:gap-2">
@@ -630,7 +646,11 @@ export default function MyPerformancePage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200" data-testid="card-pending-gci">
+          <Card 
+            className="bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200 cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all" 
+            data-testid="card-pending-gci"
+            onClick={() => handleCardClick('pending', 'Pending Pipeline - Transactions')}
+          >
             <CardContent className="p-3 sm:p-5">
               <div className="flex items-center justify-between mb-2 sm:mb-3">
                 <div className="flex items-center gap-1.5 sm:gap-2">
@@ -648,7 +668,11 @@ export default function MyPerformancePage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100/50 border-purple-200" data-testid="card-avg-per-deal">
+          <Card 
+            className="bg-gradient-to-br from-purple-50 to-purple-100/50 border-purple-200 cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all" 
+            data-testid="card-avg-per-deal"
+            onClick={() => handleCardClick('avg-deal', 'Average Per Deal - Transactions')}
+          >
             <CardContent className="p-3 sm:p-5">
               <div className="flex items-center justify-between mb-2 sm:mb-3">
                 <div className="flex items-center gap-1.5 sm:gap-2">
@@ -669,7 +693,11 @@ export default function MyPerformancePage() {
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Year to Date</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card data-testid="card-buyer-side-ytd">
+            <Card 
+              data-testid="card-buyer-side-ytd" 
+              className="cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all"
+              onClick={() => handleCardClick('buyer-ytd', 'Buyer Side Deals - Year to Date')}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg font-display flex items-center gap-2">
@@ -696,7 +724,11 @@ export default function MyPerformancePage() {
               </CardContent>
             </Card>
 
-            <Card data-testid="card-seller-side-ytd">
+            <Card 
+              data-testid="card-seller-side-ytd" 
+              className="cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all"
+              onClick={() => handleCardClick('seller-ytd', 'Seller Side Deals - Year to Date')}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg font-display flex items-center gap-2">
@@ -729,7 +761,11 @@ export default function MyPerformancePage() {
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Last 12 Months</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card data-testid="card-buyer-side-l12m" className="border-blue-200 bg-blue-50/30">
+            <Card 
+              data-testid="card-buyer-side-l12m" 
+              className="border-blue-200 bg-blue-50/30 cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all"
+              onClick={() => handleCardClick('buyer-l12m', 'Buyer Side Deals - Last 12 Months')}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg font-display flex items-center gap-2">
@@ -756,7 +792,11 @@ export default function MyPerformancePage() {
               </CardContent>
             </Card>
 
-            <Card data-testid="card-seller-side-l12m" className="border-orange-200 bg-orange-50/30">
+            <Card 
+              data-testid="card-seller-side-l12m" 
+              className="border-orange-200 bg-orange-50/30 cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all"
+              onClick={() => handleCardClick('seller-l12m', 'Seller Side Deals - Last 12 Months')}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg font-display flex items-center gap-2">
@@ -838,6 +878,18 @@ export default function MyPerformancePage() {
         </div>
 
         <PendingPipelineTable pendingPipeline={pendingPipeline || []} />
+
+        {selectedCard && (
+          <TransactionDetailsModal
+            isOpen={modalOpen}
+            onClose={() => {
+              setModalOpen(false);
+              setSelectedCard(null);
+            }}
+            title={selectedCard.title}
+            cardType={selectedCard.type}
+          />
+        )}
       </div>
     </Layout>
   );

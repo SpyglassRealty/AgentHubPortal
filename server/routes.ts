@@ -200,48 +200,6 @@ export async function registerRoutes(
     }
   });
 
-  app.get('/api/rezen/transactions', isAuthenticated, async (req: any, res) => {
-    try {
-      const rezenClient = getRezenClient();
-      if (!rezenClient) {
-        return res.status(503).json({ message: "ReZen integration not configured" });
-      }
-
-      const yentaId = req.query.yentaId as string;
-      if (!yentaId) {
-        return res.status(400).json({ message: "yentaId is required" });
-      }
-
-      const status = (req.query.status as string)?.toUpperCase() || "CLOSED";
-      const validStatuses = ["OPEN", "CLOSED", "TERMINATED"];
-      if (!validStatuses.includes(status)) {
-        return res.status(400).json({ message: "status must be OPEN, CLOSED, or TERMINATED" });
-      }
-
-      const pageNumber = parseInt(req.query.pageNumber as string) || 0;
-      const pageSize = parseInt(req.query.pageSize as string) || 50;
-      const sortBy = (req.query.sortBy as string) || "ESCROW_CLOSING_DATE";
-      const sortDirection = ((req.query.sortDirection as string)?.toUpperCase() === "ASC" ? "ASC" : "DESC") as "ASC" | "DESC";
-
-      const result = await rezenClient.getTransactions(yentaId, status as any, { 
-        pageNumber, 
-        pageSize, 
-        sortBy, 
-        sortDirection 
-      });
-      
-      res.json({
-        transactions: result.transactions,
-        totalCount: result.totalCount,
-        hasNext: result.hasNext,
-        pageNumber: result.pageNumber
-      });
-    } catch (error) {
-      console.error("Error fetching ReZen transactions:", error);
-      res.status(500).json({ message: "Failed to fetch ReZen transactions" });
-    }
-  });
-
   app.get('/api/rezen/income', isAuthenticated, async (req: any, res) => {
     try {
       const rezenClient = getRezenClient();
@@ -398,6 +356,92 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching ReZen performance:", error);
       res.status(500).json({ message: "Failed to fetch performance data" });
+    }
+  });
+
+  app.get('/api/rezen/transactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const rezenClient = getRezenClient();
+      if (!rezenClient) {
+        return res.status(503).json({ message: "ReZen integration not configured" });
+      }
+
+      const user = await getDbUser(req);
+      
+      if (!user?.rezenYentaId) {
+        return res.status(400).json({ message: "ReZen account not linked" });
+      }
+
+      const yentaId = user.rezenYentaId;
+      const { period, side, status } = req.query;
+
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const startOfYear = new Date(currentYear, 0, 1).getTime();
+      const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000).getTime();
+
+      const getClosedAtMs = (t: any): number => {
+        if (!t.closedAt) return 0;
+        if (typeof t.closedAt === 'number') return t.closedAt;
+        return new Date(t.closedAt).getTime();
+      };
+
+      let transactions: any[] = [];
+
+      if (status === 'pending') {
+        const openResult = await rezenClient.getTransactions(yentaId, "OPEN", { pageSize: 100 });
+        transactions = (openResult.transactions || []).map((t: any) => ({
+          id: t.id,
+          address: t.address?.street || t.address?.oneLine || "Address not available",
+          city: t.address?.city || "",
+          state: t.address?.state || "",
+          closeDate: t.closingDateEstimated || null,
+          price: t.price?.amount || 0,
+          gci: t.grossCommission?.amount || 0,
+          side: t.listing ? 'Seller' : 'Buyer',
+          status: t.lifecycleState?.state || "Open",
+          transactionType: t.transactionType || "",
+        }));
+      } else {
+        const closedResult = await rezenClient.getTransactions(yentaId, "CLOSED", { pageSize: 200 });
+        let closedTransactions = closedResult.transactions || [];
+
+        if (period === 'ytd') {
+          closedTransactions = closedTransactions.filter((t: any) => {
+            const closedMs = getClosedAtMs(t);
+            return closedMs >= startOfYear;
+          });
+        } else if (period === 'l12m') {
+          closedTransactions = closedTransactions.filter((t: any) => {
+            const closedMs = getClosedAtMs(t);
+            return closedMs >= oneYearAgo;
+          });
+        }
+
+        if (side === 'buyer') {
+          closedTransactions = closedTransactions.filter((t: any) => t.listing === false);
+        } else if (side === 'seller') {
+          closedTransactions = closedTransactions.filter((t: any) => t.listing === true);
+        }
+
+        transactions = closedTransactions.map((t: any) => ({
+          id: t.id,
+          address: t.address?.street || t.address?.oneLine || "Address not available",
+          city: t.address?.city || "",
+          state: t.address?.state || "",
+          closeDate: t.closedAt ? new Date(typeof t.closedAt === 'number' ? t.closedAt : t.closedAt).toISOString() : null,
+          price: t.price?.amount || 0,
+          gci: t.grossCommission?.amount || 0,
+          side: t.listing ? 'Seller' : 'Buyer',
+          status: "Closed",
+          transactionType: t.transactionType || "",
+        }));
+      }
+
+      res.json({ transactions });
+    } catch (error) {
+      console.error("Error fetching ReZen transactions:", error);
+      res.status(500).json({ message: "Failed to fetch transactions" });
     }
   });
 
