@@ -1,0 +1,110 @@
+Investigate Bell Notification Icon + Add Light/Dark Mode Toggle
+
+---
+
+### Issue 1: Bell Notification Icon (Top Right)
+
+There's a bell icon in the top right header area that appears to be unclickable.
+
+**Please investigate:**
+
+1. **What is this bell notification for?**
+   - What triggers notifications?
+   - Where is the notification data stored?
+   - What events create notifications?
+
+2. **Current implementation status:**
+   - Is it just a placeholder/UI element?
+   - Is there backend logic connected to it?
+   - Why is it unclickable?
+
+3. **If implemented, what should it show?**
+   - New leads assigned?
+   - Upcoming appointments?
+   - Task reminders?
+   - System announcements?
+   - Deal status changes?
+
+4. **Make it functional:**
+   - Add click handler to open notification dropdown/panel
+   - Show notification count badge (if any unread)
+   - List recent notifications with timestamps
+   - Mark as read functionality
+
+**Expected Notification Panel Design:**
+┌─────────────────────────────────────┐
+│  Notifications                 Mark all read │
+├─────────────────────────────────────┤
+│  ● New lead assigned: John Smith    │
+│    2 minutes ago                    │
+├─────────────────────────────────────┤
+│  ○ Appointment reminder: Showing    │
+│    Tomorrow at 2:00 PM              │
+├─────────────────────────────────────┤
+│  ○ Deal update: 123 Main St         │
+│    Moved to Pending                 │
+├─────────────────────────────────────┤
+│           View All Notifications    │
+└─────────────────────────────────────┘
+● = Unread    ○ = Read
+
+---
+
+### Issue 2: Add Light/Dark Mode Toggle
+
+Add a theme toggle option for users to switch between light and dark mode.
+
+**Requirements:**
+
+1. **Add toggle in Settings or Header**
+   - Option A: In the settings/gear icon dropdown
+   - Option B: Next to the bell icon in header
+   - Option C: In a dedicated Settings page
+
+2. **Save user preference**
+   - Store in database (user preferences)
+   - Persist across sessions
+
+3. **Implementation:**
+```typescript
+// Toggle component
+const [theme, setTheme] = useState(user.theme || 'light');
+
+const toggleTheme = () => {
+  const newTheme = theme === 'light' ? 'dark' : 'light';
+  setTheme(newTheme);
+  document.documentElement.classList.toggle('dark');
+  // Save to database
+  saveUserPreference({ theme: newTheme });
+};
+```
+
+4. **Visual toggle options:**
+
+Option A - Icon toggle:
+☀️ / 🌙  (sun/moon icons)
+
+Option B - Switch:
+Light [====○] Dark
+
+Option C - Dropdown:
+Theme: [Light ▼]
+├─ Light
+├─ Dark
+└─ System (auto)
+
+**Note:** Dark mode is already implemented for iframe embedding. Extend this to be user-selectable.
+
+---
+
+### Summary
+
+| Task | Action |
+|------|--------|
+| Bell notification | Investigate logic, make clickable, show notification panel |
+| Theme toggle | Add light/dark mode switch, save user preference |
+
+Please provide:
+1. Current state of notification system (implemented or placeholder?)
+2. Recommendation for notification triggers
+3. Where you plan to place the theme toggle

@@ -30,6 +30,7 @@ export const users = pgTable("users", {
   fubUserId: integer("fub_user_id"),
   rezenYentaId: varchar("rezen_yenta_id"),
   isSuperAdmin: boolean("is_super_admin").default(false),
+  theme: varchar("theme").default("light"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -126,3 +127,20 @@ export const appUsage = pgTable("app_usage", {
 
 export type AppUsage = typeof appUsage.$inferSelect;
 export type InsertAppUsage = typeof appUsage.$inferInsert;
+
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: varchar("type").notNull(), // 'lead_assigned', 'appointment_reminder', 'deal_update', 'task_due', 'system'
+  title: varchar("title").notNull(),
+  message: text("message"),
+  isRead: boolean("is_read").default(false),
+  payload: jsonb("payload"), // { leadId, dealId, appointmentId, etc. }
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_notifications_user").on(table.userId),
+  index("idx_notifications_user_unread").on(table.userId, table.isRead),
+]);
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;
