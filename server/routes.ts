@@ -373,17 +373,32 @@ export async function registerRoutes(
       }
 
       const yentaId = user.rezenYentaId;
-      const { period, side, status } = req.query;
+      const { period, side, status, includeDaysToClose } = req.query;
 
       const now = new Date();
       const currentYear = now.getFullYear();
       const startOfYear = new Date(currentYear, 0, 1).getTime();
       const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000).getTime();
+      const lastYearStart = new Date(currentYear - 1, 0, 1).getTime();
 
       const getClosedAtMs = (t: any): number => {
         if (!t.closedAt) return 0;
         if (typeof t.closedAt === 'number') return t.closedAt;
         return new Date(t.closedAt).getTime();
+      };
+
+      const getListedAtMs = (t: any): number => {
+        if (!t.listingDate && !t.createdAt) return 0;
+        const date = t.listingDate || t.createdAt;
+        if (typeof date === 'number') return date;
+        return new Date(date).getTime();
+      };
+
+      const calculateDaysToClose = (t: any): number | null => {
+        const listedMs = getListedAtMs(t);
+        const closedMs = getClosedAtMs(t);
+        if (!listedMs || !closedMs) return null;
+        return Math.round((closedMs - listedMs) / (1000 * 60 * 60 * 24));
       };
 
       let transactions: any[] = [];
@@ -402,6 +417,55 @@ export async function registerRoutes(
           status: t.lifecycleState?.state || "Open",
           transactionType: t.transactionType || "",
         }));
+      } else if (period === 'yoy') {
+        // Year-over-Year comparison - get both current YTD and last year same period
+        const closedResult = await rezenClient.getTransactions(yentaId, "CLOSED", { pageSize: 200 });
+        let closedTransactions = closedResult.transactions || [];
+
+        // Get current year YTD
+        const currentYTD = closedTransactions.filter((t: any) => {
+          const closedMs = getClosedAtMs(t);
+          return closedMs >= startOfYear;
+        });
+
+        // Get last year same period (same date range in previous year)
+        const dayOfYear = Math.floor((now.getTime() - startOfYear) / (1000 * 60 * 60 * 24));
+        const lastYearSamePeriodEnd = lastYearStart + (dayOfYear * 24 * 60 * 60 * 1000);
+        const lastYearSamePeriod = closedTransactions.filter((t: any) => {
+          const closedMs = getClosedAtMs(t);
+          return closedMs >= lastYearStart && closedMs <= lastYearSamePeriodEnd;
+        });
+
+        // Mark transactions with year for display
+        const currentYTDMapped = currentYTD.map((t: any) => ({
+          id: t.id,
+          address: t.address?.street || t.address?.oneLine || "Address not available",
+          city: t.address?.city || "",
+          state: t.address?.state || "",
+          closeDate: t.closedAt ? new Date(typeof t.closedAt === 'number' ? t.closedAt : t.closedAt).toISOString() : null,
+          price: t.price?.amount || 0,
+          gci: t.grossCommission?.amount || 0,
+          side: t.listing ? 'Seller' : 'Buyer',
+          status: "Closed",
+          transactionType: t.transactionType || "",
+          year: currentYear,
+        }));
+
+        const lastYearMapped = lastYearSamePeriod.map((t: any) => ({
+          id: t.id,
+          address: t.address?.street || t.address?.oneLine || "Address not available",
+          city: t.address?.city || "",
+          state: t.address?.state || "",
+          closeDate: t.closedAt ? new Date(typeof t.closedAt === 'number' ? t.closedAt : t.closedAt).toISOString() : null,
+          price: t.price?.amount || 0,
+          gci: t.grossCommission?.amount || 0,
+          side: t.listing ? 'Seller' : 'Buyer',
+          status: "Closed",
+          transactionType: t.transactionType || "",
+          year: currentYear - 1,
+        }));
+
+        transactions = [...currentYTDMapped, ...lastYearMapped];
       } else {
         const closedResult = await rezenClient.getTransactions(yentaId, "CLOSED", { pageSize: 200 });
         let closedTransactions = closedResult.transactions || [];
@@ -424,18 +488,28 @@ export async function registerRoutes(
           closedTransactions = closedTransactions.filter((t: any) => t.listing === true);
         }
 
-        transactions = closedTransactions.map((t: any) => ({
-          id: t.id,
-          address: t.address?.street || t.address?.oneLine || "Address not available",
-          city: t.address?.city || "",
-          state: t.address?.state || "",
-          closeDate: t.closedAt ? new Date(typeof t.closedAt === 'number' ? t.closedAt : t.closedAt).toISOString() : null,
-          price: t.price?.amount || 0,
-          gci: t.grossCommission?.amount || 0,
-          side: t.listing ? 'Seller' : 'Buyer',
-          status: "Closed",
-          transactionType: t.transactionType || "",
-        }));
+        transactions = closedTransactions.map((t: any) => {
+          const transaction: any = {
+            id: t.id,
+            address: t.address?.street || t.address?.oneLine || "Address not available",
+            city: t.address?.city || "",
+            state: t.address?.state || "",
+            closeDate: t.closedAt ? new Date(typeof t.closedAt === 'number' ? t.closedAt : t.closedAt).toISOString() : null,
+            listDate: t.listingDate ? new Date(typeof t.listingDate === 'number' ? t.listingDate : t.listingDate).toISOString() : null,
+            price: t.price?.amount || 0,
+            gci: t.grossCommission?.amount || 0,
+            side: t.listing ? 'Seller' : 'Buyer',
+            status: "Closed",
+            transactionType: t.transactionType || "",
+          };
+
+          // Add days to close if requested
+          if (includeDaysToClose === 'true') {
+            transaction.daysToClose = calculateDaysToClose(t);
+          }
+
+          return transaction;
+        });
       }
 
       res.json({ transactions });
