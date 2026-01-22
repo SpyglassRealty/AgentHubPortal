@@ -49,6 +49,11 @@ The application is a full-stack web application with a React frontend and an Exp
 - **Market Pulse**: Displays real-time Austin Metro Area property inventory using the Repliers API.
     - **Data**: Covers Active, Active Under Contract, Pending, and Closed listings (30 days).
     - **Caching**: Data is cached in the `market_pulse_snapshots` table and refreshed daily via `node-cron` or manually.
+- **Notification System**: Centralized notification service with user preferences.
+    - **Notification Types**: `lead_assigned`, `appointment_reminder`, `deal_update`, `task_due`, `system`.
+    - **Preference Controls**: Per-type toggles, quiet hours (Central timezone), and delivery method preferences (push/email).
+    - **Notification Service**: `server/services/notificationService.ts` checks user preferences before creating notifications.
+    - **Settings UI**: Integrated into the Settings page (`/settings`) with comprehensive toggle controls.
 
 ## External Dependencies
 

@@ -5,6 +5,7 @@ import {
   marketPulseSnapshots,
   appUsage,
   notifications,
+  userNotificationSettings,
   type User, 
   type UpsertUser,
   type AgentProfile,
@@ -15,7 +16,9 @@ import {
   type InsertMarketPulseSnapshot,
   type AppUsage,
   type Notification,
-  type InsertNotification
+  type InsertNotification,
+  type UserNotificationSettings,
+  type InsertUserNotificationSettings
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ne, desc, sql } from "drizzle-orm";
@@ -49,6 +52,9 @@ export interface IStorage {
   markAllNotificationsRead(userId: string): Promise<void>;
   
   updateUserTheme(userId: string, theme: string): Promise<User | undefined>;
+  
+  getNotificationSettings(userId: string): Promise<UserNotificationSettings | undefined>;
+  upsertNotificationSettings(settings: InsertUserNotificationSettings): Promise<UserNotificationSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -276,6 +282,32 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  async getNotificationSettings(userId: string): Promise<UserNotificationSettings | undefined> {
+    const [settings] = await db
+      .select()
+      .from(userNotificationSettings)
+      .where(eq(userNotificationSettings.userId, userId));
+    return settings;
+  }
+
+  async upsertNotificationSettings(settings: InsertUserNotificationSettings): Promise<UserNotificationSettings> {
+    const existing = await this.getNotificationSettings(settings.userId);
+    if (existing) {
+      const [updated] = await db
+        .update(userNotificationSettings)
+        .set({ ...settings, updatedAt: new Date() })
+        .where(eq(userNotificationSettings.userId, settings.userId))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(userNotificationSettings)
+        .values(settings)
+        .returning();
+      return created;
+    }
   }
 }
 

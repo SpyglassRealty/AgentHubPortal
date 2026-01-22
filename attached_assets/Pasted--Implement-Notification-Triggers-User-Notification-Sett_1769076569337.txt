@@ -1,0 +1,275 @@
+### Implement Notification Triggers + User Notification Settings
+
+---
+
+### Part 1: Connect Notifications to Real Events
+
+Create automatic notifications when these events occur:
+
+#### 1. New Lead Assigned (from FUB)
+```typescript
+// When a new lead is assigned to the user
+createNotification({
+  userId: assignedAgentId,
+  type: 'lead_assigned',
+  title: 'New Lead Assigned',
+  message: `${leadName} - ${leadSource}`,
+  payload: { leadId, personId, source }
+});
+```
+
+#### 2. Appointment Reminders (from Calendar)
+```typescript
+// Trigger reminders at configurable intervals before appointment
+// Default: 24 hours, 1 hour, 15 minutes before
+createNotification({
+  userId: agentId,
+  type: 'appointment_reminder',
+  title: 'Upcoming Appointment',
+  message: `${appointmentTitle} - ${formatTime(startTime)}`,
+  payload: { appointmentId, personId, location }
+});
+```
+
+#### 3. Deal Status Changes
+```typescript
+// When a deal moves to a new stage
+createNotification({
+  userId: agentId,
+  type: 'deal_update',
+  title: 'Deal Status Updated',
+  message: `${propertyAddress} moved to ${newStage}`,
+  payload: { dealId, previousStage, newStage }
+});
+```
+
+#### 4. Task Due Dates
+```typescript
+// When a task is due today or overdue
+createNotification({
+  userId: agentId,
+  type: 'task_due',
+  title: 'Task Due Today',
+  message: `${taskTitle}`,
+  payload: { taskId, personId, dueDate }
+});
+```
+
+---
+
+### Part 2: User Notification Settings
+
+Add a Notifications section in Settings where users can control their preferences.
+
+#### Database Schema Update
+```sql
+-- Add to users table or create user_notification_settings table
+CREATE TABLE user_notification_settings (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  
+  -- Master toggle
+  notifications_enabled BOOLEAN DEFAULT true,
+  
+  -- By notification type
+  lead_assigned_enabled BOOLEAN DEFAULT true,
+  appointment_reminder_enabled BOOLEAN DEFAULT true,
+  deal_update_enabled BOOLEAN DEFAULT true,
+  task_due_enabled BOOLEAN DEFAULT true,
+  system_enabled BOOLEAN DEFAULT true,
+  
+  -- Appointment reminder timing (in minutes)
+  appointment_reminder_times JSONB DEFAULT '[1440, 60, 15]', -- 24hr, 1hr, 15min
+  
+  -- Quiet hours (don't send during these times)
+  quiet_hours_enabled BOOLEAN DEFAULT false,
+  quiet_hours_start TIME DEFAULT '22:00',
+  quiet_hours_end TIME DEFAULT '07:00',
+  
+  -- Platform-specific settings
+  push_notifications_enabled BOOLEAN DEFAULT true,
+  email_notifications_enabled BOOLEAN DEFAULT false,
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+#### API Endpoints
+```typescript
+// Get user's notification settings
+GET /api/notifications/settings
+
+// Update user's notification settings
+PUT /api/notifications/settings
+Body: { notifications_enabled, lead_assigned_enabled, ... }
+```
+
+#### Settings UI Design
+┌─────────────────────────────────────────────────────────────────┐
+│  Settings                                                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Notifications                                                  │
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                 │
+│  Enable Notifications                          [====●] ON      │
+│  Receive notifications for important updates                    │
+│                                                                 │
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                 │
+│  Notification Types                                             │
+│                                                                 │
+│  👤 New Lead Assigned                          [====●] ON      │
+│     When a new lead is assigned to you                          │
+│                                                                 │
+│  📅 Appointment Reminders                      [====●] ON      │
+│     Reminders before scheduled appointments                     │
+│     └─ Remind me: [24 hours ▼] [1 hour ▼] [15 min ▼]           │
+│                                                                 │
+│  🏠 Deal Updates                               [====●] ON      │
+│     When deal status changes                                    │
+│                                                                 │
+│  ✅ Task Due                                   [====●] ON      │
+│     When tasks are due or overdue                               │
+│                                                                 │
+│  📢 System Announcements                       [====●] ON      │
+│     Important system updates and news                           │
+│                                                                 │
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                 │
+│  Quiet Hours                                   [○────] OFF     │
+│  Don't send notifications during these times                    │
+│  └─ From: [10:00 PM ▼]  To: [7:00 AM ▼]                        │
+│                                                                 │
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                 │
+│  Delivery Methods                                               │
+│                                                                 │
+│  📱 Push Notifications                         [====●] ON      │
+│     Receive notifications on this device                        │
+│                                                                 │
+│  ✉️ Email Notifications                        [○────] OFF     │
+│     Also receive notifications via email                        │
+│                                                                 │
+│                                        [Save Preferences]       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+---
+
+### Part 3: Cross-Platform Considerations
+
+Users will access from multiple devices/platforms:
+
+| Platform | Considerations |
+|----------|----------------|
+| Desktop (macOS, Windows) | In-app notifications, browser notifications (optional) |
+| Mobile (iOS, Android) | Push notifications via PWA or native wrapper |
+| iPad/Tablet | Same as mobile, responsive layout |
+
+#### Implementation Notes:
+
+1. **In-App Notifications (All Platforms)**
+   - Bell icon dropdown (already implemented)
+   - Works on all platforms via web
+
+2. **Browser Push Notifications (Desktop)**
+```typescript
+   // Request permission
+   if ('Notification' in window) {
+     Notification.requestPermission().then(permission => {
+       if (permission === 'granted') {
+         // Can send browser notifications
+       }
+     });
+   }
+```
+
+3. **Mobile Push Notifications (Future)**
+   - Requires PWA with Service Worker, OR
+   - Native app wrapper (React Native / Capacitor)
+   - For now, focus on in-app notifications
+
+4. **Responsive Settings Page**
+   - Ensure notification settings UI is mobile-friendly
+   - Touch-friendly toggle switches
+   - Proper spacing for tap targets
+
+---
+
+### Part 4: Notification Service
+
+Create a centralized notification service:
+```typescript
+// server/services/notificationService.ts
+
+class NotificationService {
+  
+  async createNotification(userId: number, data: {
+    type: NotificationType,
+    title: string,
+    message: string,
+    payload?: object
+  }) {
+    // Check if user has this notification type enabled
+    const settings = await this.getUserSettings(userId);
+    
+    if (!settings.notifications_enabled) return;
+    if (!settings[`${data.type}_enabled`]) return;
+    
+    // Check quiet hours
+    if (this.isQuietHours(settings)) return;
+    
+    // Create notification in database
+    const notification = await db.insert(notifications).values({
+      userId,
+      type: data.type,
+      title: data.title,
+      message: data.message,
+      payload: data.payload,
+      isRead: false
+    });
+    
+    // Send push notification if enabled
+    if (settings.push_notifications_enabled) {
+      await this.sendPushNotification(userId, data);
+    }
+    
+    // Send email if enabled
+    if (settings.email_notifications_enabled) {
+      await this.sendEmailNotification(userId, data);
+    }
+    
+    return notification;
+  }
+  
+  // ... other methods
+}
+```
+
+---
+
+### Summary
+
+| Task | Description |
+|------|-------------|
+| Event Triggers | Connect FUB leads, appointments, deals, tasks to create notifications |
+| User Settings | Add notification preferences in Settings page |
+| Master Toggle | Allow users to turn off all notifications |
+| Per-Type Control | Toggle individual notification types |
+| Quiet Hours | Optional do-not-disturb schedule |
+| Cross-Platform | Responsive UI, in-app notifications for all devices |
+| Notification Service | Centralized service that respects user preferences |
+
+---
+
+### Files to Create/Update
+
+| File | Action |
+|------|--------|
+| `shared/schema.ts` | Add user_notification_settings table |
+| `server/services/notificationService.ts` | Create notification service |
+| `server/routes.ts` | Add settings endpoints |
+| `client/src/pages/settings.tsx` | Add notification settings UI |
+| `server/jobs/` | Add scheduled jobs for reminders |
