@@ -212,7 +212,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <Separator />
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground mb-1">First Name</p>
                     <p className="font-medium">{userProfile?.firstName || "Not set"}</p>
@@ -221,9 +221,9 @@ export default function SettingsPage() {
                     <p className="text-muted-foreground mb-1">Last Name</p>
                     <p className="font-medium">{userProfile?.lastName || "Not set"}</p>
                   </div>
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <p className="text-muted-foreground mb-1">Email</p>
-                    <p className="font-medium">{userProfile?.email || "Not available"}</p>
+                    <p className="font-medium break-all">{userProfile?.email || "Not available"}</p>
                   </div>
                 </div>
               </CardContent>
