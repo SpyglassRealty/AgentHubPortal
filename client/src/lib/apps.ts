@@ -28,12 +28,14 @@ export type AppConnectionType =
   | 'external'      // Opens in new tab, external app
   | 'redirect';     // Just a link to external site
 
+export type AppCategory = "Core" | "Marketing" | "Sales" | "Admin";
+
 export interface AppDefinition {
   id: string;
   name: string;
   description: string;
   icon: any;
-  category: "Core" | "Marketing" | "Sales" | "Admin";
+  categories: AppCategory[];
   color: string;
   url?: string;
   noIframe?: boolean;
@@ -44,9 +46,9 @@ export const apps: AppDefinition[] = [
   {
     id: "contract-conduit",
     name: "Contract Conduit",
-    description: "Your first step to entering a transaction.",
+    description: "Manage real estate transactions, marketing materials, and CMAs.",
     icon: FileText,
-    category: "Core",
+    categories: ["Core", "Marketing"],
     color: "bg-amber-100 text-amber-700",
     url: "https://mission-control-contract-conduit.onrender.com/",
     connectionType: "embedded"
@@ -56,7 +58,7 @@ export const apps: AppDefinition[] = [
     name: "ReChat",
     description: "The Real Estate Super App. CRM, Marketing, and Transaction Management in one.",
     icon: MessageSquare,
-    category: "Core",
+    categories: ["Core"],
     color: "bg-violet-100 text-violet-700",
     url: "https://app.rechat.com",
     connectionType: "external"
@@ -66,7 +68,7 @@ export const apps: AppDefinition[] = [
     name: "Blog to Email Automator",
     description: "Automatically convert your blog posts into engaging email newsletters.",
     icon: Mail,
-    category: "Marketing",
+    categories: ["Marketing"],
     color: "bg-pink-100 text-pink-700",
     url: "https://blog-to-email-automator-2--caleb254.replit.app",
     connectionType: "embedded"
@@ -76,7 +78,7 @@ export const apps: AppDefinition[] = [
     name: "RealtyHack AI",
     description: "AI Training Assistant. Instant answers from your training library, handbook, and resources.",
     icon: BookOpen,
-    category: "Core",
+    categories: ["Core"],
     color: "bg-orange-100 text-orange-700",
     url: "https://www.realtyhack.com/ai/",
     connectionType: "external"
@@ -86,7 +88,7 @@ export const apps: AppDefinition[] = [
     name: "Home Review AI",
     description: "Generate comprehensive annual real estate market reviews with AI-driven insights.",
     icon: BrainCircuit,
-    category: "Core",
+    categories: ["Core"],
     color: "bg-sky-100 text-sky-700",
     url: "https://home-review-ai-ryan1648.replit.app",
     connectionType: "embedded"
@@ -96,7 +98,7 @@ export const apps: AppDefinition[] = [
     name: "Follow Up Boss",
     description: "Your CRM for managing leads, contacts, and follow-ups. Opens in a new tab.",
     icon: Contact,
-    category: "Sales",
+    categories: ["Sales"],
     color: "bg-green-100 text-green-700",
     url: "https://login.followupboss.com/login",
     noIframe: true,
@@ -107,7 +109,7 @@ export const apps: AppDefinition[] = [
     name: "Ylopo Add Lead",
     description: "Quickly add new leads to your Ylopo account. Opens in a new tab.",
     icon: UserPlus,
-    category: "Sales",
+    categories: ["Sales"],
     color: "bg-cyan-100 text-cyan-700",
     url: "https://stars.ylopo.com/auth",
     noIframe: true,
@@ -118,7 +120,7 @@ export const apps: AppDefinition[] = [
     name: "Ylopo Tools",
     description: "Access Ylopo marketing tools and resources.",
     icon: Wrench,
-    category: "Marketing",
+    categories: ["Marketing"],
     color: "bg-teal-100 text-teal-700",
     url: "https://www.austinhomesaleguide.com/tools",
     connectionType: "external"
@@ -128,7 +130,7 @@ export const apps: AppDefinition[] = [
     name: "ReZen",
     description: "Real Brokerage's agent portal for transactions, commissions, and more.",
     icon: Building,
-    category: "Core",
+    categories: ["Core"],
     color: "bg-blue-100 text-blue-700",
     url: "https://bolt.therealbrokerage.com/",
     connectionType: "redirect"
@@ -138,7 +140,7 @@ export const apps: AppDefinition[] = [
     name: "Slack",
     description: "Team communication and collaboration hub. Opens in a new tab.",
     icon: Hash,
-    category: "Core",
+    categories: ["Core"],
     color: "bg-purple-100 text-purple-700",
     url: "https://app.slack.com/client/T08T7BSLZV4",
     noIframe: true,
@@ -149,28 +151,18 @@ export const apps: AppDefinition[] = [
     name: "Canva",
     description: "Create beautiful marketing materials, flyers, and social media graphics. Opens in a new tab.",
     icon: Palette,
-    category: "Marketing",
+    categories: ["Marketing"],
     color: "bg-violet-100 text-violet-700",
     url: "https://www.canva.com/projects",
     noIframe: true,
     connectionType: "redirect"
   },
   {
-    id: "contract-conduit-marketing",
-    name: "Contract Conduit",
-    description: "Turn your marketing leads into contracts. Streamline the transition from prospect to signed deal.",
-    icon: FileText,
-    category: "Marketing",
-    color: "bg-amber-100 text-amber-700",
-    url: "https://mission-control-contract-conduit.onrender.com/",
-    connectionType: "embedded"
-  },
-  {
     id: "client-data",
     name: "Client Data Portal",
     description: "Access and manage client property data and MLS listings.",
     icon: Database,
-    category: "Sales",
+    categories: ["Sales"],
     color: "bg-indigo-100 text-indigo-700",
     url: "https://idx-grid-data-ryan1648.replit.app",
     connectionType: "embedded"
@@ -180,7 +172,7 @@ export const apps: AppDefinition[] = [
     name: "Jointly",
     description: "Collaborate with clients and partners on real estate transactions.",
     icon: Handshake,
-    category: "Sales",
+    categories: ["Sales"],
     color: "bg-teal-100 text-teal-700",
     url: "https://app.jointly.com/login",
     connectionType: "redirect"
