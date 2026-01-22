@@ -190,7 +190,22 @@ export default function DashboardPage() {
             animate="show"
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6"
           >
-            {apps.filter(app => app.id !== 'contract-conduit-marketing').map((app) => {
+            {apps
+              .filter(app => app.id !== 'contract-conduit-marketing')
+              .sort((a, b) => {
+                // Sort by: Integrated first, then Core, Sales, Marketing
+                const categoryPriority: Record<string, number> = { 'Core': 1, 'Sales': 2, 'Marketing': 3, 'Admin': 4 };
+                
+                // Integrated apps first
+                if (a.connectionType === 'embedded' && b.connectionType !== 'embedded') return -1;
+                if (b.connectionType === 'embedded' && a.connectionType !== 'embedded') return 1;
+                
+                // Then by category (use first category for sorting)
+                const aPriority = categoryPriority[a.categories[0]] ?? 99;
+                const bPriority = categoryPriority[b.categories[0]] ?? 99;
+                return aPriority - bPriority;
+              })
+              .map((app) => {
               const handleAppClick = () => {
                 if (app.noIframe && app.url) {
                   window.open(app.url, '_blank', 'noopener,noreferrer');
@@ -256,14 +271,6 @@ export default function DashboardPage() {
               );
             })}
             
-            <motion.div variants={item}>
-              <button className="w-full h-full min-h-[220px] rounded-xl border-2 border-dashed border-muted-foreground/20 hover:border-[hsl(28,94%,54%)]/50 hover:bg-[hsl(28,94%,54%)]/5 flex flex-col items-center justify-center gap-3 transition-all group text-muted-foreground hover:text-foreground">
-                <div className="h-12 w-12 rounded-full bg-secondary group-hover:bg-[hsl(28,94%,54%)]/10 flex items-center justify-center transition-colors">
-                  <Plus className="h-6 w-6 group-hover:text-[hsl(28,94%,54%)]" />
-                </div>
-                <span className="font-medium">Request New App</span>
-              </button>
-            </motion.div>
           </motion.div>
         </div>
 
