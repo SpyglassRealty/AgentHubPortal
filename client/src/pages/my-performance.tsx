@@ -826,30 +826,38 @@ export default function MyPerformancePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card data-testid="card-avg-sale-price">
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm text-muted-foreground">Average Sale Price</p>
-                    <InfoTooltip content={PERFORMANCE_TOOLTIPS.avgSalePrice.content} source={PERFORMANCE_TOOLTIPS.avgSalePrice.source} />
-                  </div>
-                  <p className="text-2xl font-bold mt-1">{formatCurrency(dealBreakdown?.avgSalePriceL12M || 0)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Last 12 months</p>
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <p className="text-sm text-muted-foreground">Avg Days to Close</p>
-                    <InfoTooltip content={PERFORMANCE_TOOLTIPS.avgDaysToClose.content} source={PERFORMANCE_TOOLTIPS.avgDaysToClose.source} />
-                  </div>
-                  <p className="text-2xl font-bold mt-1">{insights?.avgDaysToCloseL12M || 0} days</p>
-                  <p className="text-xs text-muted-foreground mt-1">Last 12 months</p>
-                </div>
+          <Card className="grid grid-cols-2 divide-x" data-testid="card-avg-metrics">
+            <div 
+              className="p-6 cursor-pointer hover:bg-muted/50 transition-colors rounded-l-xl"
+              onClick={() => handleCardClick('avg-sale-price', 'Average Sale Price - Last 12 Months')}
+              data-testid="card-avg-sale-price"
+            >
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">Average Sale Price</p>
+                <InfoTooltip content={PERFORMANCE_TOOLTIPS.avgSalePrice.content} source={PERFORMANCE_TOOLTIPS.avgSalePrice.source} />
               </div>
-            </CardContent>
+              <p className="text-2xl font-bold mt-1">{formatCurrency(dealBreakdown?.avgSalePriceL12M || 0)}</p>
+              <p className="text-xs text-muted-foreground mt-1">Last 12 months</p>
+            </div>
+            <div 
+              className="p-6 cursor-pointer hover:bg-muted/50 transition-colors rounded-r-xl"
+              onClick={() => handleCardClick('avg-days-close', 'Average Days to Close - Last 12 Months')}
+              data-testid="card-avg-days-close"
+            >
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">Avg Days to Close</p>
+                <InfoTooltip content={PERFORMANCE_TOOLTIPS.avgDaysToClose.content} source={PERFORMANCE_TOOLTIPS.avgDaysToClose.source} />
+              </div>
+              <p className="text-2xl font-bold mt-1">{insights?.avgDaysToCloseL12M || 0} days</p>
+              <p className="text-xs text-muted-foreground mt-1">Last 12 months</p>
+            </div>
           </Card>
 
-          <Card className="bg-gradient-to-br from-slate-50 to-slate-100/50" data-testid="card-yoy">
+          <Card 
+            className="bg-gradient-to-br from-slate-50 to-slate-100/50 cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all" 
+            data-testid="card-yoy"
+            onClick={() => handleCardClick('yoy-comparison', 'Year-over-Year Comparison')}
+          >
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">

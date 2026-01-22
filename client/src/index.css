@@ -176,4 +176,32 @@
   .text-gradient-orange {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-[hsl(28,94%,54%)] to-[hsl(35,95%,50%)];
   }
+  
+  /* Custom scrollbar styling */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  
+  .scrollbar-thumb-muted-foreground\/20::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .scrollbar-thumb-muted-foreground\/20::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 4px;
+  }
+  
+  .scrollbar-thumb-muted-foreground\/20::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.2);
+    border-radius: 4px;
+  }
+  
+  .scrollbar-thumb-muted-foreground\/20:hover::-webkit-scrollbar-thumb,
+  .hover\:scrollbar-thumb-muted-foreground\/40:hover::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.4);
+  }
+  
+  .scrollbar-track-transparent::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }
