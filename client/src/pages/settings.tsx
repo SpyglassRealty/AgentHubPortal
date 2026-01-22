@@ -10,7 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, Link2, Unlink, Check, AlertCircle, Bell, Users, Calendar, Home, CheckSquare, Megaphone, Moon, Mail, Loader2, User } from "lucide-react";
+import { TrendingUp, Link2, Link2Off, Unlink, Check, AlertCircle, Bell, Users, Calendar, Home, CheckSquare, Megaphone, Moon, Mail, Loader2, User, ExternalLink } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   AlertDialog,
@@ -33,6 +34,7 @@ interface UserProfile {
   lastName?: string;
   profileImageUrl?: string;
   rezenYentaId?: string | null;
+  fubUserId?: number | null;
 }
 
 interface NotificationSettings {
@@ -163,6 +165,7 @@ export default function SettingsPage() {
   });
 
   const isRezenLinked = !!userProfile?.rezenYentaId;
+  const isFubLinked = !!userProfile?.fubUserId;
 
   return (
     <Layout>
@@ -232,44 +235,136 @@ export default function SettingsPage() {
                 <CardDescription>Manage your connected services and integrations</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
-                      <svg className="w-5 h-5" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                      </svg>
+                <TooltipProvider>
+                  {/* Google Account */}
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                        <svg className="w-5 h-5" viewBox="0 0 24 24">
+                          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="font-medium">Google Account</p>
+                        <p className="text-sm text-muted-foreground">{userProfile?.email}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">Google Account</p>
-                      <p className="text-sm text-muted-foreground">{userProfile?.email}</p>
+                    <div className="flex items-center gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="p-1.5 rounded-full cursor-pointer bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
+                            <Link2 className="w-4 h-4" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Google Account is connected and syncing</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <span className="text-sm text-green-600 font-medium">Connected</span>
                     </div>
                   </div>
-                  <span className="text-sm text-green-600 font-medium">Connected</span>
-                </div>
 
-                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
-                      R
+                  {/* ReZen Account */}
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold">
+                        R
+                      </div>
+                      <div>
+                        <p className="font-medium">ReZen Account</p>
+                        <p className="text-sm text-muted-foreground">
+                          {isRezenLinked ? `ID: ${userProfile?.rezenYentaId?.slice(0, 8)}...` : "Transaction management"}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">ReZen Account</p>
-                      <p className="text-sm text-muted-foreground">
-                        {isRezenLinked ? `ID: ${userProfile?.rezenYentaId?.slice(0, 8)}...` : "Not connected"}
-                      </p>
+                    <div className="flex items-center gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className={`p-1.5 rounded-full cursor-pointer ${
+                            isRezenLinked 
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' 
+                              : 'bg-red-100 dark:bg-red-900/30 text-red-500 dark:text-red-400'
+                          }`}>
+                            {isRezenLinked ? (
+                              <Link2 className="w-4 h-4" />
+                            ) : (
+                              <Link2Off className="w-4 h-4" />
+                            )}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{isRezenLinked 
+                            ? 'ReZen is connected - Transaction data syncing' 
+                            : 'ReZen is not connected. Go to Preferences to link your account.'
+                          }</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      {isRezenLinked ? (
+                        <span className="text-sm text-green-600 font-medium">Connected</span>
+                      ) : (
+                        <Button variant="outline" size="sm" onClick={() => setActiveTab("preferences")}>
+                          Connect
+                        </Button>
+                      )}
                     </div>
                   </div>
-                  {isRezenLinked ? (
-                    <span className="text-sm text-green-600 font-medium">Connected</span>
-                  ) : (
-                    <Button variant="outline" size="sm" onClick={() => setActiveTab("preferences")}>
-                      Connect
-                    </Button>
-                  )}
-                </div>
+
+                  {/* Follow Up Boss Account */}
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg" data-testid="fub-connection-card">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">FUB</span>
+                      </div>
+                      <div>
+                        <p className="font-medium">Follow Up Boss</p>
+                        <p className="text-sm text-muted-foreground">
+                          {isFubLinked 
+                            ? `User ID: ${userProfile?.fubUserId}` 
+                            : 'CRM for leads and tasks'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className={`p-1.5 rounded-full cursor-pointer ${
+                            isFubLinked 
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' 
+                              : 'bg-red-100 dark:bg-red-900/30 text-red-500 dark:text-red-400'
+                          }`}>
+                            {isFubLinked ? (
+                              <Link2 className="w-4 h-4" />
+                            ) : (
+                              <Link2Off className="w-4 h-4" />
+                            )}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{isFubLinked 
+                            ? 'Follow Up Boss is connected - Leads and tasks syncing' 
+                            : 'Follow Up Boss is not connected. Your account is automatically linked by email.'
+                          }</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      {isFubLinked ? (
+                        <span className="text-sm text-green-600 font-medium">Connected</span>
+                      ) : (
+                        <a
+                          href="https://www.followupboss.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-orange-500 transition-colors"
+                        >
+                          What is FUB?
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </TooltipProvider>
               </CardContent>
             </Card>
           </TabsContent>
