@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   X, Play, Clock, Calendar, ChevronRight, ChevronLeft, 
-  Loader2, Maximize2, Minimize2, Search, Heart, BookmarkPlus, History
+  Loader2, Maximize2, Minimize2, Search, Heart, BookmarkPlus, History, List
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import Player from '@vimeo/player';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface VimeoVideo {
   id: string;
@@ -36,6 +37,7 @@ interface TrainingVideosModalProps {
 export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: TrainingVideosModalProps) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
+  const isMobile = useIsMobile();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<Player | null>(null);
   const lastProgressSaveRef = useRef<number>(0);
@@ -53,6 +55,7 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
   const [preferences, setPreferences] = useState<Record<string, VideoPreference>>({});
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [iframeReady, setIframeReady] = useState(false);
+  const [showMobileList, setShowMobileList] = useState(false);
 
   const modalBg = isDark ? 'bg-gray-900' : 'bg-white';
   const sidebarBg = isDark ? 'bg-gray-800' : 'bg-gray-50';
@@ -462,47 +465,59 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
 
   return (
     <div 
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${overlayBg}`}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 ${overlayBg} safe-area-inset`}
       onClick={onClose}
       data-testid="modal-training-videos-overlay"
     >
       <div 
         className={`
-          relative flex
-          ${isTheaterMode ? 'w-full h-full' : 'w-full max-w-6xl h-[85vh]'}
+          relative flex flex-col md:flex-row
+          ${isTheaterMode ? 'w-full h-full' : 'w-full max-w-6xl h-[95vh] sm:h-[90vh] md:h-[85vh]'}
           ${modalBg} rounded-xl shadow-2xl overflow-hidden
-          transition-all duration-300
+          transition-all duration-300 modal-container
         `}
         onClick={(e) => e.stopPropagation()}
         data-testid="modal-training-videos"
       >
-        <div className="flex-1 flex flex-col min-w-0">
-          <div className={`flex items-center justify-between px-4 py-3 border-b ${borderColor}`}>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
+          <div className={`flex items-center justify-between px-3 sm:px-4 py-3 border-b ${borderColor}`}>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
                 <Play className="w-4 h-4 text-white fill-white" />
               </div>
-              <div>
-                <h2 className={`font-semibold ${textPrimary}`}>Training Videos</h2>
-                <p className={`text-xs ${textSecondary}`}>
+              <div className="min-w-0">
+                <h2 className={`font-semibold ${textPrimary} text-sm sm:text-base`}>Training Videos</h2>
+                <p className={`text-xs ${textSecondary} truncate`}>
                   {filteredVideos.length} video{filteredVideos.length !== 1 ? 's' : ''}
                   {filter !== 'all' && ` in ${filterTabs.find(t => t.key === filter)?.label}`}
                 </p>
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsTheaterMode(!isTheaterMode)}
-                className={`p-2 rounded-lg ${hoverBg} transition-colors ${textSecondary}`}
-                title={isTheaterMode ? 'Exit theater mode' : 'Theater mode'}
-                data-testid="button-theater-mode"
-              >
-                {isTheaterMode ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
-              </button>
+            <div className="flex items-center gap-1 sm:gap-2">
+              {isMobile && !isTheaterMode && (
+                <button
+                  onClick={() => setShowMobileList(!showMobileList)}
+                  className={`p-2 rounded-lg ${hoverBg} transition-colors ${showMobileList ? activeText : textSecondary} touch-target flex items-center justify-center`}
+                  title="Show video list"
+                  data-testid="button-toggle-mobile-list"
+                >
+                  <List className="w-5 h-5" />
+                </button>
+              )}
+              {!isMobile && (
+                <button
+                  onClick={() => setIsTheaterMode(!isTheaterMode)}
+                  className={`p-2 rounded-lg ${hoverBg} transition-colors ${textSecondary} touch-target flex items-center justify-center`}
+                  title={isTheaterMode ? 'Exit theater mode' : 'Theater mode'}
+                  data-testid="button-theater-mode"
+                >
+                  {isTheaterMode ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+                </button>
+              )}
               <button
                 onClick={onClose}
-                className={`p-2 rounded-lg ${hoverBg} transition-colors ${textSecondary}`}
+                className={`p-2 rounded-lg ${hoverBg} transition-colors ${textSecondary} touch-target flex items-center justify-center`}
                 data-testid="button-close-modal"
               >
                 <X className="w-5 h-5" />
@@ -627,8 +642,27 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
           )}
         </div>
 
-        {!isTheaterMode && (
-          <div className={`w-80 ${sidebarBg} border-l ${borderColor} flex flex-col`}>
+        {!isTheaterMode && (isMobile ? showMobileList : true) && (
+          <div className={`
+            ${isMobile 
+              ? 'absolute inset-0 z-10' 
+              : 'w-80 border-l'
+            } 
+            ${sidebarBg} ${borderColor} flex flex-col
+          `}>
+            {isMobile && (
+              <div className={`flex items-center justify-between px-3 py-3 border-b ${borderColor}`}>
+                <h3 className={`font-semibold ${textPrimary}`}>Video List</h3>
+                <button
+                  onClick={() => setShowMobileList(false)}
+                  className={`p-2 rounded-lg ${hoverBg} ${textSecondary} touch-target flex items-center justify-center`}
+                  data-testid="button-close-mobile-list"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+            
             <div className={`p-3 border-b ${borderColor}`}>
               <div className="relative">
                 <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textMuted}`} />
@@ -637,13 +671,13 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
                   placeholder="Search videos..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`w-full pl-9 pr-3 py-2 ${inputBg} border ${inputBorder} rounded-lg text-sm ${inputText} ${inputPlaceholder} focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors`}
+                  className={`w-full pl-9 pr-3 py-2.5 ${inputBg} border ${inputBorder} rounded-lg text-sm ${inputText} ${inputPlaceholder} focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors`}
                   data-testid="input-search-videos"
                 />
               </div>
             </div>
 
-            <div className={`flex flex-wrap gap-1 p-2 border-b ${borderColor}`}>
+            <div className={`flex gap-1.5 p-2 border-b ${borderColor} overflow-x-auto scrollbar-hide`}>
               {filterTabs.map(tab => {
                 const Icon = tab.icon;
                 const count = tab.key === 'favorites' 
@@ -661,14 +695,14 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
                   <button
                     key={tab.key}
                     onClick={() => setFilter(tab.key)}
-                    className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors
+                    className={`flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-full whitespace-nowrap transition-colors flex-shrink-0 touch-target
                       ${filter === tab.key 
                         ? 'bg-orange-500 text-white' 
                         : `${buttonBg} ${buttonText} ${buttonHover}`
                       }`}
                     data-testid={`button-filter-${tab.key}`}
                   >
-                    {Icon && <Icon className="w-3 h-3" />}
+                    {Icon && <Icon className="w-3.5 h-3.5" />}
                     {tab.label}
                     {count !== null && count > 0 && (
                       <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs ${
@@ -688,7 +722,7 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
                 <select 
                   value={sortOrder}
                   onChange={(e) => setSortOrder(e.target.value)}
-                  className={`text-xs ${inputBg} border ${inputBorder} ${buttonText} rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-orange-500`}
+                  className={`text-xs ${inputBg} border ${inputBorder} ${buttonText} rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-500`}
                   data-testid="select-sort-order"
                 >
                   <option value="newest">Newest</option>
@@ -734,9 +768,12 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
                   {filteredVideos.map((video) => (
                     <button
                       key={video.id}
-                      onClick={() => setSelectedVideo(video)}
+                      onClick={() => {
+                        setSelectedVideo(video);
+                        if (isMobile) setShowMobileList(false);
+                      }}
                       className={`
-                        w-full p-2 text-left transition-all duration-200 group
+                        w-full p-2 sm:p-3 text-left transition-all duration-200 group touch-target
                         ${selectedVideo?.id === video.id 
                           ? `${cardActive} border-l-2 ${activeBorder}` 
                           : `${cardHover} border-l-2 border-transparent`
