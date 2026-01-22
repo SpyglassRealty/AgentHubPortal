@@ -126,16 +126,16 @@ export default function CalendarPage() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold" data-testid="text-calendar-title">Calendar</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold" data-testid="text-calendar-title">Calendar</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
               {selectedAgentId 
-                ? "Viewing selected agent's calendar" 
-                : "Your appointments and tasks from Follow Up Boss"}
+                ? "Viewing agent's calendar" 
+                : "Your appointments & tasks"}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {user?.isSuperAdmin && (
               <AgentSelector
                 selectedAgentId={selectedAgentId}
@@ -143,9 +143,10 @@ export default function CalendarPage() {
               />
             )}
             <a href="https://app.followupboss.com/calendar" target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" className="border-[hsl(28,94%,54%)]/30 hover:bg-[hsl(28,94%,54%)]/10">
-                Open in Follow Up Boss
-                <ExternalLink className="ml-2 h-4 w-4" />
+              <Button variant="outline" className="border-[hsl(28,94%,54%)]/30 hover:bg-[hsl(28,94%,54%)]/10 h-8 sm:h-9 px-2 sm:px-4 text-xs sm:text-sm">
+                <span className="hidden sm:inline">Open in FUB</span>
+                <span className="sm:hidden">FUB</span>
+                <ExternalLink className="ml-1 sm:ml-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </a>
           </div>
@@ -160,18 +161,19 @@ export default function CalendarPage() {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
           <div className="lg:col-span-3">
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-2 px-3 sm:px-6">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="font-display text-xl">
+                  <CardTitle className="font-display text-lg sm:text-xl">
                     {format(currentMonth, "MMMM yyyy")}
                   </CardTitle>
-                  <div className="flex gap-1">
+                  <div className="flex gap-0.5 sm:gap-1">
                     <Button 
                       variant="ghost" 
                       size="icon"
+                      className="h-8 w-8 sm:h-9 sm:w-9"
                       onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
                       data-testid="button-prev-month"
                     >
@@ -180,6 +182,7 @@ export default function CalendarPage() {
                     <Button 
                       variant="ghost" 
                       size="sm"
+                      className="h-8 px-2 sm:px-3 text-xs sm:text-sm"
                       onClick={() => setCurrentMonth(new Date())}
                     >
                       Today
@@ -187,6 +190,7 @@ export default function CalendarPage() {
                     <Button 
                       variant="ghost" 
                       size="icon"
+                      className="h-8 w-8 sm:h-9 sm:w-9"
                       onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
                       data-testid="button-next-month"
                     >
@@ -195,7 +199,7 @@ export default function CalendarPage() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-2 sm:px-6">
                 {isLoading ? (
                   <div className="space-y-2">
                     <Skeleton className="h-8 w-full" />
@@ -204,14 +208,15 @@ export default function CalendarPage() {
                 ) : (
                   <>
                     <div className="grid grid-cols-7 gap-px bg-muted rounded-lg overflow-hidden">
-                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                        <div key={day} className="bg-background p-2 text-center text-xs font-medium text-muted-foreground">
-                          {day}
+                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                        <div key={idx} className="bg-background p-1 sm:p-2 text-center text-[10px] sm:text-xs font-medium text-muted-foreground">
+                          <span className="sm:hidden">{day}</span>
+                          <span className="hidden sm:inline">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][idx]}</span>
                         </div>
                       ))}
                       
                       {Array.from({ length: startOfMonth(currentMonth).getDay() }).map((_, i) => (
-                        <div key={`empty-${i}`} className="bg-background p-2 min-h-[100px]" />
+                        <div key={`empty-${i}`} className="bg-background p-1 sm:p-2 min-h-[60px] sm:min-h-[80px] md:min-h-[100px]" />
                       ))}
                       
                       {days.map(day => {
@@ -220,34 +225,40 @@ export default function CalendarPage() {
                         return (
                           <div 
                             key={day.toISOString()} 
-                            className={`bg-background p-2 min-h-[100px] border-t ${
+                            className={`bg-background p-1.5 sm:p-2 min-h-[70px] sm:min-h-[80px] md:min-h-[100px] border-t ${
                               isToday(day) ? 'bg-[hsl(28,94%,54%)]/5' : ''
-                            } ${hasEvents ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
+                            } ${hasEvents ? 'cursor-pointer hover:bg-muted/50 transition-colors active:bg-muted/70' : ''}`}
                             onClick={() => handleDayClick(day, dayItems)}
                             data-testid={`day-${format(day, 'yyyy-MM-dd')}`}
                           >
-                            <div className={`text-sm font-medium mb-1 ${
+                            <div className={`text-xs sm:text-sm font-medium mb-0.5 sm:mb-1 ${
                               isToday(day) 
-                                ? 'h-6 w-6 rounded-full bg-[hsl(28,94%,54%)] text-white flex items-center justify-center' 
+                                ? 'h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-[hsl(28,94%,54%)] text-white flex items-center justify-center text-[10px] sm:text-sm' 
                                 : 'text-foreground'
                             }`}>
                               {format(day, 'd')}
                             </div>
-                            <div className="space-y-1">
-                              {dayItems.slice(0, 2).map(item => (
+                            <div className="space-y-0.5 sm:space-y-1">
+                              {dayItems.slice(0, 2).map((item, idx) => (
                                 <div 
                                   key={item.id} 
-                                  className={`text-xs p-1 rounded truncate border cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(item.type)}`}
+                                  className={`text-[9px] sm:text-xs p-1 sm:p-1.5 rounded truncate border cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity min-h-[24px] sm:min-h-[28px] ${getEventTypeColor(item.type)} ${idx > 0 ? 'hidden sm:block' : ''}`}
                                   title={item.title}
                                   onClick={(e) => handleEventClick(item, e)}
                                   data-testid={`event-${item.id}`}
                                 >
-                                  {item.title}
+                                  <span className="hidden sm:inline">{item.title}</span>
+                                  <span className="sm:hidden">{item.title.substring(0, 6)}..</span>
                                 </div>
                               ))}
                               {dayItems.length > 2 && (
-                                <div className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                                <div className="text-[9px] sm:text-xs text-muted-foreground cursor-pointer hover:text-foreground hidden sm:block">
                                   +{dayItems.length - 2} more
+                                </div>
+                              )}
+                              {dayItems.length > 1 && (
+                                <div className="text-[9px] text-muted-foreground cursor-pointer hover:text-foreground sm:hidden">
+                                  +{dayItems.length - 1}
                                 </div>
                               )}
                             </div>
@@ -256,17 +267,17 @@ export default function CalendarPage() {
                       })}
                     </div>
                     
-                    <div className="flex gap-4 mt-4 text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-3 w-3 rounded bg-blue-200" />
+                    <div className="flex flex-wrap gap-2 sm:gap-4 mt-3 sm:mt-4 text-[10px] sm:text-xs">
+                      <div className="flex items-center gap-1 sm:gap-1.5">
+                        <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded bg-blue-200" />
                         <span className="text-muted-foreground">Appointments</span>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-3 w-3 rounded bg-amber-200" />
+                      <div className="flex items-center gap-1 sm:gap-1.5">
+                        <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded bg-amber-200" />
                         <span className="text-muted-foreground">Tasks</span>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-3 w-3 rounded bg-orange-200" />
+                      <div className="flex items-center gap-1 sm:gap-1.5">
+                        <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded bg-orange-200" />
                         <span className="text-muted-foreground">Closings</span>
                       </div>
                     </div>

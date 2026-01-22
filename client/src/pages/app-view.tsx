@@ -68,7 +68,7 @@ export default function AppView() {
 
   return (
     <Layout>
-      <div className="h-[calc(100vh-8rem)] flex flex-col">
+      <div className="h-[calc(100dvh-8rem)] sm:h-[calc(100vh-8rem)] flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <Button 
