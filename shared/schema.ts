@@ -164,8 +164,8 @@ export const userNotificationSettings = pgTable("user_notification_settings", {
   quietHoursStart: varchar("quiet_hours_start").default("22:00"),
   quietHoursEnd: varchar("quiet_hours_end").default("07:00"),
   
-  pushNotificationsEnabled: boolean("push_notifications_enabled").default(true),
   emailNotificationsEnabled: boolean("email_notifications_enabled").default(false),
+  notificationEmail: varchar("notification_email"),
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -185,6 +185,6 @@ export const updateNotificationSettingsSchema = z.object({
   quietHoursEnabled: z.boolean().optional(),
   quietHoursStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   quietHoursEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-  pushNotificationsEnabled: z.boolean().optional(),
   emailNotificationsEnabled: z.boolean().optional(),
+  notificationEmail: z.string().email().optional().nullable(),
 });

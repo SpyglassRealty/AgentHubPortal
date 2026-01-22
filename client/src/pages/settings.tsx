@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, Link2, Unlink, Check, AlertCircle, Bell, Users, Calendar, Home, CheckSquare, Megaphone, Moon, Mail, Smartphone, Loader2 } from "lucide-react";
+import { TrendingUp, Link2, Unlink, Check, AlertCircle, Bell, Users, Calendar, Home, CheckSquare, Megaphone, Moon, Mail, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,8 +45,8 @@ interface NotificationSettings {
   quietHoursEnabled: boolean;
   quietHoursStart: string;
   quietHoursEnd: string;
-  pushNotificationsEnabled: boolean;
   emailNotificationsEnabled: boolean;
+  notificationEmail: string | null;
 }
 
 const defaultNotificationSettings: Partial<NotificationSettings> = {
@@ -59,8 +59,8 @@ const defaultNotificationSettings: Partial<NotificationSettings> = {
   quietHoursEnabled: false,
   quietHoursStart: "22:00",
   quietHoursEnd: "07:00",
-  pushNotificationsEnabled: true,
   emailNotificationsEnabled: false,
+  notificationEmail: null,
 };
 
 export default function SettingsPage() {
@@ -442,41 +442,42 @@ export default function SettingsPage() {
             <Separator />
 
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Delivery Methods</h3>
-
-              <div className="flex items-center justify-between py-2">
-                <div className="flex items-center gap-3">
-                  <Smartphone className="h-5 w-5 text-cyan-500" />
-                  <div>
-                    <Label htmlFor="push" className="text-sm font-medium">Push Notifications</Label>
-                    <p className="text-xs text-muted-foreground">Receive notifications on this device</p>
-                  </div>
-                </div>
-                <Switch
-                  id="push"
-                  checked={notifSettings.pushNotificationsEnabled}
-                  onCheckedChange={(checked) => updateNotifSetting("pushNotificationsEnabled", checked)}
-                  disabled={!notifSettings.notificationsEnabled}
-                  data-testid="switch-push"
-                />
-              </div>
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Email Notifications</h3>
 
               <div className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-3">
                   <Mail className="h-5 w-5 text-amber-500" />
                   <div>
-                    <Label htmlFor="email" className="text-sm font-medium">Email Notifications</Label>
-                    <p className="text-xs text-muted-foreground">Also receive notifications via email</p>
+                    <Label htmlFor="email-toggle" className="text-sm font-medium">Enable Email Notifications</Label>
+                    <p className="text-xs text-muted-foreground">Receive notifications via email</p>
                   </div>
                 </div>
                 <Switch
-                  id="email"
+                  id="email-toggle"
                   checked={notifSettings.emailNotificationsEnabled}
                   onCheckedChange={(checked) => updateNotifSetting("emailNotificationsEnabled", checked)}
                   disabled={!notifSettings.notificationsEnabled}
                   data-testid="switch-email"
                 />
               </div>
+
+              {notifSettings.emailNotificationsEnabled && (
+                <div className="ml-8 space-y-2">
+                  <Label htmlFor="notification-email" className="text-sm">Notification Email Address</Label>
+                  <Input
+                    id="notification-email"
+                    type="email"
+                    placeholder={userProfile?.email || "Enter email address"}
+                    value={notifSettings.notificationEmail || ""}
+                    onChange={(e) => updateNotifSetting("notificationEmail", e.target.value || null)}
+                    disabled={!notifSettings.notificationsEnabled}
+                    data-testid="input-notification-email"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Leave blank to use your account email ({userProfile?.email || "your email"})
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="pt-4">
