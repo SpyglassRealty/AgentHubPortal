@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AgentSelector } from "@/components/agent-selector";
 import { useAuth } from "@/hooks/useAuth";
+import { FubNotLinkedBanner } from "@/components/leads/FubNotLinkedBanner";
 import { 
   Calendar, 
   Clock, 
@@ -280,6 +281,9 @@ export default function LeadsPage() {
   const recentActivityLeads: Lead[] = recentActivityData?.leads || [];
   const dueTasks: Task[] = tasksData?.tasks || [];
   const birthdayLeads: Lead[] = birthdayData?.leads || [];
+  
+  // Check if FUB is linked (any response with linked: false means not linked)
+  const isFubLinked = anniversaryData?.linked !== false;
 
   return (
     <Layout>
@@ -334,133 +338,149 @@ export default function LeadsPage() {
           </TabsList>
 
           <TabsContent value="anniversary" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <PartyPopper className="h-5 w-5 text-[hsl(28,94%,54%)]" />
-                  Home Purchase Anniversaries
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loadingAnniversary ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
-                    ))}
-                  </div>
-                ) : anniversaryLeads.length === 0 ? (
-                  <EmptyState 
-                    icon={PartyPopper} 
-                    message="No upcoming anniversaries found. Make sure your leads have the Home Purchase Anniversary field set in Follow Up Boss." 
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    {anniversaryLeads.map((lead) => (
-                      <LeadCard key={lead.id} lead={lead} type="anniversary" />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {!isFubLinked ? (
+              <FubNotLinkedBanner />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <PartyPopper className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+                    Home Purchase Anniversaries
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {loadingAnniversary ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
+                      ))}
+                    </div>
+                  ) : anniversaryLeads.length === 0 ? (
+                    <EmptyState 
+                      icon={PartyPopper} 
+                      message="No upcoming anniversaries found. Make sure your leads have the Home Purchase Anniversary field set in Follow Up Boss." 
+                    />
+                  ) : (
+                    <div className="space-y-3">
+                      {anniversaryLeads.map((lead) => (
+                        <LeadCard key={lead.id} lead={lead} type="anniversary" />
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="birthdays" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Cake className="h-5 w-5 text-pink-500" />
-                  Client Birthdays
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loadingBirthdays ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
-                    ))}
-                  </div>
-                ) : birthdayLeads.length === 0 ? (
-                  <EmptyState 
-                    icon={Cake} 
-                    message="No upcoming birthdays found. Make sure your leads have the Birthday field set in Follow Up Boss." 
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    {birthdayLeads.map((lead) => (
-                      <LeadCard key={lead.id} lead={lead} type="birthday" />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {!isFubLinked ? (
+              <FubNotLinkedBanner />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Cake className="h-5 w-5 text-pink-500" />
+                    Client Birthdays
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {loadingBirthdays ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
+                      ))}
+                    </div>
+                  ) : birthdayLeads.length === 0 ? (
+                    <EmptyState 
+                      icon={Cake} 
+                      message="No upcoming birthdays found. Make sure your leads have the Birthday field set in Follow Up Boss." 
+                    />
+                  ) : (
+                    <div className="space-y-3">
+                      {birthdayLeads.map((lead) => (
+                        <LeadCard key={lead.id} lead={lead} type="birthday" />
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="recent" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-[hsl(28,94%,54%)]" />
-                  Recent Activity
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Leads created over 30 days ago with activity in the last 3 days
-                </p>
-              </CardHeader>
-              <CardContent>
-                {loadingActivity ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
-                    ))}
-                  </div>
-                ) : recentActivityLeads.length === 0 ? (
-                  <EmptyState 
-                    icon={Activity} 
-                    message="No leads matching this criteria. This list shows leads created over 30 days ago that have had activity in the last 3 days." 
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    {recentActivityLeads.map((lead) => (
-                      <LeadCard key={lead.id} lead={lead} type="activity" />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {!isFubLinked ? (
+              <FubNotLinkedBanner />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+                    Recent Activity
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Leads created over 30 days ago with activity in the last 3 days
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  {loadingActivity ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
+                      ))}
+                    </div>
+                  ) : recentActivityLeads.length === 0 ? (
+                    <EmptyState 
+                      icon={Activity} 
+                      message="No leads matching this criteria. This list shows leads created over 30 days ago that have had activity in the last 3 days." 
+                    />
+                  ) : (
+                    <div className="space-y-3">
+                      {recentActivityLeads.map((lead) => (
+                        <LeadCard key={lead.id} lead={lead} type="activity" />
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="tasks" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ListTodo className="h-5 w-5 text-[hsl(28,94%,54%)]" />
-                  Due Tasks
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Incomplete tasks assigned to you, sorted by due date
-                </p>
-              </CardHeader>
-              <CardContent>
-                {loadingTasks ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />
-                    ))}
-                  </div>
-                ) : dueTasks.length === 0 ? (
-                  <EmptyState 
-                    icon={CheckCircle2} 
-                    message="No pending tasks! You're all caught up." 
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    {dueTasks.map((task) => (
-                      <TaskCard key={task.id} task={task} />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {!isFubLinked ? (
+              <FubNotLinkedBanner />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ListTodo className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+                    Due Tasks
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Incomplete tasks assigned to you, sorted by due date
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  {loadingTasks ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />
+                      ))}
+                    </div>
+                  ) : dueTasks.length === 0 ? (
+                    <EmptyState 
+                      icon={CheckCircle2} 
+                      message="No pending tasks! You're all caught up." 
+                    />
+                  ) : (
+                    <div className="space-y-3">
+                      {dueTasks.map((task) => (
+                        <TaskCard key={task.id} task={task} />
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
       </div>

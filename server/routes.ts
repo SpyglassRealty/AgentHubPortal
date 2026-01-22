@@ -751,12 +751,12 @@ export async function registerRoutes(
 
       if (!fubUserId) {
         console.log('[Leads API] No fubUserId - returning empty');
-        return res.json({ leads: [], message: "No Follow Up Boss account linked" });
+        return res.json({ leads: [], linked: false, message: "No Follow Up Boss account linked" });
       }
 
       const leads = await fubClient.getAnniversaryLeads(fubUserId);
       console.log('[Leads API] Returning', leads.length, 'anniversary leads');
-      res.json({ leads });
+      res.json({ leads, linked: true });
     } catch (error) {
       console.error("Error fetching anniversary leads:", error);
       res.status(500).json({ message: "Failed to fetch anniversary leads" });
@@ -793,12 +793,12 @@ export async function registerRoutes(
 
       if (!fubUserId) {
         console.log('[Leads API] No fubUserId - returning empty');
-        return res.json({ leads: [], message: "No Follow Up Boss account linked" });
+        return res.json({ leads: [], linked: false, message: "No Follow Up Boss account linked" });
       }
 
       const leads = await fubClient.getBirthdayLeads(fubUserId);
       console.log('[Leads API] Returning', leads.length, 'birthday leads');
-      res.json({ leads });
+      res.json({ leads, linked: true });
     } catch (error) {
       console.error("Error fetching birthday leads:", error);
       res.status(500).json({ message: "Failed to fetch birthday leads" });
@@ -832,11 +832,11 @@ export async function registerRoutes(
       }
 
       if (!fubUserId) {
-        return res.json({ leads: [], message: "No Follow Up Boss account linked" });
+        return res.json({ leads: [], linked: false, message: "No Follow Up Boss account linked" });
       }
 
       const leads = await fubClient.getRecentActivityLeads(fubUserId);
-      res.json({ leads });
+      res.json({ leads, linked: true });
     } catch (error) {
       console.error("Error fetching recent activity leads:", error);
       res.status(500).json({ message: "Failed to fetch recent activity leads" });
@@ -870,11 +870,11 @@ export async function registerRoutes(
       }
 
       if (!fubUserId) {
-        return res.json({ tasks: [], message: "No Follow Up Boss account linked" });
+        return res.json({ tasks: [], linked: false, message: "No Follow Up Boss account linked" });
       }
 
       const tasks = await fubClient.getDueTasks(fubUserId);
-      res.json({ tasks });
+      res.json({ tasks, linked: true });
     } catch (error) {
       console.error("Error fetching due tasks:", error);
       res.status(500).json({ message: "Failed to fetch due tasks" });
