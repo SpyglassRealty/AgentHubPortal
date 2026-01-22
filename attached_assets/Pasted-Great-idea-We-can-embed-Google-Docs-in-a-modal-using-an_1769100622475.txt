@@ -1,0 +1,391 @@
+Great idea! We can embed Google Docs in a modal using an iframe. Send this to Mission Control Replit:
+### Add Google Docs Modal Viewer for Handbook & Brand Guidelines
+
+**Goal:**
+Instead of opening Google Docs in a new tab, display them in a modal within Mission Control. The modal should respect light/dark/system theme.
+
+**Documents to embed:**
+1. **Company Handbook** - `https://docs.google.com/document/d/13EJYTRJ9QAXOdJH1H6Vyvh6iBaUsVJcUORxw6PuDcVM/edit`
+2. **Brand Guidelines** - `https://docs.google.com/document/d/1LKeF3DPqWelqF-ESWzJe3FEVewVTNaDCt4yv3rMz740/edit`
+
+**Note:** Google Docs iframe embeds always have a white background (Google limitation). We'll style the modal container to match the theme, but the document itself will remain light.
+
+---
+
+## 1. Create Google Doc Modal Component
+```tsx
+// components/GoogleDocModal.tsx
+
+import { useState } from 'react';
+import { X, ExternalLink, Maximize2, Minimize2, Loader2 } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+
+interface GoogleDocModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  docId: string;
+  externalUrl?: string;
+}
+
+export function GoogleDocModal({ 
+  isOpen, 
+  onClose, 
+  title, 
+  docId,
+  externalUrl 
+}: GoogleDocModalProps) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  if (!isOpen) return null;
+
+  // Google Docs embed URL (preview mode for read-only viewing)
+  const embedUrl = `https://docs.google.com/document/d/${docId}/preview`;
+  
+  // Theme classes
+  const modalBg = isDark ? 'bg-gray-900' : 'bg-white';
+  const headerBg = isDark ? 'bg-gray-800' : 'bg-gray-100';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+  const overlayBg = isDark ? 'bg-black/80' : 'bg-black/50';
+
+  return (
+    <div 
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${overlayBg}`}
+      onClick={onClose}
+    >
+      <div 
+        className={`
+          relative flex flex-col
+          ${isFullscreen ? 'w-full h-full' : 'w-full max-w-5xl h-[90vh]'}
+          ${modalBg} rounded-xl shadow-2xl overflow-hidden
+          transition-all duration-300
+        `}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className={`flex items-center justify-between px-4 py-3 ${headerBg} border-b ${borderColor}`}>
+          <div className="flex items-center gap-3">
+            {/* Google Docs Icon */}
+            <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM6 20V4h6v6h6v10H6z"/>
+                <path d="M8 12h8v2H8zm0 4h8v2H8z"/>
+              </svg>
+            </div>
+            <div>
+              <h2 className={`font-semibold ${textPrimary}`}>{title}</h2>
+              <p className={`text-xs ${textSecondary}`}>Google Document</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {/* Open in new tab */}
+            {externalUrl && (
+              
+                href={externalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${textSecondary}`}
+                title="Open in new tab"
+              >
+                <ExternalLink className="w-5 h-5" />
+              </a>
+            )}
+            
+            {/* Fullscreen toggle */}
+            <button
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className={`p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${textSecondary}`}
+              title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="w-5 h-5" />
+              ) : (
+                <Maximize2 className="w-5 h-5" />
+              )}
+            </button>
+            
+            {/* Close button */}
+            <button
+              onClick={onClose}
+              className={`p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${textSecondary}`}
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Document Content */}
+        <div className="flex-1 relative bg-gray-100 dark:bg-gray-800">
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 z-10">
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className={`w-8 h-8 animate-spin ${textSecondary}`} />
+                <p className={textSecondary}>Loading document...</p>
+              </div>
+            </div>
+          )}
+          
+          {/* Google Docs iframe */}
+          <iframe
+            src={embedUrl}
+            className="w-full h-full border-0"
+            onLoad={() => setIsLoading(false)}
+            title={title}
+            allow="autoplay"
+          />
+        </div>
+
+        {/* Footer - Optional info bar */}
+        <div className={`px-4 py-2 ${headerBg} border-t ${borderColor} flex items-center justify-between`}>
+          <p className={`text-xs ${textSecondary}`}>
+            💡 Tip: Use Ctrl/Cmd + F to search within the document
+          </p>
+          <p className={`text-xs ${textSecondary}`}>
+            Viewing in read-only mode
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## 2. Create Document Config
+```typescript
+// config/documents.ts
+
+export const DOCUMENTS = {
+  companyHandbook: {
+    id: 'company-handbook',
+    title: 'New Agent Handbook',
+    docId: '13EJYTRJ9QAXOdJH1H6Vyvh6iBaUsVJcUORxw6PuDcVM',
+    externalUrl: 'https://docs.google.com/document/d/13EJYTRJ9QAXOdJH1H6Vyvh6iBaUsVJcUORxw6PuDcVM/edit',
+    description: 'Everything you need to know as a new agent at Spyglass Realty'
+  },
+  brandGuidelines: {
+    id: 'brand-guidelines',
+    title: 'Brand Guidelines',
+    docId: '1LKeF3DPqWelqF-ESWzJe3FEVewVTNaDCt4yv3rMz740',
+    externalUrl: 'https://docs.google.com/document/d/1LKeF3DPqWelqF-ESWzJe3FEVewVTNaDCt4yv3rMz740/edit',
+    description: 'Spyglass Realty branding standards and guidelines'
+  }
+};
+```
+
+---
+
+## 3. Update Dashboard - Company Handbook Section
+```tsx
+// In Dashboard page
+
+import { useState } from 'react';
+import { GoogleDocModal } from '@/components/GoogleDocModal';
+import { DOCUMENTS } from '@/config/documents';
+import { BookOpen, FileText } from 'lucide-react';
+
+export default function Dashboard() {
+  const [activeDoc, setActiveDoc] = useState<keyof typeof DOCUMENTS | null>(null);
+
+  return (
+    <div>
+      {/* ... other dashboard content ... */}
+
+      {/* Company Handbook Section */}
+      <div className={`${cardBg} rounded-xl p-6 border ${borderColor}`}>
+        <h3 className={`font-semibold ${textPrimary} mb-4 flex items-center gap-2`}>
+          <BookOpen className="w-5 h-5 text-orange-500" />
+          Company Resources
+        </h3>
+        
+        <div 
+          onClick={() => setActiveDoc('companyHandbook')}
+          className={`
+            flex items-center gap-4 p-4 rounded-lg cursor-pointer
+            ${isDark ? 'bg-gray-700/50 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100'}
+            transition-colors
+          `}
+        >
+          <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+            <FileText className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1">
+            <h4 className={`font-medium ${textPrimary}`}>New Agent Handbook</h4>
+            <p className={`text-sm ${textSecondary}`}>
+              Everything you need to know as a new agent at Spyglass Realty
+            </p>
+          </div>
+          <span className={`text-sm ${textSecondary}`}>View →</span>
+        </div>
+      </div>
+
+      {/* Google Doc Modal */}
+      {activeDoc && (
+        <GoogleDocModal
+          isOpen={!!activeDoc}
+          onClose={() => setActiveDoc(null)}
+          title={DOCUMENTS[activeDoc].title}
+          docId={DOCUMENTS[activeDoc].docId}
+          externalUrl={DOCUMENTS[activeDoc].externalUrl}
+        />
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+## 4. Update Marketing Page - Brand Guidelines
+```tsx
+// In Marketing page
+
+import { useState } from 'react';
+import { GoogleDocModal } from '@/components/GoogleDocModal';
+import { DOCUMENTS } from '@/config/documents';
+import { Palette, FileText } from 'lucide-react';
+
+export default function Marketing() {
+  const [showBrandGuidelines, setShowBrandGuidelines] = useState(false);
+
+  return (
+    <div>
+      {/* ... other marketing content ... */}
+
+      {/* Marketing Resources Section */}
+      <div className={`${cardBg} rounded-xl p-6 border ${borderColor}`}>
+        <h3 className={`font-semibold ${textPrimary} mb-4 flex items-center gap-2`}>
+          <Palette className="w-5 h-5 text-purple-500" />
+          Marketing Resources
+        </h3>
+        
+        <div className="space-y-3">
+          {/* Brand Guidelines */}
+          <div 
+            onClick={() => setShowBrandGuidelines(true)}
+            className={`
+              flex items-center gap-4 p-4 rounded-lg cursor-pointer
+              ${isDark ? 'bg-gray-700/50 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100'}
+              transition-colors
+            `}
+          >
+            <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
+              <FileText className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h4 className={`font-medium ${textPrimary}`}>Brand Guidelines</h4>
+              <p className={`text-sm ${textSecondary}`}>
+                Spyglass Realty branding standards and guidelines
+              </p>
+            </div>
+            <span className={`text-sm ${textSecondary}`}>View →</span>
+          </div>
+          
+          {/* Add more resources here */}
+        </div>
+      </div>
+
+      {/* Brand Guidelines Modal */}
+      <GoogleDocModal
+        isOpen={showBrandGuidelines}
+        onClose={() => setShowBrandGuidelines(false)}
+        title={DOCUMENTS.brandGuidelines.title}
+        docId={DOCUMENTS.brandGuidelines.docId}
+        externalUrl={DOCUMENTS.brandGuidelines.externalUrl}
+      />
+    </div>
+  );
+}
+```
+
+---
+
+## 5. Visual Design
+
+**Light Mode:**
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ┌─────┐                                                                 │
+│ │ 📄  │  New Agent Handbook              [↗] [⛶] [✕]                   │
+│ └─────┘  Google Document                                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │                                                                   │  │
+│  │                    Google Doc Content                             │  │
+│  │                    (white background)                             │  │
+│  │                                                                   │  │
+│  │                                                                   │  │
+│  │                                                                   │  │
+│  │                                                                   │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+│                                                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│ 💡 Tip: Use Ctrl/Cmd + F to search          Viewing in read-only mode   │
+└─────────────────────────────────────────────────────────────────────────┘
+Light header, light footer, light overlay
+
+**Dark Mode:**
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ┌─────┐                                                                 │
+│ │ 📄  │  New Agent Handbook              [↗] [⛶] [✕]                   │
+│ └─────┘  Google Document                                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │
+│ ░░┌───────────────────────────────────────────────────────────────┐░░░ │
+│ ░░│                                                               │░░░ │
+│ ░░│                    Google Doc Content                         │░░░ │
+│ ░░│                    (white background - Google limitation)     │░░░ │
+│ ░░│                                                               │░░░ │
+│ ░░│                                                               │░░░ │
+│ ░░│                                                               │░░░ │
+│ ░░└───────────────────────────────────────────────────────────────┘░░░ │
+│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │
+├─────────────────────────────────────────────────────────────────────────┤
+│ 💡 Tip: Use Ctrl/Cmd + F to search          Viewing in read-only mode   │
+└─────────────────────────────────────────────────────────────────────────┘
+Dark header, dark footer, dark gray padding around iframe
+
+---
+
+## 6. Important Notes
+
+**Google Docs Limitation:**
+- Google Docs embeds always have a white background
+- We cannot apply dark mode to the document content itself
+- The modal container, header, and footer will match the theme
+- In dark mode, we add a subtle dark gray padding around the iframe to soften the contrast
+
+**Embed URL Format:**
+- Use `/preview` for read-only viewing: `https://docs.google.com/document/d/{DOC_ID}/preview`
+- This removes the Google Docs UI (toolbar, menus) for a cleaner look
+
+**Permissions:**
+- Documents must be set to "Anyone with link can view" for embedding to work
+- If documents are private, users will see a "Request access" screen
+
+---
+
+## Testing Checklist
+
+- [ ] Company Handbook opens in modal from Dashboard
+- [ ] Brand Guidelines opens in modal from Marketing page
+- [ ] Modal header matches light/dark theme
+- [ ] Modal footer matches light/dark theme
+- [ ] Document loads correctly in iframe
+- [ ] Loading spinner shows while document loads
+- [ ] "Open in new tab" button works
+- [ ] Fullscreen toggle works
+- [ ] Close button (X) works
+- [ ] Clicking outside modal closes it
+- [ ] Escape key closes modal
+- [ ] Scrolling works within the document
+- [ ] Mobile responsive (modal takes full screen on mobile)
