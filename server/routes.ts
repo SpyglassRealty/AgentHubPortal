@@ -900,7 +900,10 @@ Respond with valid JSON in this exact format:
       }
 
       const { id } = req.params;
-      const notification = await storage.markNotificationRead(id);
+      const notification = await storage.markNotificationRead(id, user.id);
+      if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
       res.json({ success: true, notification });
     } catch (error) {
       console.error("Error marking notification read:", error);
