@@ -1,0 +1,174 @@
+### INVESTIGATION ONLY - Leads Section Logic Inquiry
+
+**Important:** This is an investigation request only. Do NOT make any code changes. I need to understand the current implementation before deciding on any fixes.
+
+---
+
+## Questions About the Leads Section
+
+I need to understand how the Leads page works. Please investigate and answer the following:
+
+---
+
+### 1. Data Source
+
+**Q1.1:** Where does the Leads data come from?
+- Is it fetching from Follow Up Boss (FUB) API?
+- Is it stored locally in our database?
+- Or a combination of both?
+
+**Q1.2:** What FUB API endpoints are being used for each tab?
+- Anniversary tab
+- Birthdays tab
+- Recent Activity tab
+- Due Tasks tab
+
+**Q1.3:** What FUB custom fields are being queried?
+- Home Purchase Anniversary - what's the exact field name in FUB?
+- Birthday field - what's the exact field name?
+
+---
+
+### 2. Current Implementation
+
+**Q2.1:** Show me the relevant code files for the Leads page:
+- Frontend component(s)
+- API route(s)
+- Any service/helper files
+
+**Q2.2:** What is the current fetch logic?
+Please show me:
+
+The API endpoint URL being called
+The request headers (especially authentication)
+The query parameters or filters being used
+The response structure expected
+
+
+**Q2.3:** Is there any error handling? If the FUB API fails, what happens?
+
+---
+
+### 3. Tab-Specific Logic
+
+**Anniversary Tab:**
+- What date range is it looking for? (upcoming 30 days? 7 days?)
+- What field exactly does it check? (`customField.homePurchaseAnniversary`?)
+- How does it calculate "upcoming" anniversaries?
+
+**Birthdays Tab:**
+- Same questions as above
+- What field? (`birthday`? `customField.birthday`?)
+
+**Recent Activity Tab:**
+- What defines "recent"? (last 7 days? 30 days?)
+- What types of activity? (calls, emails, notes, all?)
+- Is this pulling from FUB activity log?
+
+**Due Tasks Tab:**
+- What's the filter for "due" tasks?
+- Is it tasks due today? This week? Overdue?
+- Is this from FUB tasks API?
+
+---
+
+### 4. Authentication
+
+**Q4.1:** How is FUB authentication handled?
+- API Key in headers?
+- OAuth token?
+- Per-user or global API key?
+
+**Q4.2:** Is the FUB API key configured correctly?
+- Where is it stored? (environment variable?)
+- What is the variable name?
+
+---
+
+### 5. Empty State Investigation
+
+**Q5.1:** Why might "No upcoming anniversaries found" be showing?
+- Is the API call failing silently?
+- Is there no data in FUB?
+- Is the field name incorrect?
+- Is the date range filter wrong?
+
+**Q5.2:** Can you add temporary console.log to show:
+```javascript
+console.log('[Leads Debug] API Response:', response);
+console.log('[Leads Debug] Filtered Results:', filteredLeads);
+console.log('[Leads Debug] Query Parameters:', queryParams);
+```
+
+(This is just to understand - we can remove after investigation)
+
+---
+
+### 6. Expected Data Structure
+
+**Q6.1:** What does a lead object look like when returned from FUB?
+
+Example expected structure:
+```json
+{
+  "id": 12345,
+  "name": "John Smith",
+  "email": "john@example.com",
+  "phones": [...],
+  "customFields": {
+    "homePurchaseAnniversary": "2024-03-15",
+    "birthday": "1985-06-20"
+  },
+  "lastActivity": "2025-01-20T10:30:00Z",
+  "tasks": [...]
+}
+```
+
+Is this accurate? What's the actual structure?
+
+---
+
+### 7. Summary Request
+
+Please provide a summary in this format:
+
+| Tab | FUB Endpoint | Field Used | Date Filter | Current Status |
+|-----|--------------|------------|-------------|----------------|
+| Anniversary | ? | ? | ? | Working/Not Working |
+| Birthdays | ? | ? | ? | Working/Not Working |
+| Recent Activity | ? | ? | ? | Working/Not Working |
+| Due Tasks | ? | ? | ? | Working/Not Working |
+
+---
+
+### 8. Code Snippets Needed
+
+Please share the following code snippets (read-only, just show me):
+
+1. **The Leads page component** - main file
+2. **The API route for leads** - server-side
+3. **Any FUB service/client file** - how we connect to FUB
+4. **Environment variable usage** - how FUB_API_KEY is accessed
+
+---
+
+## Output Format
+
+Please respond with:
+
+1. **Architecture Overview** - How the Leads feature is built
+2. **Code Locations** - File paths for relevant code
+3. **API Details** - Endpoints, auth, parameters
+4. **Current Issues** - Why data might not be showing
+5. **Recommendations** - What might need to be fixed (but don't fix yet)
+
+---
+
+**Reminder:** This is investigation only. Do not modify any code. I will review your findings and decide on next steps.
+
+This prompt will give you a complete picture of:
+
+How the Leads section is supposed to work
+What FUB API endpoints/fields it uses
+Why the empty state might be showing
+What needs to be fixed (without actually fixing it yet)
