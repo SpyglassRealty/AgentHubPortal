@@ -177,6 +177,44 @@
     @apply bg-clip-text text-transparent bg-gradient-to-r from-[hsl(28,94%,54%)] to-[hsl(35,95%,50%)];
   }
   
+  /* Mobile touch target - minimum 44px for iOS/Android accessibility */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Safe area padding for modals and fixed elements */
+  .safe-area-inset {
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* Hide scrollbar but allow scrolling (mobile-friendly) */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Horizontal scroll container for tabs on mobile */
+  .overflow-x-auto-mobile {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+  }
+  
+  .overflow-x-auto-mobile > * {
+    scroll-snap-align: start;
+  }
+  
   /* Custom scrollbar styling */
   .scrollbar-thin {
     scrollbar-width: thin;
@@ -203,5 +241,26 @@
   
   .scrollbar-track-transparent::-webkit-scrollbar-track {
     background: transparent;
+  }
+}
+
+/* iPad and tablet-specific styles (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  /* Adjust grid layouts for iPad */
+  .tablet-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* iOS-specific fixes */
+@supports (-webkit-touch-callout: none) {
+  /* Prevent iOS bounce scroll on modals */
+  .modal-container {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Fix iOS input zoom */
+  input, select, textarea {
+    font-size: 16px;
   }
 }
