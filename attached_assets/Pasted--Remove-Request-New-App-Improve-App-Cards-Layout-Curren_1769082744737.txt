@@ -1,0 +1,293 @@
+### Remove "Request New App" & Improve App Cards Layout
+
+**Current Issues:**
+1. "Request New App" card should be removed for now
+2. App cards arrangement needs better organization
+3. Cards should be grouped logically for better UX
+
+---
+
+## Changes Required
+
+### 1. Remove "Request New App" Card
+
+Remove the "Request New App" card from the dashboard apps grid entirely.
+
+---
+
+### 2. Reorganize Apps by Category
+
+Group apps logically by their category and importance:
+
+**Suggested Order:**
+
+| Priority | App | Category | Type | Reason |
+|----------|-----|----------|------|--------|
+| 1 | Client Data Portal | Sales | Integrated | Primary tool, integrated |
+| 2 | ReZen | Core | Link | Transaction management |
+| 3 | Slack | Core | Link | Daily communication |
+| 4 | Ylopo Add Lead | Sales | Link | Lead management |
+| 5 | Ylopo Tools | Marketing | External | Marketing resources |
+| 6 | Canva | Marketing | Link | Marketing materials |
+| 7 | Jointly | Sales | Link | Client collaboration |
+
+---
+
+### 3. Improved Grid Layout
+```tsx
+// Ensure consistent grid layout
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  {apps.map((app) => (
+    <AppCard key={app.id} app={app} />
+  ))}
+</div>
+```
+
+---
+
+### 4. Add Category Headers (Optional Enhancement)
+
+Group apps visually by category:
+```tsx
+// Option A: Category Sections
+<div className="space-y-8">
+  {/* Core Apps */}
+  <section>
+    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
+      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+      Core
+    </h3>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {coreApps.map(app => <AppCard key={app.id} app={app} />)}
+    </div>
+  </section>
+
+  {/* Sales Apps */}
+  <section>
+    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
+      <span className="w-2 h-2 rounded-full bg-green-500"></span>
+      Sales
+    </h3>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {salesApps.map(app => <AppCard key={app.id} app={app} />)}
+    </div>
+  </section>
+
+  {/* Marketing Apps */}
+  <section>
+    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
+      <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+      Marketing
+    </h3>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {marketingApps.map(app => <AppCard key={app.id} app={app} />)}
+    </div>
+  </section>
+</div>
+```
+
+---
+
+### 5. Alternative: Simple Sorted Grid (No Category Headers)
+
+If category headers feel too heavy, just sort apps logically:
+```tsx
+// Sort apps by: Integrated first, then Core, then Sales, then Marketing
+const sortedApps = [...apps].sort((a, b) => {
+  const priorityOrder = {
+    'Integrated': 0,
+    'Core': 1,
+    'Sales': 2,
+    'Marketing': 3
+  };
+  
+  // Integrated apps first
+  if (a.type === 'integrated' && b.type !== 'integrated') return -1;
+  if (b.type === 'integrated' && a.type !== 'integrated') return 1;
+  
+  // Then by category
+  const aPriority = priorityOrder[a.category] ?? 99;
+  const bPriority = priorityOrder[b.category] ?? 99;
+  
+  return aPriority - bPriority;
+});
+
+// Render
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  {sortedApps.map((app) => (
+    <AppCard key={app.id} app={app} />
+  ))}
+</div>
+```
+
+---
+
+### 6. Ensure Consistent Card Heights
+
+Make all cards the same height regardless of content:
+```tsx
+// AppCard component
+<div className={`
+  flex flex-col
+  h-full          // Full height of grid cell
+  min-h-[180px]   // Minimum height
+  p-4
+  rounded-xl
+  border
+  ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}
+  hover:shadow-lg
+  transition-all
+  cursor-pointer
+`}>
+  {/* Icon */}
+  <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 ${app.iconBg}`}>
+    {app.icon}
+  </div>
+  
+  {/* Title */}
+  <h3 className={`font-semibold ${textPrimary} mb-1`}>{app.name}</h3>
+  
+  {/* Description - grows to fill space */}
+  <p className={`text-sm ${textSecondary} flex-grow mb-3 line-clamp-2`}>
+    {app.description}
+  </p>
+  
+  {/* Tags - always at bottom */}
+  <div className="flex items-center gap-2 mt-auto">
+    <span className={`text-xs px-2 py-0.5 rounded-full ${getCategoryColor(app.category)}`}>
+      {app.category}
+    </span>
+    <span className={`text-xs px-2 py-0.5 rounded-full ${getTypeColor(app.type)}`}>
+      {app.type === 'integrated' ? '● Integrated' : app.type === 'external' ? '↗ External' : '⟷ Link'}
+    </span>
+  </div>
+</div>
+```
+
+---
+
+### 7. Updated Apps Configuration
+```typescript
+// Remove "Request New App" and reorder
+const apps = [
+  {
+    id: 'client-data-portal',
+    name: 'Client Data Portal',
+    description: 'Access and manage client properties and MLS listings.',
+    icon: <ClipboardList className="w-6 h-6 text-white" />,
+    iconBg: 'bg-teal-500',
+    category: 'Sales',
+    type: 'integrated',
+    path: '/client-data-portal'
+  },
+  {
+    id: 'rezen',
+    name: 'ReZen',
+    description: "Real Brokerage's agent portal for commissions, and more.",
+    icon: <Building className="w-6 h-6 text-white" />,
+    iconBg: 'bg-indigo-500',
+    category: 'Core',
+    type: 'link',
+    url: 'https://rezen.therealbrokerage.com'
+  },
+  {
+    id: 'slack',
+    name: 'Slack',
+    description: 'Team communication and collaboration hub. Opens in a new tab.',
+    icon: <Hash className="w-6 h-6 text-white" />,
+    iconBg: 'bg-emerald-600',
+    category: 'Core',
+    type: 'link',
+    url: 'https://slack.com'
+  },
+  {
+    id: 'ylopo-add-lead',
+    name: 'Ylopo Add Lead',
+    description: 'Quickly add new leads to your Ylopo account. Opens in a new tab.',
+    icon: <UserPlus className="w-6 h-6 text-white" />,
+    iconBg: 'bg-teal-600',
+    category: 'Sales',
+    type: 'link',
+    url: 'https://ylopo.com'
+  },
+  {
+    id: 'ylopo-tools',
+    name: 'Ylopo Tools',
+    description: 'Access Ylopo marketing tools and resources.',
+    icon: <Wrench className="w-6 h-6 text-white" />,
+    iconBg: 'bg-green-500',
+    category: 'Marketing',
+    type: 'external',
+    url: 'https://ylopo.com/tools'
+  },
+  {
+    id: 'canva',
+    name: 'Canva',
+    description: 'Create beautiful marketing materials, flyers, and social media graphics. Opens in a new tab.',
+    icon: <Palette className="w-6 h-6 text-white" />,
+    iconBg: 'bg-purple-500',
+    category: 'Marketing',
+    type: 'link',
+    url: 'https://canva.com'
+  },
+  {
+    id: 'jointly',
+    name: 'Jointly',
+    description: 'Collaborate with clients and partners on real estate transactions.',
+    icon: <Users className="w-6 h-6 text-white" />,
+    iconBg: 'bg-cyan-500',
+    category: 'Sales',
+    type: 'link',
+    url: 'https://jointly.com'
+  }
+  // "Request New App" REMOVED
+];
+```
+
+---
+
+### 8. Visual Result
+
+**Before (Current):**
+┌──────────┐ ┌──────────┐ ┌──────────┐
+│ Ylopo    │ │ Ylopo    │ │ ReZen    │
+│ Add Lead │ │ Tools    │ │          │
+└──────────┘ └──────────┘ └──────────┘
+┌──────────┐ ┌──────────┐ ┌──────────┐
+│ Slack    │ │ Canva    │ │ Client   │
+│          │ │          │ │ Portal   │
+└──────────┘ └──────────┘ └──────────┘
+┌──────────┐ ┌──────────┐
+│ Jointly  │ │ Request  │  ← Uneven row, to be removed
+│          │ │ New App  │
+└──────────┘ └──────────┘
+
+**After (Improved):**
+┌──────────┐ ┌──────────┐ ┌──────────┐
+│ Client   │ │ ReZen    │ │ Slack    │
+│ Portal   │ │          │ │          │
+│●Integrated│ │ Core     │ │ Core     │
+└──────────┘ └──────────┘ └──────────┘
+┌──────────┐ ┌──────────┐ ┌──────────┐
+│ Ylopo    │ │ Ylopo    │ │ Canva    │
+│ Add Lead │ │ Tools    │ │          │
+│ Sales    │ │ Marketing│ │ Marketing│
+└──────────┘ └──────────┘ └──────────┘
+┌──────────┐
+│ Jointly  │  ← Clean single card if odd number
+│ Sales    │
+└──────────┘
+
+---
+
+## Testing Checklist
+
+- [ ] "Request New App" card is removed
+- [ ] Apps are sorted logically (Integrated → Core → Sales → Marketing)
+- [ ] Client Data Portal appears first (primary integrated tool)
+- [ ] All cards have consistent height
+- [ ] Grid is responsive (1 col mobile, 2 col tablet, 3-4 col desktop)
+- [ ] Cards align properly even with odd number of apps
+- [ ] Hover effects work on all cards
+- [ ] Works in light mode
+- [ ] Works in dark mode
