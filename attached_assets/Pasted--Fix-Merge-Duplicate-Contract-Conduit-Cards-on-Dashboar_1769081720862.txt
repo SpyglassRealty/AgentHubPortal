@@ -1,0 +1,159 @@
+# Fix: Merge Duplicate Contract Conduit Cards on Dashboard
+
+## Problem
+
+The Mission Control dashboard has **two** Contract Conduit cards:
+
+### Card 1 (Top)
+- **Title:** Contract Conduit
+- **Description:** "Your first step to entering a transaction."
+- **Tags:** Core, Integrated
+
+### Card 2 (Bottom)
+- **Title:** Contract Conduit  
+- **Description:** "Turn your marketing leads into contracts. Streamline the transition from prospect to..."
+- **Tags:** Marketing, Integrated
+
+These should be merged into a **single** card.
+
+---
+
+## Solution: Single Merged Card
+
+```
+┌─────────────────────────────────────────┐
+│  📄                                     │
+│                                         │
+│  Contract Conduit                       │
+│                                         │
+│  Manage real estate transactions,       │
+│  marketing materials, and CMAs.         │
+│                                         │
+│  [Core]  [Marketing]  [● Integrated]    │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+---
+
+## Implementation
+
+Find where dashboard cards are defined (likely in a config file or database) and remove the duplicate:
+
+### Option A: If cards are in a config/array
+
+```typescript
+// Before - Two separate entries
+const dashboardApps = [
+  {
+    id: 'contract-conduit-1',
+    name: 'Contract Conduit',
+    description: 'Your first step to entering a transaction.',
+    icon: 'document',
+    categories: ['Core'],
+    status: 'Integrated',
+    url: '/contract-conduit'
+  },
+  // ... other apps ...
+  {
+    id: 'contract-conduit-2',  // DUPLICATE!
+    name: 'Contract Conduit',
+    description: 'Turn your marketing leads into contracts...',
+    icon: 'document',
+    categories: ['Marketing'],
+    status: 'Integrated',
+    url: '/contract-conduit'
+  },
+];
+
+// After - Single merged entry
+const dashboardApps = [
+  {
+    id: 'contract-conduit',
+    name: 'Contract Conduit',
+    description: 'Manage real estate transactions, marketing materials, and CMAs.',
+    icon: 'document',
+    categories: ['Core', 'Marketing'],  // Combined categories
+    status: 'Integrated',
+    url: '/contract-conduit'
+  },
+  // ... other apps ...
+];
+```
+
+### Option B: If cards are in database
+
+```sql
+-- Find duplicates
+SELECT * FROM dashboard_apps WHERE name = 'Contract Conduit';
+
+-- Delete the duplicate (keep the one with lower ID or the "Core" one)
+DELETE FROM dashboard_apps WHERE id = [duplicate_id];
+
+-- Update the remaining one with merged info
+UPDATE dashboard_apps 
+SET 
+  description = 'Manage real estate transactions, marketing materials, and CMAs.',
+  categories = ARRAY['Core', 'Marketing']
+WHERE name = 'Contract Conduit' AND id = [keep_id];
+```
+
+---
+
+## Recommended Merged Card Content
+
+| Field | Value |
+|-------|-------|
+| **Name** | Contract Conduit |
+| **Description** | Manage real estate transactions, marketing materials, and CMAs. |
+| **Icon** | Document (📄) - keep current orange icon |
+| **Categories** | Core, Marketing |
+| **Status** | Integrated |
+| **URL** | `/contract-conduit` or the iframe URL |
+
+---
+
+## Alternative Description Options
+
+Pick the one that best describes the app:
+
+1. **Short:** "Manage real estate transactions, marketing materials, and CMAs."
+
+2. **Medium:** "Your transaction management hub. Create marketing materials, run CMAs, and track deals from start to close."
+
+3. **Detailed:** "Streamline your real estate workflow with transaction management, automated marketing materials, comparative market analysis, and team coordination."
+
+---
+
+## Visual Before/After
+
+### Before (Two Cards)
+```
+┌──────────────────┐     ┌──────────────────┐
+│ Contract Conduit │     │ Contract Conduit │
+│ Your first step  │     │ Turn marketing   │
+│ to entering...   │     │ leads into...    │
+│ [Core][Integrated│     │ [Marketing][Integ│
+└──────────────────┘     └──────────────────┘
+```
+
+### After (Single Card)
+```
+┌──────────────────────────────────────────┐
+│ Contract Conduit                         │
+│ Manage real estate transactions,         │
+│ marketing materials, and CMAs.           │
+│ [Core] [Marketing] [● Integrated]        │
+└──────────────────────────────────────────┘
+```
+
+---
+
+## Testing Checklist
+
+- [ ] Only one Contract Conduit card appears on dashboard
+- [ ] Card shows both "Core" and "Marketing" tags
+- [ ] Card description accurately describes the app
+- [ ] Clicking the card opens Contract Conduit correctly
+- [ ] Card icon displays properly
+- [ ] "Integrated" status badge shows correctly
