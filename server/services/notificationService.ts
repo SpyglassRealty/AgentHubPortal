@@ -11,6 +11,15 @@ interface NotificationData {
 }
 
 class NotificationService {
+  async getNotificationEmail(userId: string): Promise<string | null> {
+    const settings = await storage.getNotificationSettings(userId);
+    if (settings?.notificationEmail) {
+      return settings.notificationEmail;
+    }
+    const user = await storage.getUser(userId);
+    return user?.email || null;
+  }
+
   private getSettingKey(type: NotificationType): keyof UserNotificationSettings {
     const mapping: Record<NotificationType, keyof UserNotificationSettings> = {
       lead_assigned: 'leadAssignedEnabled',
