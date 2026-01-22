@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
 import { navItems } from "@/lib/apps";
-import { Bell, Search, Settings, LogOut, Menu, ChevronRight, X } from "lucide-react";
+import { Bell, Search, Settings, LogOut, Menu, ChevronRight, X, Sun, Moon, Monitor, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,15 +12,88 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  message: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = React.useState(false);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const { data: notificationsData } = useQuery<{ notifications: Notification[]; unreadCount: number }>({
+    queryKey: ["/api/notifications"],
+    refetchInterval: 60000,
+  });
+
+  const markReadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/notifications/${id}/read`, { method: "POST" });
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/notifications"] }),
+  });
+
+  const markAllReadMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/notifications/read-all", { method: "POST" });
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/notifications"] }),
+  });
+
+  const themeMutation = useMutation({
+    mutationFn: async (theme: string) => {
+      const res = await fetch("/api/user/theme", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme }),
+      });
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] }),
+  });
+
+  const currentTheme = user?.theme || "light";
+
+  React.useEffect(() => {
+    const applyTheme = (theme: string) => {
+      if (theme === "system") {
+        const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.classList.toggle("dark", isDark);
+      } else {
+        document.documentElement.classList.toggle("dark", theme === "dark");
+      }
+    };
+    applyTheme(currentTheme);
+  }, [currentTheme]);
+
+  const handleThemeChange = (theme: string) => {
+    themeMutation.mutate(theme);
+    if (theme === "system") {
+      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", isDark);
+    } else {
+      document.documentElement.classList.toggle("dark", theme === "dark");
+    }
+  };
 
   const userInitials = user?.firstName && user?.lastName 
     ? `${user.firstName[0]}${user.lastName[0]}` 
@@ -29,6 +102,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const userName = user?.firstName && user?.lastName 
     ? `${user.firstName} ${user.lastName}` 
     : user?.email || "Agent";
+
+  const notifications = notificationsData?.notifications || [];
+  const unreadCount = notificationsData?.unreadCount || 0;
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case "lead_assigned": return "👤";
+      case "appointment_reminder": return "📅";
+      case "deal_update": return "🏠";
+      case "task_due": return "✅";
+      default: return "🔔";
+    }
+  };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
@@ -49,19 +135,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 px-3 py-6 space-y-1">
         {navItems.map((item) => {
           const isActive = location === item.href;
+          const itemId = item.href.replace("/", "") || "home";
           return (
-            <Link key={item.label} href={item.href}>
+            <Link key={item.href} href={item.href}>
               <div
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer group
-                  ${
-                    isActive
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                  }`}
+                onClick={() => setIsMobileOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors cursor-pointer group ${
+                  isActive 
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                }`}
+                data-testid={`nav-${itemId}`}
               >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-                <ChevronRight className={`h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity ${isActive ? 'opacity-100' : ''}`} />
+                <item.icon className={`h-5 w-5 ${isActive ? 'text-sidebar-primary' : ''}`} />
+                <span className="font-medium">{item.label}</span>
+                {isActive && <ChevronRight className="ml-auto h-4 w-4 text-sidebar-primary" />}
               </div>
             </Link>
           );
@@ -70,15 +158,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       <div className="p-4 border-t border-sidebar-border">
         <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10 border-2 border-sidebar-primary/30">
+          <Avatar className="h-9 w-9">
             <AvatarImage src={user?.profileImageUrl || undefined} />
-            <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground font-semibold">
+            <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-sm">
               {userInitials}
             </AvatarFallback>
           </Avatar>
-          <div className="flex flex-col flex-1 min-w-0">
-            <span className="text-sm font-medium truncate">{userName}</span>
-            <span className="text-xs text-sidebar-foreground/50 truncate">{user?.email}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-sidebar-foreground truncate">{userName}</p>
+            <p className="text-xs text-sidebar-foreground/50 truncate">{user?.email}</p>
           </div>
         </div>
       </div>
@@ -86,8 +174,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <aside className="hidden md:block w-64 fixed inset-y-0 left-0 z-30 border-r border-border shadow-lg">
+    <div className="min-h-screen flex bg-background">
+      <aside className="hidden md:flex flex-col w-64 fixed inset-y-0 left-0 z-30">
         <SidebarContent />
       </aside>
 
@@ -149,14 +237,79 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             >
               <Search className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground relative h-9 w-9 min-h-[44px] min-w-[44px]">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[hsl(28,94%,54%)] border-2 border-background"></span>
-            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground relative h-9 w-9 min-h-[44px] min-w-[44px]" data-testid="button-notifications">
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 h-4 w-4 rounded-full bg-[hsl(28,94%,54%)] text-[10px] font-medium text-white flex items-center justify-center">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <div className="flex items-center justify-between px-3 py-2">
+                  <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
+                  {unreadCount > 0 && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-auto py-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => markAllReadMutation.mutate()}
+                    >
+                      Mark all read
+                    </Button>
+                  )}
+                </div>
+                <DropdownMenuSeparator />
+                <ScrollArea className="h-[300px]">
+                  {notifications.length === 0 ? (
+                    <div className="py-8 text-center text-muted-foreground text-sm">
+                      No notifications yet
+                    </div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={`px-3 py-3 border-b last:border-b-0 cursor-pointer hover:bg-muted/50 transition-colors ${
+                          !notification.isRead ? "bg-muted/30" : ""
+                        }`}
+                        onClick={() => !notification.isRead && markReadMutation.mutate(notification.id)}
+                        data-testid={`notification-${notification.id}`}
+                      >
+                        <div className="flex gap-2">
+                          <span className="text-base">{getNotificationIcon(notification.type)}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start gap-2">
+                              <p className={`text-sm truncate flex-1 ${!notification.isRead ? "font-medium" : ""}`}>
+                                {notification.title}
+                              </p>
+                              {!notification.isRead && (
+                                <span className="h-2 w-2 rounded-full bg-[hsl(28,94%,54%)] flex-shrink-0 mt-1.5" />
+                              )}
+                            </div>
+                            {notification.message && (
+                              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                {notification.message}
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </ScrollArea>
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-9 w-9 min-h-[44px] min-w-[44px]">
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-9 w-9 min-h-[44px] min-w-[44px]" data-testid="button-settings">
                   <Settings className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
@@ -165,6 +318,30 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>Profile</DropdownMenuItem>
                 <DropdownMenuItem>Preferences</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Sun className="mr-2 h-4 w-4" />
+                    Theme
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={() => handleThemeChange("light")}>
+                      <Sun className="mr-2 h-4 w-4" />
+                      Light
+                      {currentTheme === "light" && <Check className="ml-auto h-4 w-4" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleThemeChange("dark")}>
+                      <Moon className="mr-2 h-4 w-4" />
+                      Dark
+                      {currentTheme === "dark" && <Check className="ml-auto h-4 w-4" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleThemeChange("system")}>
+                      <Monitor className="mr-2 h-4 w-4" />
+                      System
+                      {currentTheme === "system" && <Check className="ml-auto h-4 w-4" />}
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild className="text-destructive cursor-pointer">
                   <a href="/api/logout">

@@ -875,5 +875,74 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // Notification endpoints
+  app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const notifications = await storage.getNotifications(user.id);
+      const unreadCount = await storage.getUnreadNotificationCount(user.id);
+      res.json({ notifications, unreadCount });
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.post('/api/notifications/:id/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { id } = req.params;
+      const notification = await storage.markNotificationRead(id);
+      res.json({ success: true, notification });
+    } catch (error) {
+      console.error("Error marking notification read:", error);
+      res.status(500).json({ message: "Failed to mark notification read" });
+    }
+  });
+
+  app.post('/api/notifications/read-all', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      await storage.markAllNotificationsRead(user.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking all notifications read:", error);
+      res.status(500).json({ message: "Failed to mark all notifications read" });
+    }
+  });
+
+  // Theme preference endpoint
+  app.patch('/api/user/theme', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { theme } = req.body;
+      if (!theme || !['light', 'dark', 'system'].includes(theme)) {
+        return res.status(400).json({ message: "Invalid theme value" });
+      }
+
+      const updatedUser = await storage.updateUserTheme(user.id, theme);
+      res.json({ success: true, user: updatedUser });
+    } catch (error) {
+      console.error("Error updating theme:", error);
+      res.status(500).json({ message: "Failed to update theme" });
+    }
+  });
+
   return httpServer;
 }
