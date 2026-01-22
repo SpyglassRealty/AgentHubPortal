@@ -896,7 +896,6 @@ export async function registerRoutes(
         timestamp: new Date().toISOString()
       };
       
-      console.log('[FUB Debug] User status check:', debugInfo);
       res.json(debugInfo);
     } catch (error) {
       console.error('[FUB Debug] Error checking user status:', error);
