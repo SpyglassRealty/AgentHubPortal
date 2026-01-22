@@ -6,6 +6,7 @@ import {
   appUsage,
   notifications,
   userNotificationSettings,
+  userVideoPreferences,
   type User, 
   type UpsertUser,
   type AgentProfile,
@@ -18,10 +19,12 @@ import {
   type Notification,
   type InsertNotification,
   type UserNotificationSettings,
-  type InsertUserNotificationSettings
+  type InsertUserNotificationSettings,
+  type UserVideoPreference,
+  type InsertUserVideoPreference
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, ne, desc, sql } from "drizzle-orm";
+import { eq, and, ne, desc, sql, gt, lt } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -55,6 +58,13 @@ export interface IStorage {
   
   getNotificationSettings(userId: string): Promise<UserNotificationSettings | undefined>;
   upsertNotificationSettings(settings: InsertUserNotificationSettings): Promise<UserNotificationSettings>;
+  
+  getVideoPreferences(userId: string): Promise<UserVideoPreference[]>;
+  getVideoPreference(userId: string, videoId: string): Promise<UserVideoPreference | undefined>;
+  upsertVideoPreference(pref: InsertUserVideoPreference): Promise<UserVideoPreference>;
+  getFavoriteVideos(userId: string): Promise<UserVideoPreference[]>;
+  getWatchLaterVideos(userId: string): Promise<UserVideoPreference[]>;
+  getContinueWatchingVideos(userId: string): Promise<UserVideoPreference[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -308,6 +318,76 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return created;
     }
+  }
+
+  async getVideoPreferences(userId: string): Promise<UserVideoPreference[]> {
+    return db
+      .select()
+      .from(userVideoPreferences)
+      .where(eq(userVideoPreferences.userId, userId));
+  }
+
+  async getVideoPreference(userId: string, videoId: string): Promise<UserVideoPreference | undefined> {
+    const [pref] = await db
+      .select()
+      .from(userVideoPreferences)
+      .where(and(
+        eq(userVideoPreferences.userId, userId),
+        eq(userVideoPreferences.videoId, videoId)
+      ));
+    return pref;
+  }
+
+  async upsertVideoPreference(pref: InsertUserVideoPreference): Promise<UserVideoPreference> {
+    const existing = await this.getVideoPreference(pref.userId, pref.videoId);
+    if (existing) {
+      const [updated] = await db
+        .update(userVideoPreferences)
+        .set({ ...pref, updatedAt: new Date() })
+        .where(eq(userVideoPreferences.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(userVideoPreferences)
+        .values(pref)
+        .returning();
+      return created;
+    }
+  }
+
+  async getFavoriteVideos(userId: string): Promise<UserVideoPreference[]> {
+    return db
+      .select()
+      .from(userVideoPreferences)
+      .where(and(
+        eq(userVideoPreferences.userId, userId),
+        eq(userVideoPreferences.isFavorite, true)
+      ))
+      .orderBy(desc(userVideoPreferences.updatedAt));
+  }
+
+  async getWatchLaterVideos(userId: string): Promise<UserVideoPreference[]> {
+    return db
+      .select()
+      .from(userVideoPreferences)
+      .where(and(
+        eq(userVideoPreferences.userId, userId),
+        eq(userVideoPreferences.isWatchLater, true)
+      ))
+      .orderBy(desc(userVideoPreferences.createdAt));
+  }
+
+  async getContinueWatchingVideos(userId: string): Promise<UserVideoPreference[]> {
+    return db
+      .select()
+      .from(userVideoPreferences)
+      .where(and(
+        eq(userVideoPreferences.userId, userId),
+        gt(userVideoPreferences.watchProgress, 0),
+        lt(userVideoPreferences.watchPercentage, 95)
+      ))
+      .orderBy(desc(userVideoPreferences.lastWatchedAt));
   }
 }
 

@@ -210,3 +210,17 @@ export const userVideoPreferences = pgTable("user_video_preferences", {
 
 export type UserVideoPreference = typeof userVideoPreferences.$inferSelect;
 export type InsertUserVideoPreference = typeof userVideoPreferences.$inferInsert;
+
+export const videoFavoriteSchema = z.object({
+  videoName: z.string().optional(),
+  videoThumbnail: z.string().optional(),
+  videoDuration: z.number().optional(),
+});
+
+export const videoProgressSchema = z.object({
+  progress: z.number().min(0),
+  percentage: z.number().min(0).max(100),
+  videoName: z.string().optional(),
+  videoThumbnail: z.string().optional(),
+  videoDuration: z.number().optional(),
+});
