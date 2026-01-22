@@ -188,3 +188,25 @@ export const updateNotificationSettingsSchema = z.object({
   emailNotificationsEnabled: z.boolean().optional(),
   notificationEmail: z.string().email().optional().nullable(),
 });
+
+export const userVideoPreferences = pgTable("user_video_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  videoId: varchar("video_id", { length: 50 }).notNull(),
+  videoName: varchar("video_name", { length: 255 }),
+  videoThumbnail: varchar("video_thumbnail", { length: 500 }),
+  videoDuration: integer("video_duration"),
+  isFavorite: boolean("is_favorite").default(false),
+  isWatchLater: boolean("is_watch_later").default(false),
+  watchProgress: integer("watch_progress").default(0),
+  watchPercentage: integer("watch_percentage").default(0),
+  lastWatchedAt: timestamp("last_watched_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_user_video_prefs_user_id").on(table.userId),
+  uniqueIndex("idx_user_video_prefs_unique").on(table.userId, table.videoId),
+]);
+
+export type UserVideoPreference = typeof userVideoPreferences.$inferSelect;
+export type InsertUserVideoPreference = typeof userVideoPreferences.$inferInsert;
