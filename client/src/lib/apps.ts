@@ -158,6 +158,16 @@ export const apps: AppDefinition[] = [
     connectionType: "redirect"
   },
   {
+    id: "contract-conduit-marketing",
+    name: "Contract Conduit",
+    description: "Turn your marketing leads into contracts. Streamline the transition from prospect to signed deal.",
+    icon: FileText,
+    categories: ["Marketing"],
+    color: "bg-amber-100 text-amber-700",
+    url: "https://mission-control-contract-conduit.onrender.com/",
+    connectionType: "embedded"
+  },
+  {
     id: "client-data",
     name: "Client Data Portal",
     description: "Access and manage client property data and MLS listings.",
