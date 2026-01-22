@@ -177,7 +177,11 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
               </div>
             ) : selectedVideo ? (
               <iframe
-                src={`https://player.vimeo.com/video/${selectedVideo.id}?autoplay=0&title=0&byline=0&portrait=0`}
+                src={(() => {
+                  const baseUrl = selectedVideo.player_embed_url || `https://player.vimeo.com/video/${selectedVideo.id}`;
+                  const separator = baseUrl.includes('?') ? '&' : '?';
+                  return `${baseUrl}${separator}autoplay=0&title=0&byline=0&portrait=0`;
+                })()}
                 className="w-full h-full"
                 frameBorder="0"
                 allow="autoplay; fullscreen; picture-in-picture"
