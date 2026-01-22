@@ -1,0 +1,166 @@
+### INVESTIGATION ONLY - Quick Links & Company Updates Logic
+
+**Important:** This is an investigation request only. Do NOT make any code changes. I need to understand the current implementation before deciding on any updates.
+
+---
+
+## Questions About Quick Links Section
+
+### 1. Data Source
+
+**Q1.1:** Where is the Quick Links data defined?
+- Is it hardcoded in the component?
+- Is it fetched from an API/database?
+- Is it stored in a config file?
+
+**Q1.2:** What is the current structure of a Quick Link item?
+Example expected structure:
+{
+id: string,
+title: string,
+url: string,
+icon?: string,
+openInNewTab?: boolean,
+type?: 'external' | 'internal' | 'modal'
+}
+
+**Q1.3:** How are new Quick Links added?
+- Is there an admin interface?
+- Are they manually added to code?
+- Is there a database table?
+
+---
+
+### 2. Current Quick Links Implementation
+
+**Q2.1:** Show me the relevant code file(s) for Quick Links:
+- Component file path
+- Any API routes (if applicable)
+- Config or data file (if applicable)
+
+**Q2.2:** What happens when a Quick Link is clicked?
+- Does it open in a new tab?
+- Does it navigate internally?
+- Does it open a modal?
+
+**Q2.3:** Current Quick Links visible (from screenshot):
+- Company Handbook → What URL/action does this trigger?
+- Marketing Resources → What URL/action does this trigger?
+
+---
+
+## Questions About Company Updates Section
+
+### 3. Data Source
+
+**Q3.1:** Where does Company Updates data come from?
+- Is it hardcoded?
+- Is it from a database table?
+- Is it fetched from an external API (Vimeo, etc.)?
+- Is it from a CMS?
+
+**Q3.2:** What is the data structure for a Company Update item?
+Example expected structure:
+{
+id: string,
+title: string,
+description: string,
+type: 'New Training' | 'Announcement' | 'Update',
+date: string,
+duration?: string,
+videoUrl?: string,
+linkUrl?: string,
+thumbnail?: string
+}
+
+---
+
+### 4. Company Updates Implementation
+
+**Q4.1:** Show me the relevant code files for Company Updates:
+- Component file path
+- API routes (if applicable)
+- Database schema (if applicable)
+
+**Q4.2:** Current items visible (from screenshot):
+1. **Jointly Training** (New Training, 24:21)
+   - What happens when clicked?
+   - Where does the video URL come from?
+   - Is it working?
+
+2. **Q4 Goals & Incentives** (Announcement, Yesterday)
+   - What happens when clicked? (Currently nothing)
+   - Is there supposed to be a link/action?
+   - Why might it not be working?
+
+**Q4.3:** How are new Company Updates added?
+- Admin interface?
+- Manual code changes?
+- Database entries?
+- External service integration?
+
+---
+
+### 5. Click Handler Investigation
+
+**Q5.1:** For the "Q4 Goals & Incentives" item specifically:
+- Is there an onClick handler?
+- Is there a link/URL associated with it?
+- Is the click handler missing or broken?
+
+**Q5.2:** Add a temporary console.log (don't deploy) to show what happens when clicked:
+```javascript
+console.log('[Company Updates] Item clicked:', item);
+console.log('[Company Updates] Item URL:', item.url || item.linkUrl || 'NO URL');
+console.log('[Company Updates] Item type:', item.type);
+```
+
+---
+
+### 6. Summary Request
+
+Please provide a summary in this format:
+
+**Quick Links:**
+| Property | Value |
+|----------|-------|
+| Data Source | (hardcoded / database / config file) |
+| File Location | (path to component/config) |
+| How to Add New | (manual / admin / database) |
+| Click Behavior | (new tab / internal / modal) |
+
+**Company Updates:**
+| Property | Value |
+|----------|-------|
+| Data Source | (hardcoded / database / API) |
+| File Location | (path to component) |
+| How to Add New | (manual / admin / database) |
+| "Jointly Training" Status | (working / not working) |
+| "Q4 Goals & Incentives" Status | (working / not working / missing URL) |
+
+---
+
+### 7. Code Snippets Needed
+
+Please share the following code snippets (read-only, just show me):
+
+1. **Quick Links component/config** - where links are defined
+2. **Company Updates component** - main file
+3. **Company Updates data** - where the items come from
+4. **Click handlers** - for both sections
+
+---
+
+## Output Format
+
+Please respond with:
+
+1. **Quick Links Architecture** - How it's built, where data comes from
+2. **Company Updates Architecture** - How it's built, where data comes from
+3. **Why Q4 Goals & Incentives doesn't work** - Root cause
+4. **Code Locations** - File paths for relevant code
+5. **How to Add/Edit Items** - Current process for each section
+
+---
+
+**Reminder:** This is investigation only. Do not modify any code. I will review your findings and decide on next steps.
