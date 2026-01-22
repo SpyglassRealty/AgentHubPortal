@@ -904,6 +904,27 @@ export async function registerRoutes(
     }
   });
 
+  // Debug endpoint to list all FUB users
+  app.get('/api/fub/debug/all-users', isAuthenticated, async (req: any, res) => {
+    try {
+      const fubClient = getFubClient();
+      if (!fubClient) {
+        return res.status(503).json({ message: "FUB not configured" });
+      }
+      
+      const allAgents = await fubClient.getAllAgents();
+      console.log('[FUB Debug] All FUB users:', allAgents.map(a => ({ id: a.id, email: a.email, name: a.name })));
+      
+      res.json({
+        totalUsers: allAgents.length,
+        users: allAgents.map(a => ({ id: a.id, email: a.email, name: a.name }))
+      });
+    } catch (error) {
+      console.error('[FUB Debug] Error fetching all users:', error);
+      res.status(500).json({ message: "Failed to fetch FUB users" });
+    }
+  });
+
   // Vimeo - Get latest training video
   app.get('/api/vimeo/latest-video', isAuthenticated, async (req: any, res) => {
     try {
