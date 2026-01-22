@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Layout from "@/components/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { TrendingUp, Link2, Unlink, Check, AlertCircle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TrendingUp, Link2, Unlink, Check, AlertCircle, Bell, Users, Calendar, Home, CheckSquare, Megaphone, Moon, Mail, Smartphone, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +21,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 interface UserProfile {
   id: string;
@@ -29,10 +32,82 @@ interface UserProfile {
   rezenYentaId?: string | null;
 }
 
+interface NotificationSettings {
+  id: string;
+  userId: string;
+  notificationsEnabled: boolean;
+  leadAssignedEnabled: boolean;
+  appointmentReminderEnabled: boolean;
+  dealUpdateEnabled: boolean;
+  taskDueEnabled: boolean;
+  systemEnabled: boolean;
+  appointmentReminderTimes: number[];
+  quietHoursEnabled: boolean;
+  quietHoursStart: string;
+  quietHoursEnd: string;
+  pushNotificationsEnabled: boolean;
+  emailNotificationsEnabled: boolean;
+}
+
+const defaultNotificationSettings: Partial<NotificationSettings> = {
+  notificationsEnabled: true,
+  leadAssignedEnabled: true,
+  appointmentReminderEnabled: true,
+  dealUpdateEnabled: true,
+  taskDueEnabled: true,
+  systemEnabled: true,
+  quietHoursEnabled: false,
+  quietHoursStart: "22:00",
+  quietHoursEnd: "07:00",
+  pushNotificationsEnabled: true,
+  emailNotificationsEnabled: false,
+};
+
 export default function SettingsPage() {
   const [yentaIdInput, setYentaIdInput] = useState("");
+  const [localNotifSettings, setLocalNotifSettings] = useState<Partial<NotificationSettings> | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { toast } = useToast();
+
+  const { data: notifData } = useQuery<{ settings: NotificationSettings }>({
+    queryKey: ["/api/notifications/settings"],
+  });
+
+  const notifSettings = localNotifSettings || notifData?.settings || defaultNotificationSettings;
+
+  const updateNotifMutation = useMutation({
+    mutationFn: async (newSettings: Partial<NotificationSettings>) => {
+      const res = await fetch("/api/notifications/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(newSettings),
+      });
+      if (!res.ok) throw new Error("Failed to save settings");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/settings"] });
+      toast({ title: "Settings saved", description: "Your notification preferences have been updated." });
+      setLocalNotifSettings(null);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save settings. Please try again.", variant: "destructive" });
+    },
+  });
+
+  const updateNotifSetting = <K extends keyof NotificationSettings>(key: K, value: NotificationSettings[K]) => {
+    setLocalNotifSettings((prev) => ({ ...prev, ...notifSettings, [key]: value }));
+  };
+
+  const handleSaveNotifSettings = () => {
+    if (localNotifSettings) {
+      updateNotifMutation.mutate(localNotifSettings);
+    }
+  };
+
+  const hasNotifChanges = localNotifSettings !== null;
 
   const { data: userProfile, isLoading } = useQuery<UserProfile>({
     queryKey: ["/api/auth/user"],
@@ -182,6 +257,239 @@ export default function SettingsPage() {
                 )}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        <Separator />
+
+        <Card data-testid="card-notification-settings">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Bell className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+              <div>
+                <CardTitle>Notifications</CardTitle>
+                <CardDescription>Control how you receive notifications</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="notifications-enabled" className="text-base font-medium">Enable Notifications</Label>
+                <p className="text-sm text-muted-foreground">Receive notifications for important updates</p>
+              </div>
+              <Switch
+                id="notifications-enabled"
+                checked={notifSettings.notificationsEnabled}
+                onCheckedChange={(checked) => updateNotifSetting("notificationsEnabled", checked)}
+                data-testid="switch-notifications-enabled"
+              />
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Notification Types</h3>
+
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-3">
+                  <Users className="h-5 w-5 text-blue-500" />
+                  <div>
+                    <Label htmlFor="lead-assigned" className="text-sm font-medium">New Lead Assigned</Label>
+                    <p className="text-xs text-muted-foreground">When a new lead is assigned to you</p>
+                  </div>
+                </div>
+                <Switch
+                  id="lead-assigned"
+                  checked={notifSettings.leadAssignedEnabled}
+                  onCheckedChange={(checked) => updateNotifSetting("leadAssignedEnabled", checked)}
+                  disabled={!notifSettings.notificationsEnabled}
+                  data-testid="switch-lead-assigned"
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-5 w-5 text-green-500" />
+                  <div>
+                    <Label htmlFor="appointment-reminder" className="text-sm font-medium">Appointment Reminders</Label>
+                    <p className="text-xs text-muted-foreground">Reminders before scheduled appointments</p>
+                  </div>
+                </div>
+                <Switch
+                  id="appointment-reminder"
+                  checked={notifSettings.appointmentReminderEnabled}
+                  onCheckedChange={(checked) => updateNotifSetting("appointmentReminderEnabled", checked)}
+                  disabled={!notifSettings.notificationsEnabled}
+                  data-testid="switch-appointment-reminder"
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-3">
+                  <Home className="h-5 w-5 text-orange-500" />
+                  <div>
+                    <Label htmlFor="deal-update" className="text-sm font-medium">Deal Updates</Label>
+                    <p className="text-xs text-muted-foreground">When deal status changes</p>
+                  </div>
+                </div>
+                <Switch
+                  id="deal-update"
+                  checked={notifSettings.dealUpdateEnabled}
+                  onCheckedChange={(checked) => updateNotifSetting("dealUpdateEnabled", checked)}
+                  disabled={!notifSettings.notificationsEnabled}
+                  data-testid="switch-deal-update"
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-3">
+                  <CheckSquare className="h-5 w-5 text-purple-500" />
+                  <div>
+                    <Label htmlFor="task-due" className="text-sm font-medium">Task Due</Label>
+                    <p className="text-xs text-muted-foreground">When tasks are due or overdue</p>
+                  </div>
+                </div>
+                <Switch
+                  id="task-due"
+                  checked={notifSettings.taskDueEnabled}
+                  onCheckedChange={(checked) => updateNotifSetting("taskDueEnabled", checked)}
+                  disabled={!notifSettings.notificationsEnabled}
+                  data-testid="switch-task-due"
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-3">
+                  <Megaphone className="h-5 w-5 text-red-500" />
+                  <div>
+                    <Label htmlFor="system" className="text-sm font-medium">System Announcements</Label>
+                    <p className="text-xs text-muted-foreground">Important system updates and news</p>
+                  </div>
+                </div>
+                <Switch
+                  id="system"
+                  checked={notifSettings.systemEnabled}
+                  onCheckedChange={(checked) => updateNotifSetting("systemEnabled", checked)}
+                  disabled={!notifSettings.notificationsEnabled}
+                  data-testid="switch-system"
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Moon className="h-5 w-5 text-indigo-500" />
+                  <div>
+                    <Label htmlFor="quiet-hours" className="text-sm font-medium">Quiet Hours</Label>
+                    <p className="text-xs text-muted-foreground">Don't send notifications during these times</p>
+                  </div>
+                </div>
+                <Switch
+                  id="quiet-hours"
+                  checked={notifSettings.quietHoursEnabled}
+                  onCheckedChange={(checked) => updateNotifSetting("quietHoursEnabled", checked)}
+                  disabled={!notifSettings.notificationsEnabled}
+                  data-testid="switch-quiet-hours"
+                />
+              </div>
+
+              {notifSettings.quietHoursEnabled && (
+                <div className="ml-8 flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm">From:</Label>
+                    <Select
+                      value={notifSettings.quietHoursStart}
+                      onValueChange={(value) => updateNotifSetting("quietHoursStart", value)}
+                    >
+                      <SelectTrigger className="w-28" data-testid="select-quiet-start">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["20:00", "21:00", "22:00", "23:00", "00:00"].map((time) => (
+                          <SelectItem key={time} value={time}>
+                            {time === "00:00" ? "12:00 AM" : `${parseInt(time) > 12 ? parseInt(time) - 12 : parseInt(time)}:00 ${parseInt(time) >= 12 ? "PM" : "AM"}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm">To:</Label>
+                    <Select
+                      value={notifSettings.quietHoursEnd}
+                      onValueChange={(value) => updateNotifSetting("quietHoursEnd", value)}
+                    >
+                      <SelectTrigger className="w-28" data-testid="select-quiet-end">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["05:00", "06:00", "07:00", "08:00", "09:00"].map((time) => (
+                          <SelectItem key={time} value={time}>
+                            {`${parseInt(time)}:00 AM`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Delivery Methods</h3>
+
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-3">
+                  <Smartphone className="h-5 w-5 text-cyan-500" />
+                  <div>
+                    <Label htmlFor="push" className="text-sm font-medium">Push Notifications</Label>
+                    <p className="text-xs text-muted-foreground">Receive notifications on this device</p>
+                  </div>
+                </div>
+                <Switch
+                  id="push"
+                  checked={notifSettings.pushNotificationsEnabled}
+                  onCheckedChange={(checked) => updateNotifSetting("pushNotificationsEnabled", checked)}
+                  disabled={!notifSettings.notificationsEnabled}
+                  data-testid="switch-push"
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-3">
+                  <Mail className="h-5 w-5 text-amber-500" />
+                  <div>
+                    <Label htmlFor="email" className="text-sm font-medium">Email Notifications</Label>
+                    <p className="text-xs text-muted-foreground">Also receive notifications via email</p>
+                  </div>
+                </div>
+                <Switch
+                  id="email"
+                  checked={notifSettings.emailNotificationsEnabled}
+                  onCheckedChange={(checked) => updateNotifSetting("emailNotificationsEnabled", checked)}
+                  disabled={!notifSettings.notificationsEnabled}
+                  data-testid="switch-email"
+                />
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <Button 
+                onClick={handleSaveNotifSettings} 
+                disabled={!hasNotifChanges || updateNotifMutation.isPending}
+                className="w-full sm:w-auto"
+                data-testid="button-save-notification-settings"
+              >
+                {updateNotifMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Preferences
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

@@ -926,6 +926,58 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // Notification settings endpoints
+  app.get('/api/notifications/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      let settings = await storage.getNotificationSettings(user.id);
+      
+      if (!settings) {
+        settings = await storage.upsertNotificationSettings({ userId: user.id });
+      }
+      
+      res.json({ settings });
+    } catch (error) {
+      console.error("Error fetching notification settings:", error);
+      res.status(500).json({ message: "Failed to fetch notification settings" });
+    }
+  });
+
+  app.put('/api/notifications/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { updateNotificationSettingsSchema } = await import("@shared/schema");
+      const parseResult = updateNotificationSettingsSchema.safeParse(req.body);
+      
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid notification settings", 
+          errors: parseResult.error.errors 
+        });
+      }
+
+      const validatedData = parseResult.data;
+
+      const settings = await storage.upsertNotificationSettings({
+        userId: user.id,
+        ...validatedData,
+      });
+
+      res.json({ success: true, settings });
+    } catch (error) {
+      console.error("Error updating notification settings:", error);
+      res.status(500).json({ message: "Failed to update notification settings" });
+    }
+  });
+
   // Theme preference endpoint
   app.patch('/api/user/theme', isAuthenticated, async (req: any, res) => {
     try {

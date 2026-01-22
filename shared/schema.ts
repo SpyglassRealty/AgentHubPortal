@@ -10,6 +10,7 @@ import {
   uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
+import { z } from "zod";
 
 export const sessions = pgTable(
   "sessions",
@@ -144,3 +145,46 @@ export const notifications = pgTable("notifications", {
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = typeof notifications.$inferInsert;
+
+export const userNotificationSettings = pgTable("user_notification_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  
+  notificationsEnabled: boolean("notifications_enabled").default(true),
+  
+  leadAssignedEnabled: boolean("lead_assigned_enabled").default(true),
+  appointmentReminderEnabled: boolean("appointment_reminder_enabled").default(true),
+  dealUpdateEnabled: boolean("deal_update_enabled").default(true),
+  taskDueEnabled: boolean("task_due_enabled").default(true),
+  systemEnabled: boolean("system_enabled").default(true),
+  
+  appointmentReminderTimes: jsonb("appointment_reminder_times").default([1440, 60, 15]),
+  
+  quietHoursEnabled: boolean("quiet_hours_enabled").default(false),
+  quietHoursStart: varchar("quiet_hours_start").default("22:00"),
+  quietHoursEnd: varchar("quiet_hours_end").default("07:00"),
+  
+  pushNotificationsEnabled: boolean("push_notifications_enabled").default(true),
+  emailNotificationsEnabled: boolean("email_notifications_enabled").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type UserNotificationSettings = typeof userNotificationSettings.$inferSelect;
+export type InsertUserNotificationSettings = typeof userNotificationSettings.$inferInsert;
+
+export const updateNotificationSettingsSchema = z.object({
+  notificationsEnabled: z.boolean().optional(),
+  leadAssignedEnabled: z.boolean().optional(),
+  appointmentReminderEnabled: z.boolean().optional(),
+  dealUpdateEnabled: z.boolean().optional(),
+  taskDueEnabled: z.boolean().optional(),
+  systemEnabled: z.boolean().optional(),
+  appointmentReminderTimes: z.array(z.number()).optional(),
+  quietHoursEnabled: z.boolean().optional(),
+  quietHoursStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  quietHoursEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  pushNotificationsEnabled: z.boolean().optional(),
+  emailNotificationsEnabled: z.boolean().optional(),
+});
