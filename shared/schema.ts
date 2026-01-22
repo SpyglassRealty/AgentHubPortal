@@ -150,7 +150,7 @@ export const userNotificationSettings = pgTable("user_notification_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id).unique(),
   
-  notificationsEnabled: boolean("notifications_enabled").default(true),
+  notificationsEnabled: boolean("notifications_enabled").default(false),
   
   leadAssignedEnabled: boolean("lead_assigned_enabled").default(true),
   appointmentReminderEnabled: boolean("appointment_reminder_enabled").default(true),

@@ -263,8 +263,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuSeparator />
                 <ScrollArea className="h-[300px]">
                   {notifications.length === 0 ? (
-                    <div className="py-8 text-center text-muted-foreground text-sm">
-                      No notifications yet
+                    <div className="py-8 text-center text-sm">
+                      <p className="text-muted-foreground mb-3">No notifications yet</p>
+                      <Link href="/settings" className="text-[hsl(28,94%,54%)] hover:underline font-medium" data-testid="link-notification-settings">
+                        Configure notification preferences
+                      </Link>
                     </div>
                   ) : (
                     notifications.map((notification) => (

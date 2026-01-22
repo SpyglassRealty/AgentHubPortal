@@ -50,7 +50,7 @@ interface NotificationSettings {
 }
 
 const defaultNotificationSettings: Partial<NotificationSettings> = {
-  notificationsEnabled: true,
+  notificationsEnabled: false,
   leadAssignedEnabled: true,
   appointmentReminderEnabled: true,
   dealUpdateEnabled: true,
