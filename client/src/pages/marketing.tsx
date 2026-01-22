@@ -31,7 +31,7 @@ export default function MarketingPage() {
     },
   });
 
-  const baseApps = apps.filter(app => app.category === "Marketing");
+  const baseApps = apps.filter(app => app.categories.includes("Marketing"));
 
   const marketingApps = useMemo(() => {
     if (!usageData?.usage?.length) return baseApps;
@@ -108,10 +108,12 @@ export default function MarketingPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs font-normal bg-secondary/80">
-                        {app.category}
-                      </Badge>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {app.categories.map((category) => (
+                        <Badge key={category} variant="secondary" className="text-xs font-normal bg-secondary/80">
+                          {category}
+                        </Badge>
+                      ))}
                       {app.url && (
                         <Badge variant="outline" className="text-xs font-normal border-[hsl(28,94%,54%)]/30 text-[hsl(28,94%,54%)]">
                           Live
