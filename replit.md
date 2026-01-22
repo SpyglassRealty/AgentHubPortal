@@ -2,9 +2,7 @@
 
 ## Overview
 
-Mission Control is a unified agent portal for Spyglass Realty, built as a centralized hub for accessing various real estate tools and resources. The application provides authenticated access to multiple integrated applications including ReChat (CRM), Blog to Email Automator, and RealtyHack AI, presenting them in a clean, branded dashboard interface.
-
-The system is built as a full-stack web application with a React frontend and Express backend, designed to run on Replit's platform with built-in authentication and session management.
+Mission Control is a unified agent portal for Spyglass Realty, designed as a centralized hub for real estate agents. It provides authenticated access to various integrated applications like ReChat, Blog to Email Automator, and RealtyHack AI, all within a branded dashboard. The project aims to enhance agent productivity by offering a single point of access to essential tools and providing context-aware suggestions based on agent profiles and market data.
 
 ## User Preferences
 
@@ -12,232 +10,52 @@ Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-### Frontend Architecture
+### Core Technologies
 
-**Technology Stack**: React 18 with TypeScript, using Vite as the build tool and development server.
+The application is a full-stack web application with a React frontend and an Express.js backend, written in TypeScript. It is designed to run on Replit, leveraging its authentication services.
 
-**UI Framework**: The application uses shadcn/ui component library built on Radix UI primitives, styled with Tailwind CSS. This provides a consistent, accessible component system with the "new-york" style variant.
+### Frontend
 
-**Routing**: Client-side routing is handled by Wouter, a lightweight React router. The routing strategy implements a conditional render based on authentication state:
-- Unauthenticated users see only the landing page
-- Authenticated users access the dashboard and individual app views
-- A loading state displays during authentication checks
+- **Technology Stack**: React 18, Vite, TypeScript.
+- **UI/UX**: Utilizes `shadcn/ui` (built on Radix UI and Tailwind CSS) for a consistent, accessible, and branded interface (Spyglass Realty's orange and charcoal palette). It features a responsive design adapting to mobile and desktop with appropriate breakpoints, touch targets, and dynamic viewport handling.
+- **Routing**: `Wouter` handles client-side routing, with conditional rendering based on authentication status.
+- **State Management**: `TanStack Query` manages server state, while a custom `useAuth` hook handles global authentication state.
 
-**State Management**: 
-- TanStack Query (React Query) manages server state with custom query functions that handle authentication errors
-- Authentication state is globally accessible through a custom `useAuth` hook
-- No global client state management library is used; component state and React Query suffice
+### Backend
 
-**Design System**: The application implements Spyglass Realty's brand identity with a custom color palette:
-- Primary brand color: Orange (hsl(28, 94%, 54%))
-- Neutral base: Charcoal grays
-- Custom CSS variables in Tailwind configuration enable theming throughout shadcn components
+- **Server Framework**: Express.js with Node.js, using ESM modules.
+- **Build Strategy**: Vite for client-side and esbuild for server-side bundling.
+- **Authentication**: Custom OpenID Connect (OIDC) integration with Replit's authentication service via Passport.js. Sessions are managed in PostgreSQL using `connect-pg-simple` with a 7-day duration.
+- **API**: RESTful API under `/api` prefix, protected by authentication middleware.
+- **Logging**: Custom utility for API request logging.
 
-**Responsive Design**: The layout adapts between desktop and mobile using a sidebar pattern that converts to a mobile sheet/drawer on smaller screens.
+### Data Storage
 
-### Backend Architecture
+- **Database**: PostgreSQL accessed via Drizzle ORM.
+- **ORM Choice**: Drizzle ORM for type-safe queries, lightweight runtime, and a built-in migration system.
+- **Schema**: Includes `users` (synchronized from OIDC), `sessions`, `agent_profiles`, `context_suggestions`, and `market_pulse_snapshots` tables.
 
-**Server Framework**: Express.js running on Node.js with TypeScript, using ESM modules.
+### Feature Specifications
 
-**Build Strategy**: The build process uses two separate tools:
-- Vite for client-side bundling (outputs to `dist/public`)
-- esbuild for server-side bundling (outputs to `dist/index.cjs`)
-- Selected dependencies are bundled with the server to reduce filesystem syscalls and improve cold start performance
+- **Context-Aware Mission Control**: Aims to proactively suggest tasks and actions based on agent profiles and FUB data.
+    - **Onboarding Flow**: Gathers agent preferences (focus, experience, goals) to tailor suggestions.
+    - **Context Engine**: Rule-based engine analyzing FUB data to generate suggestions like `deal_action`, `closing_soon`, `task_overdue`, etc.
+- **Follow Up Boss (FUB) Integration**: Custom API client communicates with FUB via HTTP Basic Auth.
+    - **Endpoints**: Retrieves calendar events, deals, and agent lists.
+    - **Agent Linking**: Automatically links users to their FUB account by email. Super admins can view data for any agent.
+- **ReZen Integration**: Custom client for ReZen/Real Brokerage platform using `X-API-KEY` header.
+    - **Endpoints**: Fetches transaction data, income overviews, and performance metrics.
+    - **My Performance Widget**: Displays GCI summaries, deal breakdowns, performance insights, and pending pipeline. Users can link their ReZen account via `yentaId`.
+- **Market Pulse**: Displays real-time Austin Metro Area property inventory using the Repliers API.
+    - **Data**: Covers Active, Active Under Contract, Pending, and Closed listings (30 days).
+    - **Caching**: Data is cached in the `market_pulse_snapshots` table and refreshed daily via `node-cron` or manually.
 
-**Development vs Production**:
-- Development mode uses Vite's middleware mode for HMR and live reloading
-- Production mode serves pre-built static files from the dist directory
-- Conditional Replit-specific plugins (cartographer, dev-banner) load only in development
+## External Dependencies
 
-**Authentication System**: Custom OpenID Connect (OIDC) integration with Replit's authentication service using Passport.js:
-- Strategy: `openid-client/passport` for OIDC flows
-- Session Management: PostgreSQL-backed sessions via `connect-pg-simple`
-- Session Duration: 7 days with secure, httpOnly cookies
-- User Profile: Claims are extracted from OIDC tokens and stored in the database
-
-**Session Storage**: Sessions are persisted in PostgreSQL rather than in-memory, enabling:
-- Session persistence across server restarts
-- Horizontal scaling capabilities
-- 7-day session TTL with automatic cleanup
-
-**API Architecture**: RESTful endpoints under `/api` prefix:
-- `/api/auth/user` - Returns authenticated user profile
-- Authentication middleware (`isAuthenticated`) protects all API routes
-- Consistent error handling with appropriate HTTP status codes
-
-**Logging**: Custom logging utility formats requests with timestamps and duration tracking for API endpoints.
-
-### Data Storage Solutions
-
-**Database**: PostgreSQL accessed via Drizzle ORM
-
-**ORM Choice**: Drizzle was selected for:
-- Type-safe database queries with full TypeScript inference
-- Lightweight runtime compared to alternatives
-- SQL-like query syntax for developer familiarity
-- Built-in migration system via drizzle-kit
-
-**Schema Design**:
-- `users` table: Stores user profiles synchronized from OIDC authentication (id, email, names, profile image, fubUserId, isSuperAdmin, timestamps)
-- `sessions` table: Stores express-session data (managed by connect-pg-simple)
-- UUID generation uses PostgreSQL's `gen_random_uuid()` for primary keys
-
-### Follow Up Boss Integration
-
-**API Client**: Custom FUB client (`server/fubClient.ts`) handles all API communication using HTTP Basic Auth with the broker-level API key stored in `FUB_API_KEY` secret.
-
-**Endpoints**:
-- `/api/fub/calendar` - Returns events and tasks for the authenticated user (or impersonated agent)
-- `/api/fub/deals` - Returns deals with summary statistics
-- `/api/fub/agents` - Super admin only, returns list of all active FUB users
-
-**Agent Linking**: Users are automatically linked to their FUB account by email on first API request. The `fubUserId` is cached in the database for subsequent requests.
-
-**Super Admin Feature**: Users with `isSuperAdmin=true` can view any agent's data via an agent selector dropdown on Calendar and Reports pages. The selected agent ID is passed to API endpoints via `agentId` query parameter.
-
-### Context-Aware Mission Control
-
-**Philosophy**: Transforms the dashboard from "What do you want to work on?" to "Here's what you should work on right now."
-
-**Components**:
-- `agent_profiles` table: Stores agent onboarding answers (missionFocus, experienceLevel, primaryGoal)
-- `context_suggestions` table: Stores generated action items with priority, type, and recommended app
-- `ContextEngine` (`server/contextEngine.ts`): Rule-based engine that analyzes FUB data and generates suggestions
-
-**Onboarding Flow**: First-time users see a 3-question modal:
-1. Primary focus (buyers, sellers, both, team lead)
-2. Experience level (new, experienced, veteran)
-3. Top priority this quarter (grow pipeline, close deals, build team, improve systems)
-
-**Suggestion Types**:
-- `deal_action`: Buyers in inspection stage requiring attention
-- `closing_soon`: Deals closing within the next 7 days
-- `pipeline_empty`: No active deals detected
-- `task_overdue`: Incomplete tasks past due date
-- `appointments_today`: Events scheduled for today
-- `deal_summary`: Overview of current under-contract volume
-
-**API Endpoints**:
-- `GET /api/context/profile` - Returns agent profile and onboarding status
-- `POST /api/context/profile` - Saves onboarding answers
-- `GET /api/context/suggestions` - Regenerates and returns active suggestions
-- `POST /api/context/suggestions/:id/dismiss` - Dismisses a suggestion
-- `POST /api/context/suggestions/:id/complete` - Marks a suggestion as completed
-
-### ReZen Integration
-
-**API Client**: Custom ReZen client (`server/rezenClient.ts`) handles API communication with the ReZen/Real Brokerage platform.
-
-**Base URL**: `https://arrakis.therealbrokerage.com/api/v1`
-
-**Authentication**: Uses `X-API-KEY` header with the API key stored in `REZEN_API_KEY` secret.
-
-**Endpoints**:
-- `/api/rezen/transactions` - Returns transactions for a given agent yentaId
-  - Query params: `yentaId` (required), `status` (OPEN, CLOSED, TERMINATED - default: CLOSED), `pageSize`, `pageNumber`, `sortBy`, `sortDirection`
-  - Returns: `transactions`, `totalCount`, `hasNext`, `pageNumber`
-- `/api/rezen/income` - Returns current year income overview for a given agent yentaId
-  - Query params: `yentaId` (required)
-  - Returns: `incomeOverview` with gross commission, net payout, transaction count
-- `/api/rezen/performance` - Returns aggregated performance metrics for authenticated user
-  - Uses user's stored `rezenYentaId` from database
-  - Returns: `summary` (GCI YTD, L12M, pending, avg per deal), `dealBreakdown` (buyer/seller counts and volumes), `insights` (YoY change, avg days to close), `pendingPipeline` (open transaction list)
-- `POST /api/rezen/link` - Links user's ReZen account by storing their yentaId
-  - Body: `{ yentaId: string }` (UUID from ReZen profile URL)
-
-**Transaction Object Fields**:
-- `id`, `code`, `address.oneLine`, `price.amount`
-- `transactionType` (SALE/LEASE), `propertyType`, `listing` (true=listing side)
-- `closingDateEstimated`, `closedAt`, `firmDate` (contract date)
-- `grossCommission.amount`, `myNetPayout.amount`
-- `lifecycleState.state`, `complianceStatus`
-- `participants[]` array with roles: BUYERS_AGENT, SELLERS_AGENT, PRO_TEAM_LEADER, etc.
-
-**Usage**: Each agent's yentaId is found in their ReZen profile URL (e.g., `0d71597f-e3af-47bd-9645-59fc2910656e`). Users can link their account via the "My Performance" dashboard widget.
-
-**My Performance Dashboard Widget** (`client/src/components/my-performance.tsx`):
-- GCI Summary Cards: GCI YTD, GCI L12M, Pending GCI, Avg per Deal
-- Deal Breakdown: Buyer vs Seller side analysis with percentage bar and volume comparison
-- Performance Insights: Year-over-Year comparison, Avg Days to Close, Active Pipeline count
-- Pending Pipeline Table: Shows OPEN transactions with address, price, GCI, close date, and side (buyer/seller)
-- Account Linking: Dialog for users to enter their ReZen yentaId if not already linked
-
-### Market Pulse (Repliers API Integration)
-
-**Purpose**: Displays real-time Austin Metro Area property inventory statistics using the Repliers API.
-
-**Data Source**: Repliers API (`api.repliers.io`) using the `IDX_GRID_API_KEY` secret.
-
-**Geographic Coverage**: 5-county Austin MSA (Travis, Williamson, Hays, Bastrop, Caldwell counties)
-
-**Property Categories** (RESO-compliant standardStatus):
-- **Active**: On-market listings available for sale
-- **Active Under Contract**: Under contract but accepting backup offers
-- **Pending**: Under contract, progressing toward closing
-- **Closed (30 Days)**: Recently sold properties (uses legacy status=U + lastStatus=Sld for accurate date filtering)
-
-**Caching & Scheduling**:
-- Data is cached in `market_pulse_snapshots` table for fast retrieval
-- **Scheduled Refresh**: Daily at 12:00 AM Central Time (America/Chicago) via `node-cron`
-- **Startup Validation**: Server checks if cached data is older than 24 hours on startup and refreshes if needed
-- **Manual Refresh**: Users can click "Refresh" button to force-fetch fresh data from API
-
-**Service Architecture**:
-- `server/marketPulseService.ts`: Centralized API logic with retry (3 attempts, exponential backoff)
-- `server/scheduler.ts`: Initializes node-cron jobs and runs startup freshness checks
-- `server/routes.ts`: `/api/market-pulse` endpoint with optional `?refresh=true` query param
-
-**API Endpoint**:
-- `GET /api/market-pulse` - Returns cached snapshot (or fetches fresh if none exists)
-- `GET /api/market-pulse?refresh=true` - Force-refreshes data from Repliers API
-
-**Frontend Component**: `client/src/components/market-pulse.tsx` displays:
-- Bar chart visualization of all 4 property categories
-- Individual stat cards with counts
-- Total Active Inventory summary
-- Last updated timestamp
-- Manual refresh button
-
-**Database Configuration**: Connection via `DATABASE_URL` environment variable, with connection pooling through `node-postgres` (pg).
-
-**Migration Strategy**: Schema changes are managed through Drizzle Kit:
-- Schema definition lives in `shared/schema.ts`
-- Migrations output to `./migrations` directory
-- `npm run db:push` applies schema changes to the database
-
-### External Dependencies
-
-**Replit Platform Services**:
-- **Replit Auth (OIDC)**: Primary authentication provider via `https://replit.com/oidc`
-- **Replit Development Tools**: Cartographer and dev-banner plugins for enhanced development experience
-- **Replit Deployment**: Custom meta image plugin updates OpenGraph tags with Replit deployment URLs
-
-**Third-Party UI Libraries**:
-- **Radix UI**: Accessible component primitives for all interactive UI elements
-- **Lucide React**: Icon library providing consistent iconography
-- **Framer Motion**: Animation library for page transitions and micro-interactions
-- **Embla Carousel**: Touch-enabled carousel component
-
-**Form Handling**:
-- **React Hook Form**: Form state management
-- **Zod**: Runtime type validation and schema definition
-- **@hookform/resolvers**: Bridges React Hook Form with Zod validators
-
-**Utility Libraries**:
-- **date-fns**: Date formatting and manipulation
-- **nanoid**: Unique ID generation for cache-busting and identifiers
-- **clsx & tailwind-merge**: Conditional className composition
-
-**Build & Development Tools**:
-- **Vite**: Frontend build tool with HMR
-- **esbuild**: Fast server-side bundling
-- **TypeScript**: Type safety across the entire stack
-- **Tailwind CSS**: Utility-first CSS framework with custom configuration
-
-**Database Stack**:
-- **PostgreSQL**: Primary data store (provisioned externally, connected via DATABASE_URL)
-- **Drizzle ORM**: Type-safe database queries and migrations
-- **node-postgres (pg)**: PostgreSQL client with connection pooling
-- **connect-pg-simple**: PostgreSQL session store for express-session
-
-**Application Integration**: The system serves as a portal to external applications (ReChat, Blog to Email Automator, RealtyHack AI) which are embedded via iframes or opened in new tabs. No direct API integrations with these services exist at the application layer.
+- **Replit Platform Services**: Replit Auth (OIDC), Replit Development Tools (Cartographer, dev-banner), Replit Deployment.
+- **Third-Party UI Libraries**: Radix UI, Lucide React, Framer Motion, Embla Carousel.
+- **Form Handling**: React Hook Form, Zod, @hookform/resolvers.
+- **Utility Libraries**: date-fns, nanoid, clsx, tailwind-merge.
+- **Build & Development Tools**: Vite, esbuild, TypeScript, Tailwind CSS.
+- **Database Stack**: PostgreSQL (external), Drizzle ORM, node-postgres (pg), connect-pg-simple.
+- **Application Integrations**: Follow Up Boss API, ReZen API, Repliers API.
