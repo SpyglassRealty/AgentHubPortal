@@ -1,0 +1,159 @@
+### Add Debug Logging to Leads Section (Investigation Only)
+
+**Purpose:** Add temporary debug logging to understand why leads are showing empty. This will help us identify the exact issue without changing any business logic.
+
+---
+
+## Add Debug Logging to FUB Client
+
+In `server/fubClient.ts` or wherever the leads fetching happens, add these console.logs:
+```typescript
+// At the start of the fetch function for anniversary/birthdays
+console.log('[Leads Debug] ========== FETCH START ==========');
+console.log('[Leads Debug] Fetching for user:', { 
+  userId: user?.id, 
+  email: user?.email, 
+  fubUserId: user?.fubUserId 
+});
+
+// After fetching from FUB API
+console.log('[Leads Debug] FUB API Response:', {
+  totalPeopleFetched: people.length,
+  samplePerson: people[0] ? {
+    id: people[0].id,
+    name: people[0].name,
+    customFieldKeys: people[0].customFields ? Object.keys(people[0].customFields) : 'NO CUSTOM FIELDS',
+    customFieldValues: people[0].customFields || {}
+  } : 'NO PEOPLE RETURNED'
+});
+
+// When checking custom fields for anniversary
+console.log('[Leads Debug] Anniversary field check:', {
+  personId: person.id,
+  personName: person.name,
+  allCustomFields: person.customFields,
+  foundAnniversaryValue: anniversaryValue || 'NOT FOUND'
+});
+
+// After date filtering
+console.log('[Leads Debug] Date filtering results:', {
+  totalBeforeFilter: allPeopleWithAnniversary.length,
+  totalAfterFilter: filteredByDate.length,
+  dateRange: { from: startDate, to: endDate }
+});
+
+// At the end
+console.log('[Leads Debug] Final results:', {
+  leadsReturned: results.length,
+  firstLead: results[0] || 'NONE'
+});
+console.log('[Leads Debug] ========== FETCH END ==========');
+```
+
+---
+
+## Add Debug Logging to API Route
+
+In `server/routes.ts` around the leads endpoints (lines 717-867):
+```typescript
+// GET /api/fub/leads/anniversary
+router.get('/api/fub/leads/anniversary', async (req, res) => {
+  console.log('[Leads API] Anniversary endpoint called');
+  console.log('[Leads API] Request user:', req.user?.email);
+  console.log('[Leads API] User fubUserId:', req.user?.fubUserId);
+  
+  // ... existing code ...
+  
+  console.log('[Leads API] Returning', leads.length, 'anniversary leads');
+});
+```
+
+---
+
+## Add Debug Logging to Frontend
+
+In `client/src/pages/leads.tsx`:
+```typescript
+// In the useEffect or fetch function
+useEffect(() => {
+  const fetchLeads = async () => {
+    console.log('[Leads UI] Fetching', activeTab, 'leads...');
+    
+    try {
+      const response = await fetch(`/api/fub/leads/${activeTab}`);
+      const data = await response.json();
+      
+      console.log('[Leads UI] Response status:', response.status);
+      console.log('[Leads UI] Response data:', data);
+      console.log('[Leads UI] Leads count:', data.leads?.length || 0);
+      
+      if (data.message) {
+        console.log('[Leads UI] Message:', data.message);
+      }
+      
+      setLeads(data.leads || []);
+    } catch (error) {
+      console.error('[Leads UI] Error:', error);
+    }
+  };
+  
+  fetchLeads();
+}, [activeTab]);
+```
+
+---
+
+## Also Log the FUB User Linking Status
+
+Add an endpoint to check user linking status:
+```typescript
+// GET /api/fub/debug/user-status
+router.get('/api/fub/debug/user-status', async (req, res) => {
+  const user = req.user;
+  
+  const debugInfo = {
+    userId: user?.id,
+    email: user?.email,
+    fubUserId: user?.fubUserId || 'NOT LINKED',
+    fubApiKeyConfigured: !!process.env.FUB_API_KEY,
+    timestamp: new Date().toISOString()
+  };
+  
+  console.log('[FUB Debug] User status check:', debugInfo);
+  res.json(debugInfo);
+});
+```
+
+---
+
+## Test Instructions
+
+After adding the debug logging:
+
+1. Open browser DevTools → Console
+2. Navigate to Leads page
+3. Click on Anniversary tab
+4. Check both:
+   - **Browser console** for `[Leads UI]` logs
+   - **Replit server logs** for `[Leads Debug]` and `[Leads API]` logs
+
+5. Share the following with me:
+   - Screenshot of browser console logs
+   - Screenshot of server logs (from Replit)
+   - The output of `/api/fub/debug/user-status` endpoint
+
+---
+
+## What We're Looking For
+
+| Log Message | What It Tells Us |
+|-------------|------------------|
+| `fubUserId: NOT LINKED` | User account not connected to FUB |
+| `totalPeopleFetched: 0` | FUB API returned nothing (auth issue?) |
+| `customFieldKeys: [...]` | The actual field names in FUB |
+| `foundAnniversaryValue: NOT FOUND` | Field name mismatch |
+| `totalAfterFilter: 0` | Data exists but outside date range |
+
+---
+
+**Reminder:** These are debug logs only. We will remove them after investigation. Do not change any business logic.

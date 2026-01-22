@@ -715,15 +715,19 @@ export async function registerRoutes(
   });
 
   app.get('/api/fub/leads/anniversary', isAuthenticated, async (req: any, res) => {
+    console.log('[Leads API] ========== Anniversary endpoint called ==========');
     try {
       const user = await getDbUser(req);
+      console.log('[Leads API] Request user:', { id: user?.id, email: user?.email, fubUserId: user?.fubUserId });
       
       if (!user) {
+        console.log('[Leads API] User not found in DB');
         return res.status(404).json({ message: "User not found" });
       }
 
       const fubClient = getFubClient();
       if (!fubClient) {
+        console.log('[Leads API] FUB client not configured');
         return res.status(503).json({ message: "Follow Up Boss integration not configured" });
       }
 
@@ -732,19 +736,26 @@ export async function registerRoutes(
 
       if (requestedAgentId && user.isSuperAdmin) {
         fubUserId = parseInt(requestedAgentId, 10);
+        console.log('[Leads API] Super admin viewing agent:', fubUserId);
       } else if (!fubUserId && user.email) {
+        console.log('[Leads API] Attempting to link user by email:', user.email);
         const fubUser = await fubClient.getUserByEmail(user.email);
         if (fubUser) {
           fubUserId = fubUser.id;
           await storage.updateUserFubId(user.id, fubUserId);
+          console.log('[Leads API] Successfully linked user to FUB:', fubUserId);
+        } else {
+          console.log('[Leads API] No FUB user found for email:', user.email);
         }
       }
 
       if (!fubUserId) {
+        console.log('[Leads API] No fubUserId - returning empty');
         return res.json({ leads: [], message: "No Follow Up Boss account linked" });
       }
 
       const leads = await fubClient.getAnniversaryLeads(fubUserId);
+      console.log('[Leads API] Returning', leads.length, 'anniversary leads');
       res.json({ leads });
     } catch (error) {
       console.error("Error fetching anniversary leads:", error);
@@ -753,8 +764,10 @@ export async function registerRoutes(
   });
 
   app.get('/api/fub/leads/birthdays', isAuthenticated, async (req: any, res) => {
+    console.log('[Leads API] ========== Birthdays endpoint called ==========');
     try {
       const user = await getDbUser(req);
+      console.log('[Leads API] Request user:', { id: user?.id, email: user?.email, fubUserId: user?.fubUserId });
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -779,10 +792,12 @@ export async function registerRoutes(
       }
 
       if (!fubUserId) {
+        console.log('[Leads API] No fubUserId - returning empty');
         return res.json({ leads: [], message: "No Follow Up Boss account linked" });
       }
 
       const leads = await fubClient.getBirthdayLeads(fubUserId);
+      console.log('[Leads API] Returning', leads.length, 'birthday leads');
       res.json({ leads });
     } catch (error) {
       console.error("Error fetching birthday leads:", error);
@@ -863,6 +878,29 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching due tasks:", error);
       res.status(500).json({ message: "Failed to fetch due tasks" });
+    }
+  });
+
+  // Debug endpoint for FUB user status
+  app.get('/api/fub/debug/user-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      const fubClient = getFubClient();
+      
+      const debugInfo = {
+        userId: user?.id,
+        email: user?.email,
+        fubUserId: user?.fubUserId || 'NOT LINKED',
+        isSuperAdmin: user?.isSuperAdmin || false,
+        fubApiKeyConfigured: !!process.env.FUB_API_KEY,
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log('[FUB Debug] User status check:', debugInfo);
+      res.json(debugInfo);
+    } catch (error) {
+      console.error('[FUB Debug] Error checking user status:', error);
+      res.status(500).json({ message: "Failed to check user status" });
     }
   });
 
