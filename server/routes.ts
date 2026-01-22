@@ -1206,6 +1206,245 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // ============================================
+  // VIDEO PREFERENCES ENDPOINTS
+  // ============================================
+  
+  app.get('/api/videos/preferences', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const preferences = await storage.getVideoPreferences(user.id);
+      
+      const prefsMap: Record<string, any> = {};
+      preferences.forEach(pref => {
+        prefsMap[pref.videoId] = {
+          isFavorite: pref.isFavorite,
+          isWatchLater: pref.isWatchLater,
+          watchProgress: pref.watchProgress,
+          watchPercentage: pref.watchPercentage,
+          lastWatchedAt: pref.lastWatchedAt
+        };
+      });
+
+      res.json({ preferences: prefsMap });
+    } catch (error) {
+      console.error('[Video Preferences Error]', error);
+      res.status(500).json({ error: 'Failed to fetch preferences' });
+    }
+  });
+
+  app.get('/api/videos/favorites', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const favorites = await storage.getFavoriteVideos(user.id);
+      res.json({ videos: favorites });
+    } catch (error) {
+      console.error('[Favorites Error]', error);
+      res.status(500).json({ error: 'Failed to fetch favorites' });
+    }
+  });
+
+  app.get('/api/videos/watch-later', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const watchLater = await storage.getWatchLaterVideos(user.id);
+      res.json({ videos: watchLater });
+    } catch (error) {
+      console.error('[Watch Later Error]', error);
+      res.status(500).json({ error: 'Failed to fetch watch later list' });
+    }
+  });
+
+  app.get('/api/videos/continue-watching', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const inProgress = await storage.getContinueWatchingVideos(user.id);
+      res.json({ videos: inProgress });
+    } catch (error) {
+      console.error('[Continue Watching Error]', error);
+      res.status(500).json({ error: 'Failed to fetch continue watching list' });
+    }
+  });
+
+  app.post('/api/videos/:videoId/favorite', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      const { videoId } = req.params;
+      
+      if (!user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { videoFavoriteSchema } = await import("@shared/schema");
+      const parseResult = videoFavoriteSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: 'Invalid request body', details: parseResult.error.errors });
+      }
+      const { videoName, videoThumbnail, videoDuration } = parseResult.data;
+
+      const existing = await storage.getVideoPreference(user.id, videoId);
+
+      if (existing) {
+        const newValue = !existing.isFavorite;
+        await storage.upsertVideoPreference({
+          ...existing,
+          isFavorite: newValue,
+        });
+        res.json({ isFavorite: newValue });
+      } else {
+        await storage.upsertVideoPreference({
+          userId: user.id,
+          videoId,
+          videoName,
+          videoThumbnail,
+          videoDuration,
+          isFavorite: true,
+          isWatchLater: false,
+          watchProgress: 0,
+          watchPercentage: 0
+        });
+        res.json({ isFavorite: true });
+      }
+    } catch (error) {
+      console.error('[Toggle Favorite Error]', error);
+      res.status(500).json({ error: 'Failed to toggle favorite' });
+    }
+  });
+
+  app.post('/api/videos/:videoId/watch-later', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      const { videoId } = req.params;
+      
+      if (!user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { videoFavoriteSchema } = await import("@shared/schema");
+      const parseResult = videoFavoriteSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: 'Invalid request body', details: parseResult.error.errors });
+      }
+      const { videoName, videoThumbnail, videoDuration } = parseResult.data;
+
+      const existing = await storage.getVideoPreference(user.id, videoId);
+
+      if (existing) {
+        const newValue = !existing.isWatchLater;
+        await storage.upsertVideoPreference({
+          ...existing,
+          isWatchLater: newValue,
+        });
+        res.json({ isWatchLater: newValue });
+      } else {
+        await storage.upsertVideoPreference({
+          userId: user.id,
+          videoId,
+          videoName,
+          videoThumbnail,
+          videoDuration,
+          isFavorite: false,
+          isWatchLater: true,
+          watchProgress: 0,
+          watchPercentage: 0
+        });
+        res.json({ isWatchLater: true });
+      }
+    } catch (error) {
+      console.error('[Toggle Watch Later Error]', error);
+      res.status(500).json({ error: 'Failed to toggle watch later' });
+    }
+  });
+
+  app.post('/api/videos/:videoId/progress', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      const { videoId } = req.params;
+      
+      if (!user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { videoProgressSchema } = await import("@shared/schema");
+      const parseResult = videoProgressSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: 'Invalid request body', details: parseResult.error.errors });
+      }
+      const { progress, percentage, videoName, videoThumbnail, videoDuration } = parseResult.data;
+
+      const existing = await storage.getVideoPreference(user.id, videoId);
+
+      if (existing) {
+        await storage.upsertVideoPreference({
+          ...existing,
+          watchProgress: progress,
+          watchPercentage: percentage,
+          lastWatchedAt: new Date(),
+        });
+      } else {
+        await storage.upsertVideoPreference({
+          userId: user.id,
+          videoId,
+          videoName,
+          videoThumbnail,
+          videoDuration,
+          isFavorite: false,
+          isWatchLater: false,
+          watchProgress: progress,
+          watchPercentage: percentage,
+          lastWatchedAt: new Date()
+        });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Update Progress Error]', error);
+      res.status(500).json({ error: 'Failed to update progress' });
+    }
+  });
+
+  app.delete('/api/videos/:videoId/progress', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      const { videoId } = req.params;
+      
+      if (!user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const existing = await storage.getVideoPreference(user.id, videoId);
+      if (existing) {
+        await storage.upsertVideoPreference({
+          ...existing,
+          watchProgress: 0,
+          watchPercentage: 0,
+          lastWatchedAt: null,
+        });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Clear Progress Error]', error);
+      res.status(500).json({ error: 'Failed to clear progress' });
+    }
+  });
+
   // Theme preference endpoint
   app.patch('/api/user/theme', isAuthenticated, async (req: any, res) => {
     try {

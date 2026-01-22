@@ -54,6 +54,14 @@ The application is a full-stack web application with a React frontend and an Exp
     - **Preference Controls**: Per-type toggles, quiet hours (Central timezone), and delivery method preferences (push/email).
     - **Notification Service**: `server/services/notificationService.ts` checks user preferences before creating notifications.
     - **Settings UI**: Integrated into the Settings page (`/settings`) with comprehensive toggle controls.
+- **Training Videos Modal**: Embedded video training system with Vimeo integration.
+    - **Video Playback**: Uses @vimeo/player SDK for embedded playback within the modal.
+    - **Filter Tabs**: All, New, Favorites, Watch Later, Continue Watching.
+    - **User Preferences**: Favorites, Watch Later, and Continue Watching functionality stored per-user.
+    - **Progress Tracking**: Automatic progress saving with 10-second throttling, immediate save on pause/ended.
+    - **Resume Playback**: Videos resume from saved position using player.setCurrentTime() on player ready.
+    - **Database Schema**: `userVideoPreferences` table stores favorites, watch later, progress, and video metadata.
+    - **API Endpoints**: GET/POST for favorites, watch later, progress, and bulk preferences retrieval.
 
 ## External Dependencies
 
