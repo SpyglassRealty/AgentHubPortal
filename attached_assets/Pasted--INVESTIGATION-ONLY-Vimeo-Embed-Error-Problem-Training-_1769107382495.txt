@@ -1,0 +1,135 @@
+## INVESTIGATION ONLY - Vimeo Embed Error
+
+**Problem:**
+Training Videos modal shows "Sorry, we're having a little trouble" when trying to play videos. The video list loads correctly (50 videos showing), but the player fails to embed.
+
+**Screenshot shows:**
+- Modal opens correctly
+- Video list sidebar works (thumbnails, titles, dates all visible)
+- Vimeo player area shows error message
+
+---
+
+## Investigation Questions
+
+### 1. Current Vimeo Configuration
+
+**Q1.1:** What Vimeo environment variables are configured?
+- `VIMEO_ACCESS_TOKEN` - exists?
+- `VIMEO_FOLDER_ID` - exists?
+- `VIMEO_CLIENT_ID` - exists?
+- `VIMEO_CLIENT_SECRET` - exists?
+- Any other Vimeo-related secrets?
+
+**Q1.2:** What Vimeo API endpoint is being used to fetch videos?
+
+**Q1.3:** What is the current embed URL format being used?
+Example formats:
+
+https://player.vimeo.com/video/{VIDEO_ID}
+https://player.vimeo.com/video/{VIDEO_ID}?h={HASH}
+https://vimeo.com/{VIDEO_ID}
+
+
+---
+
+### 2. Video Privacy Settings
+
+**Q2.1:** What privacy setting do the Vimeo videos have?
+- Public
+- Unlisted (link only)
+- Password protected
+- Private (specific users only)
+- Hide from Vimeo (embed only)
+
+**Q2.2:** Is there a privacy hash required for embedding?
+Some Vimeo videos require a hash parameter: `?h=abc123def`
+
+**Q2.3:** Are the videos restricted to specific domains for embedding?
+Vimeo allows restricting embeds to specific domains (e.g., only on spyglassrealty.com)
+
+---
+
+### 3. API Response Investigation
+
+**Q3.1:** Add console.log to show the full video object returned from Vimeo API:
+```javascript
+console.log('[Vimeo Debug] Full video object:', JSON.stringify(video, null, 2));
+console.log('[Vimeo Debug] Embed URL:', video.player_embed_url);
+console.log('[Vimeo Debug] Privacy:', video.privacy);
+console.log('[Vimeo Debug] Embed settings:', video.embed);
+```
+
+**Q3.2:** What does the Vimeo API return for `player_embed_url`?
+
+**Q3.3:** What does the Vimeo API return for `privacy` settings?
+
+---
+
+### 4. Current Embed Implementation
+
+**Q4.1:** Show me the current iframe src being used:
+```tsx
+<iframe
+  src={???}  // What is being passed here?
+  ...
+/>
+```
+
+**Q4.2:** Is the embed URL being constructed from:
+- `video.player_embed_url` (from API)
+- Manual construction: `https://player.vimeo.com/video/${video.id}`
+- Something else?
+
+---
+
+### 5. Test Specific Video
+
+**Q5.1:** For the first video "Training for Listing Agents..." (78:28), log:
+- Video ID
+- Full embed URL
+- Privacy settings
+- Any hash/token required
+
+---
+
+### 6. Vimeo Account Type
+
+**Q6.1:** What type of Vimeo account is being used?
+- Basic (free)
+- Plus
+- Pro
+- Business
+- Premium
+
+Note: Some embed features require paid plans.
+
+---
+
+## Possible Causes
+
+| Cause | Likelihood | Solution |
+|-------|------------|----------|
+| Videos are private/password protected | High | Change privacy to "Unlisted" or "Hide from Vimeo" |
+| Missing privacy hash in embed URL | High | Add `?h={hash}` parameter from API response |
+| Domain restriction on embeds | Medium | Add replit.dev domain to allowed embed domains |
+| Wrong embed URL format | Medium | Use `player_embed_url` from API instead of constructing |
+| Vimeo API token permissions | Low | Ensure token has "private" scope |
+| Free account limitations | Low | Upgrade Vimeo plan if needed |
+
+---
+
+## Output Format
+
+Please respond with:
+
+1. **Environment Variables** - List all Vimeo-related secrets (names only, not values)
+2. **Current Embed URL** - Exact URL being used in iframe src
+3. **Sample API Response** - Full video object for one video (privacy, embed fields)
+4. **Embed URL from API** - What `player_embed_url` returns
+5. **Privacy Settings** - What privacy level the videos have
+6. **Recommended Fix** - What needs to change
+
+---
+
+**Reminder:** This is investigation only. Just gather information and report back.
