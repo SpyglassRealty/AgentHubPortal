@@ -242,6 +242,9 @@ class FubClient {
 
   async getPeople(userId?: number): Promise<FubPerson[]> {
     try {
+      console.log('[Leads Debug] ========== getPeople START ==========');
+      console.log('[Leads Debug] Fetching people for FUB userId:', userId);
+      
       const allPeople: FubPerson[] = [];
       let page = 1;
       let hasMore = true;
@@ -257,6 +260,16 @@ class FubClient {
         const data = await this.request<{ people: any[] }>("/people", params);
         
         console.log(`[FUB] Fetched ${data.people?.length || 0} people on page ${page}`);
+        
+        // Debug: Log sample person with custom fields on first page
+        if (page === 1 && data.people?.length > 0) {
+          console.log('[Leads Debug] Sample person from FUB:', {
+            id: data.people[0].id,
+            name: data.people[0].name,
+            customFieldKeys: data.people[0].customFields ? Object.keys(data.people[0].customFields) : 'NO CUSTOM FIELDS',
+            customFieldValues: data.people[0].customFields || {}
+          });
+        }
         
         const people = data.people || [];
         for (const person of people) {
@@ -294,22 +307,43 @@ class FubClient {
       }
 
       console.log(`[FUB] Total people found: ${allPeople.length}`);
+      console.log('[Leads Debug] ========== getPeople END ==========');
       return allPeople;
     } catch (error) {
       console.error("Error fetching FUB people:", error);
+      console.log('[Leads Debug] getPeople ERROR:', error);
       return [];
     }
   }
 
   async getAnniversaryLeads(userId: number): Promise<FubPerson[]> {
+    console.log('[Leads Debug] ========== getAnniversaryLeads START ==========');
     const people = await this.getPeople(userId);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    return people.filter(person => {
+    // Debug: Count people with anniversary field
+    const peopleWithAnniversary = people.filter(p => p.homePurchaseAnniversary);
+    console.log('[Leads Debug] Anniversary field stats:', {
+      totalPeople: people.length,
+      withAnniversaryField: peopleWithAnniversary.length,
+      sampleWithAnniversary: peopleWithAnniversary.slice(0, 3).map(p => ({
+        id: p.id,
+        name: p.name,
+        anniversaryValue: p.homePurchaseAnniversary
+      }))
+    });
+    
+    const filtered = people.filter(person => {
       if (!person.homePurchaseAnniversary) return false;
       const parsed = this.parseAnniversaryDate(person.homePurchaseAnniversary);
-      if (!parsed) return false;
+      if (!parsed) {
+        console.log('[Leads Debug] Failed to parse anniversary date:', {
+          personId: person.id,
+          value: person.homePurchaseAnniversary
+        });
+        return false;
+      }
       
       const daysUntilAnniversary = this.getDaysUntilAnniversary(parsed.month, parsed.day, today);
       return daysUntilAnniversary >= -7 && daysUntilAnniversary <= 30;
@@ -320,6 +354,15 @@ class FubClient {
       return this.getDaysUntilAnniversary(parsedA.month, parsedA.day, today) - 
              this.getDaysUntilAnniversary(parsedB.month, parsedB.day, today);
     });
+    
+    console.log('[Leads Debug] Anniversary filtering results:', {
+      totalBeforeFilter: peopleWithAnniversary.length,
+      totalAfterDateFilter: filtered.length,
+      dateRange: 'today -7 to +30 days'
+    });
+    console.log('[Leads Debug] ========== getAnniversaryLeads END ==========');
+    
+    return filtered;
   }
 
   private parseAnniversaryDate(dateStr: string): { month: number; day: number; year?: number } | null {
@@ -370,14 +413,33 @@ class FubClient {
   }
 
   async getBirthdayLeads(userId: number): Promise<FubPerson[]> {
+    console.log('[Leads Debug] ========== getBirthdayLeads START ==========');
     const people = await this.getPeople(userId);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    return people.filter(person => {
+    // Debug: Count people with birthday field
+    const peopleWithBirthday = people.filter(p => p.birthday);
+    console.log('[Leads Debug] Birthday field stats:', {
+      totalPeople: people.length,
+      withBirthdayField: peopleWithBirthday.length,
+      sampleWithBirthday: peopleWithBirthday.slice(0, 3).map(p => ({
+        id: p.id,
+        name: p.name,
+        birthdayValue: p.birthday
+      }))
+    });
+    
+    const filtered = people.filter(person => {
       if (!person.birthday) return false;
       const parsed = this.parseAnniversaryDate(person.birthday);
-      if (!parsed) return false;
+      if (!parsed) {
+        console.log('[Leads Debug] Failed to parse birthday date:', {
+          personId: person.id,
+          value: person.birthday
+        });
+        return false;
+      }
       
       const daysUntilBirthday = this.getDaysUntilAnniversary(parsed.month, parsed.day, today);
       return daysUntilBirthday >= -7 && daysUntilBirthday <= 30;
@@ -388,6 +450,15 @@ class FubClient {
       return this.getDaysUntilAnniversary(parsedA.month, parsedA.day, today) - 
              this.getDaysUntilAnniversary(parsedB.month, parsedB.day, today);
     });
+    
+    console.log('[Leads Debug] Birthday filtering results:', {
+      totalBeforeFilter: peopleWithBirthday.length,
+      totalAfterDateFilter: filtered.length,
+      dateRange: 'today -7 to +30 days'
+    });
+    console.log('[Leads Debug] ========== getBirthdayLeads END ==========');
+    
+    return filtered;
   }
 
   async getRecentActivityLeads(userId: number): Promise<FubPerson[]> {
