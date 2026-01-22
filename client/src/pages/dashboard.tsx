@@ -159,18 +159,18 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6">
           {[
             { label: "Action Items", value: suggestions.length.toString(), sublabel: "To Review" },
-            { label: "Available Apps", value: apps.length.toString(), sublabel: `${apps.filter(a => a.connectionType === 'embedded').length} Integrated` },
+            { label: "Apps", value: apps.length.toString(), sublabel: `${apps.filter(a => a.connectionType === 'embedded').length} Int.` },
             { label: "Resources", value: "24/7", sublabel: "Available" },
           ].map((stat, i) => (
             <Card key={i} className="bg-card border-border shadow-sm hover:shadow-md transition-all">
-              <CardContent className="p-6">
-                <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
-                <div className="flex items-baseline justify-between mt-2">
-                  <h3 className="text-3xl font-bold font-display">{stat.value}</h3>
-                  <Badge variant="secondary" className="bg-[hsl(28,94%,54%)]/10 text-[hsl(28,94%,54%)] hover:bg-[hsl(28,94%,54%)]/20 border-0">
+              <CardContent className="p-3 sm:p-4 md:p-6">
+                <p className="text-[10px] sm:text-xs md:text-sm font-medium text-muted-foreground truncate">{stat.label}</p>
+                <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between mt-1 sm:mt-2 gap-1">
+                  <h3 className="text-xl sm:text-2xl md:text-3xl font-bold font-display">{stat.value}</h3>
+                  <Badge variant="secondary" className="bg-[hsl(28,94%,54%)]/10 text-[hsl(28,94%,54%)] hover:bg-[hsl(28,94%,54%)]/20 border-0 text-[9px] sm:text-xs w-fit">
                     {stat.sublabel}
                   </Badge>
                 </div>
@@ -188,7 +188,7 @@ export default function DashboardPage() {
             variants={container}
             initial="hidden"
             animate="show"
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6"
           >
             {apps.map((app) => {
               const handleAppClick = () => {

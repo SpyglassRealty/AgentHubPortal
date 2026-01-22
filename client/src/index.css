@@ -65,6 +65,11 @@
   }
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    /* Use dvh for dynamic viewport height on mobile */
+    min-height: 100dvh;
+    /* iOS safe area handling - applied to body to avoid layout shift */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Montserrat', sans-serif;

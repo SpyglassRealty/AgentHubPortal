@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
 import { navItems } from "@/lib/apps";
-import { Bell, Search, Settings, LogOut, Menu, ChevronRight } from "lucide-react";
+import { Bell, Search, Settings, LogOut, Menu, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = React.useState(false);
   const { user } = useAuth();
 
   const userInitials = user?.firstName && user?.lastName 
@@ -92,10 +93,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 md:ml-64 flex flex-col min-h-screen transition-all duration-300">
         <header className="h-16 border-b border-border bg-background/95 backdrop-blur-sm sticky top-0 z-20 px-4 md:px-8 flex items-center justify-between">
-          <div className="flex items-center gap-4 md:hidden">
+          <div className="flex items-center gap-2 sm:gap-4 md:hidden">
              <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="-ml-2">
+                <Button variant="ghost" size="icon" className="-ml-2 h-9 w-9 min-h-[44px] min-w-[44px]">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
@@ -103,8 +104,30 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <SidebarContent />
               </SheetContent>
             </Sheet>
-            <span className="font-display font-bold text-lg">Mission Control</span>
+            <span className="font-display font-bold text-base sm:text-lg">Mission Control</span>
           </div>
+
+          {mobileSearchOpen ? (
+            <div className="absolute inset-x-0 top-0 h-16 bg-background z-30 flex items-center px-4 gap-2 md:hidden">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Search apps, tools..." 
+                  className="pl-9 h-10 bg-secondary/50 border-transparent focus-visible:bg-background focus-visible:border-input transition-all"
+                  data-testid="input-mobile-search"
+                  autoFocus
+                />
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setMobileSearchOpen(false)}
+                className="h-10 w-10 min-h-[44px] min-w-[44px]"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          ) : null}
 
           <div className="hidden md:flex items-center max-w-md w-full">
             <div className="relative w-full">
@@ -117,15 +140,23 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground relative">
+          <div className="flex items-center gap-1 sm:gap-3">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="md:hidden text-muted-foreground hover:text-foreground h-9 w-9 min-h-[44px] min-w-[44px]"
+              onClick={() => setMobileSearchOpen(true)}
+            >
+              <Search className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground relative h-9 w-9 min-h-[44px] min-w-[44px]">
               <Bell className="h-5 w-5" />
-              <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-[hsl(28,94%,54%)] border-2 border-background"></span>
+              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[hsl(28,94%,54%)] border-2 border-background"></span>
             </Button>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-9 w-9 min-h-[44px] min-w-[44px]">
                   <Settings className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>

@@ -214,28 +214,28 @@ function PendingPipelineTable({ pendingPipeline }: { pendingPipeline: PipelineTr
 
   return (
     <Card data-testid="card-pipeline">
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <CardHeader className="px-3 sm:px-6">
+        <div className="flex flex-col gap-3">
           <div>
-            <CardTitle className="text-lg font-display flex items-center gap-2">
-              <Clock className="h-5 w-5 text-amber-500" />
+            <CardTitle className="text-base sm:text-lg font-display flex items-center gap-2">
+              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500" />
               Pending Pipeline
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs sm:text-sm">
               {filteredAndSortedTransactions.length} active transaction{filteredAndSortedTransactions.length !== 1 ? 's' : ''}
             </CardDescription>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="relative flex-1 sm:flex-none">
+              <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
               <Input
-                placeholder="Search transactions..."
+                placeholder="Search..."
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="pl-9 w-[200px]"
+                className="pl-8 sm:pl-9 w-full sm:w-[200px] h-8 sm:h-9 text-xs sm:text-sm"
                 data-testid="input-pipeline-search"
               />
               {searchTerm && (
@@ -243,7 +243,7 @@ function PendingPipelineTable({ pendingPipeline }: { pendingPipeline: PipelineTr
                   onClick={() => setSearchTerm('')}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </button>
               )}
             </div>
@@ -254,7 +254,7 @@ function PendingPipelineTable({ pendingPipeline }: { pendingPipeline: PipelineTr
                 setCurrentPage(1);
               }}
             >
-              <SelectTrigger className="w-[100px]" data-testid="select-items-per-page">
+              <SelectTrigger className="w-[70px] sm:w-[100px] h-8 sm:h-9 text-xs sm:text-sm" data-testid="select-items-per-page">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -267,48 +267,53 @@ function PendingPipelineTable({ pendingPipeline }: { pendingPipeline: PipelineTr
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="rounded-lg border overflow-x-auto">
+      <CardContent className="px-2 sm:px-6">
+        <div className="rounded-lg border overflow-x-auto -mx-2 sm:mx-0">
+          <p className="text-[10px] text-muted-foreground text-center py-1 sm:hidden">← Swipe to see more →</p>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead 
-                  className="cursor-pointer hover:bg-muted/50 select-none"
+                  className="cursor-pointer hover:bg-muted/50 select-none min-w-[120px] py-3"
                   onClick={() => handleSort('address')}
                 >
-                  <div className="flex items-center gap-2">
-                    Address {getSortIcon('address')}
+                  <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                    <span className="hidden sm:inline">Address</span>
+                    <span className="sm:hidden">Addr</span>
+                    {getSortIcon('address')}
                   </div>
                 </TableHead>
                 <TableHead 
-                  className="text-right cursor-pointer hover:bg-muted/50 select-none"
+                  className="text-right cursor-pointer hover:bg-muted/50 select-none py-3"
                   onClick={() => handleSort('price')}
                 >
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="flex items-center justify-end gap-1 sm:gap-2 text-xs sm:text-sm">
                     Price {getSortIcon('price')}
                   </div>
                 </TableHead>
                 <TableHead 
-                  className="text-center cursor-pointer hover:bg-muted/50 select-none"
+                  className="text-center cursor-pointer hover:bg-muted/50 select-none py-3"
                   onClick={() => handleSort('closingDate')}
                 >
-                  <div className="flex items-center justify-center gap-2">
-                    Est. Close {getSortIcon('closingDate')}
+                  <div className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                    <span className="hidden sm:inline">Est. Close</span>
+                    <span className="sm:hidden">Close</span>
+                    {getSortIcon('closingDate')}
                   </div>
                 </TableHead>
                 <TableHead 
-                  className="text-right cursor-pointer hover:bg-muted/50 select-none"
+                  className="text-right cursor-pointer hover:bg-muted/50 select-none py-3"
                   onClick={() => handleSort('gci')}
                 >
-                  <div className="flex items-center justify-end gap-2">
-                    My GCI {getSortIcon('gci')}
+                  <div className="flex items-center justify-end gap-1 sm:gap-2 text-xs sm:text-sm">
+                    GCI {getSortIcon('gci')}
                   </div>
                 </TableHead>
                 <TableHead 
-                  className="text-center cursor-pointer hover:bg-muted/50 select-none"
+                  className="text-center cursor-pointer hover:bg-muted/50 select-none py-3"
                   onClick={() => handleSort('status')}
                 >
-                  <div className="flex items-center justify-center gap-2">
+                  <div className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
                     Status {getSortIcon('status')}
                   </div>
                 </TableHead>
@@ -324,21 +329,21 @@ function PendingPipelineTable({ pendingPipeline }: { pendingPipeline: PipelineTr
               ) : (
                 paginatedTransactions.map((deal) => (
                   <TableRow key={deal.id} data-testid={`row-pipeline-${deal.id}`}>
-                    <TableCell className="font-medium max-w-[250px] truncate">
+                    <TableCell className="font-medium max-w-[150px] sm:max-w-[250px] truncate text-xs sm:text-sm py-3">
                       {deal.address}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right text-xs sm:text-sm py-3">
                       {formatFullCurrency(deal.price)}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center text-xs sm:text-sm py-3">
                       {formatDate(deal.closingDate)}
                     </TableCell>
-                    <TableCell className="text-right text-emerald-600 font-medium">
+                    <TableCell className="text-right text-emerald-600 font-medium text-xs sm:text-sm py-3">
                       {formatFullCurrency(deal.gci)}
                     </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant={deal.listing ? "default" : "secondary"}>
-                        {deal.status === "OPEN" ? (deal.listing ? "Listing" : "Pending") : deal.status}
+                    <TableCell className="text-center py-3">
+                      <Badge variant={deal.listing ? "default" : "secondary"} className="text-[10px] sm:text-xs">
+                        {deal.status === "OPEN" ? (deal.listing ? "List" : "Pend") : deal.status}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -530,18 +535,18 @@ export default function MyPerformancePage() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold">My Performance</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold">My Performance</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
               Your ReZen transaction data and metrics
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {lastUpdated && (
-              <span className="text-sm text-muted-foreground hidden sm:inline">
-                Last updated: {formatLastUpdated(lastUpdated)}
+              <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">
+                Updated: {formatLastUpdated(lastUpdated)}
               </span>
             )}
             <Button
@@ -549,16 +554,17 @@ export default function MyPerformancePage() {
               size="sm"
               onClick={() => refetch()}
               disabled={isFetching}
+              className="h-8 px-2 sm:px-3 text-xs sm:text-sm"
               data-testid="button-refresh"
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-              Refresh
+              <RefreshCw className={`h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+              <span className="hidden xs:inline">Refresh</span>
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" data-testid="button-disconnect">
-                  <Unlink className="h-4 w-4 mr-2" />
-                  Disconnect
+                <Button variant="outline" size="sm" className="h-8 px-2 sm:px-3 text-xs sm:text-sm" data-testid="button-disconnect">
+                  <Unlink className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <span className="hidden xs:inline">Disconnect</span>
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -582,26 +588,26 @@ export default function MyPerformancePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200" data-testid="card-gci-ytd">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-emerald-600" />
-                  <span className="text-sm font-medium text-emerald-700">GCI YTD</span>
+            <CardContent className="p-3 sm:p-5">
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
+                  <span className="text-xs sm:text-sm font-medium text-emerald-700">GCI YTD</span>
                 </div>
                 <InfoTooltip content={PERFORMANCE_TOOLTIPS.gciYtd.content} source={PERFORMANCE_TOOLTIPS.gciYtd.source} />
               </div>
-              <p className="text-3xl font-bold text-emerald-900">
+              <p className="text-xl sm:text-3xl font-bold text-emerald-900">
                 {formatCurrency(summary?.gciYTD || 0)}
               </p>
-              <div className="flex items-center gap-1 mt-2">
+              <div className="flex items-center gap-1 mt-1.5 sm:mt-2">
                 {(insights?.yoyChange || 0) >= 0 ? (
-                  <ArrowUpRight className="h-4 w-4 text-emerald-600" />
+                  <ArrowUpRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-600" />
                 ) : (
-                  <ArrowDownRight className="h-4 w-4 text-red-500" />
+                  <ArrowDownRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500" />
                 )}
-                <span className={`text-sm font-medium ${(insights?.yoyChange || 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                <span className={`text-xs sm:text-sm font-medium ${(insights?.yoyChange || 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                   {Math.abs(insights?.yoyChange || 0).toFixed(0)}% YoY
                 </span>
               </div>
@@ -609,52 +615,52 @@ export default function MyPerformancePage() {
           </Card>
 
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200" data-testid="card-gci-l12m">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-700">GCI L12M</span>
+            <CardContent className="p-3 sm:p-5">
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                  <span className="text-xs sm:text-sm font-medium text-blue-700">GCI L12M</span>
                 </div>
                 <InfoTooltip content={PERFORMANCE_TOOLTIPS.gciL12m.content} source={PERFORMANCE_TOOLTIPS.gciL12m.source} />
               </div>
-              <p className="text-3xl font-bold text-blue-900">
+              <p className="text-xl sm:text-3xl font-bold text-blue-900">
                 {formatCurrency(summary?.gciL12M || 0)}
               </p>
-              <p className="text-sm text-blue-600 mt-2">Last 12 months</p>
+              <p className="text-xs sm:text-sm text-blue-600 mt-1.5 sm:mt-2">Last 12 months</p>
             </CardContent>
           </Card>
 
           <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200" data-testid="card-pending-gci">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-amber-600" />
-                  <span className="text-sm font-medium text-amber-700">Pending GCI</span>
+            <CardContent className="p-3 sm:p-5">
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600" />
+                  <span className="text-xs sm:text-sm font-medium text-amber-700">Pending</span>
                 </div>
                 <InfoTooltip content={PERFORMANCE_TOOLTIPS.pendingGci.content} source={PERFORMANCE_TOOLTIPS.pendingGci.source} />
               </div>
-              <p className="text-3xl font-bold text-amber-900">
+              <p className="text-xl sm:text-3xl font-bold text-amber-900">
                 {formatCurrency(summary?.pendingGCI || 0)}
               </p>
-              <p className="text-sm text-amber-600 mt-2">
-                {insights?.pendingCount || 0} deals in pipeline
+              <p className="text-xs sm:text-sm text-amber-600 mt-1.5 sm:mt-2">
+                {insights?.pendingCount || 0} in pipeline
               </p>
             </CardContent>
           </Card>
 
           <Card className="bg-gradient-to-br from-purple-50 to-purple-100/50 border-purple-200" data-testid="card-avg-per-deal">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Home className="h-5 w-5 text-purple-600" />
-                  <span className="text-sm font-medium text-purple-700">Avg per Deal</span>
+            <CardContent className="p-3 sm:p-5">
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Home className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+                  <span className="text-xs sm:text-sm font-medium text-purple-700">Avg/Deal</span>
                 </div>
                 <InfoTooltip content={PERFORMANCE_TOOLTIPS.avgPerDeal.content} source={PERFORMANCE_TOOLTIPS.avgPerDeal.source} />
               </div>
-              <p className="text-3xl font-bold text-purple-900">
+              <p className="text-xl sm:text-3xl font-bold text-purple-900">
                 {formatCurrency(summary?.avgPerDeal || 0)}
               </p>
-              <p className="text-sm text-purple-600 mt-2">Commission avg</p>
+              <p className="text-xs sm:text-sm text-purple-600 mt-1.5 sm:mt-2">Commission avg</p>
             </CardContent>
           </Card>
         </div>
