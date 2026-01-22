@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
 import { navItems } from "@/lib/apps";
-import { Bell, Search, Settings, LogOut, Menu, ChevronRight, X, Sun, Moon, Monitor, Check } from "lucide-react";
+import { Bell, Search, Settings, LogOut, Menu, ChevronRight, X, Sun, Moon, Monitor, Check, User, Sliders } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -354,8 +354,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Preferences</DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/settings?section=profile">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/settings?section=preferences">
+                    <Sliders className="mr-2 h-4 w-4" />
+                    Preferences
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild className="text-destructive cursor-pointer">
                   <a href="/api/logout">

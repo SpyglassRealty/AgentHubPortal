@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation, useSearch } from "wouter";
 import Layout from "@/components/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, Link2, Unlink, Check, AlertCircle, Bell, Users, Calendar, Home, CheckSquare, Megaphone, Moon, Mail, Loader2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TrendingUp, Link2, Unlink, Check, AlertCircle, Bell, Users, Calendar, Home, CheckSquare, Megaphone, Moon, Mail, Loader2, User } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -69,6 +72,10 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
+  const searchString = useSearch();
+  const searchParams = new URLSearchParams(searchString);
+  const sectionParam = searchParams.get("section");
+  const [activeTab, setActiveTab] = useState(sectionParam === "preferences" ? "preferences" : "profile");
 
   const { data: notifData } = useQuery<{ settings: NotificationSettings }>({
     queryKey: ["/api/notifications/settings"],
@@ -159,13 +166,116 @@ export default function SettingsPage() {
 
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto space-y-8">
+      <div className="max-w-2xl mx-auto space-y-6">
         <div>
           <h1 className="text-3xl font-display font-bold">Settings</h1>
-          <p className="text-muted-foreground mt-2">Manage your account integrations and preferences</p>
+          <p className="text-muted-foreground mt-2">Manage your account and preferences</p>
         </div>
 
-        <Card data-testid="card-rezen-settings">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="profile" className="flex items-center gap-2" data-testid="tab-profile">
+              <User className="h-4 w-4" />
+              Profile
+            </TabsTrigger>
+            <TabsTrigger value="preferences" className="flex items-center gap-2" data-testid="tab-preferences">
+              <Bell className="h-4 w-4" />
+              Preferences
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="profile" className="space-y-6 mt-6">
+            <Card data-testid="card-profile-info">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+                  Account Information
+                </CardTitle>
+                <CardDescription>Your profile details from your login provider</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-16 w-16">
+                    <AvatarImage src={userProfile?.profileImageUrl} />
+                    <AvatarFallback className="text-lg bg-[hsl(28,94%,54%)] text-white">
+                      {userProfile?.firstName?.charAt(0) || userProfile?.email?.charAt(0)?.toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h3 className="text-lg font-semibold">
+                      {userProfile?.firstName} {userProfile?.lastName}
+                    </h3>
+                    <p className="text-muted-foreground">{userProfile?.email}</p>
+                  </div>
+                </div>
+                <Separator />
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground mb-1">First Name</p>
+                    <p className="font-medium">{userProfile?.firstName || "Not set"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-1">Last Name</p>
+                    <p className="font-medium">{userProfile?.lastName || "Not set"}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-muted-foreground mb-1">Email</p>
+                    <p className="font-medium">{userProfile?.email || "Not available"}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-connected-accounts">
+              <CardHeader>
+                <CardTitle>Connected Accounts</CardTitle>
+                <CardDescription>Manage your connected services and integrations</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                      <svg className="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium">Google Account</p>
+                      <p className="text-sm text-muted-foreground">{userProfile?.email}</p>
+                    </div>
+                  </div>
+                  <span className="text-sm text-green-600 font-medium">Connected</span>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
+                      R
+                    </div>
+                    <div>
+                      <p className="font-medium">ReZen Account</p>
+                      <p className="text-sm text-muted-foreground">
+                        {isRezenLinked ? `ID: ${userProfile?.rezenYentaId?.slice(0, 8)}...` : "Not connected"}
+                      </p>
+                    </div>
+                  </div>
+                  {isRezenLinked ? (
+                    <span className="text-sm text-green-600 font-medium">Connected</span>
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={() => setActiveTab("preferences")}>
+                      Connect
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="preferences" className="space-y-6 mt-6">
+            <Card data-testid="card-rezen-settings">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-[hsl(28,94%,54%)]" />
@@ -493,29 +603,8 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
-
-        <Separator />
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Account Information</CardTitle>
-            <CardDescription>Your profile details from your login provider.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">Name</p>
-                <p className="font-medium">
-                  {userProfile?.firstName} {userProfile?.lastName}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Email</p>
-                <p className="font-medium">{userProfile?.email || "Not available"}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );

@@ -1,0 +1,559 @@
+### Investigate and Fix Profile/Preferences in Settings Dropdown
+
+**Issue:**
+The gear icon dropdown shows "My Account" section with "Profile" and "Preferences" options, but clicking them does nothing. Need to investigate the current implementation and make them functional.
+
+**Current UI (from screenshot):**
+┌──────────────────┐
+│  My Account      │
+│  ─────────────── │
+│  Profile         │  ← Does nothing
+│  Preferences     │  ← Does nothing
+│  ─────────────── │
+│  → Log out       │  ← Works (red text)
+└──────────────────┘
+
+---
+
+## Task 1: Investigate Current Implementation
+
+**Questions to answer:**
+
+1. **Where is the dropdown defined?**
+   - Find the component file (likely in Header, Navbar, or Layout component)
+   - Check if Profile/Preferences have onClick handlers
+   - Are they linked to routes? Which routes?
+
+2. **Do Profile/Preferences pages exist?**
+   - Check if `/profile` or `/settings/profile` route exists
+   - Check if `/preferences` or `/settings/preferences` route exists
+   - If pages exist, are they empty or have content?
+
+3. **What's the relationship with existing Settings page?**
+   - We already have a Settings page for ReZen Yenta ID
+   - Should Profile/Preferences be part of that page?
+   - Or separate pages?
+
+---
+
+## Task 2: Implement Profile Page
+
+Create a Profile page where users can view/edit their account information:
+```tsx
+// pages/profile.tsx or pages/settings/profile.tsx
+
+import { useState, useEffect } from 'react';
+import { User, Mail, Phone, Building, Camera, Save, Loader2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/contexts/ThemeContext';
+
+export default function ProfilePage() {
+  const { user, updateUser } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    displayName: user?.displayName || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    title: user?.title || '',
+    bio: user?.bio || ''
+  });
+
+  // Theme classes
+  const cardBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+  const inputBg = isDark ? 'bg-gray-700' : 'bg-gray-50';
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateUser(formData);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto p-6">
+      <h1 className={`text-2xl font-semibold ${textPrimary} mb-6`}>Profile</h1>
+      
+      {/* Profile Photo Section */}
+      <div className={`${cardBg} rounded-xl p-6 border ${borderColor} mb-6`}>
+        <div className="flex items-center gap-6">
+          <div className="relative">
+            <div className="w-24 h-24 rounded-full bg-orange-500 flex items-center justify-center text-white text-3xl font-semibold">
+              {user?.displayName?.charAt(0) || 'U'}
+            </div>
+            <button className={`absolute bottom-0 right-0 p-2 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'} hover:opacity-80`}>
+              <Camera className="w-4 h-4" />
+            </button>
+          </div>
+          <div>
+            <h2 className={`text-xl font-semibold ${textPrimary}`}>
+              {user?.displayName || 'User'}
+            </h2>
+            <p className={textSecondary}>{user?.email}</p>
+            {user?.title && <p className={`text-sm ${textSecondary}`}>{user.title}</p>}
+          </div>
+        </div>
+      </div>
+
+      {/* Profile Form */}
+      <div className={`${cardBg} rounded-xl p-6 border ${borderColor}`}>
+        <div className="flex justify-between items-center mb-6">
+          <h3 className={`font-medium ${textPrimary}`}>Account Information</h3>
+          {!isEditing ? (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="px-4 py-2 text-orange-500 hover:bg-orange-500/10 rounded-lg transition-colors"
+            >
+              Edit
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setIsEditing(false)}
+                className={`px-4 py-2 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} rounded-lg transition-colors ${textSecondary}`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors flex items-center gap-2"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Save
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          {/* Display Name */}
+          <div>
+            <label className={`block text-sm ${textSecondary} mb-1`}>Display Name</label>
+            {isEditing ? (
+              <input
+                type="text"
+                value={formData.displayName}
+                onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+                className={`w-full px-4 py-2 rounded-lg ${inputBg} ${textPrimary} border ${borderColor} focus:ring-2 focus:ring-orange-500 focus:border-transparent`}
+              />
+            ) : (
+              <p className={textPrimary}>{formData.displayName || '-'}</p>
+            )}
+          </div>
+
+          {/* Email (read-only) */}
+          <div>
+            <label className={`block text-sm ${textSecondary} mb-1`}>Email</label>
+            <p className={textPrimary}>{user?.email}</p>
+            <p className={`text-xs ${textSecondary} mt-1`}>Email cannot be changed</p>
+          </div>
+
+          {/* Phone */}
+          <div>
+            <label className={`block text-sm ${textSecondary} mb-1`}>Phone</label>
+            {isEditing ? (
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className={`w-full px-4 py-2 rounded-lg ${inputBg} ${textPrimary} border ${borderColor} focus:ring-2 focus:ring-orange-500 focus:border-transparent`}
+                placeholder="(555) 123-4567"
+              />
+            ) : (
+              <p className={textPrimary}>{formData.phone || '-'}</p>
+            )}
+          </div>
+
+          {/* Title/Role */}
+          <div>
+            <label className={`block text-sm ${textSecondary} mb-1`}>Title</label>
+            {isEditing ? (
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className={`w-full px-4 py-2 rounded-lg ${inputBg} ${textPrimary} border ${borderColor} focus:ring-2 focus:ring-orange-500 focus:border-transparent`}
+                placeholder="Real Estate Agent"
+              />
+            ) : (
+              <p className={textPrimary}>{formData.title || '-'}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Connected Accounts */}
+      <div className={`${cardBg} rounded-xl p-6 border ${borderColor} mt-6`}>
+        <h3 className={`font-medium ${textPrimary} mb-4`}>Connected Accounts</h3>
+        
+        {/* Google Account */}
+        <div className={`flex items-center justify-between p-4 ${isDark ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-lg`}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+            </div>
+            <div>
+              <p className={textPrimary}>Google Account</p>
+              <p className={`text-sm ${textSecondary}`}>{user?.email}</p>
+            </div>
+          </div>
+          <span className="text-green-500 text-sm">Connected</span>
+        </div>
+
+        {/* ReZen Account */}
+        <div className={`flex items-center justify-between p-4 ${isDark ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-lg mt-3`}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
+              R
+            </div>
+            <div>
+              <p className={textPrimary}>ReZen Account</p>
+              <p className={`text-sm ${textSecondary}`}>
+                {user?.rezenYentaId ? `ID: ${user.rezenYentaId.slice(0, 8)}...` : 'Not connected'}
+              </p>
+            </div>
+          </div>
+          <a href="/settings" className="text-orange-500 text-sm hover:underline">
+            {user?.rezenYentaId ? 'Manage' : 'Connect'}
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Task 3: Implement Preferences Page
+
+Create a Preferences page for user settings:
+```tsx
+// pages/preferences.tsx or pages/settings/preferences.tsx
+
+import { useState, useEffect } from 'react';
+import { Sun, Moon, Monitor, Bell, Mail, Clock, Save, Loader2 } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+
+export default function PreferencesPage() {
+  const { theme, setTheme } = useTheme();
+  const isDark = theme === 'dark';
+  
+  const [isSaving, setIsSaving] = useState(false);
+  const [preferences, setPreferences] = useState({
+    theme: 'system',
+    emailNotifications: true,
+    pushNotifications: true,
+    weeklyDigest: true,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    dateFormat: 'MM/DD/YYYY',
+    defaultView: 'dashboard'
+  });
+
+  // Theme classes
+  const cardBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+
+  const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
+    setPreferences({ ...preferences, theme: newTheme });
+    
+    if (newTheme === 'system') {
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setTheme(systemPrefersDark ? 'dark' : 'light');
+    } else {
+      setTheme(newTheme);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await fetch('/api/user/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(preferences)
+      });
+    } catch (error) {
+      console.error('Failed to save preferences:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const ToggleSwitch = ({ enabled, onChange }: { enabled: boolean; onChange: (val: boolean) => void }) => (
+    <button
+      onClick={() => onChange(!enabled)}
+      className={`relative w-11 h-6 rounded-full transition-colors ${enabled ? 'bg-orange-500' : isDark ? 'bg-gray-600' : 'bg-gray-300'}`}
+    >
+      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${enabled ? 'translate-x-5' : ''}`} />
+    </button>
+  );
+
+  return (
+    <div className="max-w-3xl mx-auto p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className={`text-2xl font-semibold ${textPrimary}`}>Preferences</h1>
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors flex items-center gap-2"
+        >
+          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          Save Changes
+        </button>
+      </div>
+
+      {/* Appearance */}
+      <div className={`${cardBg} rounded-xl p-6 border ${borderColor} mb-6`}>
+        <h3 className={`font-medium ${textPrimary} mb-4 flex items-center gap-2`}>
+          <Sun className="w-5 h-5" />
+          Appearance
+        </h3>
+        
+        <div className="grid grid-cols-3 gap-3">
+          {/* Light Mode */}
+          <button
+            onClick={() => handleThemeChange('light')}
+            className={`p-4 rounded-xl border-2 transition-all ${
+              preferences.theme === 'light' 
+                ? 'border-orange-500 bg-orange-500/10' 
+                : `${borderColor} ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`
+            }`}
+          >
+            <Sun className={`w-8 h-8 mx-auto mb-2 ${preferences.theme === 'light' ? 'text-orange-500' : textSecondary}`} />
+            <p className={`text-sm ${textPrimary}`}>Light</p>
+          </button>
+
+          {/* Dark Mode */}
+          <button
+            onClick={() => handleThemeChange('dark')}
+            className={`p-4 rounded-xl border-2 transition-all ${
+              preferences.theme === 'dark' 
+                ? 'border-orange-500 bg-orange-500/10' 
+                : `${borderColor} ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`
+            }`}
+          >
+            <Moon className={`w-8 h-8 mx-auto mb-2 ${preferences.theme === 'dark' ? 'text-orange-500' : textSecondary}`} />
+            <p className={`text-sm ${textPrimary}`}>Dark</p>
+          </button>
+
+          {/* System */}
+          <button
+            onClick={() => handleThemeChange('system')}
+            className={`p-4 rounded-xl border-2 transition-all ${
+              preferences.theme === 'system' 
+                ? 'border-orange-500 bg-orange-500/10' 
+                : `${borderColor} ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`
+            }`}
+          >
+            <Monitor className={`w-8 h-8 mx-auto mb-2 ${preferences.theme === 'system' ? 'text-orange-500' : textSecondary}`} />
+            <p className={`text-sm ${textPrimary}`}>System</p>
+          </button>
+        </div>
+      </div>
+
+      {/* Notifications */}
+      <div className={`${cardBg} rounded-xl p-6 border ${borderColor} mb-6`}>
+        <h3 className={`font-medium ${textPrimary} mb-4 flex items-center gap-2`}>
+          <Bell className="w-5 h-5" />
+          Notifications
+        </h3>
+        
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className={textPrimary}>Email Notifications</p>
+              <p className={`text-sm ${textSecondary}`}>Receive important updates via email</p>
+            </div>
+            <ToggleSwitch 
+              enabled={preferences.emailNotifications}
+              onChange={(val) => setPreferences({ ...preferences, emailNotifications: val })}
+            />
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <p className={textPrimary}>Push Notifications</p>
+              <p className={`text-sm ${textSecondary}`}>Browser push notifications for new activity</p>
+            </div>
+            <ToggleSwitch 
+              enabled={preferences.pushNotifications}
+              onChange={(val) => setPreferences({ ...preferences, pushNotifications: val })}
+            />
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <p className={textPrimary}>Weekly Digest</p>
+              <p className={`text-sm ${textSecondary}`}>Summary of your performance each week</p>
+            </div>
+            <ToggleSwitch 
+              enabled={preferences.weeklyDigest}
+              onChange={(val) => setPreferences({ ...preferences, weeklyDigest: val })}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Regional */}
+      <div className={`${cardBg} rounded-xl p-6 border ${borderColor}`}>
+        <h3 className={`font-medium ${textPrimary} mb-4 flex items-center gap-2`}>
+          <Clock className="w-5 h-5" />
+          Regional Settings
+        </h3>
+        
+        <div className="space-y-4">
+          <div>
+            <label className={`block text-sm ${textSecondary} mb-1`}>Timezone</label>
+            <select
+              value={preferences.timezone}
+              onChange={(e) => setPreferences({ ...preferences, timezone: e.target.value })}
+              className={`w-full px-4 py-2 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} border ${borderColor}`}
+            >
+              <option value="America/Chicago">Central Time (CT)</option>
+              <option value="America/New_York">Eastern Time (ET)</option>
+              <option value="America/Denver">Mountain Time (MT)</option>
+              <option value="America/Los_Angeles">Pacific Time (PT)</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className={`block text-sm ${textSecondary} mb-1`}>Date Format</label>
+            <select
+              value={preferences.dateFormat}
+              onChange={(e) => setPreferences({ ...preferences, dateFormat: e.target.value })}
+              className={`w-full px-4 py-2 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} border ${borderColor}`}
+            >
+              <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+              <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+              <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Task 4: Wire Up the Dropdown Menu
+
+Update the gear dropdown to navigate to the new pages:
+```tsx
+// In your Header component or wherever the dropdown is
+
+import { useNavigate } from 'react-router-dom'; // or next/router if using Next.js
+
+const navigate = useNavigate();
+
+// Dropdown menu items
+const menuItems = [
+  { 
+    label: 'Profile', 
+    onClick: () => navigate('/profile'),
+    icon: User 
+  },
+  { 
+    label: 'Preferences', 
+    onClick: () => navigate('/preferences'),
+    icon: Settings 
+  },
+  { 
+    type: 'divider' 
+  },
+  { 
+    label: 'Log out', 
+    onClick: handleLogout,
+    icon: LogOut,
+    className: 'text-red-500' 
+  }
+];
+
+// Render in dropdown
+{menuItems.map((item, index) => (
+  item.type === 'divider' ? (
+    <hr key={index} className={borderColor} />
+  ) : (
+    <button
+      key={index}
+      onClick={item.onClick}
+      className={`w-full px-4 py-2 text-left flex items-center gap-2 ${item.className || textPrimary} ${hoverBg}`}
+    >
+      {item.icon && <item.icon className="w-4 h-4" />}
+      {item.label}
+    </button>
+  )
+))}
+```
+
+---
+
+## Task 5: Add Routes
+
+Add the routes for the new pages:
+```tsx
+// In your router configuration
+
+<Route path="/profile" element={<ProfilePage />} />
+<Route path="/preferences" element={<PreferencesPage />} />
+
+// Or if using nested settings routes:
+<Route path="/settings/profile" element={<ProfilePage />} />
+<Route path="/settings/preferences" element={<PreferencesPage />} />
+```
+
+---
+
+## Summary
+
+| Task | Description |
+|------|-------------|
+| Profile Page | View/edit user info, connected accounts |
+| Preferences Page | Theme toggle, notifications, regional settings |
+| Dropdown Links | Wire up Profile/Preferences to navigate properly |
+| Routes | Add new page routes |
+| Theme Sync | Ensure light/dark mode works across all new pages |
+
+---
+
+## Testing Checklist:
+
+- [ ] Click gear icon → Profile → navigates to profile page
+- [ ] Click gear icon → Preferences → navigates to preferences page
+- [ ] Profile page shows user data correctly
+- [ ] Profile edit mode works
+- [ ] Preferences theme toggle changes theme immediately
+- [ ] Theme persists after page refresh
+- [ ] Notification toggles work
+- [ ] Save button calls API
+- [ ] All pages respect current light/dark theme
+- [ ] Log out still works
+
+This prompt will:
+
+Investigate what's currently implemented
+Create a full Profile page with edit functionality
+Create a Preferences page with theme toggle and notification settings
+Wire up the dropdown menu to navigate to these pages
+Ensure everything syncs with your light/dark mode
