@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Layout from "@/components/layout";
 import { apps } from "@/lib/apps";
@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowUpRight, Plus, ExternalLink, Sparkles, ChevronDown, ChevronUp, Plug, Link2, PlayCircle } from "lucide-react";
+import { ArrowUpRight, ArrowRight, Plus, ExternalLink, Sparkles, ChevronDown, ChevronUp, Plug, Link2, PlayCircle, Play } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { OnboardingModal } from "@/components/onboarding-modal";
 import { SuggestionCard } from "@/components/suggestion-card";
@@ -17,6 +17,7 @@ import { GoogleDocModal } from "@/components/google-doc-modal";
 import { TrainingVideosModal } from "@/components/training-videos-modal";
 import { CompanyUpdates } from "@/components/dashboard/company-updates";
 import { DOCUMENTS } from "@/lib/documents";
+import { useTheme } from "next-themes";
 import type { ContextSuggestion, AgentProfile } from "@shared/schema";
 
 interface VimeoVideoForModal {
@@ -56,17 +57,95 @@ interface VimeoResponse {
   message?: string;
 }
 
+// Helper functions for bottom Company Updates section
+const formatDuration = (seconds: number) => {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  if (hrs > 0) {
+    return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+const isNewVideo = (dateString: string) => {
+  const date = new Date(dateString);
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  return date >= sevenDaysAgo;
+};
+
+const getRelativeTime = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+const getThumbnail = (video: any) => {
+  const sizes = video.pictures?.sizes || [];
+  const medium = sizes.find((s: any) => s.width >= 640) || sizes[sizes.length - 1];
+  return medium?.link?.replace(/&amp;/g, '&') || '';
+};
+
+interface BottomVideoData {
+  id: string;
+  name: string;
+  duration: number;
+  created_time: string;
+  player_embed_url: string;
+  thumbnail: string;
+  pictures: any;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
   const [showAllApps, setShowAllApps] = useState(false);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [showHandbook, setShowHandbook] = useState(false);
   const [showTrainingVideos, setShowTrainingVideos] = useState(false);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
+  const [bottomLatestVideo, setBottomLatestVideo] = useState<BottomVideoData | null>(null);
+
+  // Fetch latest video with thumbnail for bottom section (with credentials)
+  useEffect(() => {
+    const fetchLatestVideo = async () => {
+      try {
+        const response = await fetch('/api/vimeo/training-videos?limit=1', { credentials: "include" });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.videos && data.videos.length > 0) {
+            const video = data.videos[0];
+            setBottomLatestVideo({
+              ...video,
+              thumbnail: getThumbnail(video)
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch latest video:', err);
+      }
+    };
+    
+    fetchLatestVideo();
+  }, []);
 
   const handleVideoClick = (video: VimeoVideoForModal) => {
     setSelectedVideoId(video.id);
     setShowTrainingVideos(true);
+  };
+
+  const handleBottomVideoClick = () => {
+    if (bottomLatestVideo) {
+      setSelectedVideoId(bottomLatestVideo.id);
+      setShowTrainingVideos(true);
+    }
   };
 
   const { data: profileData, isLoading: profileLoading } = useQuery<ProfileResponse>({
@@ -304,41 +383,119 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
           <div className="lg:col-span-2">
-            <h2 className="text-xl font-display font-semibold tracking-tight mb-4">Company Updates</h2>
-            <Card>
-              <CardContent className="p-0">
-                {vimeoData?.video && (
-                  <button 
-                    onClick={() => setShowTrainingVideos(true)}
-                    className="p-6 flex gap-4 border-b hover:bg-muted/30 transition-colors cursor-pointer w-full text-left"
+            <Card className={`${isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'} overflow-hidden`}>
+              {/* Header */}
+              <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
+                <h2 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Company Updates</h2>
+                <Link 
+                  href="/training"
+                  className="text-sm text-orange-500 hover:text-orange-600 flex items-center gap-1 transition-colors"
+                  data-testid="link-view-training-bottom"
+                >
+                  View Training
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+
+              <CardContent className="p-4 space-y-4">
+                {/* Latest Training Video with Thumbnail */}
+                {bottomLatestVideo ? (
+                  <button
+                    onClick={handleBottomVideoClick}
+                    className={`w-full flex gap-4 p-2 -m-2 rounded-lg transition-colors ${isDark ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'} text-left group`}
                     data-testid="button-open-training-videos"
                   >
-                    <div className="h-12 w-12 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                      <PlayCircle className="h-6 w-6 text-purple-600" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                        <Badge variant="secondary" className="h-5 text-[10px] bg-purple-100 text-purple-700">New Training</Badge>
-                        <span data-testid="text-video-duration">{vimeoData.video.durationFormatted}</span>
+                    {/* Thumbnail */}
+                    <div className="relative flex-shrink-0 w-40 h-24 rounded-lg overflow-hidden bg-gray-900" data-testid="thumbnail-video-bottom">
+                      {bottomLatestVideo.thumbnail ? (
+                        <img 
+                          src={bottomLatestVideo.thumbnail} 
+                          alt={bottomLatestVideo.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                          <Play className="w-8 h-8 text-white/30" />
+                        </div>
+                      )}
+                      
+                      {/* Play Button Overlay */}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center" data-testid="overlay-play-bottom">
+                        <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+                          <Play className="w-6 h-6 text-white fill-white ml-1" />
+                        </div>
                       </div>
-                      <h3 className="font-medium text-foreground mb-1" data-testid="text-video-title">{vimeoData.video.title}</h3>
-                      <p className="text-sm text-muted-foreground line-clamp-2" data-testid="text-video-description">
-                        {vimeoData.video.description || "Watch the latest training module from Spyglass Realty."}
+                      
+                      {/* NEW Badge */}
+                      {isNewVideo(bottomLatestVideo.created_time) && (
+                        <span className="absolute top-2 left-2 px-2 py-0.5 bg-orange-500 text-white text-xs font-bold rounded" data-testid="badge-new-bottom">
+                          NEW
+                        </span>
+                      )}
+                      
+                      {/* Duration Badge */}
+                      <span className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 text-white text-xs rounded font-medium" data-testid="badge-duration-bottom">
+                        {formatDuration(bottomLatestVideo.duration)}
+                      </span>
+                    </div>
+                    
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 py-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="px-2 py-0.5 bg-orange-500/10 text-orange-500 text-xs font-medium rounded" data-testid="badge-new-training-bottom">
+                          New Training
+                        </span>
+                        <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`} data-testid="text-relative-time-bottom">
+                          {getRelativeTime(bottomLatestVideo.created_time)}
+                        </span>
+                      </div>
+                      
+                      <h3 className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'} line-clamp-2 group-hover:text-orange-500 transition-colors`} data-testid="text-video-title">
+                        {bottomLatestVideo.name}
+                      </h3>
+                      
+                      <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1 line-clamp-1`} data-testid="text-video-description-bottom">
+                        Watch the latest training module from Spyglass Realty.
                       </p>
+                      
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-xs font-medium text-orange-500 flex items-center gap-1" data-testid="text-watch-now-bottom">
+                          <Play className="w-3 h-3" />
+                          Watch Now
+                        </span>
+                      </div>
                     </div>
                   </button>
-                )}
-                <div className="p-6 flex gap-4 border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
-                  <div className="h-12 w-12 rounded-lg bg-[hsl(28,94%,54%)]/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-[hsl(28,94%,54%)] font-display font-bold text-lg">S</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                      <Badge variant="secondary" className="h-5 text-[10px]">Announcement</Badge>
-                      <span>Yesterday</span>
+                ) : (
+                  <div className="animate-pulse flex gap-4">
+                    <div className={`w-40 h-24 ${isDark ? 'bg-gray-700' : 'bg-gray-300'} rounded-lg`}></div>
+                    <div className="flex-1 space-y-2">
+                      <div className={`h-4 ${isDark ? 'bg-gray-700' : 'bg-gray-300'} rounded w-1/4`}></div>
+                      <div className={`h-5 ${isDark ? 'bg-gray-700' : 'bg-gray-300'} rounded w-3/4`}></div>
+                      <div className={`h-4 ${isDark ? 'bg-gray-700' : 'bg-gray-300'} rounded w-1/2`}></div>
                     </div>
-                    <h3 className="font-medium text-foreground mb-1">Q4 Goals & Incentives</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
+                  </div>
+                )}
+
+                {/* Divider */}
+                <div className={`border-t ${isDark ? 'border-gray-800' : 'border-gray-200'}`}></div>
+
+                {/* Q4 Goals & Incentives */}
+                <div className={`flex gap-3 p-2 -m-2 rounded-lg ${isDark ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'} cursor-pointer transition-colors`} data-testid="row-announcement-q4">
+                  <div className={`w-10 h-10 rounded-lg ${isDark ? 'bg-orange-500/20' : 'bg-orange-100'} flex items-center justify-center flex-shrink-0`}>
+                    <span className="text-lg text-orange-500 font-bold">S</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className={`px-2 py-0.5 ${isDark ? 'bg-orange-500/10 text-orange-400' : 'bg-orange-100 text-orange-600'} text-xs font-medium rounded`} data-testid="badge-announcement">
+                        Announcement
+                      </span>
+                      <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Yesterday</span>
+                    </div>
+                    <h3 className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'} line-clamp-1`} data-testid="text-announcement-title">
+                      Q4 Goals & Incentives
+                    </h3>
+                    <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-0.5 line-clamp-1`} data-testid="text-announcement-description">
                       Review the updated commission structure and bonus opportunities for top performers.
                     </p>
                   </div>
