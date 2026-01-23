@@ -1,0 +1,1508 @@
+### Full Training System Enhancement - Dashboard Widget + Netflix-Style Training Page
+
+**Goal:** Create a complete training video experience with:
+1. Dashboard "Company Updates" widget with video thumbnail
+2. Netflix-style Training page with hero banner, horizontal scrolling rows, and hover effects
+3. Full theme support (light/dark/system)
+4. User preferences (favorites, watch later, continue watching)
+
+---
+
+## PART 1: Database Schema
+
+### Create table: `user_video_preferences`
+```sql
+CREATE TABLE IF NOT EXISTS user_video_preferences (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  video_id VARCHAR(50) NOT NULL,
+  video_name VARCHAR(255),
+  video_thumbnail VARCHAR(500),
+  video_duration INTEGER,
+  is_favorite BOOLEAN DEFAULT FALSE,
+  is_watch_later BOOLEAN DEFAULT FALSE,
+  watch_progress INTEGER DEFAULT 0,
+  watch_percentage INTEGER DEFAULT 0,
+  last_watched_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  
+  UNIQUE(user_id, video_id)
+);
+
+CREATE INDEX idx_user_video_prefs_user_id ON user_video_preferences(user_id);
+CREATE INDEX idx_user_video_prefs_favorite ON user_video_preferences(user_id, is_favorite) WHERE is_favorite = TRUE;
+CREATE INDEX idx_user_video_prefs_watch_later ON user_video_preferences(user_id, is_watch_later) WHERE is_watch_later = TRUE;
+CREATE INDEX idx_user_video_prefs_progress ON user_video_preferences(user_id, watch_progress) WHERE watch_progress > 0;
+```
+
+### Drizzle Schema
+```typescript
+// shared/schema.ts
+
+export const userVideoPreferences = pgTable('user_video_preferences', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  videoId: varchar('video_id', { length: 50 }).notNull(),
+  videoName: varchar('video_name', { length: 255 }),
+  videoThumbnail: varchar('video_thumbnail', { length: 500 }),
+  videoDuration: integer('video_duration'),
+  isFavorite: boolean('is_favorite').default(false),
+  isWatchLater: boolean('is_watch_later').default(false),
+  watchProgress: integer('watch_progress').default(0),
+  watchPercentage: integer('watch_percentage').default(0),
+  lastWatchedAt: timestamp('last_watched_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+```
+
+---
+
+## PART 2: API Endpoints
+
+Add these endpoints to `server/routes.ts`:
+```typescript
+import { userVideoPreferences } from '@shared/schema';
+import { eq, and, desc, sql } from 'drizzle-orm';
+
+// ============================================
+// GET /api/videos/preferences - Get all user's video preferences
+// ============================================
+router.get('/api/videos/preferences', async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: 'Not authenticated' });
+
+    const preferences = await db
+      .select()
+      .from(userVideoPreferences)
+      .where(eq(userVideoPreferences.userId, user.id));
+
+    const prefsMap: Record<string, any> = {};
+    preferences.forEach(pref => {
+      prefsMap[pref.videoId] = {
+        isFavorite: pref.isFavorite,
+        isWatchLater: pref.isWatchLater,
+        watchProgress: pref.watchProgress,
+        watchPercentage: pref.watchPercentage,
+        lastWatchedAt: pref.lastWatchedAt
+      };
+    });
+
+    res.json({ preferences: prefsMap });
+  } catch (error) {
+    console.error('[Video Preferences Error]', error);
+    res.status(500).json({ error: 'Failed to fetch preferences' });
+  }
+});
+
+// ============================================
+// POST /api/videos/:videoId/favorite - Toggle favorite
+// ============================================
+router.post('/api/videos/:videoId/favorite', async (req, res) => {
+  try {
+    const user = req.user;
+    const { videoId } = req.params;
+    const { videoName, videoThumbnail, videoDuration } = req.body;
+    
+    if (!user) return res.status(401).json({ error: 'Not authenticated' });
+
+    const existing = await db
+      .select()
+      .from(userVideoPreferences)
+      .where(
+        and(
+          eq(userVideoPreferences.userId, user.id),
+          eq(userVideoPreferences.videoId, videoId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      const newValue = !existing[0].isFavorite;
+      await db
+        .update(userVideoPreferences)
+        .set({ isFavorite: newValue, updatedAt: new Date() })
+        .where(eq(userVideoPreferences.id, existing[0].id));
+      res.json({ isFavorite: newValue });
+    } else {
+      await db.insert(userVideoPreferences).values({
+        userId: user.id,
+        videoId,
+        videoName,
+        videoThumbnail,
+        videoDuration,
+        isFavorite: true,
+        isWatchLater: false,
+        watchProgress: 0,
+        watchPercentage: 0
+      });
+      res.json({ isFavorite: true });
+    }
+  } catch (error) {
+    console.error('[Toggle Favorite Error]', error);
+    res.status(500).json({ error: 'Failed to toggle favorite' });
+  }
+});
+
+// ============================================
+// POST /api/videos/:videoId/watch-later - Toggle watch later
+// ============================================
+router.post('/api/videos/:videoId/watch-later', async (req, res) => {
+  try {
+    const user = req.user;
+    const { videoId } = req.params;
+    const { videoName, videoThumbnail, videoDuration } = req.body;
+    
+    if (!user) return res.status(401).json({ error: 'Not authenticated' });
+
+    const existing = await db
+      .select()
+      .from(userVideoPreferences)
+      .where(
+        and(
+          eq(userVideoPreferences.userId, user.id),
+          eq(userVideoPreferences.videoId, videoId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      const newValue = !existing[0].isWatchLater;
+      await db
+        .update(userVideoPreferences)
+        .set({ isWatchLater: newValue, updatedAt: new Date() })
+        .where(eq(userVideoPreferences.id, existing[0].id));
+      res.json({ isWatchLater: newValue });
+    } else {
+      await db.insert(userVideoPreferences).values({
+        userId: user.id,
+        videoId,
+        videoName,
+        videoThumbnail,
+        videoDuration,
+        isFavorite: false,
+        isWatchLater: true,
+        watchProgress: 0,
+        watchPercentage: 0
+      });
+      res.json({ isWatchLater: true });
+    }
+  } catch (error) {
+    console.error('[Toggle Watch Later Error]', error);
+    res.status(500).json({ error: 'Failed to toggle watch later' });
+  }
+});
+
+// ============================================
+// POST /api/videos/:videoId/progress - Update watch progress
+// ============================================
+router.post('/api/videos/:videoId/progress', async (req, res) => {
+  try {
+    const user = req.user;
+    const { videoId } = req.params;
+    const { progress, percentage, videoName, videoThumbnail, videoDuration } = req.body;
+    
+    if (!user) return res.status(401).json({ error: 'Not authenticated' });
+
+    const existing = await db
+      .select()
+      .from(userVideoPreferences)
+      .where(
+        and(
+          eq(userVideoPreferences.userId, user.id),
+          eq(userVideoPreferences.videoId, videoId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db
+        .update(userVideoPreferences)
+        .set({ 
+          watchProgress: progress,
+          watchPercentage: percentage,
+          lastWatchedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(userVideoPreferences.id, existing[0].id));
+    } else {
+      await db.insert(userVideoPreferences).values({
+        userId: user.id,
+        videoId,
+        videoName,
+        videoThumbnail,
+        videoDuration,
+        isFavorite: false,
+        isWatchLater: false,
+        watchProgress: progress,
+        watchPercentage: percentage,
+        lastWatchedAt: new Date()
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[Update Progress Error]', error);
+    res.status(500).json({ error: 'Failed to update progress' });
+  }
+});
+```
+
+---
+
+## PART 3: Dashboard - Company Updates Widget with Thumbnail
+
+### Update the Company Updates section in `dashboard.tsx`:
+```tsx
+// components/dashboard/CompanyUpdates.tsx
+
+import { useState, useEffect } from 'react';
+import { Play, Clock, ArrowRight, Megaphone } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Link } from 'wouter';
+
+interface LatestVideo {
+  id: string;
+  name: string;
+  description: string;
+  duration: number;
+  created_time: string;
+  link: string;
+  player_embed_url: string;
+  pictures: {
+    sizes: Array<{ link: string; width: number; height: number }>;
+  };
+}
+
+interface CompanyUpdatesProps {
+  onVideoClick: (video: LatestVideo) => void;
+}
+
+export function CompanyUpdates({ onVideoClick }: CompanyUpdatesProps) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  
+  const [latestVideo, setLatestVideo] = useState<LatestVideo | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Theme classes
+  const cardBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const textMuted = isDark ? 'text-gray-500' : 'text-gray-400';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+  const hoverBg = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50';
+  const dividerColor = isDark ? 'border-gray-700' : 'border-gray-100';
+
+  useEffect(() => {
+    fetchLatestVideo();
+  }, []);
+
+  const fetchLatestVideo = async () => {
+    try {
+      const response = await fetch('/api/vimeo/training-videos?limit=1');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.videos && data.videos.length > 0) {
+          setLatestVideo(data.videos[0]);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch latest video:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDuration = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const isNew = (dateString: string) => {
+    const date = new Date(dateString);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return date >= sevenDaysAgo;
+  };
+
+  const getRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const getThumbnail = (video: LatestVideo) => {
+    const sizes = video.pictures?.sizes || [];
+    const medium = sizes.find(s => s.width >= 640) || sizes[sizes.length - 1];
+    return medium?.link || '';
+  };
+
+  return (
+    <div className={`${cardBg} rounded-xl border ${borderColor} overflow-hidden`}>
+      {/* Header */}
+      <div className={`flex items-center justify-between px-4 py-3 border-b ${borderColor}`}>
+        <h2 className={`font-semibold ${textPrimary}`}>Company Updates</h2>
+        <Link 
+          href="/training"
+          className={`text-sm text-orange-500 hover:text-orange-600 flex items-center gap-1 transition-colors`}
+        >
+          View Training
+          <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
+
+      <div className="p-4 space-y-4">
+        {/* Latest Training Video with Thumbnail */}
+        {loading ? (
+          <div className={`animate-pulse flex gap-4`}>
+            <div className="w-40 h-24 bg-gray-300 rounded-lg"></div>
+            <div className="flex-1 space-y-2">
+              <div className="h-4 bg-gray-300 rounded w-1/4"></div>
+              <div className="h-5 bg-gray-300 rounded w-3/4"></div>
+              <div className="h-4 bg-gray-300 rounded w-1/2"></div>
+            </div>
+          </div>
+        ) : latestVideo ? (
+          <button
+            onClick={() => onVideoClick(latestVideo)}
+            className={`w-full flex gap-4 p-2 -m-2 rounded-lg transition-colors ${hoverBg} text-left group`}
+          >
+            {/* Thumbnail */}
+            <div className="relative flex-shrink-0 w-40 h-24 rounded-lg overflow-hidden bg-gray-900">
+              {getThumbnail(latestVideo) ? (
+                <img 
+                  src={getThumbnail(latestVideo)} 
+                  alt={latestVideo.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                  <Play className="w-8 h-8 text-white/30" />
+                </div>
+              )}
+              
+              {/* Play Button Overlay */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+                  <Play className="w-6 h-6 text-white fill-white ml-1" />
+                </div>
+              </div>
+              
+              {/* NEW Badge */}
+              {isNew(latestVideo.created_time) && (
+                <span className="absolute top-2 left-2 px-2 py-0.5 bg-orange-500 text-white text-xs font-bold rounded">
+                  NEW
+                </span>
+              )}
+              
+              {/* Duration Badge */}
+              <span className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 text-white text-xs rounded font-medium">
+                {formatDuration(latestVideo.duration)}
+              </span>
+            </div>
+            
+            {/* Content */}
+            <div className="flex-1 min-w-0 py-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2 py-0.5 bg-orange-500/10 text-orange-500 text-xs font-medium rounded">
+                  New Training
+                </span>
+                <span className={`text-xs ${textMuted}`}>
+                  {getRelativeTime(latestVideo.created_time)}
+                </span>
+              </div>
+              
+              <h3 className={`font-medium ${textPrimary} line-clamp-2 group-hover:text-orange-500 transition-colors`}>
+                {latestVideo.name}
+              </h3>
+              
+              <p className={`text-sm ${textSecondary} mt-1 line-clamp-1`}>
+                Watch the latest training module from Spyglass Realty.
+              </p>
+              
+              <div className="flex items-center gap-2 mt-2">
+                <span className={`text-xs font-medium text-orange-500 flex items-center gap-1`}>
+                  <Play className="w-3 h-3" />
+                  Watch Now
+                </span>
+              </div>
+            </div>
+          </button>
+        ) : null}
+
+        {/* Divider */}
+        <div className={`border-t ${dividerColor}`}></div>
+
+        {/* Q4 Goals & Incentives */}
+        <div className={`flex gap-3 p-2 -m-2 rounded-lg ${hoverBg} cursor-pointer transition-colors`}>
+          <div className={`w-10 h-10 rounded-lg ${isDark ? 'bg-blue-500/20' : 'bg-blue-100'} flex items-center justify-center flex-shrink-0`}>
+            <Megaphone className={`w-5 h-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className={`px-2 py-0.5 ${isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-100 text-blue-600'} text-xs font-medium rounded`}>
+                Announcement
+              </span>
+              <span className={`text-xs ${textMuted}`}>Yesterday</span>
+            </div>
+            <h3 className={`font-medium ${textPrimary} line-clamp-1`}>
+              Q4 Goals & Incentives
+            </h3>
+            <p className={`text-sm ${textSecondary} mt-0.5 line-clamp-1`}>
+              Review the updated commission structure and bonus opportunities for top performers.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## PART 4: Training Page - Netflix-Style Layout
+
+### Create `client/src/pages/training.tsx`:
+```tsx
+// client/src/pages/training.tsx
+
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { 
+  Play, Clock, Calendar, Search, Heart, BookmarkPlus,
+  History, Loader2, CheckCircle, ChevronLeft, ChevronRight,
+  GraduationCap, Info, X, Volume2, VolumeX
+} from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+
+// ============================================
+// TYPES
+// ============================================
+
+interface VimeoVideo {
+  id: string;
+  name: string;
+  description: string;
+  duration: number;
+  created_time: string;
+  link: string;
+  player_embed_url: string;
+  pictures: {
+    sizes: Array<{ link: string; width: number; height: number }>;
+  };
+}
+
+interface VideoPreference {
+  isFavorite: boolean;
+  isWatchLater: boolean;
+  watchProgress: number;
+  watchPercentage: number;
+  lastWatchedAt: string | null;
+}
+
+// ============================================
+// VIDEO CARD COMPONENT (Netflix-style with hover)
+// ============================================
+
+interface VideoCardProps {
+  video: VimeoVideo;
+  preference?: VideoPreference;
+  onPlay: (video: VimeoVideo) => void;
+  onToggleFavorite: (video: VimeoVideo) => void;
+  onToggleWatchLater: (video: VimeoVideo) => void;
+  isDark: boolean;
+  isNew?: boolean;
+  showProgress?: boolean;
+}
+
+function VideoCard({ 
+  video, 
+  preference, 
+  onPlay, 
+  onToggleFavorite, 
+  onToggleWatchLater,
+  isDark,
+  isNew = false,
+  showProgress = true
+}: VideoCardProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  
+  const hasProgress = preference && preference.watchProgress > 0 && preference.watchPercentage < 95;
+  const isCompleted = preference && preference.watchPercentage >= 95;
+
+  const formatDuration = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getThumbnail = () => {
+    const sizes = video.pictures?.sizes || [];
+    const medium = sizes.find(s => s.width >= 640) || sizes[sizes.length - 1];
+    return medium?.link || '';
+  };
+
+  return (
+    <div
+      className="relative flex-shrink-0 w-64 group"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Card Container with hover expansion */}
+      <div 
+        className={`
+          relative rounded-lg overflow-hidden cursor-pointer
+          transition-all duration-300 ease-out
+          ${isHovered ? 'scale-110 z-20 shadow-2xl' : 'scale-100 z-10'}
+          ${isDark ? 'bg-gray-800' : 'bg-white shadow-md'}
+        `}
+        onClick={() => onPlay(video)}
+      >
+        {/* Thumbnail */}
+        <div className="relative aspect-video bg-gray-900">
+          {getThumbnail() ? (
+            <img 
+              src={getThumbnail()} 
+              alt={video.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Play className="w-12 h-12 text-white/30" />
+            </div>
+          )}
+          
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          
+          {/* Play button on hover */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform">
+              <Play className="w-7 h-7 text-gray-900 fill-gray-900 ml-1" />
+            </div>
+          </div>
+          
+          {/* Progress bar */}
+          {showProgress && hasProgress && (
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600">
+              <div 
+                className="h-full bg-orange-500"
+                style={{ width: `${preference.watchPercentage}%` }}
+              />
+            </div>
+          )}
+          
+          {/* Completed check */}
+          {isCompleted && (
+            <div className="absolute top-2 right-2">
+              <CheckCircle className="w-6 h-6 text-green-500 fill-green-500 drop-shadow-lg" />
+            </div>
+          )}
+          
+          {/* Duration badge */}
+          <span className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/80 text-white text-xs rounded font-medium">
+            {formatDuration(video.duration)}
+          </span>
+          
+          {/* NEW badge */}
+          {isNew && !hasProgress && !isCompleted && (
+            <span className="absolute top-2 left-2 px-2 py-0.5 bg-orange-500 text-white text-xs font-bold rounded shadow-lg">
+              NEW
+            </span>
+          )}
+          
+          {/* Favorite/Watch Later indicators */}
+          {(preference?.isFavorite || preference?.isWatchLater) && (
+            <div className="absolute top-2 right-2 flex gap-1">
+              {preference?.isFavorite && (
+                <Heart className="w-5 h-5 text-red-500 fill-red-500 drop-shadow-lg" />
+              )}
+              {preference?.isWatchLater && !preference?.isFavorite && (
+                <BookmarkPlus className="w-5 h-5 text-orange-500 fill-orange-500 drop-shadow-lg" />
+              )}
+            </div>
+          )}
+        </div>
+        
+        {/* Expanded info on hover */}
+        <div 
+          className={`
+            overflow-hidden transition-all duration-300
+            ${isHovered ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}
+          `}
+        >
+          <div className="p-3">
+            {/* Action buttons */}
+            <div className="flex items-center gap-2 mb-2">
+              <button 
+                className="w-9 h-9 bg-white rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+                onClick={(e) => { e.stopPropagation(); onPlay(video); }}
+              >
+                <Play className="w-5 h-5 text-gray-900 fill-gray-900 ml-0.5" />
+              </button>
+              <button 
+                className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-colors ${
+                  preference?.isFavorite 
+                    ? 'bg-red-500 border-red-500 text-white' 
+                    : isDark 
+                    ? 'border-gray-400 text-gray-400 hover:border-white hover:text-white' 
+                    : 'border-gray-400 text-gray-400 hover:border-gray-900 hover:text-gray-900'
+                }`}
+                onClick={(e) => { e.stopPropagation(); onToggleFavorite(video); }}
+              >
+                <Heart className={`w-4 h-4 ${preference?.isFavorite ? 'fill-white' : ''}`} />
+              </button>
+              <button 
+                className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-colors ${
+                  preference?.isWatchLater 
+                    ? 'bg-orange-500 border-orange-500 text-white' 
+                    : isDark 
+                    ? 'border-gray-400 text-gray-400 hover:border-white hover:text-white' 
+                    : 'border-gray-400 text-gray-400 hover:border-gray-900 hover:text-gray-900'
+                }`}
+                onClick={(e) => { e.stopPropagation(); onToggleWatchLater(video); }}
+              >
+                <BookmarkPlus className={`w-4 h-4 ${preference?.isWatchLater ? 'fill-white' : ''}`} />
+              </button>
+            </div>
+            
+            {/* Video info */}
+            <h4 className={`font-semibold text-sm line-clamp-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              {video.name}
+            </h4>
+            
+            {hasProgress && (
+              <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                {preference.watchPercentage}% watched
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {/* Title below card (visible when not hovered) */}
+      <div className={`mt-2 transition-opacity duration-300 ${isHovered ? 'opacity-0' : 'opacity-100'}`}>
+        <h4 className={`text-sm font-medium line-clamp-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          {video.name}
+        </h4>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// HORIZONTAL ROW COMPONENT
+// ============================================
+
+interface VideoRowProps {
+  title: string;
+  icon?: React.ReactNode;
+  videos: VimeoVideo[];
+  preferences: Record<string, VideoPreference>;
+  onPlay: (video: VimeoVideo) => void;
+  onToggleFavorite: (video: VimeoVideo) => void;
+  onToggleWatchLater: (video: VimeoVideo) => void;
+  isDark: boolean;
+  showNewBadge?: boolean;
+  showProgress?: boolean;
+  emptyMessage?: string;
+}
+
+function VideoRow({
+  title,
+  icon,
+  videos,
+  preferences,
+  onPlay,
+  onToggleFavorite,
+  onToggleWatchLater,
+  isDark,
+  showNewBadge = false,
+  showProgress = true,
+  emptyMessage = "No videos available"
+}: VideoRowProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const ref = scrollRef.current;
+    if (ref) {
+      ref.addEventListener('scroll', checkScroll);
+      return () => ref.removeEventListener('scroll', checkScroll);
+    }
+  }, [videos]);
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const scrollAmount = 800;
+      scrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const isNew = (video: VimeoVideo) => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return new Date(video.created_time) >= sevenDaysAgo;
+  };
+
+  if (videos.length === 0) {
+    return (
+      <div className="mb-8">
+        <h2 className={`text-xl font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          {icon}
+          {title}
+          <span className={`text-sm font-normal ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>(0)</span>
+        </h2>
+        <div className={`p-8 rounded-lg text-center ${isDark ? 'bg-gray-800/50' : 'bg-gray-100'}`}>
+          <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>{emptyMessage}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-8 relative group/row">
+      {/* Row Header */}
+      <h2 className={`text-xl font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        {icon}
+        {title}
+        <span className={`text-sm font-normal ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+          ({videos.length})
+        </span>
+      </h2>
+      
+      {/* Scroll Container */}
+      <div className="relative">
+        {/* Left Arrow */}
+        {canScrollLeft && (
+          <button
+            onClick={() => scroll('left')}
+            className={`absolute left-0 top-0 bottom-8 w-12 z-30 flex items-center justify-center
+              bg-gradient-to-r ${isDark ? 'from-gray-900' : 'from-gray-50'} to-transparent
+              opacity-0 group-hover/row:opacity-100 transition-opacity`}
+          >
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center
+              ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white hover:bg-gray-100 shadow-lg'}`}>
+              <ChevronLeft className={`w-6 h-6 ${isDark ? 'text-white' : 'text-gray-900'}`} />
+            </div>
+          </button>
+        )}
+        
+        {/* Videos */}
+        <div
+          ref={scrollRef}
+          className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 px-1"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {videos.map(video => (
+            <VideoCard
+              key={video.id}
+              video={video}
+              preference={preferences[video.id]}
+              onPlay={onPlay}
+              onToggleFavorite={onToggleFavorite}
+              onToggleWatchLater={onToggleWatchLater}
+              isDark={isDark}
+              isNew={showNewBadge && isNew(video)}
+              showProgress={showProgress}
+            />
+          ))}
+        </div>
+        
+        {/* Right Arrow */}
+        {canScrollRight && (
+          <button
+            onClick={() => scroll('right')}
+            className={`absolute right-0 top-0 bottom-8 w-12 z-30 flex items-center justify-center
+              bg-gradient-to-l ${isDark ? 'from-gray-900' : 'from-gray-50'} to-transparent
+              opacity-0 group-hover/row:opacity-100 transition-opacity`}
+          >
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center
+              ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white hover:bg-gray-100 shadow-lg'}`}>
+              <ChevronRight className={`w-6 h-6 ${isDark ? 'text-white' : 'text-gray-900'}`} />
+            </div>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// HERO BANNER COMPONENT
+// ============================================
+
+interface HeroBannerProps {
+  video: VimeoVideo;
+  preference?: VideoPreference;
+  onPlay: (video: VimeoVideo) => void;
+  onToggleWatchLater: (video: VimeoVideo) => void;
+  isDark: boolean;
+}
+
+function HeroBanner({ video, preference, onPlay, onToggleWatchLater, isDark }: HeroBannerProps) {
+  const getThumbnail = () => {
+    const sizes = video.pictures?.sizes || [];
+    const large = sizes.find(s => s.width >= 1280) || sizes[sizes.length - 1];
+    return large?.link || '';
+  };
+
+  const formatDuration = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    if (hrs > 0) {
+      return `${hrs}h ${mins}m`;
+    }
+    return `${mins} min`;
+  };
+
+  const isNew = () => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return new Date(video.created_time) >= sevenDaysAgo;
+  };
+
+  return (
+    <div className="relative w-full h-[500px] mb-8 rounded-xl overflow-hidden">
+      {/* Background Image */}
+      <div className="absolute inset-0">
+        {getThumbnail() ? (
+          <img 
+            src={getThumbnail()} 
+            alt={video.name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className={`w-full h-full ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`} />
+        )}
+        
+        {/* Gradient overlays */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+      </div>
+      
+      {/* Content */}
+      <div className="absolute inset-0 flex flex-col justify-end p-8">
+        <div className="max-w-2xl">
+          {/* Badges */}
+          <div className="flex items-center gap-3 mb-4">
+            {isNew() && (
+              <span className="px-3 py-1 bg-orange-500 text-white text-sm font-bold rounded">
+                NEW
+              </span>
+            )}
+            <span className="px-3 py-1 bg-white/20 text-white text-sm font-medium rounded backdrop-blur-sm">
+              Latest Training
+            </span>
+          </div>
+          
+          {/* Title */}
+          <h1 className="text-4xl font-bold text-white mb-3 line-clamp-2">
+            {video.name}
+          </h1>
+          
+          {/* Meta info */}
+          <div className="flex items-center gap-4 text-white/80 text-sm mb-4">
+            <span className="flex items-center gap-1">
+              <Clock className="w-4 h-4" />
+              {formatDuration(video.duration)}
+            </span>
+            <span className="flex items-center gap-1">
+              <Calendar className="w-4 h-4" />
+              {new Date(video.created_time).toLocaleDateString('en-US', { 
+                month: 'long', 
+                day: 'numeric', 
+                year: 'numeric' 
+              })}
+            </span>
+          </div>
+          
+          {/* Description */}
+          <p className="text-white/70 text-base mb-6 line-clamp-2 max-w-xl">
+            {video.description || 'Watch this training video to learn new skills and improve your real estate knowledge.'}
+          </p>
+          
+          {/* Action Buttons */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => onPlay(video)}
+              className="flex items-center gap-2 px-6 py-3 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <Play className="w-5 h-5 fill-gray-900" />
+              Play Now
+            </button>
+            <button
+              onClick={() => onToggleWatchLater(video)}
+              className={`flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-colors ${
+                preference?.isWatchLater
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm'
+              }`}
+            >
+              <BookmarkPlus className={`w-5 h-5 ${preference?.isWatchLater ? 'fill-white' : ''}`} />
+              {preference?.isWatchLater ? 'Added' : 'Watch Later'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// VIDEO PLAYER MODAL
+// ============================================
+
+interface VideoPlayerModalProps {
+  video: VimeoVideo | null;
+  onClose: () => void;
+  isDark: boolean;
+}
+
+function VideoPlayerModal({ video, onClose, isDark }: VideoPlayerModalProps) {
+  if (!video) return null;
+
+  const getEmbedUrl = () => {
+    const baseUrl = video.player_embed_url || `https://player.vimeo.com/video/${video.id}`;
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    return `${baseUrl}${separator}autoplay=1&title=0&byline=0&portrait=0`;
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+      onClick={onClose}
+    >
+      <div 
+        className="relative w-full max-w-5xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute -top-12 right-0 p-2 text-white/70 hover:text-white transition-colors"
+        >
+          <X className="w-8 h-8" />
+        </button>
+        
+        {/* Video Player */}
+        <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
+          <iframe
+            src={getEmbedUrl()}
+            className="w-full h-full"
+            frameBorder="0"
+            allow="autoplay; fullscreen; picture-in-picture"
+            allowFullScreen
+            title={video.name}
+          />
+        </div>
+        
+        {/* Video Title */}
+        <h3 className="text-white text-xl font-semibold mt-4">
+          {video.name}
+        </h3>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// MAIN TRAINING PAGE
+// ============================================
+
+export default function TrainingPage() {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  
+  // State
+  const [videos, setVideos] = useState<VimeoVideo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [preferences, setPreferences] = useState<Record<string, VideoPreference>>({});
+  const [playingVideo, setPlayingVideo] = useState<VimeoVideo | null>(null);
+
+  // Theme classes
+  const pageBg = isDark ? 'bg-gray-900' : 'bg-gray-50';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const inputBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const inputBorder = isDark ? 'border-gray-700' : 'border-gray-200';
+
+  // ============================================
+  // DATA FETCHING
+  // ============================================
+
+  useEffect(() => {
+    fetchVideos();
+    fetchPreferences();
+  }, []);
+
+  const fetchVideos = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/vimeo/training-videos');
+      if (!response.ok) throw new Error('Failed to fetch videos');
+      
+      const data = await response.json();
+      const sortedVideos = (data.videos || []).sort((a: VimeoVideo, b: VimeoVideo) => 
+        new Date(b.created_time).getTime() - new Date(a.created_time).getTime()
+      );
+      setVideos(sortedVideos);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load videos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPreferences = async () => {
+    try {
+      const response = await fetch('/api/videos/preferences');
+      if (response.ok) {
+        const data = await response.json();
+        setPreferences(data.preferences || {});
+      }
+    } catch (err) {
+      console.error('Failed to fetch preferences:', err);
+    }
+  };
+
+  // ============================================
+  // ACTIONS
+  // ============================================
+
+  const getThumbnail = (video: VimeoVideo) => {
+    const sizes = video.pictures?.sizes || [];
+    const medium = sizes.find(s => s.width >= 640) || sizes[sizes.length - 1];
+    return medium?.link || '';
+  };
+
+  const toggleFavorite = async (video: VimeoVideo) => {
+    try {
+      const response = await fetch(`/api/videos/${video.id}/favorite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoName: video.name,
+          videoThumbnail: getThumbnail(video),
+          videoDuration: video.duration
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPreferences(prev => ({
+          ...prev,
+          [video.id]: {
+            ...prev[video.id],
+            isFavorite: data.isFavorite,
+            isWatchLater: prev[video.id]?.isWatchLater || false,
+            watchProgress: prev[video.id]?.watchProgress || 0,
+            watchPercentage: prev[video.id]?.watchPercentage || 0,
+            lastWatchedAt: prev[video.id]?.lastWatchedAt || null
+          }
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to toggle favorite:', err);
+    }
+  };
+
+  const toggleWatchLater = async (video: VimeoVideo) => {
+    try {
+      const response = await fetch(`/api/videos/${video.id}/watch-later`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoName: video.name,
+          videoThumbnail: getThumbnail(video),
+          videoDuration: video.duration
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPreferences(prev => ({
+          ...prev,
+          [video.id]: {
+            ...prev[video.id],
+            isFavorite: prev[video.id]?.isFavorite || false,
+            isWatchLater: data.isWatchLater,
+            watchProgress: prev[video.id]?.watchProgress || 0,
+            watchPercentage: prev[video.id]?.watchPercentage || 0,
+            lastWatchedAt: prev[video.id]?.lastWatchedAt || null
+          }
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to toggle watch later:', err);
+    }
+  };
+
+  // ============================================
+  // FILTERED VIDEO LISTS
+  // ============================================
+
+  const isNew = (video: VimeoVideo) => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return new Date(video.created_time) >= sevenDaysAgo;
+  };
+
+  const filteredVideos = useMemo(() => {
+    if (!searchQuery) return videos;
+    return videos.filter(v => 
+      v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      v.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [videos, searchQuery]);
+
+  const continueWatching = useMemo(() => {
+    return videos.filter(v => {
+      const pref = preferences[v.id];
+      return pref && pref.watchProgress > 0 && pref.watchPercentage < 95;
+    }).sort((a, b) => {
+      const aTime = preferences[a.id]?.lastWatchedAt;
+      const bTime = preferences[b.id]?.lastWatchedAt;
+      if (!aTime) return 1;
+      if (!bTime) return -1;
+      return new Date(bTime).getTime() - new Date(aTime).getTime();
+    });
+  }, [videos, preferences]);
+
+  const newVideos = useMemo(() => {
+    return videos.filter(v => isNew(v));
+  }, [videos]);
+
+  const favorites = useMemo(() => {
+    return videos.filter(v => preferences[v.id]?.isFavorite);
+  }, [videos, preferences]);
+
+  const watchLater = useMemo(() => {
+    return videos.filter(v => preferences[v.id]?.isWatchLater);
+  }, [videos, preferences]);
+
+  const latestVideo = videos[0];
+
+  // ============================================
+  // RENDER
+  // ============================================
+
+  if (loading) {
+    return (
+      <div className={`min-h-screen ${pageBg} flex items-center justify-center`}>
+        <Loader2 className={`w-8 h-8 animate-spin ${textSecondary}`} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={`min-h-screen ${pageBg} flex items-center justify-center`}>
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{error}</p>
+          <button 
+            onClick={fetchVideos}
+            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`min-h-screen ${pageBg}`}>
+      {/* Header */}
+      <div className="sticky top-0 z-40 px-6 py-4 bg-gradient-to-b from-black/50 to-transparent backdrop-blur-sm">
+        <div className="flex items-center justify-between max-w-[1800px] mx-auto">
+          <div className="flex items-center gap-3">
+            <GraduationCap className={`w-8 h-8 text-orange-500`} />
+            <h1 className={`text-2xl font-bold ${textPrimary}`}>Training Library</h1>
+          </div>
+          
+          {/* Search */}
+          <div className="relative w-80">
+            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${textSecondary}`} />
+            <input
+              type="text"
+              placeholder="Search training videos..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={`w-full pl-10 pr-4 py-2.5 ${inputBg} border ${inputBorder} rounded-full text-sm ${textPrimary} placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all`}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="px-6 pb-12 max-w-[1800px] mx-auto">
+        {/* Search Results or Full Library */}
+        {searchQuery ? (
+          <div>
+            <h2 className={`text-xl font-bold mb-4 ${textPrimary}`}>
+              Search Results for "{searchQuery}" ({filteredVideos.length})
+            </h2>
+            <div className="flex flex-wrap gap-4">
+              {filteredVideos.map(video => (
+                <VideoCard
+                  key={video.id}
+                  video={video}
+                  preference={preferences[video.id]}
+                  onPlay={setPlayingVideo}
+                  onToggleFavorite={toggleFavorite}
+                  onToggleWatchLater={toggleWatchLater}
+                  isDark={isDark}
+                  isNew={isNew(video)}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Hero Banner */}
+            {latestVideo && (
+              <HeroBanner
+                video={latestVideo}
+                preference={preferences[latestVideo.id]}
+                onPlay={setPlayingVideo}
+                onToggleWatchLater={toggleWatchLater}
+                isDark={isDark}
+              />
+            )}
+
+            {/* Continue Watching */}
+            {continueWatching.length > 0 && (
+              <VideoRow
+                title="Continue Watching"
+                icon={<History className="w-6 h-6 text-orange-500" />}
+                videos={continueWatching}
+                preferences={preferences}
+                onPlay={setPlayingVideo}
+                onToggleFavorite={toggleFavorite}
+                onToggleWatchLater={toggleWatchLater}
+                isDark={isDark}
+                showProgress={true}
+              />
+            )}
+
+            {/* New This Week */}
+            {newVideos.length > 0 && (
+              <VideoRow
+                title="New This Week"
+                icon={<span className="text-xl">🆕</span>}
+                videos={newVideos}
+                preferences={preferences}
+                onPlay={setPlayingVideo}
+                onToggleFavorite={toggleFavorite}
+                onToggleWatchLater={toggleWatchLater}
+                isDark={isDark}
+                showNewBadge={true}
+              />
+            )}
+
+            {/* My Favorites */}
+            <VideoRow
+              title="My Favorites"
+              icon={<Heart className="w-6 h-6 text-red-500" />}
+              videos={favorites}
+              preferences={preferences}
+              onPlay={setPlayingVideo}
+              onToggleFavorite={toggleFavorite}
+              onToggleWatchLater={toggleWatchLater}
+              isDark={isDark}
+              emptyMessage="Click the heart icon on any video to add it to your favorites"
+            />
+
+            {/* Watch Later */}
+            <VideoRow
+              title="Watch Later"
+              icon={<BookmarkPlus className="w-6 h-6 text-orange-500" />}
+              videos={watchLater}
+              preferences={preferences}
+              onPlay={setPlayingVideo}
+              onToggleFavorite={toggleFavorite}
+              onToggleWatchLater={toggleWatchLater}
+              isDark={isDark}
+              emptyMessage="Click the bookmark icon on any video to save it for later"
+            />
+
+            {/* All Training Videos */}
+            <VideoRow
+              title="All Training Videos"
+              icon={<GraduationCap className="w-6 h-6 text-orange-500" />}
+              videos={videos}
+              preferences={preferences}
+              onPlay={setPlayingVideo}
+              onToggleFavorite={toggleFavorite}
+              onToggleWatchLater={toggleWatchLater}
+              isDark={isDark}
+              showNewBadge={true}
+            />
+          </>
+        )}
+      </div>
+
+      {/* Video Player Modal */}
+      <VideoPlayerModal
+        video={playingVideo}
+        onClose={() => setPlayingVideo(null)}
+        isDark={isDark}
+      />
+
+      {/* Hide scrollbar CSS */}
+      <style>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
+    </div>
+  );
+}
+```
+
+---
+
+## PART 5: Add Route and Sidebar
+
+### Update Router
+```tsx
+// In your App.tsx or routes config
+import TrainingPage from './pages/training';
+
+// Add route
+<Route path="/training" element={<TrainingPage />} />
+```
+
+### Update Sidebar Navigation
+
+Add Training to sidebar (below Marketing Calendar, above Settings):
+```tsx
+// In your sidebar navigation component
+{
+  label: 'Training',
+  icon: GraduationCap,
+  href: '/training',
+}
+```
+
+---
+
+## PART 6: Update Dashboard to Use New Company Updates
+
+### In `dashboard.tsx`:
+```tsx
+import { CompanyUpdates } from '@/components/dashboard/CompanyUpdates';
+import { TrainingVideosModal } from '@/components/TrainingVideosModal';
+
+// In your Dashboard component:
+const [showTrainingModal, setShowTrainingModal] = useState(false);
+const [selectedVideo, setSelectedVideo] = useState(null);
+
+const handleVideoClick = (video) => {
+  setSelectedVideo(video);
+  setShowTrainingModal(true);
+};
+
+// In the JSX:
+<CompanyUpdates onVideoClick={handleVideoClick} />
+
+{showTrainingModal && selectedVideo && (
+  <TrainingVideosModal
+    isOpen={showTrainingModal}
+    onClose={() => setShowTrainingModal(false)}
+    initialVideoId={selectedVideo.id}
+  />
+)}
+```
+
+---
+
+## Testing Checklist
+
+### Database
+- [ ] Table `user_video_preferences` created
+- [ ] Indexes created
+
+### API Endpoints
+- [ ] GET `/api/videos/preferences` returns user preferences
+- [ ] POST `/api/videos/:videoId/favorite` toggles favorite
+- [ ] POST `/api/videos/:videoId/watch-later` toggles watch later
+- [ ] POST `/api/videos/:videoId/progress` saves progress
+
+### Dashboard - Company Updates Widget
+- [ ] Shows video thumbnail from Vimeo
+- [ ] Shows NEW badge if video is < 7 days old
+- [ ] Shows duration badge on thumbnail
+- [ ] Play button overlay on hover
+- [ ] Click opens modal with video
+- [ ] "View Training" link navigates to /training
+- [ ] Works in light mode
+- [ ] Works in dark mode
+
+### Training Page - Netflix Style
+- [ ] Hero banner shows latest video
+- [ ] Hero has Play Now and Watch Later buttons
+- [ ] Continue Watching row shows videos with progress
+- [ ] New This Week row shows recent videos
+- [ ] My Favorites row shows favorited videos
+- [ ] Watch Later row shows saved videos
+- [ ] All Training Videos row shows all videos
+- [ ] Horizontal scrolling works with arrows
+- [ ] Video cards expand on hover
+- [ ] Hover shows action buttons (play, favorite, watch later)
+- [ ] Progress bars show on videos with progress
+- [ ] NEW badges show on recent videos
+- [ ] Completed checkmarks show on finished videos
+- [ ] Search filters videos
+- [ ] Click video opens player modal
+- [ ] Video player modal works
+- [ ] Works in light mode
+- [ ] Works in dark mode
+- [ ] Works in system mode
+- [ ] Sidebar navigation works
+
+### Theme Support
+- [ ] Light mode: All backgrounds light, text dark
+- [ ] Dark mode: All backgrounds dark, text light
+- [ ] System mode: Follows OS preference
+- [ ] Hero banner gradient works in both modes
+- [ ] Cards have correct shadows/borders per mode
+- [ ] Hover states work in both modes

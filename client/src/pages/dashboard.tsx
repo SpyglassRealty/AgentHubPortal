@@ -15,8 +15,22 @@ import { SuggestionCard } from "@/components/suggestion-card";
 import MarketPulse from "@/components/market-pulse";
 import { GoogleDocModal } from "@/components/google-doc-modal";
 import { TrainingVideosModal } from "@/components/training-videos-modal";
+import { CompanyUpdates } from "@/components/dashboard/company-updates";
 import { DOCUMENTS } from "@/lib/documents";
 import type { ContextSuggestion, AgentProfile } from "@shared/schema";
+
+interface VimeoVideoForModal {
+  id: string;
+  name: string;
+  description: string;
+  duration: number;
+  created_time: string;
+  link: string;
+  player_embed_url: string;
+  pictures: {
+    sizes: Array<{ link: string; width: number; height: number }>;
+  };
+}
 
 interface ProfileResponse {
   profile: AgentProfile | null;
@@ -48,6 +62,12 @@ export default function DashboardPage() {
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [showHandbook, setShowHandbook] = useState(false);
   const [showTrainingVideos, setShowTrainingVideos] = useState(false);
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
+
+  const handleVideoClick = (video: VimeoVideoForModal) => {
+    setSelectedVideoId(video.id);
+    setShowTrainingVideos(true);
+  };
 
   const { data: profileData, isLoading: profileLoading } = useQuery<ProfileResponse>({
     queryKey: ["/api/context/profile"],
@@ -129,7 +149,10 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <MarketPulse />
-          
+          <CompanyUpdates onVideoClick={handleVideoClick} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {suggestionsLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-24 w-full" />
@@ -362,7 +385,11 @@ export default function DashboardPage() {
 
       <TrainingVideosModal
         isOpen={showTrainingVideos}
-        onClose={() => setShowTrainingVideos(false)}
+        onClose={() => {
+          setShowTrainingVideos(false);
+          setSelectedVideoId(null);
+        }}
+        initialVideoId={selectedVideoId || undefined}
       />
     </Layout>
   );
