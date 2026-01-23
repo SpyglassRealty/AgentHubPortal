@@ -15,23 +15,9 @@ import { SuggestionCard } from "@/components/suggestion-card";
 import MarketPulse from "@/components/market-pulse";
 import { GoogleDocModal } from "@/components/google-doc-modal";
 import { TrainingVideosModal } from "@/components/training-videos-modal";
-import { CompanyUpdates } from "@/components/dashboard/company-updates";
 import { DOCUMENTS } from "@/lib/documents";
 import { useTheme } from "next-themes";
 import type { ContextSuggestion, AgentProfile } from "@shared/schema";
-
-interface VimeoVideoForModal {
-  id: string;
-  name: string;
-  description: string;
-  duration: number;
-  created_time: string;
-  link: string;
-  player_embed_url: string;
-  pictures: {
-    sizes: Array<{ link: string; width: number; height: number }>;
-  };
-}
 
 interface ProfileResponse {
   profile: AgentProfile | null;
@@ -136,11 +122,6 @@ export default function DashboardPage() {
     fetchLatestVideo();
   }, []);
 
-  const handleVideoClick = (video: VimeoVideoForModal) => {
-    setSelectedVideoId(video.id);
-    setShowTrainingVideos(true);
-  };
-
   const handleBottomVideoClick = () => {
     if (bottomLatestVideo) {
       setSelectedVideoId(bottomLatestVideo.id);
@@ -228,39 +209,59 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <MarketPulse />
-          <CompanyUpdates onVideoClick={handleVideoClick} />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Action Items Card - Right of Market Pulse */}
           {suggestionsLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-24 w-full" />
-              <Skeleton className="h-24 w-full" />
-            </div>
+            <Card className="h-full">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+                  <CardTitle className="text-lg font-display">Action Items</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </CardContent>
+            </Card>
           ) : suggestions.length > 0 ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-[hsl(28,94%,54%)]" />
-                <h2 className="text-xl font-display font-semibold tracking-tight">Your Action Items</h2>
-                <Badge className="bg-[hsl(28,94%,54%)] text-white">{suggestions.length}</Badge>
-              </div>
-              <div className="space-y-3">
+            <Card className="h-full" data-testid="card-action-items">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+                    <CardTitle className="text-lg font-display">Action Items</CardTitle>
+                  </div>
+                  <Badge className="bg-[hsl(28,94%,54%)] text-white">{suggestions.length}</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
                 {suggestions.slice(0, 3).map((suggestion) => (
                   <SuggestionCard key={suggestion.id} suggestion={suggestion} />
                 ))}
-              </div>
-              {suggestions.length > 3 && (
-                <p className="text-sm text-center text-muted-foreground">
-                  +{suggestions.length - 3} more action items
-                </p>
-              )}
-            </div>
+                {suggestions.length > 3 && (
+                  <p className="text-sm text-center text-muted-foreground pt-2">
+                    +{suggestions.length - 3} more action items
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           ) : (
-            <Card className="flex items-center justify-center h-full min-h-[200px]">
-              <CardContent className="text-center text-muted-foreground">
-                <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>No action items right now</p>
-                <p className="text-sm">Check back later for personalized suggestions</p>
+            <Card className="h-full" data-testid="card-action-items-empty">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+                  <CardTitle className="text-lg font-display">Action Items</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
+                  <Sparkles className="h-6 w-6 text-muted-foreground opacity-50" />
+                </div>
+                <p className="text-foreground font-medium" data-testid="text-no-action-items">No action items right now</p>
+                <p className="text-muted-foreground text-sm mt-1">
+                  Check back later for personalized suggestions
+                </p>
               </CardContent>
             </Card>
           )}
