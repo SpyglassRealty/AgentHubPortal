@@ -526,9 +526,32 @@ interface VideoPlayerModalProps {
   video: VimeoVideo | null;
   onClose: () => void;
   isDark: boolean;
+  preference?: VideoPreference;
+  onToggleFavorite: (video: VimeoVideo, e: React.MouseEvent) => void;
+  onToggleWatchLater: (video: VimeoVideo, e: React.MouseEvent) => void;
 }
 
-function VideoPlayerModal({ video, onClose, isDark }: VideoPlayerModalProps) {
+function VideoPlayerModal({ 
+  video, 
+  onClose, 
+  isDark,
+  preference,
+  onToggleFavorite,
+  onToggleWatchLater
+}: VideoPlayerModalProps) {
+  
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (video) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [video]);
+
   if (!video) return null;
 
   const getEmbedUrl = () => {
@@ -543,25 +566,54 @@ function VideoPlayerModal({ video, onClose, isDark }: VideoPlayerModalProps) {
     return `https://player.vimeo.com/video/${video.id}?autoplay=1&title=0&byline=0&portrait=0`;
   };
 
+  const formatDuration = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  // Theme classes
+  const modalBg = isDark ? 'bg-gray-900' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+  const buttonBg = isDark ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-100 hover:bg-gray-200';
+
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-0 sm:p-4 md:p-6"
       onClick={onClose}
       data-testid="video-player-modal"
     >
       <div 
-        className="relative w-full max-w-5xl"
+        className={`relative w-full h-full sm:h-auto sm:max-w-4xl md:max-w-5xl sm:rounded-xl overflow-hidden ${modalBg}`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute -top-12 right-0 p-2 text-white/70 hover:text-white transition-colors"
+          className={`absolute top-3 right-3 sm:top-4 sm:right-4 z-20 p-2 rounded-full transition-colors
+            ${isDark ? 'bg-gray-800/80 hover:bg-gray-700 text-white' : 'bg-white/80 hover:bg-white text-gray-900'}
+            backdrop-blur-sm`}
           data-testid="button-close-modal"
         >
-          <X className="w-8 h-8" />
+          <X className="w-5 h-5 sm:w-6 sm:h-6" />
         </button>
         
-        <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
+        {/* Video Player */}
+        <div className="relative w-full aspect-video bg-black">
           <iframe
             src={getEmbedUrl()}
             className="w-full h-full"
@@ -572,9 +624,64 @@ function VideoPlayerModal({ video, onClose, isDark }: VideoPlayerModalProps) {
           />
         </div>
         
-        <h3 className="text-white text-xl font-semibold mt-4" data-testid="modal-video-title">
-          {video.name}
-        </h3>
+        {/* Video Info & Action Buttons */}
+        <div className={`p-4 sm:p-5 border-t ${borderColor}`}>
+          {/* Title & Meta */}
+          <div className="mb-4">
+            <h3 className={`text-lg sm:text-xl font-semibold ${textPrimary} line-clamp-2`} data-testid="modal-video-title">
+              {video.name}
+            </h3>
+            <div className={`flex items-center gap-3 mt-2 text-sm ${textSecondary}`}>
+              <span className="flex items-center gap-1">
+                <Clock className="w-4 h-4" />
+                {formatDuration(video.duration)}
+              </span>
+              <span className="flex items-center gap-1">
+                <Calendar className="w-4 h-4" />
+                {formatDate(video.created_time)}
+              </span>
+            </div>
+          </div>
+          
+          {/* Action Buttons - SYNCED WITH DATABASE */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Favorite Button */}
+            <button
+              onClick={(e) => onToggleFavorite(video, e)}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all active:scale-[0.98]
+                ${preference?.isFavorite 
+                  ? 'bg-red-500 hover:bg-red-600 text-white' 
+                  : `${buttonBg} ${textPrimary} border ${borderColor}`
+                }`}
+              data-testid="button-modal-favorite"
+            >
+              <Heart className={`w-5 h-5 ${preference?.isFavorite ? 'fill-white' : ''}`} />
+              <span>{preference?.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}</span>
+            </button>
+            
+            {/* Watch Later Button */}
+            <button
+              onClick={(e) => onToggleWatchLater(video, e)}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all active:scale-[0.98]
+                ${preference?.isWatchLater 
+                  ? 'bg-orange-500 hover:bg-orange-600 text-white' 
+                  : `${buttonBg} ${textPrimary} border ${borderColor}`
+                }`}
+              data-testid="button-modal-watchlater"
+            >
+              <BookmarkPlus className={`w-5 h-5 ${preference?.isWatchLater ? 'fill-white' : ''}`} />
+              <span>{preference?.isWatchLater ? 'Remove from Watch Later' : 'Watch Later'}</span>
+            </button>
+          </div>
+          
+          {/* Sync Notice */}
+          <p className={`mt-3 text-xs ${textSecondary} text-center`}>
+            <span className="inline-flex items-center gap-1">
+              <CheckCircle className="w-3 h-3 text-green-500" />
+              These buttons sync with your Training Library
+            </span>
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -916,6 +1023,9 @@ export default function TrainingPage() {
           video={playingVideo}
           onClose={() => setPlayingVideo(null)}
           isDark={isDark}
+          preference={playingVideo ? preferences[playingVideo.id] : undefined}
+          onToggleFavorite={toggleFavorite}
+          onToggleWatchLater={toggleWatchLater}
         />
 
         <style>{`
