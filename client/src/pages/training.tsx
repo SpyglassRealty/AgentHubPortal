@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import Layout from '@/components/layout';
+import { useIsTouchDevice, useWindowSize } from '@/hooks/use-mobile';
 
 interface VimeoVideo {
   id: string;
@@ -37,6 +38,8 @@ interface VideoCardProps {
   isDark: boolean;
   isNew?: boolean;
   showProgress?: boolean;
+  isTouch?: boolean;
+  cardWidth?: string;
 }
 
 function VideoCard({ 
@@ -47,9 +50,12 @@ function VideoCard({
   onToggleWatchLater,
   isDark,
   isNew = false,
-  showProgress = true
+  showProgress = true,
+  isTouch = false,
+  cardWidth = 'w-56 sm:w-64'
 }: VideoCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const shadowClass = isDark ? 'shadow-xl shadow-black/30' : 'shadow-xl shadow-gray-300/50';
   
   const hasProgress = preference && preference.watchProgress > 0 && preference.watchPercentage < 95;
   const isCompleted = preference && preference.watchPercentage >= 95;
@@ -72,17 +78,17 @@ function VideoCard({
 
   return (
     <div
-      className="relative flex-shrink-0 w-56 sm:w-64 group"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className={`relative flex-shrink-0 ${cardWidth} group snap-start`}
+      onMouseEnter={() => !isTouch && setIsHovered(true)}
+      onMouseLeave={() => !isTouch && setIsHovered(false)}
       data-testid={`video-card-${video.id}`}
     >
       <div 
         className={`
           relative rounded-lg overflow-hidden cursor-pointer
           transition-all duration-300 ease-out
-          ${isHovered ? 'scale-105 z-20 shadow-2xl' : 'scale-100 z-10'}
-          ${isDark ? 'bg-gray-800' : 'bg-white shadow-md'}
+          ${!isTouch && isHovered ? `scale-105 z-20 ${shadowClass}` : 'scale-100 z-10'}
+          ${isDark ? 'bg-gray-800 shadow-md shadow-black/20' : 'bg-white shadow-md'}
         `}
         onClick={() => onPlay(video)}
       >
@@ -99,13 +105,28 @@ function VideoCard({
             </div>
           )}
           
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          {/* Gradient overlay on hover (desktop only) */}
+          {!isTouch && (
+            <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`} />
+          )}
           
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform">
-              <Play className="w-6 h-6 text-gray-900 fill-gray-900 ml-1" />
+          {/* Mobile: Always visible play indicator */}
+          {isTouch && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-12 h-12 bg-black/50 rounded-full flex items-center justify-center">
+                <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+              </div>
             </div>
-          </div>
+          )}
+          
+          {/* Desktop: Play button on hover */}
+          {!isTouch && (
+            <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+              <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform">
+                <Play className="w-7 h-7 text-gray-900 fill-gray-900 ml-1" />
+              </div>
+            </div>
+          )}
           
           {showProgress && hasProgress && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600">
@@ -144,53 +165,101 @@ function VideoCard({
           )}
         </div>
         
-        <div 
-          className={`
-            transition-all duration-300 overflow-hidden
-            ${isHovered ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}
-          `}
-        >
-          <div className={`p-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
-            <div className="flex items-center gap-2 mb-2">
-              <button 
-                className="w-8 h-8 bg-white rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors shadow"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPlay(video);
-                }}
-                data-testid={`button-play-${video.id}`}
-              >
-                <Play className="w-4 h-4 text-gray-900 fill-gray-900 ml-0.5" />
-              </button>
-              <button 
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow ${
-                  preference?.isFavorite 
-                    ? 'bg-red-500 text-white' 
-                    : isDark ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                }`}
-                onClick={(e) => onToggleFavorite(video, e)}
-                data-testid={`button-favorite-${video.id}`}
-              >
-                <Heart className={`w-4 h-4 ${preference?.isFavorite ? 'fill-white' : ''}`} />
-              </button>
-              <button 
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow ${
-                  preference?.isWatchLater 
-                    ? 'bg-orange-500 text-white' 
-                    : isDark ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                }`}
-                onClick={(e) => onToggleWatchLater(video, e)}
-                data-testid={`button-watchlater-${video.id}`}
-              >
-                <Plus className={`w-4 h-4 ${preference?.isWatchLater ? '' : ''}`} />
-              </button>
+        {/* Expanded info on hover (desktop only) */}
+        {!isTouch && (
+          <div 
+            className={`
+              overflow-hidden transition-all duration-300
+              ${isHovered ? 'max-h-44 opacity-100' : 'max-h-0 opacity-0'}
+            `}
+          >
+            <div className={`p-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <button 
+                  className="w-9 h-9 bg-white rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors shadow"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPlay(video);
+                  }}
+                  data-testid={`button-play-${video.id}`}
+                >
+                  <Play className="w-5 h-5 text-gray-900 fill-gray-900 ml-0.5" />
+                </button>
+                <button 
+                  className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-colors ${
+                    preference?.isFavorite 
+                      ? 'bg-red-500 border-red-500 text-white' 
+                      : isDark 
+                      ? 'border-gray-400 text-gray-400 hover:border-white hover:text-white' 
+                      : 'border-gray-400 text-gray-400 hover:border-gray-900 hover:text-gray-900'
+                  }`}
+                  onClick={(e) => onToggleFavorite(video, e)}
+                  data-testid={`button-favorite-${video.id}`}
+                >
+                  <Heart className={`w-4 h-4 ${preference?.isFavorite ? 'fill-white' : ''}`} />
+                </button>
+                <button 
+                  className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-colors ${
+                    preference?.isWatchLater 
+                      ? 'bg-orange-500 border-orange-500 text-white' 
+                      : isDark 
+                      ? 'border-gray-400 text-gray-400 hover:border-white hover:text-white' 
+                      : 'border-gray-400 text-gray-400 hover:border-gray-900 hover:text-gray-900'
+                  }`}
+                  onClick={(e) => onToggleWatchLater(video, e)}
+                  data-testid={`button-watchlater-${video.id}`}
+                >
+                  <BookmarkPlus className={`w-4 h-4 ${preference?.isWatchLater ? 'fill-white' : ''}`} />
+                </button>
+              </div>
+              
+              <h4 className={`font-semibold text-sm line-clamp-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {video.name}
+              </h4>
+              
+              {hasProgress && (
+                <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {preference.watchPercentage}% watched
+                </p>
+              )}
             </div>
-            
-            <h4 className={`font-medium text-sm line-clamp-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {video.name}
-            </h4>
           </div>
-        </div>
+        )}
+      </div>
+      
+      {/* Title below card (always visible on mobile, visible when not hovered on desktop) */}
+      <div className={`mt-2 transition-opacity duration-300 ${!isTouch && isHovered ? 'opacity-0' : 'opacity-100'}`}>
+        <h4 className={`text-sm font-medium line-clamp-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          {video.name}
+        </h4>
+        
+        {/* Mobile: Show quick action buttons below title */}
+        {isTouch && (
+          <div className="flex items-center gap-2 mt-2">
+            <button 
+              className={`p-2 rounded-full transition-colors ${
+                preference?.isFavorite 
+                  ? 'bg-red-500 text-white' 
+                  : isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
+              }`}
+              onClick={(e) => { e.stopPropagation(); onToggleFavorite(video, e); }}
+              data-testid={`button-favorite-mobile-${video.id}`}
+            >
+              <Heart className={`w-4 h-4 ${preference?.isFavorite ? 'fill-white' : ''}`} />
+            </button>
+            <button 
+              className={`p-2 rounded-full transition-colors ${
+                preference?.isWatchLater 
+                  ? 'bg-orange-500 text-white' 
+                  : isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
+              }`}
+              onClick={(e) => { e.stopPropagation(); onToggleWatchLater(video, e); }}
+              data-testid={`button-watchlater-mobile-${video.id}`}
+            >
+              <BookmarkPlus className={`w-4 h-4 ${preference?.isWatchLater ? 'fill-white' : ''}`} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -205,6 +274,7 @@ interface VideoRowProps {
   onToggleFavorite: (video: VimeoVideo, e: React.MouseEvent) => void;
   onToggleWatchLater: (video: VimeoVideo, e: React.MouseEvent) => void;
   isDark: boolean;
+  isTouch: boolean;
   showProgress?: boolean;
   showNewBadge?: boolean;
   emptyMessage?: string;
@@ -219,6 +289,7 @@ function VideoRow({
   onToggleFavorite,
   onToggleWatchLater,
   isDark,
+  isTouch,
   showProgress = false,
   showNewBadge = false,
   emptyMessage
@@ -226,6 +297,15 @@ function VideoRow({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
+  const { width } = useWindowSize();
+
+  // Responsive card width
+  const getCardWidth = () => {
+    if (width < 640) return 'w-44'; // Mobile: smaller cards
+    if (width < 768) return 'w-52'; // Large mobile
+    if (width < 1024) return 'w-56'; // Tablet
+    return 'w-64'; // Desktop
+  };
 
   const checkScroll = useCallback(() => {
     if (scrollRef.current) {
@@ -246,8 +326,11 @@ function VideoRow({
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
-      const scrollAmount = direction === 'left' ? -600 : 600;
-      scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      const scrollAmount = width < 768 ? 300 : 600;
+      scrollRef.current.scrollBy({ 
+        left: direction === 'left' ? -scrollAmount : scrollAmount, 
+        behavior: 'smooth' 
+      });
     }
   };
 
@@ -273,27 +356,37 @@ function VideoRow({
       </div>
       
       {videos.length === 0 ? (
-        <div className={`text-center py-8 ${textSecondary}`}>
+        <div className={`text-center py-8 ${textSecondary} mx-4 md:mx-0`}>
           <p>{emptyMessage}</p>
         </div>
       ) : (
         <div className="relative group/row">
-          {showLeftArrow && (
+          {/* Left Arrow - Desktop only */}
+          {!isTouch && showLeftArrow && (
             <button
               onClick={() => scroll('left')}
-              className={`absolute left-0 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full flex items-center justify-center transition-opacity shadow-lg ${
-                isDark ? 'bg-gray-800 hover:bg-gray-700 text-white' : 'bg-white hover:bg-gray-100 text-gray-900'
-              } opacity-0 group-hover/row:opacity-100`}
+              className={`absolute left-0 top-0 bottom-16 w-12 z-30 hidden md:flex items-center justify-center
+                bg-gradient-to-r ${isDark ? 'from-gray-900' : 'from-gray-50'} to-transparent
+                opacity-0 group-hover/row:opacity-100 transition-opacity`}
               data-testid={`button-scroll-left-${title.toLowerCase().replace(/\s+/g, '-')}`}
             >
-              <ChevronLeft className="w-6 h-6" />
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white hover:bg-gray-100 shadow-lg'
+              }`}>
+                <ChevronLeft className={`w-6 h-6 ${isDark ? 'text-white' : 'text-gray-900'}`} />
+              </div>
             </button>
           )}
           
+          {/* Videos - Horizontal scroll with touch support */}
           <div
             ref={scrollRef}
-            className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 px-1"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            className="flex gap-3 md:gap-4 overflow-x-auto pb-4 px-4 md:px-1 snap-x snap-mandatory md:snap-none"
+            style={{ 
+              scrollbarWidth: 'none', 
+              msOverflowStyle: 'none',
+              WebkitOverflowScrolling: 'touch'
+            }}
           >
             {videos.map(video => (
               <VideoCard
@@ -306,19 +399,26 @@ function VideoRow({
                 isDark={isDark}
                 isNew={showNewBadge && isNew(video)}
                 showProgress={showProgress}
+                isTouch={isTouch}
+                cardWidth={getCardWidth()}
               />
             ))}
           </div>
           
-          {showRightArrow && videos.length > 4 && (
+          {/* Right Arrow - Desktop only */}
+          {!isTouch && showRightArrow && videos.length > 4 && (
             <button
               onClick={() => scroll('right')}
-              className={`absolute right-0 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full flex items-center justify-center transition-opacity shadow-lg ${
-                isDark ? 'bg-gray-800 hover:bg-gray-700 text-white' : 'bg-white hover:bg-gray-100 text-gray-900'
-              } opacity-0 group-hover/row:opacity-100`}
+              className={`absolute right-0 top-0 bottom-16 w-12 z-30 hidden md:flex items-center justify-center
+                bg-gradient-to-l ${isDark ? 'from-gray-900' : 'from-gray-50'} to-transparent
+                opacity-0 group-hover/row:opacity-100 transition-opacity`}
               data-testid={`button-scroll-right-${title.toLowerCase().replace(/\s+/g, '-')}`}
             >
-              <ChevronRight className="w-6 h-6" />
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white hover:bg-gray-100 shadow-lg'
+              }`}>
+                <ChevronRight className={`w-6 h-6 ${isDark ? 'text-white' : 'text-gray-900'}`} />
+              </div>
             </button>
           )}
         </div>
@@ -483,6 +583,7 @@ function VideoPlayerModal({ video, onClose, isDark }: VideoPlayerModalProps) {
 export default function TrainingPage() {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
+  const isTouch = useIsTouchDevice();
   
   const [videos, setVideos] = useState<VimeoVideo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -749,6 +850,7 @@ export default function TrainingPage() {
                   onToggleFavorite={toggleFavorite}
                   onToggleWatchLater={toggleWatchLater}
                   isDark={isDark}
+                  isTouch={isTouch}
                   showProgress={true}
                 />
               )}
@@ -763,6 +865,7 @@ export default function TrainingPage() {
                   onToggleFavorite={toggleFavorite}
                   onToggleWatchLater={toggleWatchLater}
                   isDark={isDark}
+                  isTouch={isTouch}
                   showNewBadge={true}
                 />
               )}
@@ -776,6 +879,7 @@ export default function TrainingPage() {
                 onToggleFavorite={toggleFavorite}
                 onToggleWatchLater={toggleWatchLater}
                 isDark={isDark}
+                isTouch={isTouch}
                 emptyMessage="Click the heart icon on any video to add it to your favorites"
               />
 
@@ -788,6 +892,7 @@ export default function TrainingPage() {
                 onToggleFavorite={toggleFavorite}
                 onToggleWatchLater={toggleWatchLater}
                 isDark={isDark}
+                isTouch={isTouch}
                 emptyMessage="Click the + icon on any video to save it for later"
               />
 
@@ -800,6 +905,7 @@ export default function TrainingPage() {
                 onToggleFavorite={toggleFavorite}
                 onToggleWatchLater={toggleWatchLater}
                 isDark={isDark}
+                isTouch={isTouch}
                 showNewBadge={true}
               />
             </>
