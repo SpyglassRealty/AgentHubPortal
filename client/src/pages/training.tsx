@@ -601,10 +601,10 @@ function VideoPlayerModal({
         className={`relative w-full h-full sm:h-auto sm:max-w-4xl md:max-w-5xl sm:rounded-xl overflow-hidden ${modalBg}`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button */}
+        {/* Close button - TOP LEFT to avoid Vimeo's icons */}
         <button
           onClick={onClose}
-          className={`absolute top-3 right-3 sm:top-4 sm:right-4 z-20 p-2 rounded-full transition-colors
+          className={`absolute top-3 left-3 sm:top-4 sm:left-4 z-20 p-2 rounded-full transition-colors
             ${isDark ? 'bg-gray-800/80 hover:bg-gray-700 text-white' : 'bg-white/80 hover:bg-white text-gray-900'}
             backdrop-blur-sm`}
           data-testid="button-close-modal"

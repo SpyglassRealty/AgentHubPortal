@@ -1,0 +1,64 @@
+Quick Fix - Move X Button to Top-Left
+Send this to Mission Control Replit:
+### Fix: Move Close Button to Avoid Overlap with Vimeo Icons
+
+**Issue:** The X (close) button overlaps with Vimeo's built-in favorite/watch later icons in the top-right corner of the video player.
+
+**Solution:** Move the X button to the top-LEFT corner of the modal.
+
+---
+
+## Update VideoPlayerModal Close Button Position
+
+Find the close button in the VideoPlayerModal component and change its position:
+
+**BEFORE:**
+```tsx
+{/* Close button */}
+<button
+  onClick={onClose}
+  className={`absolute top-3 right-3 sm:top-4 sm:right-4 z-20 ...`}
+>
+```
+
+**AFTER:**
+```tsx
+{/* Close button - TOP LEFT to avoid Vimeo's icons */}
+<button
+  onClick={onClose}
+  className={`absolute top-3 left-3 sm:top-4 sm:left-4 z-20 p-2 rounded-full transition-colors
+    ${isDark ? 'bg-gray-800/80 hover:bg-gray-700 text-white' : 'bg-white/80 hover:bg-white text-gray-900'}
+    backdrop-blur-sm`}
+>
+  <X className="w-5 h-5 sm:w-6 sm:h-6" />
+</button>
+```
+
+---
+
+## Visual Comparison
+
+**BEFORE (Overlapping):**
+┌─────────────────────────────────────────────────────────┐
+│                                            [X] [♥] [🕐] │  ← Overlap!
+│                                                         │
+│                   [VIDEO PLAYER]                        │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+
+**AFTER (Fixed):**
+┌─────────────────────────────────────────────────────────┐
+│ [X]                                        [♥] [🕐]     │  ← No overlap
+│                                                         │
+│                   [VIDEO PLAYER]                        │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+
+---
+
+## Testing
+- [ ] X button now on top-LEFT corner
+- [ ] No overlap with Vimeo's icons (top-right)
+- [ ] X button still easily clickable
+- [ ] Works on desktop and mobile
+- [ ] Works in light and dark mode
