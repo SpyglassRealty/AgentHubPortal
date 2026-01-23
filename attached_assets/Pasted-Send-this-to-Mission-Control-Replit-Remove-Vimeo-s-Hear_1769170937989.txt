@@ -1,0 +1,73 @@
+Send this to Mission Control Replit:
+### Remove Vimeo's Heart & Clock Icons from Video Player
+
+**Goal:** Hide Vimeo's built-in "Like" (heart) and "Watch Later" (clock) icons since we have our own synced buttons below the video.
+
+---
+
+## Update the getEmbedUrl Function
+
+Find the `getEmbedUrl` function in the VideoPlayerModal component and add these parameters:
+
+**BEFORE:**
+```tsx
+const getEmbedUrl = () => {
+  const baseUrl = video.player_embed_url || `https://player.vimeo.com/video/${video.id}`;
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  return `${baseUrl}${separator}autoplay=1&title=0&byline=0&portrait=0`;
+};
+```
+
+**AFTER:**
+```tsx
+const getEmbedUrl = () => {
+  const baseUrl = video.player_embed_url || `https://player.vimeo.com/video/${video.id}`;
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  return `${baseUrl}${separator}autoplay=1&title=0&byline=0&portrait=0&like=0&watchlater=0`;
+};
+```
+
+---
+
+## Parameters Added
+
+| Parameter | Value | Effect |
+|-----------|-------|--------|
+| `like=0` | 0 | Hides the heart/like button |
+| `watchlater=0` | 0 | Hides the clock/watch later button |
+
+---
+
+## Visual Result
+
+**BEFORE:**
+┌─────────────────────────────────────────────────────────┐
+│ [X]                                        [♥] [🕐]     │  ← Vimeo icons visible
+│                                                         │
+│                   [VIDEO PLAYER]                        │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+│  Title                                                  │
+│  [♥ Add to Favorites]    [🔖 Watch Later]              │  ← Your buttons
+└─────────────────────────────────────────────────────────┘
+
+**AFTER:**
+┌─────────────────────────────────────────────────────────┐
+│ [X]                                                     │  ← Clean! No Vimeo icons
+│                                                         │
+│                   [VIDEO PLAYER]                        │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+│  Title                                                  │
+│  [♥ Add to Favorites]    [🔖 Watch Later]              │  ← Your synced buttons
+└─────────────────────────────────────────────────────────┘
+
+---
+
+## Testing
+- [ ] Vimeo heart icon is hidden
+- [ ] Vimeo clock/watch later icon is hidden
+- [ ] Video still plays correctly
+- [ ] Your "Add to Favorites" button still works
+- [ ] Your "Watch Later" button still works
+- [ ] Other Vimeo controls still visible (play, volume, fullscreen, etc.)
