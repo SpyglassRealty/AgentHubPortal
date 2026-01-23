@@ -507,7 +507,7 @@ export default function TrainingPage() {
     setError(null);
     
     try {
-      const response = await fetch('/api/vimeo/training-videos');
+      const response = await fetch('/api/vimeo/training-videos', { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch videos');
       
       const data = await response.json();
@@ -524,7 +524,7 @@ export default function TrainingPage() {
 
   const fetchPreferences = async () => {
     try {
-      const response = await fetch('/api/videos/preferences');
+      const response = await fetch('/api/videos/preferences', { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         setPreferences(data.preferences || {});
@@ -546,6 +546,7 @@ export default function TrainingPage() {
       const response = await fetch(`/api/videos/${video.id}/favorite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           videoName: video.name,
           videoThumbnail: getThumbnail(video),
@@ -578,6 +579,7 @@ export default function TrainingPage() {
       const response = await fetch(`/api/videos/${video.id}/watch-later`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           videoName: video.name,
           videoThumbnail: getThumbnail(video),
