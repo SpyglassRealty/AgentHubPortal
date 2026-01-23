@@ -20,7 +20,8 @@ import {
   Database,
   Handshake,
   TrendingUp,
-  Settings
+  Settings,
+  GraduationCap
 } from "lucide-react";
 
 export type AppConnectionType = 
@@ -198,5 +199,6 @@ export const navItems = [
   { label: "Properties", icon: Building2, href: "/properties" },
   { label: "Marketing", icon: Megaphone, href: "/marketing" },
   { label: "Marketing Calendar", icon: CalendarDays, href: "/marketing-calendar" },
+  { label: "Training", icon: GraduationCap, href: "/training" },
   { label: "Settings", icon: Settings, href: "/settings" },
 ];
