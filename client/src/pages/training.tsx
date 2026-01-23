@@ -131,7 +131,7 @@ function VideoCard({
           {showProgress && hasProgress && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600">
               <div 
-                className="h-full bg-orange-500"
+                className="h-full bg-[#EF4923]"
                 style={{ width: `${preference.watchPercentage}%` }}
               />
             </div>
@@ -148,7 +148,7 @@ function VideoCard({
           </span>
           
           {isNew && !hasProgress && !isCompleted && (
-            <span className="absolute top-2 left-2 px-2 py-0.5 bg-orange-500 text-white text-xs font-bold rounded shadow-lg">
+            <span className="absolute top-2 left-2 px-2 py-0.5 bg-[#EF4923] text-white text-xs font-bold rounded shadow-lg">
               NEW
             </span>
           )}
@@ -159,7 +159,7 @@ function VideoCard({
                 <Heart className="w-4 h-4 text-red-500 fill-red-500 drop-shadow-lg" />
               )}
               {preference?.isWatchLater && !preference?.isFavorite && (
-                <BookmarkPlus className="w-4 h-4 text-orange-500 fill-orange-500 drop-shadow-lg" />
+                <BookmarkPlus className="w-4 h-4 text-[#EF4923] fill-[#EF4923] drop-shadow-lg" />
               )}
             </div>
           )}
@@ -201,7 +201,7 @@ function VideoCard({
                 <button 
                   className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-colors ${
                     preference?.isWatchLater 
-                      ? 'bg-orange-500 border-orange-500 text-white' 
+                      ? 'bg-[#EF4923] border-[#EF4923] text-white' 
                       : isDark 
                       ? 'border-gray-400 text-gray-400 hover:border-white hover:text-white' 
                       : 'border-gray-400 text-gray-400 hover:border-gray-900 hover:text-gray-900'
@@ -250,7 +250,7 @@ function VideoCard({
             <button 
               className={`min-w-[44px] min-h-[44px] p-2.5 rounded-full transition-colors flex items-center justify-center ${
                 preference?.isWatchLater 
-                  ? 'bg-orange-500 text-white' 
+                  ? 'bg-[#EF4923] text-white' 
                   : isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
               }`}
               onClick={(e) => { e.stopPropagation(); onToggleWatchLater(video, e); }}
@@ -473,7 +473,7 @@ function HeroBanner({ video, preference, onPlay, onToggleWatchLater, isDark }: H
         <div className="max-w-2xl">
           <div className="flex items-center gap-3 mb-3">
             {isNew() && (
-              <span className="px-3 py-1 bg-orange-500 text-white text-sm font-bold rounded">
+              <span className="px-3 py-1 bg-[#EF4923] text-white text-sm font-bold rounded">
                 NEW
               </span>
             )}
@@ -507,7 +507,7 @@ function HeroBanner({ video, preference, onPlay, onToggleWatchLater, isDark }: H
               onClick={(e) => onToggleWatchLater(video, e)}
               className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-colors shadow-lg ${
                 preference?.isWatchLater
-                  ? 'bg-orange-500 text-white hover:bg-orange-600'
+                  ? 'bg-[#EF4923] text-white hover:bg-[#D4401F]'
                   : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur'
               }`}
               data-testid="button-hero-watchlater"
@@ -666,7 +666,7 @@ function VideoPlayerModal({
               onClick={(e) => onToggleWatchLater(video, e)}
               className={`flex-1 flex items-center justify-center gap-2 px-4 min-h-[48px] rounded-lg font-medium transition-all active:scale-[0.98]
                 ${preference?.isWatchLater 
-                  ? 'bg-orange-500 hover:bg-orange-600 text-white' 
+                  ? 'bg-[#EF4923] hover:bg-[#D4401F] text-white' 
                   : `${buttonBg} ${textPrimary} border ${borderColor}`
                 }`}
               data-testid="button-modal-watchlater"
@@ -875,7 +875,7 @@ export default function TrainingPage() {
             <p className="text-red-500 mb-4">{error}</p>
             <button 
               onClick={fetchVideos}
-              className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+              className="px-4 py-2 bg-[#EF4923] text-white rounded-lg hover:bg-[#D4401F] transition-colors"
               data-testid="button-retry"
             >
               Retry
@@ -892,7 +892,7 @@ export default function TrainingPage() {
         <div className="max-w-[1600px] mx-auto">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-[#EF4923] rounded-lg flex items-center justify-center">
                 <GraduationCap className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -908,7 +908,7 @@ export default function TrainingPage() {
                 placeholder="Search videos..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2.5 ${inputBg} border ${inputBorder} rounded-full text-sm ${textPrimary} placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all`}
+                className={`w-full pl-10 pr-4 py-2.5 ${inputBg} border ${inputBorder} rounded-full text-sm ${textPrimary} placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#EF4923] focus:border-transparent transition-all`}
                 data-testid="input-search"
               />
             </div>
@@ -952,7 +952,7 @@ export default function TrainingPage() {
               {continueWatching.length > 0 && (
                 <VideoRow
                   title="Continue Watching"
-                  icon={<History className="w-6 h-6 text-orange-500" />}
+                  icon={<History className="w-6 h-6 text-[#EF4923]" />}
                   videos={continueWatching}
                   preferences={preferences}
                   onPlay={setPlayingVideo}
@@ -994,7 +994,7 @@ export default function TrainingPage() {
 
               <VideoRow
                 title="Watch Later"
-                icon={<BookmarkPlus className="w-6 h-6 text-orange-500" />}
+                icon={<BookmarkPlus className="w-6 h-6 text-[#EF4923]" />}
                 videos={watchLater}
                 preferences={preferences}
                 onPlay={setPlayingVideo}
@@ -1007,7 +1007,7 @@ export default function TrainingPage() {
 
               <VideoRow
                 title="All Training Videos"
-                icon={<GraduationCap className="w-6 h-6 text-orange-500" />}
+                icon={<GraduationCap className="w-6 h-6 text-[#EF4923]" />}
                 videos={videos}
                 preferences={preferences}
                 onPlay={setPlayingVideo}

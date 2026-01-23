@@ -102,7 +102,7 @@ export function OnboardingModal({ open, onComplete }: OnboardingModalProps) {
       <DialogContent className="sm:max-w-lg" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
-            <div className="h-10 w-10 rounded-lg bg-[hsl(28,94%,54%)] flex items-center justify-center">
+            <div className="h-10 w-10 rounded-lg bg-[#EF4923] flex items-center justify-center">
               {IconComponent && <IconComponent className="h-5 w-5 text-white" />}
             </div>
             <div>
@@ -136,11 +136,11 @@ export function OnboardingModal({ open, onComplete }: OnboardingModalProps) {
                   />
                   <Label
                     htmlFor={option.value}
-                    className="flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all hover:bg-muted/50 peer-data-[state=checked]:border-[hsl(28,94%,54%)] peer-data-[state=checked]:bg-[hsl(28,94%,95%)]"
+                    className="flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all hover:bg-muted/50 peer-data-[state=checked]:border-[#EF4923] peer-data-[state=checked]:bg-[#FEF2F0]"
                   >
-                    <div className="h-5 w-5 rounded-full border-2 flex items-center justify-center mt-0.5 peer-data-[state=checked]:border-[hsl(28,94%,54%)] peer-data-[state=checked]:bg-[hsl(28,94%,54%)]">
+                    <div className="h-5 w-5 rounded-full border-2 flex items-center justify-center mt-0.5 peer-data-[state=checked]:border-[#EF4923] peer-data-[state=checked]:bg-[#EF4923]">
                       {answers[currentQuestion.id] === option.value && (
-                        <CheckCircle2 className="h-4 w-4 text-[hsl(28,94%,54%)]" />
+                        <CheckCircle2 className="h-4 w-4 text-[#EF4923]" />
                       )}
                     </div>
                     <div>
@@ -168,7 +168,7 @@ export function OnboardingModal({ open, onComplete }: OnboardingModalProps) {
               <div
                 key={i}
                 className={`h-2 w-2 rounded-full transition-colors ${
-                  i <= step ? "bg-[hsl(28,94%,54%)]" : "bg-muted"
+                  i <= step ? "bg-[#EF4923]" : "bg-muted"
                 }`}
               />
             ))}
@@ -176,7 +176,7 @@ export function OnboardingModal({ open, onComplete }: OnboardingModalProps) {
           <Button
             onClick={handleNext}
             disabled={!canProceed || saveProfile.isPending}
-            className="bg-[hsl(28,94%,54%)] hover:bg-[hsl(28,94%,45%)]"
+            className="bg-[#EF4923] hover:bg-[#D4401F]"
             data-testid="button-next"
           >
             {saveProfile.isPending ? "Saving..." : isLastStep ? "Get Started" : "Next"}

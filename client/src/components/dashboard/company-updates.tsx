@@ -95,7 +95,7 @@ export function CompanyUpdates({ onVideoClick }: CompanyUpdatesProps) {
         <h2 className={`font-semibold ${textPrimary}`}>Company Updates</h2>
         <Link 
           href="/training"
-          className={`text-sm text-orange-500 hover:text-orange-600 flex items-center gap-1 transition-colors`}
+          className={`text-sm text-[#EF4923] hover:text-[#D4401F] flex items-center gap-1 transition-colors`}
           data-testid="link-view-training"
         >
           View Training
@@ -133,13 +133,13 @@ export function CompanyUpdates({ onVideoClick }: CompanyUpdatesProps) {
               )}
               
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+                <div className="w-12 h-12 bg-[#EF4923] rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
                   <Play className="w-6 h-6 text-white fill-white ml-1" />
                 </div>
               </div>
               
               {isNew(latestVideo.created_time) && (
-                <span className="absolute top-2 left-2 px-2 py-0.5 bg-orange-500 text-white text-xs font-bold rounded">
+                <span className="absolute top-2 left-2 px-2 py-0.5 bg-[#EF4923] text-white text-xs font-bold rounded">
                   NEW
                 </span>
               )}
@@ -151,7 +151,7 @@ export function CompanyUpdates({ onVideoClick }: CompanyUpdatesProps) {
             
             <div className="flex-1 min-w-0 py-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className="px-2 py-0.5 bg-orange-500/10 text-orange-500 text-xs font-medium rounded">
+                <span className="px-2 py-0.5 bg-[#EF4923]/10 text-[#EF4923] text-xs font-medium rounded">
                   New Training
                 </span>
                 <span className={`text-xs ${textMuted}`}>
@@ -159,7 +159,7 @@ export function CompanyUpdates({ onVideoClick }: CompanyUpdatesProps) {
                 </span>
               </div>
               
-              <h3 className={`font-medium ${textPrimary} line-clamp-2 group-hover:text-orange-500 transition-colors`}>
+              <h3 className={`font-medium ${textPrimary} line-clamp-2 group-hover:text-[#EF4923] transition-colors`}>
                 {latestVideo.name}
               </h3>
               
@@ -168,7 +168,7 @@ export function CompanyUpdates({ onVideoClick }: CompanyUpdatesProps) {
               </p>
               
               <div className="flex items-center gap-2 mt-2">
-                <span className={`text-xs font-medium text-orange-500 flex items-center gap-1`}>
+                <span className={`text-xs font-medium text-[#EF4923] flex items-center gap-1`}>
                   <Play className="w-3 h-3" />
                   Watch Now
                 </span>

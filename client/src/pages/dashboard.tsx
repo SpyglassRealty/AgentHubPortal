@@ -215,7 +215,7 @@ export default function DashboardPage() {
             <Card className="h-full">
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+                  <Sparkles className="h-5 w-5 text-[#EF4923]" />
                   <CardTitle className="text-lg font-display">Action Items</CardTitle>
                 </div>
               </CardHeader>
@@ -229,10 +229,10 @@ export default function DashboardPage() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+                    <Sparkles className="h-5 w-5 text-[#EF4923]" />
                     <CardTitle className="text-lg font-display">Action Items</CardTitle>
                   </div>
-                  <Badge className="bg-[hsl(28,94%,54%)] text-white">{suggestions.length}</Badge>
+                  <Badge className="bg-[#EF4923] text-white">{suggestions.length}</Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -250,7 +250,7 @@ export default function DashboardPage() {
             <Card className="h-full" data-testid="card-action-items-empty">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+                  <Sparkles className="h-5 w-5 text-[#EF4923]" />
                   <CardTitle className="text-lg font-display">Action Items</CardTitle>
                 </div>
               </CardHeader>
@@ -278,7 +278,7 @@ export default function DashboardPage() {
                 <p className="text-[10px] sm:text-xs md:text-sm font-medium text-muted-foreground truncate">{stat.label}</p>
                 <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between mt-1 sm:mt-2 gap-1">
                   <h3 className="text-xl sm:text-2xl md:text-3xl font-bold font-display">{stat.value}</h3>
-                  <Badge variant="secondary" className="bg-[hsl(28,94%,54%)]/10 text-[hsl(28,94%,54%)] hover:bg-[hsl(28,94%,54%)]/20 border-0 text-[9px] sm:text-xs w-fit">
+                  <Badge variant="secondary" className="bg-[#EF4923]/10 text-[#EF4923] hover:bg-[#EF4923]/20 border-0 text-[9px] sm:text-xs w-fit">
                     {stat.sublabel}
                   </Badge>
                 </div>
@@ -321,7 +321,7 @@ export default function DashboardPage() {
               };
               
               const cardContent = (
-                <Card className="group relative overflow-hidden border-border hover:border-[hsl(28,94%,54%)]/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer bg-card h-full" data-testid={`card-app-${app.id}`}>
+                <Card className="group relative overflow-hidden border-border hover:border-[#EF4923]/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer bg-card h-full" data-testid={`card-app-${app.id}`}>
                   <div className={`absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity`}>
                     {app.url ? <ExternalLink className="h-5 w-5 text-muted-foreground" /> : <ArrowUpRight className="h-5 w-5 text-muted-foreground" />}
                   </div>
@@ -390,7 +390,7 @@ export default function DashboardPage() {
                 <h2 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Company Updates</h2>
                 <Link 
                   href="/training"
-                  className="text-sm text-orange-500 hover:text-orange-600 flex items-center gap-1 transition-colors"
+                  className="text-sm text-[#EF4923] hover:text-[#D4401F] flex items-center gap-1 transition-colors"
                   data-testid="link-view-training-bottom"
                 >
                   View Training
@@ -422,14 +422,14 @@ export default function DashboardPage() {
                       
                       {/* Play Button Overlay */}
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center" data-testid="overlay-play-bottom">
-                        <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+                        <div className="w-12 h-12 bg-[#EF4923] rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
                           <Play className="w-6 h-6 text-white fill-white ml-1" />
                         </div>
                       </div>
                       
                       {/* NEW Badge */}
                       {isNewVideo(bottomLatestVideo.created_time) && (
-                        <span className="absolute top-2 left-2 px-2 py-0.5 bg-orange-500 text-white text-xs font-bold rounded" data-testid="badge-new-bottom">
+                        <span className="absolute top-2 left-2 px-2 py-0.5 bg-[#EF4923] text-white text-xs font-bold rounded" data-testid="badge-new-bottom">
                           NEW
                         </span>
                       )}
@@ -443,7 +443,7 @@ export default function DashboardPage() {
                     {/* Content */}
                     <div className="flex-1 min-w-0 py-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="px-2 py-0.5 bg-orange-500/10 text-orange-500 text-xs font-medium rounded" data-testid="badge-new-training-bottom">
+                        <span className="px-2 py-0.5 bg-[#EF4923]/10 text-[#EF4923] text-xs font-medium rounded" data-testid="badge-new-training-bottom">
                           New Training
                         </span>
                         <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`} data-testid="text-relative-time-bottom">
@@ -451,7 +451,7 @@ export default function DashboardPage() {
                         </span>
                       </div>
                       
-                      <h3 className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'} line-clamp-2 group-hover:text-orange-500 transition-colors`} data-testid="text-video-title">
+                      <h3 className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'} line-clamp-2 group-hover:text-[#EF4923] transition-colors`} data-testid="text-video-title">
                         {bottomLatestVideo.name}
                       </h3>
                       
@@ -460,7 +460,7 @@ export default function DashboardPage() {
                       </p>
                       
                       <div className="flex items-center gap-2 mt-2">
-                        <span className="text-xs font-medium text-orange-500 flex items-center gap-1" data-testid="text-watch-now-bottom">
+                        <span className="text-xs font-medium text-[#EF4923] flex items-center gap-1" data-testid="text-watch-now-bottom">
                           <Play className="w-3 h-3" />
                           Watch Now
                         </span>
@@ -483,12 +483,12 @@ export default function DashboardPage() {
 
                 {/* Q4 Goals & Incentives */}
                 <div className={`flex gap-3 p-2 -m-2 rounded-lg ${isDark ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'} cursor-pointer transition-colors`} data-testid="row-announcement-q4">
-                  <div className={`w-10 h-10 rounded-lg ${isDark ? 'bg-orange-500/20' : 'bg-orange-100'} flex items-center justify-center flex-shrink-0`}>
-                    <span className="text-lg text-orange-500 font-bold">S</span>
+                  <div className={`w-10 h-10 rounded-lg ${isDark ? 'bg-[#EF4923]/20' : 'bg-orange-100'} flex items-center justify-center flex-shrink-0`}>
+                    <span className="text-lg text-[#EF4923] font-bold">S</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className={`px-2 py-0.5 ${isDark ? 'bg-orange-500/10 text-orange-400' : 'bg-orange-100 text-orange-600'} text-xs font-medium rounded`} data-testid="badge-announcement">
+                      <span className={`px-2 py-0.5 ${isDark ? 'bg-[#EF4923]/10 text-orange-400' : 'bg-orange-100 text-[#D4401F]'} text-xs font-medium rounded`} data-testid="badge-announcement">
                         Announcement
                       </span>
                       <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Yesterday</span>
@@ -515,7 +515,7 @@ export default function DashboardPage() {
                   data-testid="button-company-handbook"
                 >
                   <span className="text-sm font-medium">Company Handbook</span>
-                  <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[hsl(28,94%,54%)] transition-colors" />
+                  <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[#EF4923] transition-colors" />
                 </button>
                 <a 
                   href="https://app.rechat.com"
@@ -524,7 +524,7 @@ export default function DashboardPage() {
                   className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors group"
                 >
                   <span className="text-sm font-medium">Marketing Resources</span>
-                  <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[hsl(28,94%,54%)] transition-colors" />
+                  <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[#EF4923] transition-colors" />
                 </a>
               </CardContent>
             </Card>

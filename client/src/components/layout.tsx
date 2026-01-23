@@ -222,7 +222,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground relative h-9 w-9 min-h-[44px] min-w-[44px]" data-testid="button-notifications">
                   <Bell className="h-5 w-5" />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 h-4 w-4 rounded-full bg-[hsl(28,94%,54%)] text-[10px] font-medium text-white flex items-center justify-center">
+                    <span className="absolute top-1.5 right-1.5 h-4 w-4 rounded-full bg-[#EF4923] text-[10px] font-medium text-white flex items-center justify-center">
                       {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                   )}
@@ -247,7 +247,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   {notifications.length === 0 ? (
                     <div className="py-8 text-center text-sm">
                       <p className="text-muted-foreground mb-3">No notifications yet</p>
-                      <Link href="/settings" className="text-[hsl(28,94%,54%)] hover:underline font-medium" data-testid="link-notification-settings">
+                      <Link href="/settings" className="text-[#EF4923] hover:underline font-medium" data-testid="link-notification-settings">
                         Configure notification preferences
                       </Link>
                     </div>
@@ -269,7 +269,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                                 {notification.title}
                               </p>
                               {!notification.isRead && (
-                                <span className="h-2 w-2 rounded-full bg-[hsl(28,94%,54%)] flex-shrink-0 mt-1.5" />
+                                <span className="h-2 w-2 rounded-full bg-[#EF4923] flex-shrink-0 mt-1.5" />
                               )}
                             </div>
                             {notification.message && (

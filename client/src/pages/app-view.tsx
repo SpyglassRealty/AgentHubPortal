@@ -59,7 +59,7 @@ export default function AppView() {
           <h2 className="text-2xl font-display font-bold mb-2">App Not Found</h2>
           <p className="text-muted-foreground mb-4">The application you requested could not be found.</p>
           <Link href="/">
-            <Button className="bg-[hsl(28,94%,54%)] hover:bg-[hsl(28,94%,48%)]">Return to Dashboard</Button>
+            <Button className="bg-[#EF4923] hover:bg-[#D4401F]">Return to Dashboard</Button>
           </Link>
         </div>
       </Layout>
@@ -90,7 +90,7 @@ export default function AppView() {
           </div>
           
           {app.url && (
-            <Button variant="outline" size="sm" asChild className="border-[hsl(28,94%,54%)]/30 hover:bg-[hsl(28,94%,54%)]/10">
+            <Button variant="outline" size="sm" asChild className="border-[#EF4923]/30 hover:bg-[#EF4923]/10">
               <a href={app.url} target="_blank" rel="noopener noreferrer">
                 Open in New Tab
                 <ExternalLink className="ml-2 h-4 w-4" />
@@ -110,7 +110,7 @@ export default function AppView() {
                 <p className="text-muted-foreground mb-4">
                   {app.name} opens in a new browser tab for the best experience.
                 </p>
-                <Button className="bg-[hsl(28,94%,54%)] hover:bg-[hsl(28,94%,48%)]" asChild>
+                <Button className="bg-[#EF4923] hover:bg-[#D4401F]" asChild>
                   <a href={app.url} target="_blank" rel="noopener noreferrer">
                     Open {app.name}
                     <ExternalLink className="ml-2 h-4 w-4" />
@@ -131,7 +131,7 @@ export default function AppView() {
                 <p className="text-muted-foreground mb-4">
                   For the best experience on mobile, please open this app in a new tab. This ensures sign-in and all features work correctly.
                 </p>
-                <Button className="bg-[hsl(28,94%,54%)] hover:bg-[hsl(28,94%,48%)]" asChild>
+                <Button className="bg-[#EF4923] hover:bg-[#D4401F]" asChild>
                   <a href={app.url} target="_blank" rel="noopener noreferrer">
                     Open {app.name}
                     <ExternalLink className="ml-2 h-4 w-4" />

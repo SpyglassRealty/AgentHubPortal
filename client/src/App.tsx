@@ -26,7 +26,7 @@ function Router() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 border-4 border-[hsl(28,94%,54%)] border-t-transparent rounded-full animate-spin" />
+          <div className="h-10 w-10 border-4 border-[#EF4923] border-t-transparent rounded-full animate-spin" />
           <p className="text-muted-foreground">Loading Mission Control...</p>
         </div>
       </div>

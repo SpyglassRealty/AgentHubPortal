@@ -104,7 +104,7 @@ export default function ReportsPage() {
               />
             )}
             <a href="https://app.followupboss.com/deals" target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" className="border-[hsl(28,94%,54%)]/30 hover:bg-[hsl(28,94%,54%)]/10">
+              <Button variant="outline" className="border-[#EF4923]/30 hover:bg-[#EF4923]/10">
                 Open in Follow Up Boss
                 <ExternalLink className="ml-2 h-4 w-4" />
               </Button>
@@ -195,22 +195,22 @@ export default function ReportsPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-[hsl(28,94%,95%)] to-[hsl(28,94%,90%)] border-[hsl(28,94%,70%)]" data-testid="card-total-volume">
+            <Card className="bg-gradient-to-br from-[#FEF2F0] to-[#FDDDD5] border-[#F8A080]" data-testid="card-total-volume">
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="h-10 w-10 rounded-lg bg-[hsl(28,94%,54%)] flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-lg bg-[#EF4923] flex items-center justify-center">
                     <TrendingUp className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <p className="text-sm text-[hsl(28,50%,35%)] font-medium">Total Volume</p>
-                    <p className="text-xs text-[hsl(28,50%,45%)]">{currentYear} YTD</p>
+                    <p className="text-sm text-[#8B4513] font-medium">Total Volume</p>
+                    <p className="text-xs text-[#996B4E]">{currentYear} YTD</p>
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-3xl font-display font-bold text-[hsl(28,50%,25%)]">
+                  <p className="text-3xl font-display font-bold text-[#5F432C]">
                     {(data?.summary?.closedThisYearCount || 0) + (data?.summary?.underContractCount || 0)}
                   </p>
-                  <p className="text-lg font-semibold text-[hsl(28,50%,35%)]">
+                  <p className="text-lg font-semibold text-[#8B4513]">
                     {formatCurrency((data?.summary?.closedThisYearValue || 0) + (data?.summary?.underContractValue || 0))}
                   </p>
                 </div>

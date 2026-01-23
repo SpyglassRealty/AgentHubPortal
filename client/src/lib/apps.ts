@@ -80,7 +80,7 @@ export const apps: AppDefinition[] = [
     description: "AI Training Assistant. Instant answers from your training library, handbook, and resources.",
     icon: BookOpen,
     categories: ["Core"],
-    color: "bg-orange-100 text-orange-700",
+    color: "bg-[#FDDDD5] text-[#B83A1A]",
     url: "https://www.realtyhack.com/ai/",
     connectionType: "external"
   },

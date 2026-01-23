@@ -60,7 +60,7 @@ export default function MarketPulse() {
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+              <TrendingUp className="h-5 w-5 text-[#EF4923]" />
               <CardTitle className="text-lg">Market Pulse</CardTitle>
             </div>
           </div>
@@ -69,7 +69,7 @@ export default function MarketPulse() {
         <CardContent>
           <div className="h-[280px] flex items-center justify-center">
             <div className="flex flex-col items-center gap-3">
-              <div className="h-8 w-8 border-4 border-[hsl(28,94%,54%)] border-t-transparent rounded-full animate-spin" />
+              <div className="h-8 w-8 border-4 border-[#EF4923] border-t-transparent rounded-full animate-spin" />
               <p className="text-sm text-muted-foreground">Loading market data...</p>
             </div>
           </div>
@@ -84,7 +84,7 @@ export default function MarketPulse() {
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+              <TrendingUp className="h-5 w-5 text-[#EF4923]" />
               <CardTitle className="text-lg">Market Pulse</CardTitle>
             </div>
             <Button 
@@ -117,7 +117,7 @@ export default function MarketPulse() {
       <CardHeader className="pb-2 px-3 sm:px-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+            <TrendingUp className="h-5 w-5 text-[#EF4923]" />
             <CardTitle className="text-base sm:text-lg">Market Pulse</CardTitle>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">

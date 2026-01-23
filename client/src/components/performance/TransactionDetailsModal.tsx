@@ -210,7 +210,7 @@ export function TransactionDetailsModal({
         <div className="grid grid-cols-3 gap-4 py-4 border-y flex-shrink-0">
           <div className="bg-muted/50 rounded-lg p-3 text-center">
             <p className="text-xs text-muted-foreground">Avg Days to Close</p>
-            <p className="text-lg font-semibold text-[hsl(28,94%,54%)]">{avgDaysToClose} days</p>
+            <p className="text-lg font-semibold text-[#EF4923]">{avgDaysToClose} days</p>
           </div>
           <div className="bg-muted/50 rounded-lg p-3 text-center">
             <p className="text-xs text-muted-foreground">Total Transactions</p>
@@ -229,7 +229,7 @@ export function TransactionDetailsModal({
         <div className="grid grid-cols-3 gap-4 py-4 border-y flex-shrink-0">
           <div className="bg-muted/50 rounded-lg p-3 text-center">
             <p className="text-xs text-muted-foreground">Average Sale Price</p>
-            <p className="text-lg font-semibold text-[hsl(28,94%,54%)]">{formatCurrency(avgDealSize)}</p>
+            <p className="text-lg font-semibold text-[#EF4923]">{formatCurrency(avgDealSize)}</p>
           </div>
           <div className="bg-muted/50 rounded-lg p-3 text-center">
             <p className="text-xs text-muted-foreground">Total Volume</p>
@@ -301,7 +301,7 @@ export function TransactionDetailsModal({
               </span>
               {/* Show Days to Close for avg-days-close card type */}
               {cardType === 'avg-days-close' && daysToClose !== null && (
-                <span className="flex items-center gap-1 text-[hsl(28,94%,54%)] font-medium">
+                <span className="flex items-center gap-1 text-[#EF4923] font-medium">
                   <Clock className="w-3 h-3" />
                   {daysToClose} days
                 </span>
@@ -313,7 +313,7 @@ export function TransactionDetailsModal({
           </div>
           <div className="text-right flex-shrink-0 ml-4">
             {/* Emphasize sale price for avg-sale-price card type */}
-            <p className={`font-semibold ${cardType === 'avg-sale-price' ? 'text-lg text-[hsl(28,94%,54%)]' : ''}`}>
+            <p className={`font-semibold ${cardType === 'avg-sale-price' ? 'text-lg text-[#EF4923]' : ''}`}>
               {formatCurrency(transaction.price)}
             </p>
             <p className="text-sm text-green-600">
@@ -363,7 +363,7 @@ export function TransactionDetailsModal({
               <p className="mt-3 text-red-500">{error}</p>
               <Button
                 onClick={fetchTransactions}
-                className="mt-4 bg-[hsl(28,94%,54%)] hover:bg-[hsl(28,94%,44%)]"
+                className="mt-4 bg-[#EF4923] hover:bg-[#D4401F]"
               >
                 Retry
               </Button>

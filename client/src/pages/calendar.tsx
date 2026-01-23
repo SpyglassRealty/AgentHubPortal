@@ -143,7 +143,7 @@ export default function CalendarPage() {
               />
             )}
             <a href="https://app.followupboss.com/calendar" target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" className="border-[hsl(28,94%,54%)]/30 hover:bg-[hsl(28,94%,54%)]/10 h-8 sm:h-9 px-2 sm:px-4 text-xs sm:text-sm">
+              <Button variant="outline" className="border-[#EF4923]/30 hover:bg-[#EF4923]/10 h-8 sm:h-9 px-2 sm:px-4 text-xs sm:text-sm">
                 <span className="hidden sm:inline">Open in FUB</span>
                 <span className="sm:hidden">FUB</span>
                 <ExternalLink className="ml-1 sm:ml-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -226,14 +226,14 @@ export default function CalendarPage() {
                           <div 
                             key={day.toISOString()} 
                             className={`bg-background p-1.5 sm:p-2 min-h-[70px] sm:min-h-[80px] md:min-h-[100px] border-t ${
-                              isToday(day) ? 'bg-[hsl(28,94%,54%)]/5' : ''
+                              isToday(day) ? 'bg-[#EF4923]/5' : ''
                             } ${hasEvents ? 'cursor-pointer hover:bg-muted/50 transition-colors active:bg-muted/70' : ''}`}
                             onClick={() => handleDayClick(day, dayItems)}
                             data-testid={`day-${format(day, 'yyyy-MM-dd')}`}
                           >
                             <div className={`text-xs sm:text-sm font-medium mb-0.5 sm:mb-1 ${
                               isToday(day) 
-                                ? 'h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-[hsl(28,94%,54%)] text-white flex items-center justify-center text-[10px] sm:text-sm' 
+                                ? 'h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-[#EF4923] text-white flex items-center justify-center text-[10px] sm:text-sm' 
                                 : 'text-foreground'
                             }`}>
                               {format(day, 'd')}
@@ -346,7 +346,7 @@ export default function CalendarPage() {
               <CardContent className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">This Month</span>
-                  <Badge className="bg-[hsl(28,94%,54%)]">
+                  <Badge className="bg-[#EF4923]">
                     {allItems.length} items
                   </Badge>
                 </div>
@@ -372,7 +372,7 @@ export default function CalendarPage() {
         <DialogContent className="sm:max-w-md" data-testid="dialog-event-details">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 font-display">
-              <CalendarIcon className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+              <CalendarIcon className="h-5 w-5 text-[#EF4923]" />
               Event Details
             </DialogTitle>
             <DialogDescription>
@@ -456,7 +456,7 @@ export default function CalendarPage() {
         <DialogContent className="sm:max-w-md" data-testid="dialog-day-events">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 font-display">
-              <CalendarIcon className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+              <CalendarIcon className="h-5 w-5 text-[#EF4923]" />
               {selectedDate && format(selectedDate, "EEEE, MMMM d")}
             </DialogTitle>
             <DialogDescription>
