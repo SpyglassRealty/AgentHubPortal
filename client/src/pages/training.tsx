@@ -561,9 +561,11 @@ function VideoPlayerModal({
       url.searchParams.set('title', '0');
       url.searchParams.set('byline', '0');
       url.searchParams.set('portrait', '0');
+      url.searchParams.set('like', '0');
+      url.searchParams.set('watchlater', '0');
       return url.toString();
     }
-    return `https://player.vimeo.com/video/${video.id}?autoplay=1&title=0&byline=0&portrait=0`;
+    return `https://player.vimeo.com/video/${video.id}?autoplay=1&title=0&byline=0&portrait=0&like=0&watchlater=0`;
   };
 
   const formatDuration = (seconds: number) => {
