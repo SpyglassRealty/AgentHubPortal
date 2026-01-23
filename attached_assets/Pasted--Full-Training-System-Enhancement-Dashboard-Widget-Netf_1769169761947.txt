@@ -1,0 +1,1726 @@
+### Full Training System Enhancement - Dashboard Widget + Netflix-Style Training Page
+### With Complete Theme Support + Mobile/Tablet/Desktop Optimization
+
+**Goal:** Create a complete training video experience with:
+1. Dashboard "Company Updates" widget with video thumbnail
+2. Netflix-style Training page with hero banner, horizontal scrolling rows
+3. **Full theme support (light/dark/system) - ALL components must sync**
+4. **Responsive design for iOS, Android, iPad, and Desktop web**
+5. **Touch-optimized interactions for mobile/tablet users**
+
+---
+
+## PART 1: Theme Configuration
+
+### Theme Classes Reference (Use Consistently Across ALL Components)
+```tsx
+// hooks/useThemeClasses.ts
+
+import { useTheme } from '@/contexts/ThemeContext';
+
+export function useThemeClasses() {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  
+  return {
+    // Backgrounds
+    pageBg: isDark ? 'bg-gray-900' : 'bg-gray-50',
+    cardBg: isDark ? 'bg-gray-800' : 'bg-white',
+    cardBgHover: isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50',
+    cardBgActive: isDark ? 'bg-gray-700' : 'bg-gray-100',
+    modalBg: isDark ? 'bg-gray-800' : 'bg-white',
+    inputBg: isDark ? 'bg-gray-700' : 'bg-white',
+    heroBg: isDark ? 'from-gray-900' : 'from-gray-50',
+    
+    // Text
+    textPrimary: isDark ? 'text-white' : 'text-gray-900',
+    textSecondary: isDark ? 'text-gray-300' : 'text-gray-600',
+    textMuted: isDark ? 'text-gray-400' : 'text-gray-500',
+    textDisabled: isDark ? 'text-gray-500' : 'text-gray-400',
+    
+    // Borders
+    borderColor: isDark ? 'border-gray-700' : 'border-gray-200',
+    borderColorLight: isDark ? 'border-gray-600' : 'border-gray-300',
+    dividerColor: isDark ? 'divide-gray-700' : 'divide-gray-200',
+    
+    // Interactive States
+    hoverBg: isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100',
+    activeBg: isDark ? 'bg-gray-700' : 'bg-gray-100',
+    focusRing: 'focus:ring-2 focus:ring-orange-500 focus:ring-offset-2',
+    focusRingDark: isDark ? 'focus:ring-offset-gray-900' : 'focus:ring-offset-white',
+    
+    // Buttons
+    buttonPrimary: 'bg-orange-500 hover:bg-orange-600 text-white',
+    buttonSecondary: isDark 
+      ? 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600' 
+      : 'bg-white hover:bg-gray-100 text-gray-900 border-gray-300',
+    buttonGhost: isDark 
+      ? 'hover:bg-gray-700 text-gray-300' 
+      : 'hover:bg-gray-100 text-gray-600',
+    
+    // Inputs
+    inputBorder: isDark ? 'border-gray-600' : 'border-gray-300',
+    inputText: isDark ? 'text-white' : 'text-gray-900',
+    inputPlaceholder: isDark ? 'placeholder-gray-400' : 'placeholder-gray-500',
+    
+    // Shadows (different for light/dark)
+    shadow: isDark ? 'shadow-lg shadow-black/20' : 'shadow-lg shadow-gray-200',
+    shadowMd: isDark ? 'shadow-md shadow-black/20' : 'shadow-md',
+    shadowSm: isDark ? 'shadow-sm shadow-black/10' : 'shadow-sm',
+    
+    // Scrollbar
+    scrollbar: isDark 
+      ? 'scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800' 
+      : 'scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100',
+    
+    // Status Colors (consistent across themes)
+    statusNew: 'bg-orange-500 text-white',
+    statusFavorite: 'bg-red-500 text-white',
+    statusWatchLater: 'bg-orange-500 text-white',
+    statusCompleted: 'text-green-500',
+    
+    // Helper
+    isDark,
+  };
+}
+```
+
+---
+
+## PART 2: Responsive Breakpoints
+
+### Breakpoint Reference
+```tsx
+// Tailwind breakpoints used throughout:
+// sm: 640px   - Large phones (landscape)
+// md: 768px   - Tablets (portrait)
+// lg: 1024px  - Tablets (landscape) / Small laptops
+// xl: 1280px  - Desktops
+// 2xl: 1536px - Large desktops
+
+// Touch detection helper
+export function useIsTouchDevice() {
+  const [isTouch, setIsTouch] = useState(false);
+  
+  useEffect(() => {
+    setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
+  
+  return isTouch;
+}
+```
+
+---
+
+## PART 3: Dashboard - Company Updates Widget (Responsive + Theme Synced)
+
+### Create `client/src/components/dashboard/CompanyUpdatesWidget.tsx`:
+```tsx
+import { useState, useEffect } from 'react';
+import { Play, ArrowRight, Megaphone, Clock } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Link } from 'wouter';
+
+interface LatestVideo {
+  id: string;
+  name: string;
+  description: string;
+  duration: number;
+  created_time: string;
+  link: string;
+  player_embed_url: string;
+  pictures: {
+    sizes: Array<{ link: string; width: number; height: number }>;
+  };
+}
+
+interface CompanyUpdatesWidgetProps {
+  onVideoClick: (video: LatestVideo) => void;
+}
+
+export function CompanyUpdatesWidget({ onVideoClick }: CompanyUpdatesWidgetProps) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  
+  const [latestVideo, setLatestVideo] = useState<LatestVideo | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // ============================================
+  // THEME CLASSES - Synced with system
+  // ============================================
+  
+  const cardBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-300' : 'text-gray-600';
+  const textMuted = isDark ? 'text-gray-400' : 'text-gray-500';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+  const hoverBg = isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50';
+  const dividerColor = isDark ? 'border-gray-700' : 'border-gray-100';
+  const skeletonBg = isDark ? 'bg-gray-700' : 'bg-gray-200';
+
+  // ============================================
+  // DATA FETCHING
+  // ============================================
+
+  useEffect(() => {
+    fetchLatestVideo();
+  }, []);
+
+  const fetchLatestVideo = async () => {
+    try {
+      const response = await fetch('/api/vimeo/training-videos?limit=1');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.videos && data.videos.length > 0) {
+          setLatestVideo(data.videos[0]);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch latest video:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ============================================
+  // HELPER FUNCTIONS
+  // ============================================
+
+  const formatDuration = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const isNew = (dateString: string) => {
+    const date = new Date(dateString);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return date >= sevenDaysAgo;
+  };
+
+  const getRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const getThumbnail = (video: LatestVideo) => {
+    const sizes = video.pictures?.sizes || [];
+    const medium = sizes.find(s => s.width >= 640) || sizes[sizes.length - 1];
+    return medium?.link || '';
+  };
+
+  // ============================================
+  // LOADING SKELETON
+  // ============================================
+
+  const LoadingSkeleton = () => (
+    <div className="animate-pulse">
+      {/* Mobile: Stack layout */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className={`w-full sm:w-40 h-32 sm:h-24 ${skeletonBg} rounded-lg`}></div>
+        <div className="flex-1 space-y-2">
+          <div className={`h-4 ${skeletonBg} rounded w-1/3`}></div>
+          <div className={`h-5 ${skeletonBg} rounded w-full`}></div>
+          <div className={`h-4 ${skeletonBg} rounded w-2/3`}></div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ============================================
+  // RENDER
+  // ============================================
+
+  return (
+    <div className={`${cardBg} rounded-xl border ${borderColor} overflow-hidden transition-colors duration-200`}>
+      {/* Header */}
+      <div className={`flex items-center justify-between px-4 py-3 border-b ${borderColor}`}>
+        <h2 className={`font-semibold ${textPrimary}`}>Company Updates</h2>
+        <Link 
+          href="/training"
+          className="text-sm text-orange-500 hover:text-orange-600 flex items-center gap-1 transition-colors active:scale-95"
+        >
+          <span className="hidden sm:inline">View Training</span>
+          <span className="sm:hidden">View All</span>
+          <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
+
+      <div className="p-4 space-y-4">
+        {/* Latest Training Video with Thumbnail */}
+        {loading ? (
+          <LoadingSkeleton />
+        ) : latestVideo ? (
+          <button
+            onClick={() => onVideoClick(latestVideo)}
+            className={`w-full rounded-lg transition-all duration-200 ${hoverBg} text-left group
+              active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2
+              ${isDark ? 'focus:ring-offset-gray-800' : 'focus:ring-offset-white'}`}
+          >
+            {/* 
+              RESPONSIVE LAYOUT:
+              - Mobile (< 640px): Stack vertically, full-width thumbnail
+              - Tablet/Desktop (>= 640px): Side-by-side layout
+            */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 p-2 sm:p-2 -m-2">
+              
+              {/* Thumbnail Container */}
+              <div className="relative flex-shrink-0 w-full sm:w-40 h-40 sm:h-24 rounded-lg overflow-hidden bg-gray-900">
+                {getThumbnail(latestVideo) ? (
+                  <img 
+                    src={getThumbnail(latestVideo)} 
+                    alt={latestVideo.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                    <Play className="w-10 h-10 sm:w-8 sm:h-8 text-white/30" />
+                  </div>
+                )}
+                
+                {/* Play Button Overlay */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <div className="w-14 h-14 sm:w-12 sm:h-12 bg-orange-500 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+                    <Play className="w-7 h-7 sm:w-6 sm:h-6 text-white fill-white ml-1" />
+                  </div>
+                </div>
+                
+                {/* Mobile: Always show play button */}
+                <div className="sm:hidden absolute inset-0 flex items-center justify-center">
+                  <div className="w-14 h-14 bg-black/50 rounded-full flex items-center justify-center">
+                    <Play className="w-7 h-7 text-white fill-white ml-1" />
+                  </div>
+                </div>
+                
+                {/* NEW Badge */}
+                {isNew(latestVideo.created_time) && (
+                  <span className="absolute top-2 left-2 px-2 py-0.5 bg-orange-500 text-white text-xs font-bold rounded shadow-lg">
+                    NEW
+                  </span>
+                )}
+                
+                {/* Duration Badge */}
+                <span className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 text-white text-xs rounded font-medium">
+                  {formatDuration(latestVideo.duration)}
+                </span>
+              </div>
+              
+              {/* Content */}
+              <div className="flex-1 min-w-0 py-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className={`px-2 py-0.5 ${isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-600'} text-xs font-medium rounded`}>
+                    New Training
+                  </span>
+                  <span className={`text-xs ${textMuted} flex items-center gap-1`}>
+                    <Clock className="w-3 h-3" />
+                    {getRelativeTime(latestVideo.created_time)}
+                  </span>
+                </div>
+                
+                <h3 className={`font-medium ${textPrimary} line-clamp-2 group-hover:text-orange-500 transition-colors text-sm sm:text-base`}>
+                  {latestVideo.name}
+                </h3>
+                
+                <p className={`text-sm ${textSecondary} mt-1 line-clamp-1 hidden sm:block`}>
+                  Watch the latest training module from Spyglass Realty.
+                </p>
+                
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs font-medium text-orange-500 flex items-center gap-1">
+                    <Play className="w-3 h-3" />
+                    Watch Now
+                  </span>
+                </div>
+              </div>
+            </div>
+          </button>
+        ) : (
+          <div className={`text-center py-8 ${textSecondary}`}>
+            <Play className={`w-12 h-12 mx-auto mb-2 ${textMuted}`} />
+            <p>No training videos available</p>
+          </div>
+        )}
+
+        {/* Divider */}
+        <div className={`border-t ${dividerColor}`}></div>
+
+        {/* Q4 Goals & Incentives */}
+        <button 
+          className={`w-full flex gap-3 p-2 -m-2 rounded-lg ${hoverBg} transition-all duration-200 text-left
+            active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-orange-500`}
+        >
+          <div className={`w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center
+            ${isDark ? 'bg-blue-500/20' : 'bg-blue-100'}`}>
+            <Megaphone className={`w-5 h-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+              <span className={`px-2 py-0.5 text-xs font-medium rounded
+                ${isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                Announcement
+              </span>
+              <span className={`text-xs ${textMuted}`}>Yesterday</span>
+            </div>
+            <h3 className={`font-medium ${textPrimary} line-clamp-1 text-sm sm:text-base`}>
+              Q4 Goals & Incentives
+            </h3>
+            <p className={`text-sm ${textSecondary} mt-0.5 line-clamp-1`}>
+              Review the updated commission structure and bonus opportunities.
+            </p>
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## PART 4: Training Page - Netflix Style (Responsive + Theme Synced)
+
+### Create `client/src/pages/training.tsx`:
+```tsx
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { 
+  Play, Clock, Calendar, Search, Heart, BookmarkPlus,
+  History, Loader2, CheckCircle, ChevronLeft, ChevronRight,
+  GraduationCap, X, ArrowLeft
+} from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useLocation } from 'wouter';
+
+// ============================================
+// TYPES
+// ============================================
+
+interface VimeoVideo {
+  id: string;
+  name: string;
+  description: string;
+  duration: number;
+  created_time: string;
+  link: string;
+  player_embed_url: string;
+  pictures: {
+    sizes: Array<{ link: string; width: number; height: number }>;
+  };
+}
+
+interface VideoPreference {
+  isFavorite: boolean;
+  isWatchLater: boolean;
+  watchProgress: number;
+  watchPercentage: number;
+  lastWatchedAt: string | null;
+}
+
+// ============================================
+// CUSTOM HOOKS
+// ============================================
+
+function useIsTouchDevice() {
+  const [isTouch, setIsTouch] = useState(false);
+  
+  useEffect(() => {
+    setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
+  
+  return isTouch;
+}
+
+function useWindowSize() {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  
+  useEffect(() => {
+    function handleResize() {
+      setSize({ width: window.innerWidth, height: window.innerHeight });
+    }
+    
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  return size;
+}
+
+// ============================================
+// VIDEO CARD COMPONENT
+// ============================================
+
+interface VideoCardProps {
+  video: VimeoVideo;
+  preference?: VideoPreference;
+  onPlay: (video: VimeoVideo) => void;
+  onToggleFavorite: (video: VimeoVideo, e: React.MouseEvent) => void;
+  onToggleWatchLater: (video: VimeoVideo, e: React.MouseEvent) => void;
+  isDark: boolean;
+  isNew?: boolean;
+  showProgress?: boolean;
+  isTouch: boolean;
+  cardWidth: string;
+}
+
+function VideoCard({ 
+  video, 
+  preference, 
+  onPlay, 
+  onToggleFavorite, 
+  onToggleWatchLater,
+  isDark,
+  isNew = false,
+  showProgress = true,
+  isTouch,
+  cardWidth
+}: VideoCardProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  
+  const hasProgress = preference && preference.watchProgress > 0 && preference.watchPercentage < 95;
+  const isCompleted = preference && preference.watchPercentage >= 95;
+
+  const formatDuration = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getThumbnail = () => {
+    const sizes = video.pictures?.sizes || [];
+    const medium = sizes.find(s => s.width >= 640) || sizes[sizes.length - 1];
+    return medium?.link || '';
+  };
+
+  // Theme classes
+  const cardBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-500';
+  const shadowClass = isDark ? 'shadow-xl shadow-black/30' : 'shadow-xl shadow-gray-300/50';
+
+  return (
+    <div
+      className={`relative flex-shrink-0 ${cardWidth} group`}
+      onMouseEnter={() => !isTouch && setIsHovered(true)}
+      onMouseLeave={() => !isTouch && setIsHovered(false)}
+    >
+      {/* Card Container */}
+      <div 
+        className={`
+          relative rounded-lg overflow-hidden cursor-pointer
+          transition-all duration-300 ease-out
+          ${!isTouch && isHovered ? `scale-105 z-20 ${shadowClass}` : 'scale-100 z-10'}
+          ${cardBg}
+          ${isDark ? 'shadow-md shadow-black/20' : 'shadow-md'}
+        `}
+        onClick={() => onPlay(video)}
+      >
+        {/* Thumbnail */}
+        <div className="relative aspect-video bg-gray-900">
+          {getThumbnail() ? (
+            <img 
+              src={getThumbnail()} 
+              alt={video.name}
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Play className="w-12 h-12 text-white/30" />
+            </div>
+          )}
+          
+          {/* Gradient overlay on hover (desktop) */}
+          {!isTouch && (
+            <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`} />
+          )}
+          
+          {/* Mobile: Always visible play indicator */}
+          {isTouch && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-12 h-12 bg-black/50 rounded-full flex items-center justify-center">
+                <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+              </div>
+            </div>
+          )}
+          
+          {/* Desktop: Play button on hover */}
+          {!isTouch && (
+            <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+              <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform">
+                <Play className="w-7 h-7 text-gray-900 fill-gray-900 ml-1" />
+              </div>
+            </div>
+          )}
+          
+          {/* Progress bar */}
+          {showProgress && hasProgress && (
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600">
+              <div 
+                className="h-full bg-orange-500 transition-all"
+                style={{ width: `${preference.watchPercentage}%` }}
+              />
+            </div>
+          )}
+          
+          {/* Completed check */}
+          {isCompleted && (
+            <div className="absolute top-2 right-2">
+              <CheckCircle className="w-6 h-6 text-green-500 fill-green-500 drop-shadow-lg" />
+            </div>
+          )}
+          
+          {/* Duration badge */}
+          <span className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/80 text-white text-xs rounded font-medium">
+            {formatDuration(video.duration)}
+          </span>
+          
+          {/* NEW badge */}
+          {isNew && !hasProgress && !isCompleted && (
+            <span className="absolute top-2 left-2 px-2 py-0.5 bg-orange-500 text-white text-xs font-bold rounded shadow-lg">
+              NEW
+            </span>
+          )}
+          
+          {/* Favorite/Watch Later indicators */}
+          {(preference?.isFavorite || preference?.isWatchLater) && !isCompleted && (
+            <div className="absolute top-2 right-2 flex gap-1">
+              {preference?.isFavorite && (
+                <Heart className="w-5 h-5 text-red-500 fill-red-500 drop-shadow-lg" />
+              )}
+              {preference?.isWatchLater && !preference?.isFavorite && (
+                <BookmarkPlus className="w-5 h-5 text-orange-500 fill-orange-500 drop-shadow-lg" />
+              )}
+            </div>
+          )}
+        </div>
+        
+        {/* Expanded info on hover (desktop only) */}
+        {!isTouch && (
+          <div 
+            className={`
+              overflow-hidden transition-all duration-300
+              ${isHovered ? 'max-h-44 opacity-100' : 'max-h-0 opacity-0'}
+            `}
+          >
+            <div className="p-3">
+              {/* Action buttons */}
+              <div className="flex items-center gap-2 mb-2">
+                <button 
+                  className="w-9 h-9 bg-white rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); onPlay(video); }}
+                >
+                  <Play className="w-5 h-5 text-gray-900 fill-gray-900 ml-0.5" />
+                </button>
+                <button 
+                  className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-colors ${
+                    preference?.isFavorite 
+                      ? 'bg-red-500 border-red-500 text-white' 
+                      : isDark 
+                      ? 'border-gray-400 text-gray-400 hover:border-white hover:text-white' 
+                      : 'border-gray-400 text-gray-400 hover:border-gray-900 hover:text-gray-900'
+                  }`}
+                  onClick={(e) => onToggleFavorite(video, e)}
+                >
+                  <Heart className={`w-4 h-4 ${preference?.isFavorite ? 'fill-white' : ''}`} />
+                </button>
+                <button 
+                  className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-colors ${
+                    preference?.isWatchLater 
+                      ? 'bg-orange-500 border-orange-500 text-white' 
+                      : isDark 
+                      ? 'border-gray-400 text-gray-400 hover:border-white hover:text-white' 
+                      : 'border-gray-400 text-gray-400 hover:border-gray-900 hover:text-gray-900'
+                  }`}
+                  onClick={(e) => onToggleWatchLater(video, e)}
+                >
+                  <BookmarkPlus className={`w-4 h-4 ${preference?.isWatchLater ? 'fill-white' : ''}`} />
+                </button>
+              </div>
+              
+              {/* Video info */}
+              <h4 className={`font-semibold text-sm line-clamp-2 ${textPrimary}`}>
+                {video.name}
+              </h4>
+              
+              {hasProgress && (
+                <p className={`text-xs mt-1 ${textSecondary}`}>
+                  {preference.watchPercentage}% watched
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* Title below card (always visible on mobile, visible when not hovered on desktop) */}
+      <div className={`mt-2 transition-opacity duration-300 ${!isTouch && isHovered ? 'opacity-0' : 'opacity-100'}`}>
+        <h4 className={`text-sm font-medium line-clamp-2 ${textPrimary}`}>
+          {video.name}
+        </h4>
+        
+        {/* Mobile: Show quick action buttons below title */}
+        {isTouch && (
+          <div className="flex items-center gap-2 mt-2">
+            <button 
+              className={`p-2 rounded-full transition-colors ${
+                preference?.isFavorite 
+                  ? 'bg-red-500 text-white' 
+                  : isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
+              }`}
+              onClick={(e) => { e.stopPropagation(); onToggleFavorite(video, e); }}
+            >
+              <Heart className={`w-4 h-4 ${preference?.isFavorite ? 'fill-white' : ''}`} />
+            </button>
+            <button 
+              className={`p-2 rounded-full transition-colors ${
+                preference?.isWatchLater 
+                  ? 'bg-orange-500 text-white' 
+                  : isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
+              }`}
+              onClick={(e) => { e.stopPropagation(); onToggleWatchLater(video, e); }}
+            >
+              <BookmarkPlus className={`w-4 h-4 ${preference?.isWatchLater ? 'fill-white' : ''}`} />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// HORIZONTAL ROW COMPONENT
+// ============================================
+
+interface VideoRowProps {
+  title: string;
+  icon?: React.ReactNode;
+  videos: VimeoVideo[];
+  preferences: Record<string, VideoPreference>;
+  onPlay: (video: VimeoVideo) => void;
+  onToggleFavorite: (video: VimeoVideo, e: React.MouseEvent) => void;
+  onToggleWatchLater: (video: VimeoVideo, e: React.MouseEvent) => void;
+  isDark: boolean;
+  isTouch: boolean;
+  showNewBadge?: boolean;
+  showProgress?: boolean;
+  emptyMessage?: string;
+}
+
+function VideoRow({
+  title,
+  icon,
+  videos,
+  preferences,
+  onPlay,
+  onToggleFavorite,
+  onToggleWatchLater,
+  isDark,
+  isTouch,
+  showNewBadge = false,
+  showProgress = true,
+  emptyMessage = "No videos available"
+}: VideoRowProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const { width } = useWindowSize();
+
+  // Responsive card width
+  const getCardWidth = () => {
+    if (width < 640) return 'w-44'; // Mobile: smaller cards
+    if (width < 768) return 'w-52'; // Large mobile
+    if (width < 1024) return 'w-56'; // Tablet
+    return 'w-64'; // Desktop
+  };
+
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const ref = scrollRef.current;
+    if (ref) {
+      ref.addEventListener('scroll', checkScroll);
+      return () => ref.removeEventListener('scroll', checkScroll);
+    }
+  }, [videos]);
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const scrollAmount = width < 768 ? 300 : 600;
+      scrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const isNew = (video: VimeoVideo) => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return new Date(video.created_time) >= sevenDaysAgo;
+  };
+
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textMuted = isDark ? 'text-gray-500' : 'text-gray-400';
+  const emptyBg = isDark ? 'bg-gray-800/50' : 'bg-gray-100';
+
+  if (videos.length === 0) {
+    return (
+      <div className="mb-6 md:mb-8">
+        <h2 className={`text-lg md:text-xl font-bold mb-3 md:mb-4 flex items-center gap-2 ${textPrimary} px-4 md:px-0`}>
+          {icon}
+          {title}
+          <span className={`text-sm font-normal ${textMuted}`}>(0)</span>
+        </h2>
+        <div className={`p-6 md:p-8 rounded-lg text-center mx-4 md:mx-0 ${emptyBg}`}>
+          <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>{emptyMessage}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-6 md:mb-8 relative group/row">
+      {/* Row Header */}
+      <h2 className={`text-lg md:text-xl font-bold mb-3 md:mb-4 flex items-center gap-2 ${textPrimary} px-4 md:px-0`}>
+        {icon}
+        {title}
+        <span className={`text-sm font-normal ${textMuted}`}>
+          ({videos.length})
+        </span>
+      </h2>
+      
+      {/* Scroll Container */}
+      <div className="relative">
+        {/* Left Arrow - Desktop only */}
+        {!isTouch && canScrollLeft && (
+          <button
+            onClick={() => scroll('left')}
+            className={`absolute left-0 top-0 bottom-12 w-12 z-30 hidden md:flex items-center justify-center
+              bg-gradient-to-r ${isDark ? 'from-gray-900' : 'from-gray-50'} to-transparent
+              opacity-0 group-hover/row:opacity-100 transition-opacity`}
+          >
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center
+              ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white hover:bg-gray-100 shadow-lg'}`}>
+              <ChevronLeft className={`w-6 h-6 ${isDark ? 'text-white' : 'text-gray-900'}`} />
+            </div>
+          </button>
+        )}
+        
+        {/* Videos - Horizontal scroll with touch support */}
+        <div
+          ref={scrollRef}
+          className="flex gap-3 md:gap-4 overflow-x-auto pb-4 px-4 md:px-0 snap-x snap-mandatory md:snap-none"
+          style={{ 
+            scrollbarWidth: 'none', 
+            msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch' // Smooth scroll on iOS
+          }}
+        >
+          {videos.map(video => (
+            <div key={video.id} className="snap-start">
+              <VideoCard
+                video={video}
+                preference={preferences[video.id]}
+                onPlay={onPlay}
+                onToggleFavorite={onToggleFavorite}
+                onToggleWatchLater={onToggleWatchLater}
+                isDark={isDark}
+                isNew={showNewBadge && isNew(video)}
+                showProgress={showProgress}
+                isTouch={isTouch}
+                cardWidth={getCardWidth()}
+              />
+            </div>
+          ))}
+        </div>
+        
+        {/* Right Arrow - Desktop only */}
+        {!isTouch && canScrollRight && (
+          <button
+            onClick={() => scroll('right')}
+            className={`absolute right-0 top-0 bottom-12 w-12 z-30 hidden md:flex items-center justify-center
+              bg-gradient-to-l ${isDark ? 'from-gray-900' : 'from-gray-50'} to-transparent
+              opacity-0 group-hover/row:opacity-100 transition-opacity`}
+          >
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center
+              ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white hover:bg-gray-100 shadow-lg'}`}>
+              <ChevronRight className={`w-6 h-6 ${isDark ? 'text-white' : 'text-gray-900'}`} />
+            </div>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// HERO BANNER COMPONENT
+// ============================================
+
+interface HeroBannerProps {
+  video: VimeoVideo;
+  preference?: VideoPreference;
+  onPlay: (video: VimeoVideo) => void;
+  onToggleWatchLater: (video: VimeoVideo, e: React.MouseEvent) => void;
+  isDark: boolean;
+  isTouch: boolean;
+}
+
+function HeroBanner({ video, preference, onPlay, onToggleWatchLater, isDark, isTouch }: HeroBannerProps) {
+  const getThumbnail = () => {
+    const sizes = video.pictures?.sizes || [];
+    const large = sizes.find(s => s.width >= 1280) || sizes[sizes.length - 1];
+    return large?.link || '';
+  };
+
+  const formatDuration = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    if (hrs > 0) {
+      return `${hrs}h ${mins}m`;
+    }
+    return `${mins} min`;
+  };
+
+  const isNew = () => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return new Date(video.created_time) >= sevenDaysAgo;
+  };
+
+  return (
+    <div className="relative w-full h-[280px] sm:h-[350px] md:h-[400px] lg:h-[500px] mb-6 md:mb-8 rounded-none md:rounded-xl overflow-hidden">
+      {/* Background Image */}
+      <div className="absolute inset-0">
+        {getThumbnail() ? (
+          <img 
+            src={getThumbnail()} 
+            alt={video.name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className={`w-full h-full ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`} />
+        )}
+        
+        {/* Gradient overlays */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+      </div>
+      
+      {/* Content */}
+      <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6 md:p-8">
+        <div className="max-w-2xl">
+          {/* Badges */}
+          <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-4 flex-wrap">
+            {isNew() && (
+              <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-orange-500 text-white text-xs sm:text-sm font-bold rounded">
+                NEW
+              </span>
+            )}
+            <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-white/20 text-white text-xs sm:text-sm font-medium rounded backdrop-blur-sm">
+              Latest Training
+            </span>
+          </div>
+          
+          {/* Title */}
+          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2 sm:mb-3 line-clamp-2">
+            {video.name}
+          </h1>
+          
+          {/* Meta info */}
+          <div className="flex items-center gap-3 sm:gap-4 text-white/80 text-xs sm:text-sm mb-3 sm:mb-4 flex-wrap">
+            <span className="flex items-center gap-1">
+              <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+              {formatDuration(video.duration)}
+            </span>
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
+              {new Date(video.created_time).toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric' 
+              })}
+            </span>
+          </div>
+          
+          {/* Description - Hidden on small mobile */}
+          <p className="hidden sm:block text-white/70 text-sm md:text-base mb-4 sm:mb-6 line-clamp-2 max-w-xl">
+            {video.description || 'Watch this training video to learn new skills and improve your real estate knowledge.'}
+          </p>
+          
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => onPlay(video)}
+              className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-200 transition-colors active:scale-95 text-sm sm:text-base"
+            >
+              <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-gray-900" />
+              <span>Play</span>
+              <span className="hidden sm:inline">Now</span>
+            </button>
+            <button
+              onClick={(e) => onToggleWatchLater(video, e)}
+              className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 font-semibold rounded-lg transition-colors active:scale-95 text-sm sm:text-base ${
+                preference?.isWatchLater
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm'
+              }`}
+            >
+              <BookmarkPlus className={`w-4 h-4 sm:w-5 sm:h-5 ${preference?.isWatchLater ? 'fill-white' : ''}`} />
+              <span className="hidden sm:inline">{preference?.isWatchLater ? 'Added' : 'Watch Later'}</span>
+              <span className="sm:hidden">{preference?.isWatchLater ? 'Added' : 'Save'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// VIDEO PLAYER MODAL
+// ============================================
+
+interface VideoPlayerModalProps {
+  video: VimeoVideo | null;
+  onClose: () => void;
+  isDark: boolean;
+}
+
+function VideoPlayerModal({ video, onClose, isDark }: VideoPlayerModalProps) {
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (video) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [video]);
+
+  if (!video) return null;
+
+  const getEmbedUrl = () => {
+    const baseUrl = video.player_embed_url || `https://player.vimeo.com/video/${video.id}`;
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    return `${baseUrl}${separator}autoplay=1&title=0&byline=0&portrait=0`;
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <div 
+        className="relative w-full h-full sm:h-auto sm:max-w-5xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 sm:-top-12 sm:right-0 z-10 p-2 bg-black/50 sm:bg-transparent rounded-full text-white/70 hover:text-white transition-colors"
+        >
+          <X className="w-6 h-6 sm:w-8 sm:h-8" />
+        </button>
+        
+        {/* Video Player - Full screen on mobile */}
+        <div className="relative w-full h-full sm:aspect-video bg-black sm:rounded-lg overflow-hidden">
+          <iframe
+            src={getEmbedUrl()}
+            className="w-full h-full"
+            frameBorder="0"
+            allow="autoplay; fullscreen; picture-in-picture"
+            allowFullScreen
+            title={video.name}
+          />
+        </div>
+        
+        {/* Video Title - Hidden on mobile (takes full screen) */}
+        <h3 className="hidden sm:block text-white text-xl font-semibold mt-4">
+          {video.name}
+        </h3>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// MAIN TRAINING PAGE
+// ============================================
+
+export default function TrainingPage() {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const isTouch = useIsTouchDevice();
+  const [, navigate] = useLocation();
+  
+  // State
+  const [videos, setVideos] = useState<VimeoVideo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [preferences, setPreferences] = useState<Record<string, VideoPreference>>({});
+  const [playingVideo, setPlayingVideo] = useState<VimeoVideo | null>(null);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  // Theme classes
+  const pageBg = isDark ? 'bg-gray-900' : 'bg-gray-50';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const inputBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const inputBorder = isDark ? 'border-gray-700' : 'border-gray-200';
+  const headerBg = isDark ? 'from-gray-900/95' : 'from-gray-50/95';
+
+  // ============================================
+  // DATA FETCHING
+  // ============================================
+
+  useEffect(() => {
+    fetchVideos();
+    fetchPreferences();
+  }, []);
+
+  const fetchVideos = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/vimeo/training-videos');
+      if (!response.ok) throw new Error('Failed to fetch videos');
+      
+      const data = await response.json();
+      const sortedVideos = (data.videos || []).sort((a: VimeoVideo, b: VimeoVideo) => 
+        new Date(b.created_time).getTime() - new Date(a.created_time).getTime()
+      );
+      setVideos(sortedVideos);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load videos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPreferences = async () => {
+    try {
+      const response = await fetch('/api/videos/preferences');
+      if (response.ok) {
+        const data = await response.json();
+        setPreferences(data.preferences || {});
+      }
+    } catch (err) {
+      console.error('Failed to fetch preferences:', err);
+    }
+  };
+
+  // ============================================
+  // ACTIONS
+  // ============================================
+
+  const getThumbnail = (video: VimeoVideo) => {
+    const sizes = video.pictures?.sizes || [];
+    const medium = sizes.find(s => s.width >= 640) || sizes[sizes.length - 1];
+    return medium?.link || '';
+  };
+
+  const toggleFavorite = async (video: VimeoVideo, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Optimistic update
+    setPreferences(prev => ({
+      ...prev,
+      [video.id]: {
+        ...prev[video.id],
+        isFavorite: !prev[video.id]?.isFavorite,
+        isWatchLater: prev[video.id]?.isWatchLater || false,
+        watchProgress: prev[video.id]?.watchProgress || 0,
+        watchPercentage: prev[video.id]?.watchPercentage || 0,
+        lastWatchedAt: prev[video.id]?.lastWatchedAt || null
+      }
+    }));
+    
+    try {
+      const response = await fetch(`/api/videos/${video.id}/favorite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoName: video.name,
+          videoThumbnail: getThumbnail(video),
+          videoDuration: video.duration
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPreferences(prev => ({
+          ...prev,
+          [video.id]: {
+            ...prev[video.id],
+            isFavorite: data.isFavorite
+          }
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to toggle favorite:', err);
+      // Revert on error
+      fetchPreferences();
+    }
+  };
+
+  const toggleWatchLater = async (video: VimeoVideo, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Optimistic update
+    setPreferences(prev => ({
+      ...prev,
+      [video.id]: {
+        ...prev[video.id],
+        isFavorite: prev[video.id]?.isFavorite || false,
+        isWatchLater: !prev[video.id]?.isWatchLater,
+        watchProgress: prev[video.id]?.watchProgress || 0,
+        watchPercentage: prev[video.id]?.watchPercentage || 0,
+        lastWatchedAt: prev[video.id]?.lastWatchedAt || null
+      }
+    }));
+    
+    try {
+      const response = await fetch(`/api/videos/${video.id}/watch-later`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoName: video.name,
+          videoThumbnail: getThumbnail(video),
+          videoDuration: video.duration
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPreferences(prev => ({
+          ...prev,
+          [video.id]: {
+            ...prev[video.id],
+            isWatchLater: data.isWatchLater
+          }
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to toggle watch later:', err);
+      fetchPreferences();
+    }
+  };
+
+  // ============================================
+  // FILTERED VIDEO LISTS
+  // ============================================
+
+  const isNew = (video: VimeoVideo) => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return new Date(video.created_time) >= sevenDaysAgo;
+  };
+
+  const filteredVideos = useMemo(() => {
+    if (!searchQuery) return videos;
+    return videos.filter(v => 
+      v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      v.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [videos, searchQuery]);
+
+  const continueWatching = useMemo(() => {
+    return videos.filter(v => {
+      const pref = preferences[v.id];
+      return pref && pref.watchProgress > 0 && pref.watchPercentage < 95;
+    }).sort((a, b) => {
+      const aTime = preferences[a.id]?.lastWatchedAt;
+      const bTime = preferences[b.id]?.lastWatchedAt;
+      if (!aTime) return 1;
+      if (!bTime) return -1;
+      return new Date(bTime).getTime() - new Date(aTime).getTime();
+    });
+  }, [videos, preferences]);
+
+  const newVideos = useMemo(() => {
+    return videos.filter(v => isNew(v));
+  }, [videos]);
+
+  const favorites = useMemo(() => {
+    return videos.filter(v => preferences[v.id]?.isFavorite);
+  }, [videos, preferences]);
+
+  const watchLater = useMemo(() => {
+    return videos.filter(v => preferences[v.id]?.isWatchLater);
+  }, [videos, preferences]);
+
+  const latestVideo = videos[0];
+
+  // ============================================
+  // RENDER
+  // ============================================
+
+  if (loading) {
+    return (
+      <div className={`min-h-screen ${pageBg} flex items-center justify-center transition-colors`}>
+        <div className="text-center">
+          <Loader2 className={`w-8 h-8 animate-spin mx-auto ${textSecondary}`} />
+          <p className={`mt-2 ${textSecondary}`}>Loading training videos...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={`min-h-screen ${pageBg} flex items-center justify-center p-4 transition-colors`}>
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{error}</p>
+          <button 
+            onClick={fetchVideos}
+            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors active:scale-95"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`min-h-screen ${pageBg} transition-colors duration-200`}>
+      {/* Header - Sticky */}
+      <div className={`sticky top-0 z-40 px-4 md:px-6 py-3 md:py-4 bg-gradient-to-b ${headerBg} to-transparent backdrop-blur-sm`}>
+        <div className="flex items-center justify-between gap-4 max-w-[1800px] mx-auto">
+          {/* Left: Back button on mobile, Title on desktop */}
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => navigate('/dashboard')}
+              className={`md:hidden p-2 rounded-full ${isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-200'} transition-colors`}
+            >
+              <ArrowLeft className={`w-5 h-5 ${textPrimary}`} />
+            </button>
+            <div className="flex items-center gap-2 md:gap-3">
+              <GraduationCap className="w-6 h-6 md:w-8 md:h-8 text-orange-500" />
+              <h1 className={`text-lg md:text-2xl font-bold ${textPrimary}`}>Training</h1>
+            </div>
+          </div>
+          
+          {/* Search */}
+          <div className={`relative flex-1 max-w-xs md:max-w-sm transition-all duration-200 ${isSearchFocused ? 'max-w-md' : ''}`}>
+            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 ${textSecondary}`} />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+              className={`w-full pl-9 md:pl-10 pr-4 py-2 md:py-2.5 ${inputBg} border ${inputBorder} rounded-full text-sm ${textPrimary} placeholder-gray-500 
+                focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent 
+                transition-all duration-200`}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="pb-8 md:pb-12 max-w-[1800px] mx-auto">
+        {/* Search Results or Full Library */}
+        {searchQuery ? (
+          <div className="px-4 md:px-6">
+            <h2 className={`text-lg md:text-xl font-bold mb-4 ${textPrimary}`}>
+              Search Results ({filteredVideos.length})
+            </h2>
+            {filteredVideos.length === 0 ? (
+              <div className={`text-center py-12 ${textSecondary}`}>
+                <Search className={`w-12 h-12 mx-auto mb-3 ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
+                <p>No videos found for "{searchQuery}"</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
+                {filteredVideos.map(video => (
+                  <VideoCard
+                    key={video.id}
+                    video={video}
+                    preference={preferences[video.id]}
+                    onPlay={setPlayingVideo}
+                    onToggleFavorite={toggleFavorite}
+                    onToggleWatchLater={toggleWatchLater}
+                    isDark={isDark}
+                    isNew={isNew(video)}
+                    isTouch={isTouch}
+                    cardWidth="w-full"
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Hero Banner */}
+            {latestVideo && (
+              <HeroBanner
+                video={latestVideo}
+                preference={preferences[latestVideo.id]}
+                onPlay={setPlayingVideo}
+                onToggleWatchLater={toggleWatchLater}
+                isDark={isDark}
+                isTouch={isTouch}
+              />
+            )}
+
+            <div className="md:px-6">
+              {/* Continue Watching */}
+              {continueWatching.length > 0 && (
+                <VideoRow
+                  title="Continue Watching"
+                  icon={<History className="w-5 h-5 md:w-6 md:h-6 text-orange-500" />}
+                  videos={continueWatching}
+                  preferences={preferences}
+                  onPlay={setPlayingVideo}
+                  onToggleFavorite={toggleFavorite}
+                  onToggleWatchLater={toggleWatchLater}
+                  isDark={isDark}
+                  isTouch={isTouch}
+                  showProgress={true}
+                />
+              )}
+
+              {/* New This Week */}
+              {newVideos.length > 0 && (
+                <VideoRow
+                  title="New This Week"
+                  icon={<span className="text-lg md:text-xl">🆕</span>}
+                  videos={newVideos}
+                  preferences={preferences}
+                  onPlay={setPlayingVideo}
+                  onToggleFavorite={toggleFavorite}
+                  onToggleWatchLater={toggleWatchLater}
+                  isDark={isDark}
+                  isTouch={isTouch}
+                  showNewBadge={true}
+                />
+              )}
+
+              {/* My Favorites */}
+              <VideoRow
+                title="My Favorites"
+                icon={<Heart className="w-5 h-5 md:w-6 md:h-6 text-red-500" />}
+                videos={favorites}
+                preferences={preferences}
+                onPlay={setPlayingVideo}
+                onToggleFavorite={toggleFavorite}
+                onToggleWatchLater={toggleWatchLater}
+                isDark={isDark}
+                isTouch={isTouch}
+                emptyMessage="Tap the heart icon on any video to add it to your favorites"
+              />
+
+              {/* Watch Later */}
+              <VideoRow
+                title="Watch Later"
+                icon={<BookmarkPlus className="w-5 h-5 md:w-6 md:h-6 text-orange-500" />}
+                videos={watchLater}
+                preferences={preferences}
+                onPlay={setPlayingVideo}
+                onToggleFavorite={toggleFavorite}
+                onToggleWatchLater={toggleWatchLater}
+                isDark={isDark}
+                isTouch={isTouch}
+                emptyMessage="Tap the bookmark icon on any video to save it for later"
+              />
+
+              {/* All Training Videos */}
+              <VideoRow
+                title="All Training Videos"
+                icon={<GraduationCap className="w-5 h-5 md:w-6 md:h-6 text-orange-500" />}
+                videos={videos}
+                preferences={preferences}
+                onPlay={setPlayingVideo}
+                onToggleFavorite={toggleFavorite}
+                onToggleWatchLater={toggleWatchLater}
+                isDark={isDark}
+                isTouch={isTouch}
+                showNewBadge={true}
+              />
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Video Player Modal */}
+      <VideoPlayerModal
+        video={playingVideo}
+        onClose={() => setPlayingVideo(null)}
+        isDark={isDark}
+      />
+
+      {/* Hide scrollbar CSS */}
+      <style>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        
+        /* Smooth scroll for iOS */
+        .scroll-smooth {
+          -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Hide scrollbar but keep functionality */
+        div::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
+    </div>
+  );
+}
+```
+
+---
+
+## PART 5: Comprehensive Testing Checklist
+
+### CRITICAL: Test ALL Scenarios Before Declaring Passed
+```markdown
+## THEME TESTING
+
+### Light Mode
+- [ ] Dashboard Company Updates widget - correct background, text, borders
+- [ ] Training page header - correct colors
+- [ ] Hero banner - gradient overlay visible
+- [ ] Video cards - white background, proper shadows
+- [ ] Search input - white background, gray border
+- [ ] Empty states - gray background
+- [ ] Modal - white/light styling
+
+### Dark Mode
+- [ ] Dashboard Company Updates widget - gray-800 background, white text
+- [ ] Training page header - gray-900 colors
+- [ ] Hero banner - gradient overlay visible
+- [ ] Video cards - gray-800 background, proper shadows
+- [ ] Search input - gray-800 background, gray-700 border
+- [ ] Empty states - gray-800/50 background
+- [ ] Modal - dark styling
+
+### System Mode
+- [ ] Automatically follows OS preference
+- [ ] Switches correctly when OS theme changes
+- [ ] No flash of wrong theme on load
+
+---
+
+## DEVICE TESTING
+
+### Mobile - iPhone (Safari)
+Screen: ~375px - 428px width
+
+- [ ] Dashboard widget: Thumbnail stacks on top of content
+- [ ] Dashboard widget: Full-width thumbnail (h-40)
+- [ ] Dashboard widget: Play button always visible (not just on hover)
+- [ ] Training page: Back arrow in header
+- [ ] Training page: Search bar smaller
+- [ ] Training page: Hero banner shorter (h-280)
+- [ ] Training page: Smaller video cards (w-44)
+- [ ] Training page: Horizontal scroll with snap
+- [ ] Training page: Touch-friendly action buttons below cards
+- [ ] Video modal: Full screen
+- [ ] Smooth scroll (iOS momentum)
+- [ ] No horizontal page overflow
+- [ ] Safe area insets respected
+
+### Mobile - Android (Chrome)
+Screen: ~360px - 412px width
+
+- [ ] Same as iPhone tests
+- [ ] Back gesture works
+- [ ] No overscroll issues
+
+### Tablet - iPad Portrait
+Screen: ~768px width
+
+- [ ] Dashboard widget: Side-by-side layout
+- [ ] Training page: Medium hero (h-350)
+- [ ] Training page: Medium cards (w-56)
+- [ ] Training page: 3-4 cards visible per row
+- [ ] Scroll arrows may appear
+- [ ] Touch interactions work
+
+### Tablet - iPad Landscape
+Screen: ~1024px width
+
+- [ ] Dashboard widget: Side-by-side layout
+- [ ] Training page: Larger hero (h-400)
+- [ ] Training page: Desktop card size (w-64)
+- [ ] Training page: 4-5 cards visible per row
+- [ ] Hover effects start to work
+- [ ] Scroll arrows visible
+
+### Desktop - Web
+Screen: 1280px+ width
+
+- [ ] Dashboard widget: Side-by-side layout
+- [ ] Training page: Full hero (h-500)
+- [ ] Training page: Full card size (w-64)
+- [ ] Training page: 5-6+ cards visible
+- [ ] Hover effects fully functional
+- [ ] Card expansion on hover
+- [ ] Scroll arrows on row hover
+- [ ] Keyboard navigation (Tab, Enter)
+
+---
+
+## FUNCTIONALITY TESTING
+
+### Dashboard - Company Updates Widget
+- [ ] Latest video loads from API
+- [ ] Thumbnail displays correctly
+- [ ] NEW badge shows if video < 7 days old
+- [ ] Duration badge shows correct time
+- [ ] Relative time displays (Today, Yesterday, X days ago)
+- [ ] Click opens modal/player
+- [ ] "View Training" link navigates to /training
+- [ ] Loading skeleton displays while fetching
+- [ ] Error state if API fails
+- [ ] Q4 announcement item displays
+
+### Training Page - Hero Banner
+- [ ] Latest video displays
+- [ ] Large thumbnail/background image
+- [ ] Title and description visible
+- [ ] Duration formatted correctly
+- [ ] Date formatted correctly
+- [ ] "Play Now" button works
+- [ ] "Watch Later" button toggles state
+- [ ] NEW badge if applicable
+
+### Training Page - Video Rows
+- [ ] "Continue Watching" shows videos with progress
+- [ ] "New This Week" shows videos < 7 days old
+- [ ] "My Favorites" shows favorited videos
+- [ ] "Watch Later" shows saved videos
+- [ ] "All Training Videos" shows all videos
+- [ ] Empty messages display when no videos
+- [ ] Count displays in parentheses
+- [ ] Horizontal scroll works smoothly
+- [ ] Scroll arrows appear on desktop hover
+- [ ] Snap scrolling on mobile
+
+### Training Page - Video Cards
+- [ ] Thumbnail displays
+- [ ] Duration badge
+- [ ] NEW badge (when applicable)
+- [ ] Progress bar (when applicable)
+- [ ] Completed checkmark (when ≥95%)
+- [ ] Favorite indicator (heart)
+- [ ] Watch Later indicator (bookmark)
+- [ ] Hover expansion (desktop only)
+- [ ] Action buttons on hover (desktop)
+- [ ] Action buttons below card (mobile)
+- [ ] Click plays video
+
+### Training Page - Search
+- [ ] Search input works
+- [ ] Results filter as typing
+- [ ] Grid layout for search results
+- [ ] Empty state when no results
+- [ ] Clear search restores full view
+
+### Training Page - Preferences
+- [ ] Favorite toggle saves to database
+- [ ] Watch Later toggle saves to database
+- [ ] Optimistic updates (instant UI feedback)
+- [ ] Error recovery (reverts on failure)
+- [ ] Preferences persist after refresh
+
+### Video Player Modal
+- [ ] Opens when video clicked
+- [ ] Video plays (autoplay)
+- [ ] Fullscreen works
+- [ ] Close button works
+- [ ] Click outside closes
+- [ ] Body scroll locked
+- [ ] Full screen on mobile
+- [ ] Responsive on all devices
+
+---
+
+## PERFORMANCE TESTING
+
+- [ ] Initial page load < 3 seconds
+- [ ] Videos load lazily (loading="lazy")
+- [ ] Smooth scrolling (60fps)
+- [ ] No layout shift on load
+- [ ] Images properly sized
+- [ ] No memory leaks on navigation
+
+---
+
+## ACCESSIBILITY TESTING
+
+- [ ] Focus states visible
+- [ ] Tab navigation works
+- [ ] Screen reader labels
+- [ ] Sufficient color contrast
+- [ ] Touch targets ≥ 44px on mobile
+- [ ] Reduced motion respected
+```
+
+---
+
+## PART 6: Add Route and Sidebar Update
+```tsx
+// Add to App.tsx or router
+import TrainingPage from './pages/training';
+
+<Route path="/training" element={<TrainingPage />} />
+
+// Sidebar navigation item
+{
+  label: 'Training',
+  icon: GraduationCap,
+  href: '/training',
+  // Position: Below "Marketing Calendar", above "Settings"
+}
+```
+
+---
+
+This comprehensive prompt now includes:
+
+1. ✅ **Full theme sync** (light/dark/system)
+2. ✅ **Responsive design** for all devices
+3. ✅ **Touch-optimized** for iOS/Android/iPad
+4. ✅ **Detailed testing checklist** covering all scenarios
+5. ✅ **Performance considerations**
+6. ✅ **Accessibility basics**
+
+Let me know when you're ready to send this to Replit!
