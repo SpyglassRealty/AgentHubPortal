@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Play, Clock, ArrowRight, Megaphone } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Link } from 'wouter';
 
 interface LatestVideo {

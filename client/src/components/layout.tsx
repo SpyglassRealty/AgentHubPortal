@@ -70,26 +70,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const currentTheme = user?.theme || "light";
 
-  React.useEffect(() => {
-    const applyTheme = (theme: string) => {
-      if (theme === "system") {
-        const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        document.documentElement.classList.toggle("dark", isDark);
-      } else {
-        document.documentElement.classList.toggle("dark", theme === "dark");
-      }
-    };
-    applyTheme(currentTheme);
-  }, [currentTheme]);
-
   const handleThemeChange = (theme: string) => {
     themeMutation.mutate(theme);
-    if (theme === "system") {
-      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      document.documentElement.classList.toggle("dark", isDark);
-    } else {
-      document.documentElement.classList.toggle("dark", theme === "dark");
-    }
   };
 
   const userInitials = user?.firstName && user?.lastName 

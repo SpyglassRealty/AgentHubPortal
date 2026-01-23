@@ -16,7 +16,7 @@ import MarketPulse from "@/components/market-pulse";
 import { GoogleDocModal } from "@/components/google-doc-modal";
 import { TrainingVideosModal } from "@/components/training-videos-modal";
 import { DOCUMENTS } from "@/lib/documents";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/contexts/ThemeContext";
 import type { ContextSuggestion, AgentProfile } from "@shared/schema";
 
 interface ProfileResponse {

@@ -7,7 +7,7 @@ import { ExternalLink, ArrowLeft, Smartphone } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/contexts/ThemeContext";
 
 function isMobileDevice(): boolean {
   if (typeof window === 'undefined') return false;
