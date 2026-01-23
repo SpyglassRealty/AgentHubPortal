@@ -4,7 +4,7 @@ import {
   History, Loader2, CheckCircle, ChevronLeft, ChevronRight,
   GraduationCap, Info, X, Plus
 } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/contexts/ThemeContext';
 import Layout from '@/components/layout';
 import { useIsTouchDevice, useWindowSize } from '@/hooks/use-mobile';
 

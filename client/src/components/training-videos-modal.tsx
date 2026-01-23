@@ -3,7 +3,7 @@ import {
   X, Play, Clock, Calendar, ArrowRight,
   Loader2, Maximize2, Minimize2, Heart, Plus, Check
 } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/contexts/ThemeContext';
 import Player from '@vimeo/player';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link } from 'wouter';
