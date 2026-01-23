@@ -171,12 +171,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
       <aside className="hidden md:flex flex-col w-64 fixed inset-y-0 left-0 z-30">
         <SidebarContent />
       </aside>
 
-      <main className="flex-1 md:ml-64 flex flex-col min-h-screen transition-all duration-300 bg-background">
+      <main className="flex-1 md:ml-64 flex flex-col min-h-screen transition-all duration-300 bg-gray-50 dark:bg-gray-900">
         <header className="h-16 border-b border-border bg-background/95 backdrop-blur-sm sticky top-0 z-20 px-4 md:px-8 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4 md:hidden">
              <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>

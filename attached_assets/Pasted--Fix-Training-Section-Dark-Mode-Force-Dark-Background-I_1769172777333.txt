@@ -1,0 +1,173 @@
+### Fix: Training Section Dark Mode - Force Dark Background
+
+**Issue:** Even with dark mode selected, the main content area shows white/light background. The `bg-background` CSS variable may not be properly updating for dark mode.
+
+**Solution:** Override with explicit Tailwind dark mode classes instead of relying on CSS variables.
+
+---
+
+## Option 1: Fix the CSS Variable (Recommended)
+
+Check your `globals.css` or `index.css` for the background CSS variable:
+```css
+/* Look for something like this and ensure dark mode is defined */
+
+:root {
+  --background: 249 250 251;  /* gray-50 for light mode */
+}
+
+.dark {
+  --background: 17 24 39;  /* gray-900 for dark mode */
+}
+
+/* OR if using HSL */
+:root {
+  --background: 210 40% 98%;
+}
+
+.dark {
+  --background: 222 47% 11%;
+}
+```
+
+---
+
+## Option 2: Fix Layout Component Directly
+
+Find your Layout component and replace `bg-background` with explicit theme classes:
+```tsx
+// In Layout.tsx or AppLayout.tsx
+
+import { useTheme } from '@/contexts/ThemeContext';
+
+export function Layout({ children }) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  
+  return (
+    <div className="flex h-screen">
+      <Sidebar />
+      <main className={`flex-1 overflow-auto ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+        {children}
+      </main>
+    </div>
+  );
+}
+```
+
+---
+
+## Option 3: Force Dark Background on Training Page
+
+If you can't easily fix the Layout, force the Training page to have its own full-screen dark background:
+```tsx
+// In training.tsx - Update the main container
+
+return (
+  <div 
+    className={`min-h-screen w-full ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}
+    style={{ 
+      backgroundColor: isDark ? '#111827' : '#F9FAFB',
+      minHeight: '100vh'
+    }}
+  >
+    {/* Rest of Training page content */}
+  </div>
+);
+```
+
+---
+
+## Option 4: Check for Tailwind Dark Mode Configuration
+
+Make sure `tailwind.config.js` has dark mode properly configured:
+```js
+// tailwind.config.js
+
+module.exports = {
+  darkMode: 'class',  // This should be 'class' not 'media'
+  // ... rest of config
+}
+```
+
+Then ensure the `dark` class is being added to the HTML or body element when dark mode is active:
+```tsx
+// In your ThemeContext or theme provider
+
+useEffect(() => {
+  const root = document.documentElement;
+  
+  if (theme === 'dark') {
+    root.classList.add('dark');
+    root.classList.remove('light');
+  } else {
+    root.classList.remove('dark');
+    root.classList.add('light');
+  }
+}, [theme]);
+```
+
+---
+
+## Option 5: Nuclear Option - Inline Style Override
+
+If nothing else works, add an inline style to guarantee the background:
+```tsx
+// In training.tsx
+
+const bgColor = isDark ? '#111827' : '#F9FAFB';
+
+return (
+  <div 
+    className="min-h-screen w-full"
+    style={{ backgroundColor: bgColor }}
+  >
+```
+
+---
+
+## Debugging Steps
+
+Add this temporarily to see what's happening:
+```tsx
+// At the top of your Training page component
+console.log('Theme:', theme);
+console.log('isDark:', isDark);
+console.log('Document has dark class:', document.documentElement.classList.contains('dark'));
+```
+
+Check the browser console to verify:
+1. `theme` should be `'dark'`
+2. `isDark` should be `true`
+3. Document should have `dark` class
+
+---
+
+## Most Likely Cause
+
+The issue is probably one of these:
+
+1. **CSS Variable not defined for dark mode** - `bg-background` doesn't have a dark variant
+2. **`dark` class not on document** - Tailwind dark mode isn't being triggered
+3. **Parent element override** - Something above Training page has `bg-white` hardcoded
+
+---
+
+## Quick Test
+
+In browser DevTools:
+1. Right-click on the white area
+2. Click "Inspect"
+3. Look at the computed styles for `background-color`
+4. Trace up the DOM tree to find which element is causing the white background
+
+---
+
+## Testing Checklist
+
+After applying fix:
+- [ ] Training page background is dark gray (#111827)
+- [ ] NO white areas visible anywhere
+- [ ] Matches sidebar dark color
+- [ ] Persists when navigating away and back
+- [ ] Works on page refresh
