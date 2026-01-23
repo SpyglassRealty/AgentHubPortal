@@ -237,7 +237,7 @@ function VideoCard({
         {isTouch && (
           <div className="flex items-center gap-2 mt-2">
             <button 
-              className={`p-2 rounded-full transition-colors ${
+              className={`min-w-[44px] min-h-[44px] p-2.5 rounded-full transition-colors flex items-center justify-center ${
                 preference?.isFavorite 
                   ? 'bg-red-500 text-white' 
                   : isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
@@ -245,10 +245,10 @@ function VideoCard({
               onClick={(e) => { e.stopPropagation(); onToggleFavorite(video, e); }}
               data-testid={`button-favorite-mobile-${video.id}`}
             >
-              <Heart className={`w-4 h-4 ${preference?.isFavorite ? 'fill-white' : ''}`} />
+              <Heart className={`w-5 h-5 ${preference?.isFavorite ? 'fill-white' : ''}`} />
             </button>
             <button 
-              className={`p-2 rounded-full transition-colors ${
+              className={`min-w-[44px] min-h-[44px] p-2.5 rounded-full transition-colors flex items-center justify-center ${
                 preference?.isWatchLater 
                   ? 'bg-orange-500 text-white' 
                   : isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
@@ -256,7 +256,7 @@ function VideoCard({
               onClick={(e) => { e.stopPropagation(); onToggleWatchLater(video, e); }}
               data-testid={`button-watchlater-mobile-${video.id}`}
             >
-              <BookmarkPlus className={`w-4 h-4 ${preference?.isWatchLater ? 'fill-white' : ''}`} />
+              <BookmarkPlus className={`w-5 h-5 ${preference?.isWatchLater ? 'fill-white' : ''}`} />
             </button>
           </div>
         )}
@@ -606,12 +606,12 @@ function VideoPlayerModal({
         {/* Close button - TOP LEFT to avoid Vimeo's icons */}
         <button
           onClick={onClose}
-          className={`absolute top-3 left-3 sm:top-4 sm:left-4 z-20 p-2 rounded-full transition-colors
+          className={`absolute top-2 left-2 sm:top-4 sm:left-4 z-20 min-w-[44px] min-h-[44px] p-2.5 rounded-full transition-colors flex items-center justify-center
             ${isDark ? 'bg-gray-800/80 hover:bg-gray-700 text-white' : 'bg-white/80 hover:bg-white text-gray-900'}
             backdrop-blur-sm`}
           data-testid="button-close-modal"
         >
-          <X className="w-5 h-5 sm:w-6 sm:h-6" />
+          <X className="w-6 h-6" />
         </button>
         
         {/* Video Player */}
@@ -646,11 +646,11 @@ function VideoPlayerModal({
           </div>
           
           {/* Action Buttons - SYNCED WITH DATABASE */}
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 pb-safe">
             {/* Favorite Button */}
             <button
               onClick={(e) => onToggleFavorite(video, e)}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all active:scale-[0.98]
+              className={`flex-1 flex items-center justify-center gap-2 px-4 min-h-[48px] rounded-lg font-medium transition-all active:scale-[0.98]
                 ${preference?.isFavorite 
                   ? 'bg-red-500 hover:bg-red-600 text-white' 
                   : `${buttonBg} ${textPrimary} border ${borderColor}`
@@ -664,7 +664,7 @@ function VideoPlayerModal({
             {/* Watch Later Button */}
             <button
               onClick={(e) => onToggleWatchLater(video, e)}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all active:scale-[0.98]
+              className={`flex-1 flex items-center justify-center gap-2 px-4 min-h-[48px] rounded-lg font-medium transition-all active:scale-[0.98]
                 ${preference?.isWatchLater 
                   ? 'bg-orange-500 hover:bg-orange-600 text-white' 
                   : `${buttonBg} ${textPrimary} border ${borderColor}`
