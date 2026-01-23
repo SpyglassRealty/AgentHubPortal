@@ -1,0 +1,872 @@
+# Training Videos Widget Redesign & Training Section Fixes
+
+## Overview
+Two main areas to update:
+
+**1. Dashboard - Training Videos Widget (Company Updates)**
+- Show only the latest/current video (not full playlist on right)
+- Replace "Previous/Next" with a "Go to Training" button
+- Heart icon adds to Favorites
+- Plus/Clock icon adds to Watch Later
+- Remove heart and clock icons from inside the video player area
+
+**2. Training Section**
+- Fix "My List", "Like", and "Watch Later" functionality - currently not working
+
+---
+
+## Part 1: Training Videos Widget Redesign
+
+### Current State
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Training Videos                                    [expand] [X]        │
+│  50 videos                                                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                           │  [Search videos...]         │
+│  ┌─────────────────────────────────────┐ │                              │
+│  │                                     │ │  [All] [New] [Fav] [Watch]   │
+│  │         VIDEO PLAYER                │ │  Sort by: [Newest v]         │
+│  │                                     │ │                              │
+│  │    [heart icon]  [clock icon]       │ │  ┌─────┐ Training for...     │
+│  │         ↑ REMOVE THESE ↑            │ │  │thumb│ 1:18:28 Today       │
+│  │                                     │ │  └─────┘                     │
+│  │                                     │ │  ┌─────┐ jointly_training    │
+│  │  ▶ ════════════════════ 15:15      │ │  │thumb│ 24:21 Today         │
+│  └─────────────────────────────────────┘ │  └─────┘                     │
+│                                           │  ┌─────┐ Jointly Training   │
+│  [< Previous]  Title...  [Next >]        │  │thumb│ 24:21 2 days ago   │
+│       ↑ REPLACE WITH BUTTON ↑            │  └─────┘                     │
+│                                           │      ↑ REMOVE PLAYLIST ↑    │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Target State
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Training Videos                                    [expand] [X]        │
+│  Latest Training                                                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌───────────────────────────────────────────────────────────────────┐ │
+│  │                                                                    │ │
+│  │                         VIDEO PLAYER                               │ │
+│  │                                                                    │ │
+│  │                      (no icons inside)                            │ │
+│  │                                                                    │ │
+│  │  ▶ ══════════════════════════════════════════════════ 15:15      │ │
+│  └───────────────────────────────────────────────────────────────────┘ │
+│                                                                         │
+│  ┌───────────────────────────────────────────────────────────────────┐ │
+│  │  Training for Listing Agents and Spyglass...                      │ │
+│  │  1:18:28  •  Today  •  1 of 50                                    │ │
+│  │                                                                    │ │
+│  │  [♡ Add to Favorites]    [+ Watch Later]    [→ Go to Training]   │ │
+│  └───────────────────────────────────────────────────────────────────┘ │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Implementation - Training Videos Widget
+
+### File: `client/src/components/dashboard/TrainingVideosWidget.tsx`
+
+```tsx
+import { useState } from "react";
+import { Heart, Plus, ArrowRight, X, Maximize2, Check } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+interface TrainingVideo {
+  id: string;
+  title: string;
+  duration: string;
+  thumbnailUrl: string;
+  videoUrl: string;
+  vimeoId: string;
+  publishedAt: string;
+  isNew: boolean;
+}
+
+interface TrainingVideosWidgetProps {
+  latestVideo: TrainingVideo;
+  totalVideos: number;
+  onClose: () => void;
+  onExpand: () => void;
+}
+
+export function TrainingVideosWidget({ 
+  latestVideo, 
+  totalVideos,
+  onClose,
+  onExpand 
+}: TrainingVideosWidgetProps) {
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [isWatchLater, setIsWatchLater] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Add to Favorites mutation
+  const addToFavorites = useMutation({
+    mutationFn: async (videoId: string) => {
+      const response = await fetch(`/api/training/videos/${videoId}/favorite`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to add to favorites");
+      return response.json();
+    },
+    onSuccess: () => {
+      setIsFavorited(true);
+      queryClient.invalidateQueries({ queryKey: ["training-favorites"] });
+    },
+  });
+
+  // Add to Watch Later mutation
+  const addToWatchLater = useMutation({
+    mutationFn: async (videoId: string) => {
+      const response = await fetch(`/api/training/videos/${videoId}/watch-later`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to add to watch later");
+      return response.json();
+    },
+    onSuccess: () => {
+      setIsWatchLater(true);
+      queryClient.invalidateQueries({ queryKey: ["training-watch-later"] });
+    },
+  });
+
+  // Navigate to Training section
+  const goToTraining = () => {
+    window.location.href = "/training";
+  };
+
+  // Format relative date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden max-w-2xl">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
+            <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">Training Videos</h3>
+            <p className="text-xs text-gray-500">Latest Training</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onExpand}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Expand"
+          >
+            <Maximize2 className="h-4 w-4 text-gray-500" />
+          </button>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Close"
+          >
+            <X className="h-4 w-4 text-gray-500" />
+          </button>
+        </div>
+      </div>
+
+      {/* Video Player - NO icons inside */}
+      <div className="aspect-video bg-black">
+        <iframe
+          src={`https://player.vimeo.com/video/${latestVideo.vimeoId}?title=0&byline=0&portrait=0`}
+          className="w-full h-full"
+          frameBorder="0"
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+
+      {/* Video Info & Actions */}
+      <div className="p-4">
+        {/* Title */}
+        <h4 className="font-semibold text-gray-900 line-clamp-2 mb-2">
+          {latestVideo.title}
+        </h4>
+        
+        {/* Meta info */}
+        <p className="text-sm text-gray-500 mb-4">
+          {latestVideo.duration}  •  {formatDate(latestVideo.publishedAt)}  •  1 of {totalVideos}
+        </p>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3">
+          {/* Add to Favorites */}
+          <button
+            onClick={() => addToFavorites.mutate(latestVideo.id)}
+            disabled={isFavorited || addToFavorites.isPending}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isFavorited
+                ? "bg-red-50 text-red-600 border border-red-200"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            <Heart className={`h-4 w-4 ${isFavorited ? "fill-current" : ""}`} />
+            {isFavorited ? "Favorited" : "Add to Favorites"}
+          </button>
+
+          {/* Add to Watch Later */}
+          <button
+            onClick={() => addToWatchLater.mutate(latestVideo.id)}
+            disabled={isWatchLater || addToWatchLater.isPending}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isWatchLater
+                ? "bg-blue-50 text-blue-600 border border-blue-200"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            {isWatchLater ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            {isWatchLater ? "Added" : "Watch Later"}
+          </button>
+
+          {/* Go to Training - Primary action */}
+          <button
+            onClick={goToTraining}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg 
+                     text-sm font-medium hover:bg-orange-600 transition-colors ml-auto"
+          >
+            Go to Training
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Part 2: Training Section - Fix My List, Like, Watch Later
+
+### Database Schema
+
+Ensure these tables exist:
+
+```typescript
+// shared/schema.ts
+
+// User's video interactions
+export const userVideoInteractions = pgTable("user_video_interactions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  videoId: text("video_id").notNull(),  // Vimeo video ID
+  
+  // Interaction types
+  isFavorite: boolean("is_favorite").default(false),
+  isLiked: boolean("is_liked").default(false),
+  isWatchLater: boolean("is_watch_later").default(false),
+  isInMyList: boolean("is_in_my_list").default(false),
+  
+  // Watch progress
+  watchedSeconds: integer("watched_seconds").default(0),
+  completed: boolean("completed").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Unique constraint: one interaction record per user per video
+// CREATE UNIQUE INDEX user_video_unique ON user_video_interactions(user_id, video_id);
+```
+
+### API Endpoints
+
+```typescript
+// server/routes.ts
+
+// ============================================
+// TRAINING VIDEO INTERACTIONS
+// ============================================
+
+// Toggle Favorite
+app.post("/api/training/videos/:videoId/favorite", async (req, res) => {
+  try {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const userId = req.user.id;
+    const videoId = req.params.videoId;
+
+    // Find or create interaction record
+    const existing = await db
+      .select()
+      .from(userVideoInteractions)
+      .where(
+        and(
+          eq(userVideoInteractions.userId, userId),
+          eq(userVideoInteractions.videoId, videoId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length === 0) {
+      // Create new record with favorite = true
+      await db.insert(userVideoInteractions).values({
+        userId,
+        videoId,
+        isFavorite: true,
+        updatedAt: new Date(),
+      });
+      return res.json({ isFavorite: true });
+    } else {
+      // Toggle favorite
+      const newValue = !existing[0].isFavorite;
+      await db
+        .update(userVideoInteractions)
+        .set({ isFavorite: newValue, updatedAt: new Date() })
+        .where(eq(userVideoInteractions.id, existing[0].id));
+      return res.json({ isFavorite: newValue });
+    }
+  } catch (error) {
+    console.error("Error toggling favorite:", error);
+    res.status(500).json({ error: "Failed to update favorite" });
+  }
+});
+
+// Toggle Like
+app.post("/api/training/videos/:videoId/like", async (req, res) => {
+  try {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const userId = req.user.id;
+    const videoId = req.params.videoId;
+
+    const existing = await db
+      .select()
+      .from(userVideoInteractions)
+      .where(
+        and(
+          eq(userVideoInteractions.userId, userId),
+          eq(userVideoInteractions.videoId, videoId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length === 0) {
+      await db.insert(userVideoInteractions).values({
+        userId,
+        videoId,
+        isLiked: true,
+        updatedAt: new Date(),
+      });
+      return res.json({ isLiked: true });
+    } else {
+      const newValue = !existing[0].isLiked;
+      await db
+        .update(userVideoInteractions)
+        .set({ isLiked: newValue, updatedAt: new Date() })
+        .where(eq(userVideoInteractions.id, existing[0].id));
+      return res.json({ isLiked: newValue });
+    }
+  } catch (error) {
+    console.error("Error toggling like:", error);
+    res.status(500).json({ error: "Failed to update like" });
+  }
+});
+
+// Toggle Watch Later
+app.post("/api/training/videos/:videoId/watch-later", async (req, res) => {
+  try {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const userId = req.user.id;
+    const videoId = req.params.videoId;
+
+    const existing = await db
+      .select()
+      .from(userVideoInteractions)
+      .where(
+        and(
+          eq(userVideoInteractions.userId, userId),
+          eq(userVideoInteractions.videoId, videoId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length === 0) {
+      await db.insert(userVideoInteractions).values({
+        userId,
+        videoId,
+        isWatchLater: true,
+        updatedAt: new Date(),
+      });
+      return res.json({ isWatchLater: true });
+    } else {
+      const newValue = !existing[0].isWatchLater;
+      await db
+        .update(userVideoInteractions)
+        .set({ isWatchLater: newValue, updatedAt: new Date() })
+        .where(eq(userVideoInteractions.id, existing[0].id));
+      return res.json({ isWatchLater: newValue });
+    }
+  } catch (error) {
+    console.error("Error toggling watch later:", error);
+    res.status(500).json({ error: "Failed to update watch later" });
+  }
+});
+
+// Toggle My List
+app.post("/api/training/videos/:videoId/my-list", async (req, res) => {
+  try {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const userId = req.user.id;
+    const videoId = req.params.videoId;
+
+    const existing = await db
+      .select()
+      .from(userVideoInteractions)
+      .where(
+        and(
+          eq(userVideoInteractions.userId, userId),
+          eq(userVideoInteractions.videoId, videoId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length === 0) {
+      await db.insert(userVideoInteractions).values({
+        userId,
+        videoId,
+        isInMyList: true,
+        updatedAt: new Date(),
+      });
+      return res.json({ isInMyList: true });
+    } else {
+      const newValue = !existing[0].isInMyList;
+      await db
+        .update(userVideoInteractions)
+        .set({ isInMyList: newValue, updatedAt: new Date() })
+        .where(eq(userVideoInteractions.id, existing[0].id));
+      return res.json({ isInMyList: newValue });
+    }
+  } catch (error) {
+    console.error("Error toggling my list:", error);
+    res.status(500).json({ error: "Failed to update my list" });
+  }
+});
+
+// Get user's video interactions (for loading initial state)
+app.get("/api/training/videos/:videoId/interactions", async (req, res) => {
+  try {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const userId = req.user.id;
+    const videoId = req.params.videoId;
+
+    const interaction = await db
+      .select()
+      .from(userVideoInteractions)
+      .where(
+        and(
+          eq(userVideoInteractions.userId, userId),
+          eq(userVideoInteractions.videoId, videoId)
+        )
+      )
+      .limit(1);
+
+    if (interaction.length === 0) {
+      return res.json({
+        isFavorite: false,
+        isLiked: false,
+        isWatchLater: false,
+        isInMyList: false,
+      });
+    }
+
+    res.json({
+      isFavorite: interaction[0].isFavorite,
+      isLiked: interaction[0].isLiked,
+      isWatchLater: interaction[0].isWatchLater,
+      isInMyList: interaction[0].isInMyList,
+    });
+  } catch (error) {
+    console.error("Error fetching interactions:", error);
+    res.status(500).json({ error: "Failed to fetch interactions" });
+  }
+});
+
+// Get user's favorites list
+app.get("/api/training/favorites", async (req, res) => {
+  try {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const userId = req.user.id;
+
+    const favorites = await db
+      .select()
+      .from(userVideoInteractions)
+      .where(
+        and(
+          eq(userVideoInteractions.userId, userId),
+          eq(userVideoInteractions.isFavorite, true)
+        )
+      );
+
+    res.json(favorites.map(f => f.videoId));
+  } catch (error) {
+    console.error("Error fetching favorites:", error);
+    res.status(500).json({ error: "Failed to fetch favorites" });
+  }
+});
+
+// Get user's watch later list
+app.get("/api/training/watch-later", async (req, res) => {
+  try {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const userId = req.user.id;
+
+    const watchLater = await db
+      .select()
+      .from(userVideoInteractions)
+      .where(
+        and(
+          eq(userVideoInteractions.userId, userId),
+          eq(userVideoInteractions.isWatchLater, true)
+        )
+      );
+
+    res.json(watchLater.map(w => w.videoId));
+  } catch (error) {
+    console.error("Error fetching watch later:", error);
+    res.status(500).json({ error: "Failed to fetch watch later" });
+  }
+});
+
+// Get user's my list
+app.get("/api/training/my-list", async (req, res) => {
+  try {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const userId = req.user.id;
+
+    const myList = await db
+      .select()
+      .from(userVideoInteractions)
+      .where(
+        and(
+          eq(userVideoInteractions.userId, userId),
+          eq(userVideoInteractions.isInMyList, true)
+        )
+      );
+
+    res.json(myList.map(m => m.videoId));
+  } catch (error) {
+    console.error("Error fetching my list:", error);
+    res.status(500).json({ error: "Failed to fetch my list" });
+  }
+});
+```
+
+### Frontend Hook for Video Interactions
+
+```typescript
+// client/src/hooks/useVideoInteractions.ts
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+interface VideoInteractions {
+  isFavorite: boolean;
+  isLiked: boolean;
+  isWatchLater: boolean;
+  isInMyList: boolean;
+}
+
+export function useVideoInteractions(videoId: string) {
+  const queryClient = useQueryClient();
+
+  // Fetch current state
+  const { data: interactions, isLoading } = useQuery<VideoInteractions>({
+    queryKey: ["video-interactions", videoId],
+    queryFn: async () => {
+      const response = await fetch(`/api/training/videos/${videoId}/interactions`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch interactions");
+      return response.json();
+    },
+  });
+
+  // Toggle mutations
+  const toggleFavorite = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/training/videos/${videoId}/favorite`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to toggle favorite");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["video-interactions", videoId], (old: VideoInteractions) => ({
+        ...old,
+        isFavorite: data.isFavorite,
+      }));
+      queryClient.invalidateQueries({ queryKey: ["training-favorites"] });
+    },
+  });
+
+  const toggleLike = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/training/videos/${videoId}/like`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to toggle like");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["video-interactions", videoId], (old: VideoInteractions) => ({
+        ...old,
+        isLiked: data.isLiked,
+      }));
+    },
+  });
+
+  const toggleWatchLater = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/training/videos/${videoId}/watch-later`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to toggle watch later");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["video-interactions", videoId], (old: VideoInteractions) => ({
+        ...old,
+        isWatchLater: data.isWatchLater,
+      }));
+      queryClient.invalidateQueries({ queryKey: ["training-watch-later"] });
+    },
+  });
+
+  const toggleMyList = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/training/videos/${videoId}/my-list`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to toggle my list");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["video-interactions", videoId], (old: VideoInteractions) => ({
+        ...old,
+        isInMyList: data.isInMyList,
+      }));
+      queryClient.invalidateQueries({ queryKey: ["training-my-list"] });
+    },
+  });
+
+  return {
+    interactions: interactions ?? {
+      isFavorite: false,
+      isLiked: false,
+      isWatchLater: false,
+      isInMyList: false,
+    },
+    isLoading,
+    toggleFavorite: toggleFavorite.mutate,
+    toggleLike: toggleLike.mutate,
+    toggleWatchLater: toggleWatchLater.mutate,
+    toggleMyList: toggleMyList.mutate,
+    isPending: toggleFavorite.isPending || toggleLike.isPending || 
+               toggleWatchLater.isPending || toggleMyList.isPending,
+  };
+}
+```
+
+### Training Section - Video Card with Working Buttons
+
+```tsx
+// client/src/components/training/VideoCard.tsx
+
+import { Heart, Plus, ThumbsUp, List, Check } from "lucide-react";
+import { useVideoInteractions } from "@/hooks/useVideoInteractions";
+
+interface VideoCardProps {
+  video: TrainingVideo;
+  onPlay: (video: TrainingVideo) => void;
+}
+
+export function VideoCard({ video, onPlay }: VideoCardProps) {
+  const {
+    interactions,
+    toggleFavorite,
+    toggleLike,
+    toggleWatchLater,
+    toggleMyList,
+    isPending,
+  } = useVideoInteractions(video.id);
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+      {/* Thumbnail */}
+      <div 
+        className="aspect-video bg-gray-100 cursor-pointer relative"
+        onClick={() => onPlay(video)}
+      >
+        <img 
+          src={video.thumbnailUrl} 
+          alt={video.title}
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded">
+          {video.duration}
+        </div>
+        {video.isNew && (
+          <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded font-medium">
+            NEW
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="p-3">
+        <h4 className="font-medium text-gray-900 line-clamp-2 text-sm mb-2">
+          {video.title}
+        </h4>
+        <p className="text-xs text-gray-500 mb-3">{video.publishedDate}</p>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-1">
+          {/* My List */}
+          <button
+            onClick={() => toggleMyList()}
+            disabled={isPending}
+            className={`p-2 rounded-lg transition-colors ${
+              interactions.isInMyList
+                ? "bg-orange-100 text-orange-600"
+                : "hover:bg-gray-100 text-gray-500"
+            }`}
+            title={interactions.isInMyList ? "Remove from My List" : "Add to My List"}
+          >
+            {interactions.isInMyList ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <List className="h-4 w-4" />
+            )}
+          </button>
+
+          {/* Like */}
+          <button
+            onClick={() => toggleLike()}
+            disabled={isPending}
+            className={`p-2 rounded-lg transition-colors ${
+              interactions.isLiked
+                ? "bg-blue-100 text-blue-600"
+                : "hover:bg-gray-100 text-gray-500"
+            }`}
+            title={interactions.isLiked ? "Unlike" : "Like"}
+          >
+            <ThumbsUp className={`h-4 w-4 ${interactions.isLiked ? "fill-current" : ""}`} />
+          </button>
+
+          {/* Favorite */}
+          <button
+            onClick={() => toggleFavorite()}
+            disabled={isPending}
+            className={`p-2 rounded-lg transition-colors ${
+              interactions.isFavorite
+                ? "bg-red-100 text-red-600"
+                : "hover:bg-gray-100 text-gray-500"
+            }`}
+            title={interactions.isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+          >
+            <Heart className={`h-4 w-4 ${interactions.isFavorite ? "fill-current" : ""}`} />
+          </button>
+
+          {/* Watch Later */}
+          <button
+            onClick={() => toggleWatchLater()}
+            disabled={isPending}
+            className={`p-2 rounded-lg transition-colors ${
+              interactions.isWatchLater
+                ? "bg-purple-100 text-purple-600"
+                : "hover:bg-gray-100 text-gray-500"
+            }`}
+            title={interactions.isWatchLater ? "Remove from Watch Later" : "Watch Later"}
+          >
+            <Plus className={`h-4 w-4 ${interactions.isWatchLater ? "rotate-45" : ""}`} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Verification Checklist
+
+### Dashboard Widget
+- [ ] Shows only latest video (no playlist on right side)
+- [ ] No heart/clock icons inside the video player area
+- [ ] "Add to Favorites" button works and updates state
+- [ ] "Watch Later" button works and updates state
+- [ ] "Go to Training" button navigates to Training section
+- [ ] Video title, duration, and date display correctly
+
+### Training Section
+- [ ] "My List" button toggles and persists per user
+- [ ] "Like" button toggles and persists per user
+- [ ] "Favorites" filter shows only favorited videos
+- [ ] "Watch Later" filter shows only watch later videos
+- [ ] Each user has their own separate lists (per userId)
+- [ ] Button states load correctly when page loads
+
+---
+
+## Files to Create/Modify
+
+1. **`shared/schema.ts`** - Add `userVideoInteractions` table
+2. **`server/routes.ts`** - Add interaction API endpoints
+3. **`client/src/hooks/useVideoInteractions.ts`** - Create hook
+4. **`client/src/components/dashboard/TrainingVideosWidget.tsx`** - Redesign widget
+5. **`client/src/components/training/VideoCard.tsx`** - Fix action buttons
+6. **`client/src/pages/Training.tsx`** - Ensure filters use the APIs

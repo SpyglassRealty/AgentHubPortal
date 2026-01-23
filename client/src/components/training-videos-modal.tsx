@@ -1,11 +1,12 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
-  X, Play, Clock, Calendar, ChevronRight, ChevronLeft, 
-  Loader2, Maximize2, Minimize2, Search, Heart, BookmarkPlus, History, List
+  X, Play, Clock, Calendar, ArrowRight,
+  Loader2, Maximize2, Minimize2, Heart, Plus, Check
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import Player from '@vimeo/player';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Link } from 'wouter';
 
 interface VimeoVideo {
   id: string;
@@ -49,41 +50,24 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isTheaterMode, setIsTheaterMode] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState('all');
-  const [sortOrder, setSortOrder] = useState('newest');
   const [preferences, setPreferences] = useState<Record<string, VideoPreference>>({});
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [iframeReady, setIframeReady] = useState(false);
-  const [showMobileList, setShowMobileList] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [watchLaterLoading, setWatchLaterLoading] = useState(false);
 
   const modalBg = isDark ? 'bg-gray-900' : 'bg-white';
-  const sidebarBg = isDark ? 'bg-gray-800' : 'bg-gray-50';
   const overlayBg = isDark ? 'bg-black/80' : 'bg-black/50';
   
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
   const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
-  const textMuted = isDark ? 'text-gray-500' : 'text-gray-400';
   
   const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
-  
   const hoverBg = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100';
-  const activeText = isDark ? 'text-orange-400' : 'text-orange-600';
-  const activeBorder = isDark ? 'border-orange-500' : 'border-orange-500';
-  
-  const inputBg = isDark ? 'bg-gray-700' : 'bg-white';
-  const inputBorder = isDark ? 'border-gray-600' : 'border-gray-300';
-  const inputText = isDark ? 'text-white' : 'text-gray-900';
-  const inputPlaceholder = isDark ? 'placeholder-gray-400' : 'placeholder-gray-500';
   
   const buttonBg = isDark ? 'bg-gray-700' : 'bg-gray-100';
   const buttonHover = isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-200';
   const buttonText = isDark ? 'text-gray-300' : 'text-gray-700';
-  
-  const cardHover = isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100';
-  const cardActive = isDark ? 'bg-orange-500/20' : 'bg-orange-50';
-  
-  const badgeBg = isDark ? 'bg-black/80' : 'bg-black/70';
 
   useEffect(() => {
     if (isOpen) {
@@ -112,9 +96,6 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
     if (!isOpen) {
       setSelectedVideo(null);
       setIsTheaterMode(false);
-      setSearchQuery('');
-      setFilter('all');
-      setSortOrder('newest');
       setPreferencesLoaded(false);
       setIframeReady(false);
     }
@@ -255,7 +236,7 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
     setError(null);
     
     try {
-      const response = await fetch('/api/vimeo/training-videos');
+      const response = await fetch('/api/vimeo/training-videos', { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch videos');
       
       const data = await response.json();
@@ -272,7 +253,7 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
 
   const fetchPreferences = async () => {
     try {
-      const response = await fetch('/api/videos/preferences');
+      const response = await fetch('/api/videos/preferences', { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         setPreferences(data.preferences || {});
@@ -284,17 +265,19 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
     }
   };
 
-  const toggleFavorite = async (video: VimeoVideo, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const toggleFavorite = async () => {
+    if (!selectedVideo || favoriteLoading) return;
     
+    setFavoriteLoading(true);
     try {
-      const response = await fetch(`/api/videos/${video.id}/favorite`, {
+      const response = await fetch(`/api/videos/${selectedVideo.id}/favorite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
-          videoName: video.name,
-          videoThumbnail: getThumbnail(video),
-          videoDuration: video.duration
+          videoName: selectedVideo.name,
+          videoThumbnail: getThumbnail(selectedVideo),
+          videoDuration: selectedVideo.duration
         })
       });
       
@@ -302,32 +285,36 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
         const data = await response.json();
         setPreferences(prev => ({
           ...prev,
-          [video.id]: {
-            ...prev[video.id],
+          [selectedVideo.id]: {
+            ...prev[selectedVideo.id],
             isFavorite: data.isFavorite,
-            isWatchLater: prev[video.id]?.isWatchLater || false,
-            watchProgress: prev[video.id]?.watchProgress || 0,
-            watchPercentage: prev[video.id]?.watchPercentage || 0,
-            lastWatchedAt: prev[video.id]?.lastWatchedAt || null
+            isWatchLater: prev[selectedVideo.id]?.isWatchLater || false,
+            watchProgress: prev[selectedVideo.id]?.watchProgress || 0,
+            watchPercentage: prev[selectedVideo.id]?.watchPercentage || 0,
+            lastWatchedAt: prev[selectedVideo.id]?.lastWatchedAt || null
           }
         }));
       }
     } catch (err) {
       console.error('Failed to toggle favorite:', err);
+    } finally {
+      setFavoriteLoading(false);
     }
   };
 
-  const toggleWatchLater = async (video: VimeoVideo, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const toggleWatchLater = async () => {
+    if (!selectedVideo || watchLaterLoading) return;
     
+    setWatchLaterLoading(true);
     try {
-      const response = await fetch(`/api/videos/${video.id}/watch-later`, {
+      const response = await fetch(`/api/videos/${selectedVideo.id}/watch-later`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
-          videoName: video.name,
-          videoThumbnail: getThumbnail(video),
-          videoDuration: video.duration
+          videoName: selectedVideo.name,
+          videoThumbnail: getThumbnail(selectedVideo),
+          videoDuration: selectedVideo.duration
         })
       });
       
@@ -335,67 +322,22 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
         const data = await response.json();
         setPreferences(prev => ({
           ...prev,
-          [video.id]: {
-            ...prev[video.id],
-            isFavorite: prev[video.id]?.isFavorite || false,
+          [selectedVideo.id]: {
+            ...prev[selectedVideo.id],
+            isFavorite: prev[selectedVideo.id]?.isFavorite || false,
             isWatchLater: data.isWatchLater,
-            watchProgress: prev[video.id]?.watchProgress || 0,
-            watchPercentage: prev[video.id]?.watchPercentage || 0,
-            lastWatchedAt: prev[video.id]?.lastWatchedAt || null
+            watchProgress: prev[selectedVideo.id]?.watchProgress || 0,
+            watchPercentage: prev[selectedVideo.id]?.watchPercentage || 0,
+            lastWatchedAt: prev[selectedVideo.id]?.lastWatchedAt || null
           }
         }));
       }
     } catch (err) {
       console.error('Failed to toggle watch later:', err);
+    } finally {
+      setWatchLaterLoading(false);
     }
   };
-
-  const filteredVideos = useMemo(() => {
-    let result = [...videos];
-    
-    if (searchQuery) {
-      result = result.filter(v => 
-        v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        v.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    
-    if (filter === 'new') {
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      result = result.filter(v => new Date(v.created_time) >= sevenDaysAgo);
-    } else if (filter === 'favorites') {
-      result = result.filter(v => preferences[v.id]?.isFavorite);
-    } else if (filter === 'watchLater') {
-      result = result.filter(v => preferences[v.id]?.isWatchLater);
-    } else if (filter === 'continue') {
-      result = result.filter(v => {
-        const pref = preferences[v.id];
-        return pref && pref.watchProgress > 0 && pref.watchPercentage < 95;
-      });
-      result.sort((a, b) => {
-        const aTime = preferences[a.id]?.lastWatchedAt;
-        const bTime = preferences[b.id]?.lastWatchedAt;
-        if (!aTime) return 1;
-        if (!bTime) return -1;
-        return new Date(bTime).getTime() - new Date(aTime).getTime();
-      });
-    }
-    
-    if (filter !== 'continue') {
-      if (sortOrder === 'oldest') {
-        result.sort((a, b) => new Date(a.created_time).getTime() - new Date(b.created_time).getTime());
-      } else if (sortOrder === 'duration') {
-        result.sort((a, b) => b.duration - a.duration);
-      } else {
-        result.sort((a, b) => new Date(b.created_time).getTime() - new Date(a.created_time).getTime());
-      }
-    }
-    
-    return result;
-  }, [videos, searchQuery, filter, sortOrder, preferences]);
-
-  const currentIndex = filteredVideos.findIndex(v => v.id === selectedVideo?.id);
 
   const formatDuration = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -416,15 +358,8 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
     
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
-
-  const isNew = (video: VimeoVideo) => {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    return new Date(video.created_time) >= sevenDaysAgo;
   };
 
   const getThumbnail = (video: VimeoVideo) => {
@@ -441,25 +376,9 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
     return `${baseUrl}${separator}api=1&autoplay=0&title=0&byline=0&portrait=0${startTime}`;
   };
 
-  const playNext = () => {
-    if (currentIndex < filteredVideos.length - 1) {
-      setSelectedVideo(filteredVideos[currentIndex + 1]);
-    }
-  };
-
-  const playPrevious = () => {
-    if (currentIndex > 0) {
-      setSelectedVideo(filteredVideos[currentIndex - 1]);
-    }
-  };
-
-  const filterTabs = [
-    { key: 'all', label: 'All', icon: null },
-    { key: 'new', label: 'New', icon: null },
-    { key: 'favorites', label: 'Favorites', icon: Heart },
-    { key: 'watchLater', label: 'Watch Later', icon: BookmarkPlus },
-    { key: 'continue', label: 'Continue', icon: History },
-  ];
+  const currentIndex = videos.findIndex(v => v.id === selectedVideo?.id);
+  const isFavorited = selectedVideo ? preferences[selectedVideo.id]?.isFavorite : false;
+  const isInWatchLater = selectedVideo ? preferences[selectedVideo.id]?.isWatchLater : false;
 
   if (!isOpen) return null;
 
@@ -471,388 +390,152 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
     >
       <div 
         className={`
-          relative flex flex-col md:flex-row
-          ${isTheaterMode ? 'w-full h-full' : 'w-full max-w-6xl h-[95vh] sm:h-[90vh] md:h-[85vh]'}
+          relative flex flex-col
+          ${isTheaterMode ? 'w-full h-full' : 'w-full max-w-4xl'}
           ${modalBg} rounded-xl shadow-2xl overflow-hidden
           transition-all duration-300 modal-container
         `}
         onClick={(e) => e.stopPropagation()}
         data-testid="modal-training-videos"
       >
-        <div className="flex-1 flex flex-col min-w-0 min-h-0">
-          <div className={`flex items-center justify-between px-3 sm:px-4 py-3 border-b ${borderColor}`}>
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Play className="w-4 h-4 text-white fill-white" />
-              </div>
-              <div className="min-w-0">
-                <h2 className={`font-semibold ${textPrimary} text-sm sm:text-base`}>Training Videos</h2>
-                <p className={`text-xs ${textSecondary} truncate`}>
-                  {filteredVideos.length} video{filteredVideos.length !== 1 ? 's' : ''}
-                  {filter !== 'all' && ` in ${filterTabs.find(t => t.key === filter)?.label}`}
-                </p>
-              </div>
+        {/* Header */}
+        <div className={`flex items-center justify-between px-3 sm:px-4 py-3 border-b ${borderColor}`}>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Play className="w-4 h-4 text-white fill-white" />
             </div>
-            
-            <div className="flex items-center gap-1 sm:gap-2">
-              {isMobile && !isTheaterMode && (
-                <button
-                  onClick={() => setShowMobileList(!showMobileList)}
-                  className={`p-2 rounded-lg ${hoverBg} transition-colors ${showMobileList ? activeText : textSecondary} touch-target flex items-center justify-center`}
-                  title="Show video list"
-                  data-testid="button-toggle-mobile-list"
-                >
-                  <List className="w-5 h-5" />
-                </button>
-              )}
-              {!isMobile && (
-                <button
-                  onClick={() => setIsTheaterMode(!isTheaterMode)}
-                  className={`p-2 rounded-lg ${hoverBg} transition-colors ${textSecondary} touch-target flex items-center justify-center`}
-                  title={isTheaterMode ? 'Exit theater mode' : 'Theater mode'}
-                  data-testid="button-theater-mode"
-                >
-                  {isTheaterMode ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
-                </button>
-              )}
+            <div className="min-w-0">
+              <h2 className={`font-semibold ${textPrimary} text-sm sm:text-base`}>Training Videos</h2>
+              <p className={`text-xs ${textSecondary}`}>Latest Training</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-1 sm:gap-2">
+            {!isMobile && (
               <button
-                onClick={onClose}
+                onClick={() => setIsTheaterMode(!isTheaterMode)}
                 className={`p-2 rounded-lg ${hoverBg} transition-colors ${textSecondary} touch-target flex items-center justify-center`}
-                data-testid="button-close-modal"
+                title={isTheaterMode ? 'Exit theater mode' : 'Theater mode'}
+                data-testid="button-theater-mode"
               >
-                <X className="w-5 h-5" />
+                {isTheaterMode ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className={`p-2 rounded-lg ${hoverBg} transition-colors ${textSecondary} touch-target flex items-center justify-center`}
+              data-testid="button-close-modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Video Player - NO overlay icons */}
+        <div className={`${isTheaterMode ? 'flex-1' : 'aspect-video'} ${isDark ? 'bg-black' : 'bg-gray-900'} flex items-center justify-center relative`}>
+          {loading ? (
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="w-8 h-8 animate-spin text-white/50" />
+              <p className="text-white/50">Loading videos...</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-red-400">{error}</p>
+              <button 
+                onClick={fetchVideos}
+                className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                data-testid="button-retry-videos"
+              >
+                Retry
               </button>
             </div>
-          </div>
-
-          <div className={`flex-1 ${isDark ? 'bg-black' : 'bg-gray-900'} flex items-center justify-center relative`}>
-            {loading ? (
-              <div className="flex flex-col items-center gap-3">
-                <Loader2 className="w-8 h-8 animate-spin text-white/50" />
-                <p className="text-white/50">Loading videos...</p>
-              </div>
-            ) : error ? (
-              <div className="flex flex-col items-center gap-3">
-                <p className="text-red-400">{error}</p>
-                <button 
-                  onClick={fetchVideos}
-                  className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-                  data-testid="button-retry-videos"
-                >
-                  Retry
-                </button>
-              </div>
-            ) : selectedVideo ? (
-              <>
-                <iframe
-                  ref={iframeRef}
-                  src={getEmbedUrl(selectedVideo)}
-                  className="w-full h-full"
-                  frameBorder="0"
-                  allow="autoplay; fullscreen; picture-in-picture"
-                  allowFullScreen
-                  title={selectedVideo.name}
-                  data-testid="iframe-video-player"
-                  onLoad={handleIframeLoad}
-                />
-                
-                <div className="absolute top-4 right-4 flex flex-col gap-2">
-                  <button
-                    onClick={(e) => toggleFavorite(selectedVideo, e)}
-                    className={`p-2 rounded-full transition-all ${
-                      preferences[selectedVideo.id]?.isFavorite 
-                        ? 'bg-red-500 text-white' 
-                        : 'bg-black/50 text-white hover:bg-black/70'
-                    }`}
-                    title={preferences[selectedVideo.id]?.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                    data-testid="button-toggle-favorite-player"
-                  >
-                    <Heart className={`w-5 h-5 ${preferences[selectedVideo.id]?.isFavorite ? 'fill-white' : ''}`} />
-                  </button>
-                  <button
-                    onClick={(e) => toggleWatchLater(selectedVideo, e)}
-                    className={`p-2 rounded-full transition-all ${
-                      preferences[selectedVideo.id]?.isWatchLater 
-                        ? 'bg-orange-500 text-white' 
-                        : 'bg-black/50 text-white hover:bg-black/70'
-                    }`}
-                    title={preferences[selectedVideo.id]?.isWatchLater ? 'Remove from watch later' : 'Add to watch later'}
-                    data-testid="button-toggle-watchlater-player"
-                  >
-                    <BookmarkPlus className={`w-5 h-5 ${preferences[selectedVideo.id]?.isWatchLater ? 'fill-white' : ''}`} />
-                  </button>
-                </div>
-              </>
-            ) : (
-              <p className="text-white/50">No video selected</p>
-            )}
-          </div>
-
-          {selectedVideo && !loading && (
-            <div className={`px-4 py-3 border-t ${borderColor}`}>
-              <div className="flex items-center justify-between">
-                <button
-                  onClick={playPrevious}
-                  disabled={currentIndex === 0}
-                  className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors
-                    ${currentIndex === 0 
-                      ? `${textMuted} cursor-not-allowed` 
-                      : `${textSecondary} ${hoverBg}`
-                    }`}
-                  data-testid="button-previous-video"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  <span className="hidden sm:inline">Previous</span>
-                </button>
-                
-                <div className="text-center flex-1 min-w-0 px-4">
-                  <h3 className={`font-semibold ${textPrimary} truncate`} data-testid="text-selected-video-title">
-                    {selectedVideo.name}
-                  </h3>
-                  <div className={`flex items-center justify-center gap-3 text-sm ${textSecondary} mt-1`}>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      {formatDuration(selectedVideo.duration)}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      {formatDate(selectedVideo.created_time)}
-                    </span>
-                    <span className={`text-xs ${textMuted}`}>
-                      {currentIndex + 1} of {filteredVideos.length}
-                    </span>
-                  </div>
-                </div>
-                
-                <button
-                  onClick={playNext}
-                  disabled={currentIndex === filteredVideos.length - 1}
-                  className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors
-                    ${currentIndex === filteredVideos.length - 1 
-                      ? `${textMuted} cursor-not-allowed` 
-                      : `${textSecondary} ${hoverBg}`
-                    }`}
-                  data-testid="button-next-video"
-                >
-                  <span className="hidden sm:inline">Next</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+          ) : selectedVideo ? (
+            <iframe
+              ref={iframeRef}
+              src={getEmbedUrl(selectedVideo)}
+              className="w-full h-full"
+              frameBorder="0"
+              allow="autoplay; fullscreen; picture-in-picture"
+              allowFullScreen
+              title={selectedVideo.name}
+              data-testid="iframe-video-player"
+              onLoad={handleIframeLoad}
+            />
+          ) : (
+            <p className="text-white/50">No video selected</p>
           )}
         </div>
 
-        {!isTheaterMode && (isMobile ? showMobileList : true) && (
-          <div className={`
-            ${isMobile 
-              ? 'absolute inset-0 z-10' 
-              : 'w-80 border-l'
-            } 
-            ${sidebarBg} ${borderColor} flex flex-col
-          `}>
-            {isMobile && (
-              <div className={`flex items-center justify-between px-3 py-3 border-b ${borderColor}`}>
-                <h3 className={`font-semibold ${textPrimary}`}>Video List</h3>
-                <button
-                  onClick={() => setShowMobileList(false)}
-                  className={`p-2 rounded-lg ${hoverBg} ${textSecondary} touch-target flex items-center justify-center`}
-                  data-testid="button-close-mobile-list"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            )}
+        {/* Video Info & Action Buttons */}
+        {selectedVideo && !loading && (
+          <div className={`px-4 py-4 border-t ${borderColor}`}>
+            {/* Title */}
+            <h3 className={`font-semibold ${textPrimary} line-clamp-2 mb-2`} data-testid="text-selected-video-title">
+              {selectedVideo.name}
+            </h3>
             
-            <div className={`p-3 border-b ${borderColor}`}>
-              <div className="relative">
-                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textMuted}`} />
-                <input
-                  type="text"
-                  placeholder="Search videos..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`w-full pl-9 pr-3 py-2.5 ${inputBg} border ${inputBorder} rounded-lg text-sm ${inputText} ${inputPlaceholder} focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors`}
-                  data-testid="input-search-videos"
-                />
-              </div>
+            {/* Meta info */}
+            <div className={`flex items-center gap-3 text-sm ${textSecondary} mb-4`}>
+              <span className="flex items-center gap-1">
+                <Clock className="w-4 h-4" />
+                {formatDuration(selectedVideo.duration)}
+              </span>
+              <span className="flex items-center gap-1">
+                <Calendar className="w-4 h-4" />
+                {formatDate(selectedVideo.created_time)}
+              </span>
+              <span className={`text-xs`}>
+                {currentIndex + 1} of {videos.length}
+              </span>
             </div>
 
-            <div className={`flex gap-1.5 p-2 border-b ${borderColor} overflow-x-auto scrollbar-hide`}>
-              {filterTabs.map(tab => {
-                const Icon = tab.icon;
-                const count = tab.key === 'favorites' 
-                  ? videos.filter(v => preferences[v.id]?.isFavorite).length
-                  : tab.key === 'watchLater'
-                  ? videos.filter(v => preferences[v.id]?.isWatchLater).length
-                  : tab.key === 'continue'
-                  ? videos.filter(v => {
-                      const pref = preferences[v.id];
-                      return pref && pref.watchProgress > 0 && pref.watchPercentage < 95;
-                    }).length
-                  : null;
-                
-                return (
-                  <button
-                    key={tab.key}
-                    onClick={() => setFilter(tab.key)}
-                    className={`flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-full whitespace-nowrap transition-colors flex-shrink-0 touch-target
-                      ${filter === tab.key 
-                        ? 'bg-orange-500 text-white' 
-                        : `${buttonBg} ${buttonText} ${buttonHover}`
-                      }`}
-                    data-testid={`button-filter-${tab.key}`}
-                  >
-                    {Icon && <Icon className="w-3.5 h-3.5" />}
-                    {tab.label}
-                    {count !== null && count > 0 && (
-                      <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs ${
-                        filter === tab.key ? 'bg-white/20' : isDark ? 'bg-gray-600' : 'bg-gray-300'
-                      }`}>
-                        {count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Add to Favorites */}
+              <button
+                onClick={toggleFavorite}
+                disabled={favoriteLoading}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  isFavorited
+                    ? 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30'
+                    : `${buttonBg} ${buttonText} ${buttonHover}`
+                }`}
+                data-testid="button-toggle-favorite"
+              >
+                <Heart className={`w-4 h-4 ${isFavorited ? 'fill-current' : ''}`} />
+                {favoriteLoading ? 'Saving...' : isFavorited ? 'Favorited' : 'Add to Favorites'}
+              </button>
 
-            {filter !== 'continue' && (
-              <div className={`px-3 py-2 border-b ${borderColor} flex items-center justify-between`}>
-                <span className={`text-xs ${textSecondary}`}>Sort by</span>
-                <select 
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value)}
-                  className={`text-xs ${inputBg} border ${inputBorder} ${buttonText} rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-500`}
-                  data-testid="select-sort-order"
-                >
-                  <option value="newest">Newest</option>
-                  <option value="oldest">Oldest</option>
-                  <option value="duration">Duration</option>
-                </select>
-              </div>
-            )}
-            
-            <div className="flex-1 overflow-y-auto">
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className={`w-6 h-6 animate-spin ${textSecondary}`} />
-                </div>
-              ) : filteredVideos.length === 0 ? (
-                <div className={`p-4 text-center ${textSecondary}`}>
-                  {filter === 'favorites' ? (
-                    <div className="py-8">
-                      <Heart className={`w-12 h-12 mx-auto mb-3 ${textMuted}`} />
-                      <p className="font-medium">No favorites yet</p>
-                      <p className="text-sm mt-1">Click the heart icon to save videos</p>
-                    </div>
-                  ) : filter === 'watchLater' ? (
-                    <div className="py-8">
-                      <BookmarkPlus className={`w-12 h-12 mx-auto mb-3 ${textMuted}`} />
-                      <p className="font-medium">Watch later list is empty</p>
-                      <p className="text-sm mt-1">Save videos to watch later</p>
-                    </div>
-                  ) : filter === 'continue' ? (
-                    <div className="py-8">
-                      <History className={`w-12 h-12 mx-auto mb-3 ${textMuted}`} />
-                      <p className="font-medium">No videos in progress</p>
-                      <p className="text-sm mt-1">Start watching to pick up where you left off</p>
-                    </div>
-                  ) : searchQuery ? (
-                    'No videos match your search'
-                  ) : (
-                    'No training videos available'
-                  )}
-                </div>
-              ) : (
-                <div className={`divide-y ${isDark ? 'divide-gray-700' : 'divide-gray-200'}`}>
-                  {filteredVideos.map((video) => (
-                    <button
-                      key={video.id}
-                      onClick={() => {
-                        setSelectedVideo(video);
-                        if (isMobile) setShowMobileList(false);
-                      }}
-                      className={`
-                        w-full p-2 sm:p-3 text-left transition-all duration-200 group touch-target
-                        ${selectedVideo?.id === video.id 
-                          ? `${cardActive} border-l-2 ${activeBorder}` 
-                          : `${cardHover} border-l-2 border-transparent`
-                        }
-                      `}
-                      data-testid={`button-video-${video.id}`}
-                    >
-                      <div className="flex gap-3">
-                        <div className="relative flex-shrink-0 w-28 h-16 rounded-lg overflow-hidden bg-gray-800">
-                          {getThumbnail(video) ? (
-                            <img 
-                              src={getThumbnail(video)} 
-                              alt={video.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Play className="w-6 h-6 text-white/30" />
-                            </div>
-                          )}
-                          
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <div className="w-8 h-8 bg-white/90 rounded-full flex items-center justify-center">
-                              <Play className="w-4 h-4 text-gray-900 fill-gray-900 ml-0.5" />
-                            </div>
-                          </div>
-                          
-                          {preferences[video.id]?.watchProgress > 0 && preferences[video.id]?.watchPercentage < 95 && (
-                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600">
-                              <div 
-                                className="h-full bg-orange-500" 
-                                style={{ width: `${preferences[video.id]?.watchPercentage || 0}%` }}
-                              />
-                            </div>
-                          )}
-                          
-                          <span className={`absolute bottom-1 right-1 px-1.5 py-0.5 ${badgeBg} text-white text-xs rounded font-medium`}>
-                            {formatDuration(video.duration)}
-                          </span>
-                          
-                          {isNew(video) && !preferences[video.id]?.watchProgress && (
-                            <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-orange-500 text-white text-xs rounded font-bold">
-                              NEW
-                            </span>
-                          )}
-                          
-                          {selectedVideo?.id === video.id && (
-                            <div className={`absolute inset-0 border-2 ${activeBorder} rounded-lg`}>
-                              <div className="absolute top-1 left-1 flex items-center gap-1 px-1.5 py-0.5 bg-orange-500 rounded text-xs text-white font-medium">
-                                <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
-                                Playing
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0 py-0.5">
-                          <div className="flex items-start gap-1">
-                            <h4 className={`font-medium text-sm line-clamp-2 flex-1 ${selectedVideo?.id === video.id ? activeText : textPrimary}`}>
-                              {video.name}
-                            </h4>
-                            <div className="flex gap-0.5 flex-shrink-0">
-                              {preferences[video.id]?.isFavorite && (
-                                <Heart className="w-3 h-3 text-red-500 fill-red-500" />
-                              )}
-                              {preferences[video.id]?.isWatchLater && (
-                                <BookmarkPlus className="w-3 h-3 text-orange-500" />
-                              )}
-                            </div>
-                          </div>
-                          <p className={`text-xs ${textSecondary} mt-1`}>
-                            {formatDate(video.created_time)}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
+              {/* Add to Watch Later */}
+              <button
+                onClick={toggleWatchLater}
+                disabled={watchLaterLoading}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  isInWatchLater
+                    ? 'bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30'
+                    : `${buttonBg} ${buttonText} ${buttonHover}`
+                }`}
+                data-testid="button-toggle-watchlater"
+              >
+                {isInWatchLater ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+                {watchLaterLoading ? 'Saving...' : isInWatchLater ? 'Added to List' : 'Watch Later'}
+              </button>
+
+              {/* Go to Training - Primary action */}
+              <Link
+                href="/training"
+                onClick={onClose}
+                className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 text-white rounded-lg 
+                         text-sm font-medium hover:bg-orange-600 transition-colors ml-auto"
+                data-testid="link-go-to-training"
+              >
+                Go to Training
+                <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
           </div>
         )}
