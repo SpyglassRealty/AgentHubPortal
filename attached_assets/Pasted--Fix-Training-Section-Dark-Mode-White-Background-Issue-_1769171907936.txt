@@ -1,0 +1,228 @@
+### Fix: Training Section Dark Mode - White Background Issue
+
+**Issue:** The Training section has large white/light areas in dark mode:
+- Main page background is white instead of dark
+- Video cards have white backgrounds
+- Overall doesn't match the dark sidebar
+
+**Solution:** Ensure all backgrounds properly sync with theme.
+
+---
+
+## 1. Fix Page Background
+
+Find the main container in `training.tsx` and ensure it has the correct background:
+```tsx
+// The main page wrapper MUST have the theme background
+return (
+  <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
+```
+
+**IMPORTANT:** Make sure there's no parent wrapper overriding this with a white background.
+
+---
+
+## 2. Check for Conflicting Parent Styles
+
+The issue might be a parent layout component. Check if Training page is wrapped in a layout that has a white background.
+
+Look in your layout/App structure for something like:
+```tsx
+// BAD - Parent has white background
+<div className="bg-white">
+  <TrainingPage />
+</div>
+
+// GOOD - Parent respects theme OR is transparent
+<div className={isDark ? 'bg-gray-900' : 'bg-white'}>
+  <TrainingPage />
+</div>
+
+// OR just remove background from parent
+<div>
+  <TrainingPage />
+</div>
+```
+
+---
+
+## 3. Fix Main Content Area
+
+If there's a main content wrapper, update it:
+```tsx
+// Find the main content area wrapper (often in a Layout component)
+// It might look like this:
+
+// BEFORE (forcing white):
+<main className="flex-1 overflow-auto bg-white">
+
+// AFTER (theme-aware):
+<main className={`flex-1 overflow-auto ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+
+// OR just make it transparent to inherit from page:
+<main className="flex-1 overflow-auto">
+```
+
+---
+
+## 4. Complete Training Page Dark Mode Fix
+
+Replace the theme classes at the top of the TrainingPage component:
+```tsx
+export default function TrainingPage() {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  
+  // ============================================
+  // THEME CLASSES - COMPLETE DARK MODE SUPPORT
+  // ============================================
+  
+  // Backgrounds
+  const pageBg = isDark ? 'bg-gray-900' : 'bg-gray-50';
+  const cardBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const headerBg = isDark ? 'from-gray-900/95 via-gray-900/80' : 'from-gray-50/95 via-gray-50/80';
+  const inputBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const modalBg = isDark ? 'bg-gray-900' : 'bg-white';
+  const emptyStateBg = isDark ? 'bg-gray-800/50' : 'bg-gray-100';
+  
+  // Text
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-300' : 'text-gray-600';
+  const textMuted = isDark ? 'text-gray-400' : 'text-gray-500';
+  
+  // Borders
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+  const inputBorder = isDark ? 'border-gray-700' : 'border-gray-300';
+  
+  // Interactive
+  const hoverBg = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100';
+  const buttonSecondary = isDark 
+    ? 'bg-gray-800 hover:bg-gray-700 text-white border-gray-700' 
+    : 'bg-white hover:bg-gray-100 text-gray-900 border-gray-300';
+
+  // ... rest of component
+```
+
+---
+
+## 5. Fix Video Card Backgrounds
+
+In the VideoCard component, ensure card backgrounds are dark:
+```tsx
+// In VideoCard component
+const cardBg = isDark ? 'bg-gray-800' : 'bg-white';
+const shadowClass = isDark ? 'shadow-lg shadow-black/30' : 'shadow-lg shadow-gray-200/50';
+
+return (
+  <div className={`... ${cardBg} ${shadowClass} ...`}>
+```
+
+---
+
+## 6. Fix Header/Search Area
+```tsx
+{/* Header - Sticky */}
+<div className={`sticky top-0 z-40 px-4 md:px-6 py-3 md:py-4 
+  bg-gradient-to-b ${isDark ? 'from-gray-900 via-gray-900/95' : 'from-gray-50 via-gray-50/95'} to-transparent 
+  backdrop-blur-sm`}>
+```
+
+---
+
+## 7. Fix "My List" / "Watch Later" Button in Hero
+
+The "+ My List" button in the hero should be:
+```tsx
+<button
+  onClick={(e) => onToggleWatchLater(video, e)}
+  className={`flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-colors active:scale-95
+    ${preference?.isWatchLater
+      ? 'bg-orange-500 text-white'
+      : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm'
+    }`}
+>
+```
+
+---
+
+## 8. Full Dark Mode Color Reference
+┌─────────────────────────────────────────────────────────────────┐
+│  DARK MODE COLORS FOR TRAINING SECTION                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Page Background:     bg-gray-900     (#111827)                │
+│  Card Background:     bg-gray-800     (#1F2937)                │
+│  Input Background:    bg-gray-800     (#1F2937)                │
+│  Hover Background:    bg-gray-700     (#374151)                │
+│                                                                 │
+│  Primary Text:        text-white      (#FFFFFF)                │
+│  Secondary Text:      text-gray-300   (#D1D5DB)                │
+│  Muted Text:          text-gray-400   (#9CA3AF)                │
+│                                                                 │
+│  Borders:             border-gray-700 (#374151)                │
+│  Dividers:            border-gray-700 (#374151)                │
+│                                                                 │
+│  Accent (Orange):     bg-orange-500   (#F97316)                │
+│  Favorite (Red):      bg-red-500      (#EF4444)                │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+---
+
+## 9. Check Layout Component
+
+**CRITICAL:** The issue is likely in your main layout component. Find where the sidebar and main content are structured:
+```tsx
+// Look for a file like Layout.tsx, AppLayout.tsx, or similar
+
+// CURRENT (likely):
+<div className="flex h-screen">
+  <Sidebar />
+  <main className="flex-1 overflow-auto bg-white">  {/* ← THIS IS THE PROBLEM */}
+    {children}
+  </main>
+</div>
+
+// FIXED:
+<div className="flex h-screen">
+  <Sidebar />
+  <main className={`flex-1 overflow-auto ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    {children}
+  </main>
+</div>
+
+// OR - Let children control their own background:
+<div className="flex h-screen">
+  <Sidebar />
+  <main className="flex-1 overflow-auto">
+    {children}
+  </main>
+</div>
+```
+
+---
+
+## Testing Checklist
+
+### Dark Mode Backgrounds
+- [ ] Page background is dark gray (#111827 / gray-900)
+- [ ] NO white areas visible
+- [ ] Video cards are gray-800
+- [ ] Search input is gray-800
+- [ ] Hero banner blends with dark background
+- [ ] Empty state sections are dark
+
+### Dark Mode Text
+- [ ] All titles are white
+- [ ] All descriptions are gray-300 or gray-400
+- [ ] All counts/badges are visible
+
+### Dark Mode Borders
+- [ ] Card borders are gray-700 (subtle, not white)
+- [ ] Input borders are gray-700
+- [ ] Dividers are gray-700
+
+### Comparison
+- [ ] Sidebar dark color matches main content dark color
+- [ ] No jarring contrast between sidebar and content
+- [ ] Consistent dark feel throughout

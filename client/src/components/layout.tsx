@@ -176,7 +176,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <SidebarContent />
       </aside>
 
-      <main className="flex-1 md:ml-64 flex flex-col min-h-screen transition-all duration-300">
+      <main className="flex-1 md:ml-64 flex flex-col min-h-screen transition-all duration-300 bg-background">
         <header className="h-16 border-b border-border bg-background/95 backdrop-blur-sm sticky top-0 z-20 px-4 md:px-8 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4 md:hidden">
              <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
