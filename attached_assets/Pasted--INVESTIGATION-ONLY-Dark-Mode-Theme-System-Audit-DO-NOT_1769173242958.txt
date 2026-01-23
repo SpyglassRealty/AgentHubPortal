@@ -1,0 +1,109 @@
+### INVESTIGATION ONLY - Dark Mode Theme System Audit
+
+**⚠️ DO NOT MAKE ANY CHANGES - This is an inquiry only**
+
+**Issue:** The Training section (and possibly other sections) shows white/light background areas even when dark mode is selected. The sidebar is dark but the main content area remains light.
+
+**Goal:** Understand how the theme system is built so we can create a proper fix.
+
+---
+
+## Please Investigate and Report Back On:
+
+### 1. Theme Context/Provider
+- Where is the ThemeContext defined? (file path)
+- What values does it provide? (theme, setTheme, isDark, etc.)
+- How does it determine the current theme? (localStorage, system preference, etc.)
+- Does it add/remove a `dark` class to the document?
+
+**Please share the full ThemeContext/ThemeProvider code.**
+
+---
+
+### 2. Tailwind Configuration
+- What is the `darkMode` setting in `tailwind.config.js`? (should be 'class' or 'media')
+- Are there any custom color configurations?
+- Is there a `bg-background` color defined? If so, what are its light/dark values?
+
+**Please share the relevant parts of `tailwind.config.js`.**
+
+---
+
+### 3. Global CSS
+- Where are global styles defined? (globals.css, index.css, etc.)
+- Are there CSS variables for background colors?
+- Do those CSS variables have dark mode variants?
+- Is there any hardcoded `background-color: white` or similar?
+
+**Please share any CSS related to background colors or theme variables.**
+
+---
+
+### 4. Layout Component Structure
+- What is the file path of the main Layout component?
+- What wraps the main content area (where pages render)?
+- What background classes/styles are applied to:
+  - The root div
+  - The main content wrapper
+  - Any intermediate containers
+
+**Please share the full Layout component code.**
+
+---
+
+### 5. Training Page Structure
+- What background classes are applied to the Training page's root element?
+- Is the Training page wrapped in any additional containers?
+- Does the Training page use `isDark` or `theme` from context?
+
+**Please share the first 50 lines of training.tsx showing imports and the main container.**
+
+---
+
+### 6. DOM Inspection
+When dark mode is selected, please check and report:
+- Does `<html>` or `<body>` have a `dark` class?
+- What is the computed `background-color` of the white area?
+- Which DOM element is causing the white background?
+
+---
+
+### 7. Other Pages Comparison
+- Do other pages (Dashboard, Reports, etc.) also have this white background issue in dark mode?
+- Or is this specific to the Training page?
+
+---
+
+## Expected Response Format
+
+Please provide your findings in this format:
+1. Theme Context
+File: [path]
+Code:
+[code snippet]
+Notes: [any observations]
+2. Tailwind Config
+darkMode: [value]
+Custom colors: [yes/no, details]
+3. Global CSS
+File: [path]
+Background variables:
+[code snippet]
+4. Layout Component
+File: [path]
+Code:
+[code snippet]
+Background applied to main content: [class or style]
+5. Training Page
+Root element classes: [classes]
+Uses theme context: [yes/no]
+6. DOM Inspection
+<html> has dark class: [yes/no]
+White area element: [element identifier]
+Computed background: [color value]
+7. Other Pages
+Same issue on other pages: [yes/no/which ones]
+
+---
+
+**Remember: Investigation only - do not modify any code.**
