@@ -191,7 +191,7 @@ export default function SettingsPage() {
             <Card data-testid="card-profile-info">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+                  <User className="h-5 w-5 text-[#EF4923]" />
                   Account Information
                 </CardTitle>
                 <CardDescription>Your profile details from your login provider</CardDescription>
@@ -200,7 +200,7 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-4">
                   <Avatar className="h-16 w-16">
                     <AvatarImage src={userProfile?.profileImageUrl} />
-                    <AvatarFallback className="text-lg bg-[hsl(28,94%,54%)] text-white">
+                    <AvatarFallback className="text-lg bg-[#EF4923] text-white">
                       {userProfile?.firstName?.charAt(0) || userProfile?.email?.charAt(0)?.toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
@@ -356,7 +356,7 @@ export default function SettingsPage() {
                           href="https://www.followupboss.com"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-orange-500 transition-colors"
+                          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-[#EF4923] transition-colors"
                         >
                           What is FUB?
                           <ExternalLink className="h-3 w-3" />
@@ -373,7 +373,7 @@ export default function SettingsPage() {
             <Card data-testid="card-rezen-settings">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+              <TrendingUp className="h-5 w-5 text-[#EF4923]" />
               ReZen Integration
             </CardTitle>
             <CardDescription>
@@ -470,7 +470,7 @@ export default function SettingsPage() {
         <Card data-testid="card-notification-settings">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <Bell className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+              <Bell className="h-5 w-5 text-[#EF4923]" />
               <div>
                 <CardTitle>Notifications</CardTitle>
                 <CardDescription>Control how you receive notifications</CardDescription>
@@ -532,7 +532,7 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-3">
-                  <Home className="h-5 w-5 text-orange-500" />
+                  <Home className="h-5 w-5 text-[#EF4923]" />
                   <div>
                     <Label htmlFor="deal-update" className="text-sm font-medium">Deal Updates</Label>
                     <p className="text-xs text-muted-foreground">When deal status changes</p>

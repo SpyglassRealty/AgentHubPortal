@@ -401,7 +401,7 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
         {/* Header */}
         <div className={`flex items-center justify-between px-3 sm:px-4 py-3 border-b ${borderColor}`}>
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 bg-[#EF4923] rounded-lg flex items-center justify-center flex-shrink-0">
               <Play className="w-4 h-4 text-white fill-white" />
             </div>
             <div className="min-w-0">
@@ -443,7 +443,7 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
               <p className="text-red-400">{error}</p>
               <button 
                 onClick={fetchVideos}
-                className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                className="px-4 py-2 bg-[#EF4923] text-white rounded-lg hover:bg-[#D4401F] transition-colors"
                 data-testid="button-retry-videos"
               >
                 Retry
@@ -529,8 +529,8 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
               <Link
                 href="/training"
                 onClick={onClose}
-                className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 text-white rounded-lg 
-                         text-sm font-medium hover:bg-orange-600 transition-colors ml-auto"
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#EF4923] text-white rounded-lg 
+                         text-sm font-medium hover:bg-[#D4401F] transition-colors ml-auto"
                 data-testid="link-go-to-training"
               >
                 Go to Training

@@ -89,7 +89,7 @@ export default function MarketingCalendarPage() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-lg bg-[hsl(28,94%,54%)]/10 text-[hsl(28,94%,54%)]">
+              <div className="p-2 rounded-lg bg-[#EF4923]/10 text-[#EF4923]">
                 <Calendar className="h-6 w-6" />
               </div>
               <h1 className="text-3xl font-display font-bold text-foreground">Marketing Calendar</h1>
@@ -103,7 +103,7 @@ export default function MarketingCalendarPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+              <Sparkles className="h-5 w-5 text-[#EF4923]" />
               Generate Content Ideas
             </CardTitle>
             <CardDescription>
@@ -125,7 +125,7 @@ export default function MarketingCalendarPage() {
               <Button 
                 onClick={handleGenerate}
                 disabled={generateIdeas.isPending}
-                className="bg-[hsl(28,94%,54%)] hover:bg-[hsl(28,94%,48%)]"
+                className="bg-[#EF4923] hover:bg-[#D4401F]"
                 data-testid="button-generate"
               >
                 {generateIdeas.isPending ? (
@@ -180,7 +180,7 @@ export default function MarketingCalendarPage() {
               <Card key={weekIndex} data-testid={`card-week-${week.week}`}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2" data-testid={`title-week-${week.week}`}>
-                    <Badge variant="outline" className="text-[hsl(28,94%,54%)] border-[hsl(28,94%,54%)]/30">
+                    <Badge variant="outline" className="text-[#EF4923] border-[#EF4923]/30">
                       Week {week.week}
                     </Badge>
                     <span data-testid={`text-theme-week-${week.week}`}>{week.theme}</span>
@@ -204,7 +204,7 @@ export default function MarketingCalendarPage() {
                             <p className="text-sm" data-testid={`text-caption-${copyId}`}>{post.caption}</p>
                             <div className="flex flex-wrap gap-1" data-testid={`hashtags-${copyId}`}>
                               {post.hashtags.map((tag, i) => (
-                                <span key={i} className="text-xs text-[hsl(28,94%,54%)]">#{tag}</span>
+                                <span key={i} className="text-xs text-[#EF4923]">#{tag}</span>
                               ))}
                             </div>
                           </div>

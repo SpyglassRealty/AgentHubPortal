@@ -155,9 +155,9 @@ function PendingPipelineTable({ pendingPipeline }: { pendingPipeline: PipelineTr
       return <ArrowUpDown className="h-4 w-4 text-muted-foreground" />;
     }
     if (sortConfig.direction === 'asc') {
-      return <ArrowUp className="h-4 w-4 text-[hsl(28,94%,54%)]" />;
+      return <ArrowUp className="h-4 w-4 text-[#EF4923]" />;
     }
-    return <ArrowDown className="h-4 w-4 text-[hsl(28,94%,54%)]" />;
+    return <ArrowDown className="h-4 w-4 text-[#EF4923]" />;
   };
 
   const filteredAndSortedTransactions = useMemo(() => {
@@ -511,7 +511,7 @@ export default function MyPerformancePage() {
                   )}
                   
                   <Button
-                    className="w-full bg-[hsl(28,94%,54%)] hover:bg-[hsl(28,94%,44%)]"
+                    className="w-full bg-[#EF4923] hover:bg-[#D4401F]"
                     onClick={() => linkMutation.mutate(yentaIdInput)}
                     disabled={!yentaIdInput || linkMutation.isPending}
                     data-testid="button-connect-rezen"
@@ -598,7 +598,7 @@ export default function MyPerformancePage() {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           <Card 
-            className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200 cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all" 
+            className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200 cursor-pointer hover:ring-2 hover:ring-[#EF4923]/50 transition-all" 
             data-testid="card-gci-ytd"
             onClick={() => handleCardClick('gci-ytd', 'GCI Year to Date - Transactions')}
           >
@@ -627,7 +627,7 @@ export default function MyPerformancePage() {
           </Card>
 
           <Card 
-            className="bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200 cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all" 
+            className="bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200 cursor-pointer hover:ring-2 hover:ring-[#EF4923]/50 transition-all" 
             data-testid="card-gci-l12m"
             onClick={() => handleCardClick('gci-l12m', 'GCI Last 12 Months - Transactions')}
           >
@@ -647,7 +647,7 @@ export default function MyPerformancePage() {
           </Card>
 
           <Card 
-            className="bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200 cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all" 
+            className="bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200 cursor-pointer hover:ring-2 hover:ring-[#EF4923]/50 transition-all" 
             data-testid="card-pending-gci"
             onClick={() => handleCardClick('pending', 'Pending Pipeline - Transactions')}
           >
@@ -669,7 +669,7 @@ export default function MyPerformancePage() {
           </Card>
 
           <Card 
-            className="bg-gradient-to-br from-purple-50 to-purple-100/50 border-purple-200 cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all" 
+            className="bg-gradient-to-br from-purple-50 to-purple-100/50 border-purple-200 cursor-pointer hover:ring-2 hover:ring-[#EF4923]/50 transition-all" 
             data-testid="card-avg-per-deal"
             onClick={() => handleCardClick('avg-deal', 'Average Per Deal - Transactions')}
           >
@@ -695,7 +695,7 @@ export default function MyPerformancePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card 
               data-testid="card-buyer-side-ytd" 
-              className="cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all"
+              className="cursor-pointer hover:ring-2 hover:ring-[#EF4923]/50 transition-all"
               onClick={() => handleCardClick('buyer-ytd', 'Buyer Side Deals - Year to Date')}
             >
               <CardHeader className="pb-3">
@@ -726,13 +726,13 @@ export default function MyPerformancePage() {
 
             <Card 
               data-testid="card-seller-side-ytd" 
-              className="cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all"
+              className="cursor-pointer hover:ring-2 hover:ring-[#EF4923]/50 transition-all"
               onClick={() => handleCardClick('seller-ytd', 'Seller Side Deals - Year to Date')}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg font-display flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-orange-600" />
+                    <Building2 className="h-5 w-5 text-[#D4401F]" />
                     Seller Side (Listings)
                   </CardTitle>
                   <InfoTooltip content={PERFORMANCE_TOOLTIPS.sellerSideYtd.content} source={PERFORMANCE_TOOLTIPS.sellerSideYtd.source} />
@@ -744,10 +744,10 @@ export default function MyPerformancePage() {
                     <span className="text-4xl font-bold">{dealBreakdown?.sellerCountYTD || 0}</span>
                     <span className="text-lg text-muted-foreground">deals</span>
                   </div>
-                  <div className="text-2xl font-semibold text-orange-600">
+                  <div className="text-2xl font-semibold text-[#D4401F]">
                     {formatCurrency(dealBreakdown?.sellerVolumeYTD || 0)} volume
                   </div>
-                  <Progress value={100 - buyerPercentYTD} className="h-3 [&>div]:bg-orange-500" />
+                  <Progress value={100 - buyerPercentYTD} className="h-3 [&>div]:bg-[#EF4923]" />
                   <p className="text-sm text-muted-foreground text-center">
                     {Math.round(100 - buyerPercentYTD)}% of your deals
                   </p>
@@ -763,7 +763,7 @@ export default function MyPerformancePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card 
               data-testid="card-buyer-side-l12m" 
-              className="border-blue-200 bg-blue-50/30 cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all"
+              className="border-blue-200 bg-blue-50/30 cursor-pointer hover:ring-2 hover:ring-[#EF4923]/50 transition-all"
               onClick={() => handleCardClick('buyer-l12m', 'Buyer Side Deals - Last 12 Months')}
             >
               <CardHeader className="pb-3">
@@ -794,13 +794,13 @@ export default function MyPerformancePage() {
 
             <Card 
               data-testid="card-seller-side-l12m" 
-              className="border-orange-200 bg-orange-50/30 cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all"
+              className="border-orange-200 bg-orange-50/30 cursor-pointer hover:ring-2 hover:ring-[#EF4923]/50 transition-all"
               onClick={() => handleCardClick('seller-l12m', 'Seller Side Deals - Last 12 Months')}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg font-display flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-orange-600" />
+                    <Building2 className="h-5 w-5 text-[#D4401F]" />
                     Seller Side (Listings)
                   </CardTitle>
                   <InfoTooltip content={PERFORMANCE_TOOLTIPS.sellerSideL12m.content} source={PERFORMANCE_TOOLTIPS.sellerSideL12m.source} />
@@ -812,10 +812,10 @@ export default function MyPerformancePage() {
                     <span className="text-4xl font-bold">{dealBreakdown?.sellerCountL12M || 0}</span>
                     <span className="text-lg text-muted-foreground">deals</span>
                   </div>
-                  <div className="text-2xl font-semibold text-orange-600">
+                  <div className="text-2xl font-semibold text-[#D4401F]">
                     {formatCurrency(dealBreakdown?.sellerVolumeL12M || 0)} volume
                   </div>
-                  <Progress value={100 - buyerPercentL12M} className="h-3 [&>div]:bg-orange-500" />
+                  <Progress value={100 - buyerPercentL12M} className="h-3 [&>div]:bg-[#EF4923]" />
                   <p className="text-sm text-muted-foreground text-center">
                     {Math.round(100 - buyerPercentL12M)}% of your deals
                   </p>
@@ -854,7 +854,7 @@ export default function MyPerformancePage() {
           </Card>
 
           <Card 
-            className="bg-gradient-to-br from-slate-50 to-slate-100/50 cursor-pointer hover:ring-2 hover:ring-[hsl(28,94%,54%)]/50 transition-all" 
+            className="bg-gradient-to-br from-slate-50 to-slate-100/50 cursor-pointer hover:ring-2 hover:ring-[#EF4923]/50 transition-all" 
             data-testid="card-yoy"
             onClick={() => handleCardClick('yoy-comparison', 'Year-over-Year Comparison')}
           >

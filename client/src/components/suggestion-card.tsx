@@ -33,7 +33,7 @@ const suggestionColors: Record<string, { bg: string; border: string; icon: strin
   pipeline_empty: { bg: "bg-blue-50", border: "border-blue-200", icon: "text-blue-600", text: "text-blue-900" },
   task_overdue: { bg: "bg-red-50", border: "border-red-200", icon: "text-red-600", text: "text-red-900" },
   appointments_today: { bg: "bg-purple-50", border: "border-purple-200", icon: "text-purple-600", text: "text-purple-900" },
-  deal_summary: { bg: "bg-[hsl(28,94%,95%)]", border: "border-[hsl(28,94%,70%)]", icon: "text-[hsl(28,94%,45%)]", text: "text-[hsl(28,40%,25%)]" },
+  deal_summary: { bg: "bg-[#FEF2F0]", border: "border-[#F8A080]", icon: "text-[#D4401F]", text: "text-[#5B3A28]" },
 };
 
 export function SuggestionCard({ suggestion }: SuggestionCardProps) {
@@ -93,7 +93,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
                 <Link href={`/app/${suggestion.recommendedAppId}`}>
                   <Button
                     size="sm"
-                    className="bg-[hsl(28,94%,54%)] hover:bg-[hsl(28,94%,45%)] text-white"
+                    className="bg-[#EF4923] hover:bg-[#D4401F] text-white"
                     data-testid="button-take-action"
                   >
                     Take Action

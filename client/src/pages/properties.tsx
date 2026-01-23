@@ -101,7 +101,7 @@ export default function PropertiesPage() {
               };
 
               const cardContent = (
-                <Card className="group relative overflow-hidden border-border hover:border-[hsl(28,94%,54%)]/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer bg-card h-full" data-testid={`card-property-app-${app.id}`}>
+                <Card className="group relative overflow-hidden border-border hover:border-[#EF4923]/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer bg-card h-full" data-testid={`card-property-app-${app.id}`}>
                   <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
                     {app.url ? <ExternalLink className="h-5 w-5 text-muted-foreground" /> : <ArrowUpRight className="h-5 w-5 text-muted-foreground" />}
                   </div>
@@ -120,7 +120,7 @@ export default function PropertiesPage() {
                         {app.category}
                       </Badge>
                       {app.url && (
-                        <Badge variant="outline" className="text-xs font-normal border-[hsl(28,94%,54%)]/30 text-[hsl(28,94%,54%)]">
+                        <Badge variant="outline" className="text-xs font-normal border-[#EF4923]/30 text-[#EF4923]">
                           Live
                         </Badge>
                       )}

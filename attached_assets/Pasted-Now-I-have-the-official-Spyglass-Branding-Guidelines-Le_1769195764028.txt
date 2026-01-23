@@ -1,0 +1,303 @@
+Now I have the official Spyglass Branding Guidelines. Let me create a comprehensive fix prompt.
+
+Official Spyglass Brand Colors (from Guidelines)
+ColorHexRGBSpyglass Red-Orange#EF4923rgb(239, 73, 35)Spyglass Black#222222rgb(34, 34, 34)
+Logo Formats:
+
+Black and Red → Light backgrounds
+White and Red → Dark backgrounds
+All White → Dark backgrounds
+All Black → Light backgrounds
+
+
+Send this to Mission Control Replit:
+### Fix: Spyglass Brand Color Compliance + Mobile Optimization
+
+**Reference:** Official Spyglass Realty Branding Guidelines
+
+**Issue:** The application uses Tailwind's orange-500 (#F97316) instead of the official Spyglass Red-Orange (#EF4923). These are different colors and must be corrected for brand compliance.
+
+---
+
+## 📋 OFFICIAL BRAND COLORS
+
+| Color | Hex | RGB | HSL |
+|-------|-----|-----|-----|
+| **Spyglass Red-Orange** | #EF4923 | rgb(239, 73, 35) | hsl(11, 86%, 54%) |
+| **Spyglass Black** | #222222 | rgb(34, 34, 34) | hsl(0, 0%, 13%) |
+
+**Note:** Tailwind's orange-500 is #F97316 - this is NOT the correct brand color!
+
+---
+
+## STEP 1: Update CSS Variables
+
+### Update `client/src/index.css`:
+```css
+:root {
+  /* Spyglass Brand Colors */
+  --spyglass-orange: 11 86% 54%;      /* #EF4923 */
+  --spyglass-orange-hover: 11 86% 45%; /* Darker for hover */
+  --spyglass-orange-light: 11 86% 95%; /* Light tint for backgrounds */
+  --spyglass-black: 0 0% 13%;          /* #222222 */
+  
+  /* Map to existing variables */
+  --primary: 11 86% 54%;               /* Spyglass Red-Orange */
+  --primary-foreground: 0 0% 100%;     /* White text on primary */
+  --accent: 11 86% 54%;
+  --ring: 11 86% 54%;
+  
+  /* Other existing variables... */
+}
+
+.dark {
+  /* Spyglass Brand Colors (same in dark mode) */
+  --spyglass-orange: 11 86% 54%;
+  --spyglass-orange-hover: 11 86% 60%; /* Slightly lighter for dark mode hover */
+  --spyglass-orange-light: 11 86% 20%;
+  --spyglass-black: 0 0% 13%;
+  
+  --primary: 11 86% 54%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 11 86% 54%;
+  --ring: 11 86% 54%;
+  
+  /* Dark mode background using Spyglass Black */
+  --background: 0 0% 13%;              /* #222222 */
+}
+```
+
+---
+
+## STEP 2: Create Brand Color Utility Classes
+
+### Add to `client/src/index.css`:
+```css
+/* Spyglass Brand Utility Classes */
+.bg-spyglass-orange {
+  background-color: hsl(11, 86%, 54%);
+}
+.bg-spyglass-orange-hover:hover {
+  background-color: hsl(11, 86%, 45%);
+}
+.text-spyglass-orange {
+  color: hsl(11, 86%, 54%);
+}
+.text-spyglass-orange-hover:hover {
+  color: hsl(11, 86%, 45%);
+}
+.border-spyglass-orange {
+  border-color: hsl(11, 86%, 54%);
+}
+.ring-spyglass-orange {
+  --tw-ring-color: hsl(11, 86%, 54%);
+}
+.bg-spyglass-black {
+  background-color: #222222;
+}
+.text-spyglass-black {
+  color: #222222;
+}
+```
+
+---
+
+## STEP 3: Find and Replace Colors in Components
+
+### Files to Update:
+
+Run these searches and replace:
+SEARCH → REPLACE
+bg-orange-500 → bg-[#EF4923]
+bg-orange-600 → bg-[#D4401F]
+hover:bg-orange-500 → hover:bg-[#EF4923]
+hover:bg-orange-600 → hover:bg-[#D4401F]
+text-orange-500 → text-[#EF4923]
+text-orange-600 → text-[#D4401F]
+hover:text-orange-500 → hover:text-[#EF4923]
+hover:text-orange-600 → hover:text-[#D4401F]
+border-orange-500 → border-[#EF4923]
+ring-orange-500 → ring-[#EF4923]
+focus:ring-orange-500 → focus:ring-[#EF4923]
+bg-orange-50 → bg-[#FEF2F0]
+bg-orange-100 → bg-[#FDE8E4]
+text-orange-400 → text-[#F26B4A]
+text-orange-700 → text-[#B83A1A]
+
+### Priority Files to Update:
+
+1. **client/src/pages/training.tsx** (~15 instances)
+2. **client/src/pages/dashboard.tsx** (~10 instances)
+3. **client/src/components/training-videos-modal.tsx** (~4 instances)
+4. **client/src/components/dashboard/company-updates.tsx** (~8 instances)
+5. **client/src/components/leads/FubNotLinkedBanner.tsx** (~4 instances)
+6. **client/src/lib/apps.ts** (1 instance)
+
+---
+
+## STEP 4: Update Training Page Colors
+
+### In `client/src/pages/training.tsx`:
+```tsx
+// REPLACE ALL orange-500/600 with brand colors
+
+// Hero Banner Buttons
+<button className="... bg-[#EF4923] hover:bg-[#D4401F] ...">
+  Play Now
+</button>
+
+// NEW Badge
+<span className="... bg-[#EF4923] text-white ...">NEW</span>
+
+// Progress Bar
+<div className="h-full bg-[#EF4923]" style={{ width: `${percentage}%` }} />
+
+// Icons
+<GraduationCap className="w-6 h-6 text-[#EF4923]" />
+<History className="w-6 h-6 text-[#EF4923]" />
+<BookmarkPlus className="w-6 h-6 text-[#EF4923]" />
+
+// Focus Ring
+<input className="... focus:ring-[#EF4923] focus:ring-2 ..." />
+
+// Text Links
+<span className="text-[#EF4923] hover:text-[#D4401F]">Watch Now</span>
+
+// Active States (Favorites/Watch Later)
+<button className={`... ${isActive ? 'bg-[#EF4923] text-white' : '...'}`}>
+```
+
+---
+
+## STEP 5: Update Dashboard Colors
+
+### In `client/src/pages/dashboard.tsx`:
+```tsx
+// Company Updates Link
+<Link className="text-[#EF4923] hover:text-[#D4401F] ...">
+  View Training →
+</Link>
+
+// Play Button
+<div className="bg-[#EF4923] rounded-full ...">
+  <Play className="text-white" />
+</div>
+
+// NEW Badge
+<span className="bg-[#EF4923] text-white text-xs font-bold rounded">NEW</span>
+
+// Training Badge
+<span className="bg-[#EF4923]/10 text-[#EF4923] ...">New Training</span>
+```
+
+---
+
+## STEP 6: Update Company Updates Widget
+
+### In `client/src/components/dashboard/company-updates.tsx`:
+```tsx
+// All orange references should use brand color
+const brandOrange = '#EF4923';
+const brandOrangeHover = '#D4401F';
+const brandOrangeLight = '#FEF2F0';
+
+// Or use Tailwind arbitrary values:
+// bg-[#EF4923] instead of bg-orange-500
+// text-[#EF4923] instead of text-orange-500
+// hover:bg-[#D4401F] instead of hover:bg-orange-600
+```
+
+---
+
+## STEP 7: Update Dark Mode Background
+
+### Use Spyglass Black (#222222) for dark backgrounds:
+```tsx
+// In Layout and pages, for dark mode backgrounds:
+const darkBg = isDark ? 'bg-[#222222]' : 'bg-gray-50';
+
+// OR update CSS variable in index.css (already done in Step 1)
+```
+
+---
+
+## STEP 8: Logo Usage Guidelines
+
+### Ensure correct logo versions are used:
+```tsx
+// Dark backgrounds (sidebar, dark mode) → White/Red or All White logo
+{isDark && <img src="/spyglass-logo-white.png" alt="Spyglass Realty" />}
+
+// Light backgrounds → Black/Red or All Black logo
+{!isDark && <img src="/spyglass-logo-black.png" alt="Spyglass Realty" />}
+```
+
+---
+
+## 📱 Mobile Optimization Requirements
+
+**All changes must be optimized for:**
+
+| Device | Browser | Screen Size |
+|--------|---------|-------------|
+| iPad Pro | Safari | 1024 x 1366 |
+| iPad Air/Mini | Safari | 768 x 1024 |
+| iPhone 14/15 Pro | Safari | 393 x 852 |
+| iPhone SE | Safari | 375 x 667 |
+| Android Tablet | Chrome | 800 x 1280 |
+| Android Phone | Chrome | 360 x 800 |
+
+### Mobile UX Checklist:
+- [ ] Touch targets minimum 44x44px
+- [ ] No hover-only interactions (provide touch alternatives)
+- [ ] Responsive layouts (stack on mobile, side-by-side on tablet+)
+- [ ] Safe area insets for notched devices
+- [ ] Smooth scrolling with momentum (-webkit-overflow-scrolling: touch)
+- [ ] No horizontal overflow
+- [ ] Readable font sizes (min 16px for body text)
+- [ ] Brand colors visible and accessible on all screen sizes
+
+---
+
+## 🎨 Color Reference Quick Guide
+
+| Purpose | Correct Value | Tailwind Class |
+|---------|---------------|----------------|
+| Brand Orange | #EF4923 | `bg-[#EF4923]` or `text-[#EF4923]` |
+| Brand Orange Hover | #D4401F | `hover:bg-[#D4401F]` |
+| Brand Orange Light | #FEF2F0 | `bg-[#FEF2F0]` |
+| Brand Orange 10% | rgba(239,73,35,0.1) | `bg-[#EF4923]/10` |
+| Brand Black | #222222 | `bg-[#222222]` or `text-[#222222]` |
+| Favorites (Red) | #EF4444 | Keep as-is (different from brand) |
+
+---
+
+## Testing Checklist
+
+### Brand Color Verification
+- [ ] All orange UI elements use #EF4923 (not #F97316)
+- [ ] Hover states use #D4401F
+- [ ] NEW badges are brand orange
+- [ ] Progress bars are brand orange
+- [ ] Icons use brand orange
+- [ ] Focus rings use brand orange
+- [ ] Dark mode backgrounds use #222222
+
+### Visual Comparison
+- [ ] Compare buttons side-by-side with brand guidelines
+- [ ] Verify orange matches logo's orange accent
+- [ ] Check consistency across all pages
+
+### Pages to Verify
+- [ ] Dashboard - Company Updates widget
+- [ ] Training page - All elements
+- [ ] Training Videos Modal
+- [ ] Leads page - FUB Banner
+- [ ] Settings page
+- [ ] Reports page
+
+### Mobile Testing
+- [ ] iPad Safari - Colors display correctly
+- [ ] iPhone Safari - Colors display correctly
+- [ ] Android Chrome - Colors display correctly
+- [ ] Touch interactions work with new colors

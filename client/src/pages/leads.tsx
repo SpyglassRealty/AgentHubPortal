@@ -78,7 +78,7 @@ function LeadCard({ lead, type }: { lead: Lead; type: 'anniversary' | 'activity'
                 href={`https://app.followupboss.com/2/people/view/${lead.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium truncate hover:text-[hsl(28,94%,54%)] hover:underline transition-colors flex items-center gap-1.5 group"
+                className="font-medium truncate hover:text-[#EF4923] hover:underline transition-colors flex items-center gap-1.5 group"
                 data-testid={`link-lead-${lead.id}`}
               >
                 {lead.name}
@@ -122,13 +122,13 @@ function LeadCard({ lead, type }: { lead: Lead; type: 'anniversary' | 'activity'
 
           {type === 'anniversary' && anniversaryInfo && (
             <div className="text-right shrink-0">
-              <div className="flex items-center gap-1 text-[hsl(28,94%,54%)]">
+              <div className="flex items-center gap-1 text-[#EF4923]">
                 <PartyPopper className="h-4 w-4" />
                 <span className="font-semibold">{anniversaryInfo.yearsAgo} years</span>
               </div>
               <div className="text-xs text-muted-foreground mt-1">
                 {anniversaryInfo.daysUntil === 0 ? (
-                  <span className="text-[hsl(28,94%,54%)] font-medium">Today!</span>
+                  <span className="text-[#EF4923] font-medium">Today!</span>
                 ) : anniversaryInfo.daysUntil > 0 ? (
                   <span>In {anniversaryInfo.daysUntil} days</span>
                 ) : (
@@ -174,7 +174,7 @@ function TaskCard({ task }: { task: Task }) {
 
   return (
     <Card 
-      className={`hover:bg-accent/50 transition-colors ${isOverdue ? 'border-red-500/50' : isDueToday ? 'border-[hsl(28,94%,54%)]/50' : ''}`}
+      className={`hover:bg-accent/50 transition-colors ${isOverdue ? 'border-red-500/50' : isDueToday ? 'border-[#EF4923]/50' : ''}`}
       data-testid={`card-task-${task.id}`}
     >
       <CardContent className="p-4">
@@ -186,7 +186,7 @@ function TaskCard({ task }: { task: Task }) {
                 href={`https://app.followupboss.com/2/people/view/${task.personId}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-sm text-muted-foreground mt-1 hover:text-[hsl(28,94%,54%)] hover:underline transition-colors group"
+                className="flex items-center gap-1 text-sm text-muted-foreground mt-1 hover:text-[#EF4923] hover:underline transition-colors group"
                 data-testid={`link-task-person-${task.personId}`}
               >
                 <User className="h-3 w-3" />
@@ -202,7 +202,7 @@ function TaskCard({ task }: { task: Task }) {
             )}
           </div>
           <div className="text-right shrink-0">
-            <div className={`flex items-center gap-1 ${isOverdue ? 'text-red-500' : isDueToday ? 'text-[hsl(28,94%,54%)]' : 'text-muted-foreground'}`}>
+            <div className={`flex items-center gap-1 ${isOverdue ? 'text-red-500' : isDueToday ? 'text-[#EF4923]' : 'text-muted-foreground'}`}>
               {isOverdue ? (
                 <AlertCircle className="h-4 w-4" />
               ) : (
@@ -344,7 +344,7 @@ export default function LeadsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <PartyPopper className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+                    <PartyPopper className="h-5 w-5 text-[#EF4923]" />
                     Home Purchase Anniversaries
                   </CardTitle>
                 </CardHeader>
@@ -414,7 +414,7 @@ export default function LeadsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+                    <Activity className="h-5 w-5 text-[#EF4923]" />
                     Recent Activity
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
@@ -452,7 +452,7 @@ export default function LeadsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <ListTodo className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+                    <ListTodo className="h-5 w-5 text-[#EF4923]" />
                     Due Tasks
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">

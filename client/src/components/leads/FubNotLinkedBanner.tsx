@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 
 export function FubNotLinkedBanner() {
   return (
-    <div className="rounded-xl p-6 text-center bg-orange-50 dark:bg-gray-800 border border-orange-200 dark:border-gray-700">
-      <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-orange-100 dark:bg-gray-700">
-        <Link2Off className="w-8 h-8 text-orange-500 dark:text-orange-400" />
+    <div className="rounded-xl p-6 text-center bg-[#FEF2F0] dark:bg-gray-800 border border-[#FBD4CC] dark:border-gray-700">
+      <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-[#FDDDD5] dark:bg-gray-700">
+        <Link2Off className="w-8 h-8 text-[#EF4923] dark:text-[#F26B4A]" />
       </div>
 
       <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
@@ -19,7 +19,7 @@ export function FubNotLinkedBanner() {
 
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
         <Link href="/settings?section=profile">
-          <Button className="inline-flex items-center gap-2 bg-[hsl(28,94%,54%)] hover:bg-[hsl(28,94%,44%)] text-white">
+          <Button className="inline-flex items-center gap-2 bg-[#EF4923] hover:bg-[#D4401F] text-white">
             <Settings className="w-4 h-4" />
             Go to Settings
           </Button>

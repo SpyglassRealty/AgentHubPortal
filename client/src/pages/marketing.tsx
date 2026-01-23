@@ -98,7 +98,7 @@ export default function MarketingPage() {
               };
 
               const cardContent = (
-                <Card className="group relative overflow-hidden border-border hover:border-[hsl(28,94%,54%)]/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer bg-card h-full" data-testid={`card-marketing-app-${app.id}`}>
+                <Card className="group relative overflow-hidden border-border hover:border-[#EF4923]/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer bg-card h-full" data-testid={`card-marketing-app-${app.id}`}>
                   <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
                     {app.url ? <ExternalLink className="h-5 w-5 text-muted-foreground" /> : <ArrowUpRight className="h-5 w-5 text-muted-foreground" />}
                   </div>
@@ -119,7 +119,7 @@ export default function MarketingPage() {
                         </Badge>
                       ))}
                       {app.url && (
-                        <Badge variant="outline" className="text-xs font-normal border-[hsl(28,94%,54%)]/30 text-[hsl(28,94%,54%)]">
+                        <Badge variant="outline" className="text-xs font-normal border-[#EF4923]/30 text-[#EF4923]">
                           Live
                         </Badge>
                       )}
@@ -158,7 +158,7 @@ export default function MarketingPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5 text-[hsl(28,94%,54%)]" />
+              <Mail className="h-5 w-5 text-[#EF4923]" />
               Marketing Resources
             </CardTitle>
             <CardDescription>
@@ -177,7 +177,7 @@ export default function MarketingPage() {
                     <h4 className="font-medium">Brand Guidelines</h4>
                     <p className="text-sm text-muted-foreground">Logo, colors, and typography standards</p>
                   </div>
-                  <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[hsl(28,94%,54%)] transition-colors" />
+                  <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[#EF4923] transition-colors" />
                 </div>
               </button>
               <Link href="/marketing-calendar">
@@ -187,7 +187,7 @@ export default function MarketingPage() {
                       <h4 className="font-medium">Marketing Calendar</h4>
                       <p className="text-sm text-muted-foreground">AI-powered social media ideas for real estate</p>
                     </div>
-                    <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[hsl(28,94%,54%)] transition-colors" />
+                    <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-[#EF4923] transition-colors" />
                   </div>
                 </div>
               </Link>

@@ -8,8 +8,8 @@ export default function LandingPage() {
       <div className="absolute inset-0 bg-gradient-to-br from-[hsl(220,13%,10%)] via-[hsl(220,13%,13%)] to-[hsl(220,13%,18%)]" />
       
       <div className="absolute inset-0 opacity-30">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[hsl(28,94%,54%)] rounded-full blur-[150px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-[hsl(28,94%,44%)] rounded-full blur-[120px]" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#EF4923] rounded-full blur-[150px]" />
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-[#D4401F] rounded-full blur-[120px]" />
       </div>
 
       <div className="relative z-10">
@@ -35,7 +35,7 @@ export default function LandingPage() {
             className="max-w-4xl mx-auto text-center"
           >
             <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-sm font-medium mb-8">
-              <span className="h-2 w-2 rounded-full bg-[hsl(28,94%,54%)] animate-pulse" />
+              <span className="h-2 w-2 rounded-full bg-[#EF4923] animate-pulse" />
               Spyglass Agent Portal
             </div>
             
@@ -95,8 +95,8 @@ export default function LandingPage() {
                 key={i} 
                 className="bg-white/5 border border-white/10 rounded-2xl p-8 hover:bg-white/10 transition-colors"
               >
-                <div className="h-12 w-12 rounded-xl bg-[hsl(28,94%,54%)]/20 flex items-center justify-center mb-5">
-                  <feature.icon className="h-6 w-6 text-[hsl(28,94%,54%)]" />
+                <div className="h-12 w-12 rounded-xl bg-[#EF4923]/20 flex items-center justify-center mb-5">
+                  <feature.icon className="h-6 w-6 text-[#EF4923]" />
                 </div>
                 <h3 className="text-xl font-display font-semibold mb-3">{feature.title}</h3>
                 <p className="text-white/60 leading-relaxed">{feature.description}</p>
