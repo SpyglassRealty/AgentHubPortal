@@ -1122,6 +1122,123 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // ============================================
+  // SAVED CONTENT IDEAS ENDPOINTS
+  // ============================================
+
+  // GET /api/content-ideas/saved - Get all saved content ideas
+  app.get('/api/content-ideas/saved', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const ideas = await storage.getSavedContentIdeas(user.id);
+      res.json({ ideas });
+    } catch (error) {
+      console.error('[Content Ideas] Error fetching saved:', error);
+      res.status(500).json({ message: 'Failed to fetch saved ideas' });
+    }
+  });
+
+  // POST /api/content-ideas/save - Save a content idea
+  app.post('/api/content-ideas/save', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const {
+        month,
+        year,
+        week,
+        theme,
+        platform,
+        contentType,
+        bestTime,
+        content,
+        hashtags
+      } = req.body;
+
+      if (!month || !year || !week || !platform || !contentType || !content) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+
+      const savedIdea = await storage.saveContentIdea({
+        userId: user.id,
+        month,
+        year,
+        week,
+        theme,
+        platform,
+        contentType,
+        bestTime,
+        content,
+        hashtags: Array.isArray(hashtags) ? hashtags.join(',') : hashtags
+      });
+
+      console.log(`[Content Ideas] User ${user.id} saved idea for ${platform}`);
+      res.json({ success: true, idea: savedIdea });
+    } catch (error) {
+      console.error('[Content Ideas] Error saving:', error);
+      res.status(500).json({ message: 'Failed to save content idea' });
+    }
+  });
+
+  // DELETE /api/content-ideas/:id - Delete a saved content idea
+  app.delete('/api/content-ideas/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const ideaId = parseInt(req.params.id);
+      const deleted = await storage.deleteContentIdea(ideaId, user.id);
+
+      if (!deleted) {
+        return res.status(404).json({ message: 'Content idea not found' });
+      }
+
+      console.log(`[Content Ideas] User ${user.id} deleted idea ${ideaId}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Content Ideas] Error deleting:', error);
+      res.status(500).json({ message: 'Failed to delete content idea' });
+    }
+  });
+
+  // PATCH /api/content-ideas/:id/status - Update status (saved/scheduled/posted)
+  app.patch('/api/content-ideas/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const ideaId = parseInt(req.params.id);
+      const { status } = req.body;
+
+      const validStatuses = ['saved', 'scheduled', 'posted'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ message: 'Invalid status' });
+      }
+
+      const updated = await storage.updateContentIdeaStatus(ideaId, user.id, status);
+
+      if (!updated) {
+        return res.status(404).json({ message: 'Content idea not found' });
+      }
+
+      res.json({ success: true, idea: updated });
+    } catch (error) {
+      console.error('[Content Ideas] Error updating status:', error);
+      res.status(500).json({ message: 'Failed to update status' });
+    }
+  });
+
   // App Usage Tracking - Track app clicks for auto-arrange
   app.post('/api/app-usage/track', isAuthenticated, async (req: any, res) => {
     try {
