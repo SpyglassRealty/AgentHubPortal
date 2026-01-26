@@ -805,6 +805,55 @@ export async function registerRoutes(
     }
   });
 
+  app.get('/api/fub/leads/all', isAuthenticated, async (req: any, res) => {
+    console.log('[Leads API] ========== All Leads endpoint called ==========');
+    try {
+      const user = await getDbUser(req);
+      console.log('[Leads API] Request user:', { id: user?.id, email: user?.email, fubUserId: user?.fubUserId });
+      
+      if (!user) {
+        console.log('[Leads API] User not found in DB');
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const fubClient = getFubClient();
+      if (!fubClient) {
+        console.log('[Leads API] FUB client not configured');
+        return res.status(503).json({ message: "Follow Up Boss integration not configured" });
+      }
+
+      let fubUserId = user.fubUserId;
+      const requestedAgentId = req.query.agentId as string;
+
+      if (requestedAgentId && user.isSuperAdmin) {
+        fubUserId = parseInt(requestedAgentId, 10);
+        console.log('[Leads API] Super admin viewing agent:', fubUserId);
+      } else if (!fubUserId && user.email) {
+        console.log('[Leads API] Attempting to link user by email:', user.email);
+        const fubUser = await fubClient.getUserByEmail(user.email);
+        if (fubUser) {
+          fubUserId = fubUser.id;
+          await storage.updateUserFubId(user.id, fubUserId);
+          console.log('[Leads API] Successfully linked user to FUB:', fubUserId);
+        } else {
+          console.log('[Leads API] No FUB user found for email:', user.email);
+        }
+      }
+
+      if (!fubUserId) {
+        console.log('[Leads API] No fubUserId - returning empty');
+        return res.json({ leads: [], linked: false, message: "No Follow Up Boss account linked" });
+      }
+
+      const leads = await fubClient.getPeople(fubUserId);
+      console.log('[Leads API] Returning', leads.length, 'total leads');
+      res.json({ leads, linked: true });
+    } catch (error) {
+      console.error("Error fetching all leads:", error);
+      res.status(500).json({ message: "Failed to fetch all leads" });
+    }
+  });
+
   app.get('/api/fub/leads/recent-activity', isAuthenticated, async (req: any, res) => {
     try {
       const user = await getDbUser(req);
