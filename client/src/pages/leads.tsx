@@ -344,9 +344,8 @@ export default function LeadsPage() {
           <div className="flex items-center gap-3">
             <RefreshButton
               onRefresh={handleRefresh}
-              lastManualSync={lastManualSync}
+              lastManualRefresh={lastManualSync}
               label="Refresh"
-              showTimestamps={true}
             />
             {user?.isSuperAdmin && (
               <AgentSelector

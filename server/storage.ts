@@ -7,6 +7,7 @@ import {
   notifications,
   userNotificationSettings,
   userVideoPreferences,
+  syncStatus,
   type User, 
   type UpsertUser,
   type AgentProfile,
@@ -21,7 +22,8 @@ import {
   type UserNotificationSettings,
   type InsertUserNotificationSettings,
   type UserVideoPreference,
-  type InsertUserVideoPreference
+  type InsertUserVideoPreference,
+  type SyncStatus
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ne, desc, sql, gt, lt } from "drizzle-orm";
@@ -65,6 +67,9 @@ export interface IStorage {
   getFavoriteVideos(userId: string): Promise<UserVideoPreference[]>;
   getWatchLaterVideos(userId: string): Promise<UserVideoPreference[]>;
   getContinueWatchingVideos(userId: string): Promise<UserVideoPreference[]>;
+  
+  getSyncStatus(userId: string, section: string): Promise<SyncStatus | undefined>;
+  upsertSyncStatus(userId: string, section: string, manualRefreshTime: Date): Promise<SyncStatus>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -388,6 +393,48 @@ export class DatabaseStorage implements IStorage {
         lt(userVideoPreferences.watchPercentage, 95)
       ))
       .orderBy(desc(userVideoPreferences.lastWatchedAt));
+  }
+
+  async getSyncStatus(userId: string, section: string): Promise<SyncStatus | undefined> {
+    const [status] = await db
+      .select()
+      .from(syncStatus)
+      .where(and(
+        eq(syncStatus.userId, userId),
+        eq(syncStatus.section, section)
+      ));
+    return status;
+  }
+
+  async upsertSyncStatus(userId: string, section: string, manualRefreshTime: Date): Promise<SyncStatus> {
+    const existing = await this.getSyncStatus(userId, section);
+    
+    if (existing) {
+      const [updated] = await db
+        .update(syncStatus)
+        .set({
+          lastManualRefresh: manualRefreshTime,
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(syncStatus.userId, userId),
+          eq(syncStatus.section, section)
+        ))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(syncStatus)
+        .values({
+          userId,
+          section,
+          lastManualRefresh: manualRefreshTime,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
+      return created;
+    }
   }
 }
 

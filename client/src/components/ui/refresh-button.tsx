@@ -5,24 +5,27 @@ import { formatDistanceToNow, format } from 'date-fns';
 
 interface RefreshButtonProps {
   onRefresh: () => Promise<void>;
-  lastManualSync?: Date | string | null;
-  lastAutoSync?: Date | string | null;
+  lastManualRefresh?: Date | string | null;
+  lastAutoRefresh?: Date | string | null;
   isLoading?: boolean;
+  size?: 'sm' | 'md';
+  showLabel?: boolean;
   label?: string;
-  showTimestamps?: boolean;
   className?: string;
 }
 
 export function RefreshButton({
   onRefresh,
-  lastManualSync,
-  lastAutoSync,
+  lastManualRefresh,
+  lastAutoRefresh,
   isLoading = false,
+  size = 'sm',
+  showLabel = true,
   label = 'Refresh',
-  showTimestamps = true,
   className = ''
 }: RefreshButtonProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
   const { isDark } = useTheme();
 
   const handleRefresh = async () => {
@@ -38,26 +41,46 @@ export function RefreshButton({
 
   const loading = isRefreshing || isLoading;
 
-  const formatSyncTime = (date: Date | string | null | undefined) => {
+  const formatTime = (date: Date | string | null | undefined): string | null => {
     if (!date) return null;
     const dateObj = typeof date === 'string' ? new Date(date) : date;
     if (isNaN(dateObj.getTime())) return null;
-    return {
-      relative: formatDistanceToNow(dateObj, { addSuffix: true }),
-      absolute: format(dateObj, 'MMM d, yyyy h:mm a')
-    };
+    return format(dateObj, 'MMM d, yyyy h:mm a');
   };
 
-  const manualSyncFormatted = formatSyncTime(lastManualSync);
-  const autoSyncFormatted = formatSyncTime(lastAutoSync);
+  const formatRelativeTime = (date: Date | string | null | undefined): string | null => {
+    if (!date) return null;
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(dateObj.getTime())) return null;
+    return formatDistanceToNow(dateObj, { addSuffix: true });
+  };
+
+  const manualTime = formatTime(lastManualRefresh);
+  const autoTime = formatTime(lastAutoRefresh);
+  const lastSyncRelative = formatRelativeTime(lastManualRefresh || lastAutoRefresh);
+
+  const sizeClasses = {
+    sm: showLabel ? 'px-3 py-2' : 'p-2',
+    md: showLabel ? 'px-4 py-2.5' : 'p-2.5'
+  };
+
+  const iconSizes = {
+    sm: 'w-4 h-4',
+    md: 'w-5 h-5'
+  };
 
   return (
-    <div className={`flex flex-col items-end gap-1 ${className}`}>
+    <div className={`relative inline-flex flex-col items-end gap-1 ${className}`}>
       <button
         onClick={handleRefresh}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        onFocus={() => setShowTooltip(true)}
+        onBlur={() => setShowTooltip(false)}
         disabled={loading}
         className={`
-          flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm
+          ${sizeClasses[size]}
+          flex items-center gap-2 rounded-lg font-medium text-sm
           transition-all duration-200 ease-in-out
           min-h-[44px] min-w-[44px]
           active:scale-95
@@ -67,33 +90,61 @@ export function RefreshButton({
           }
           ${loading ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
         `}
-        title={`${label} - Click to fetch latest data`}
+        aria-label="Refresh data"
         data-testid="button-refresh"
       >
         <RefreshCw 
-          className={`w-4 h-4 transition-transform ${loading ? 'animate-spin' : ''}`} 
+          className={`${iconSizes[size]} transition-transform ${loading ? 'animate-spin' : ''}`} 
         />
-        <span className="hidden sm:inline">
-          {loading ? 'Refreshing...' : label}
-        </span>
+        {showLabel && (
+          <span className="hidden sm:inline">
+            {loading ? 'Refreshing...' : label}
+          </span>
+        )}
       </button>
 
-      {showTimestamps && (
-        <div className={`text-xs space-y-0.5 text-right ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-          {manualSyncFormatted && (
-            <p title={manualSyncFormatted.absolute}>
-              Last sync: {manualSyncFormatted.relative}
-            </p>
-          )}
-          {autoSyncFormatted && !manualSyncFormatted && (
-            <p title={autoSyncFormatted.absolute}>
-              Auto: {autoSyncFormatted.relative}
-            </p>
-          )}
-          {!manualSyncFormatted && !autoSyncFormatted && (
-            <p>Never synced</p>
-          )}
+      {showTooltip && (
+        <div 
+          className={`
+            absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2
+            px-3 py-2 rounded-lg shadow-lg
+            text-xs whitespace-nowrap
+            ${isDark ? 'bg-gray-800 text-white border border-gray-700' : 'bg-white text-gray-900 border border-gray-200 shadow-md'}
+          `}
+          role="tooltip"
+        >
+          <div 
+            className={`
+              absolute top-full left-1/2 -translate-x-1/2 -mt-px
+              border-4 border-transparent
+              ${isDark ? 'border-t-gray-700' : 'border-t-gray-200'}
+            `}
+          />
+          
+          <div className="space-y-1">
+            {manualTime && (
+              <div className="flex items-center gap-2">
+                <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Manual:</span>
+                <span className="font-medium">{manualTime}</span>
+              </div>
+            )}
+            {autoTime && (
+              <div className="flex items-center gap-2">
+                <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Auto:</span>
+                <span className="font-medium">{autoTime}</span>
+              </div>
+            )}
+            {!manualTime && !autoTime && (
+              <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Never synced</span>
+            )}
+          </div>
         </div>
+      )}
+
+      {lastSyncRelative && (
+        <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+          {lastSyncRelative}
+        </p>
       )}
     </div>
   );

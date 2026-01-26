@@ -1,10 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Layout from "@/components/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentSelector } from "@/components/agent-selector";
+import { RefreshButton } from "@/components/ui/refresh-button";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -26,11 +28,14 @@ interface CalendarResponse {
 
 export default function CalendarPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<FubEvent | null>(null);
   const [selectedDayEvents, setSelectedDayEvents] = useState<FubEvent[] | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [lastManualRefresh, setLastManualRefresh] = useState<Date | null>(null);
   
   const startDate = format(startOfMonth(currentMonth), "yyyy-MM-dd");
   const endDate = format(endOfMonth(currentMonth), "yyyy-MM-dd");
@@ -47,6 +52,28 @@ export default function CalendarPage() {
       return res.json();
     },
   });
+
+  const handleRefresh = async () => {
+    try {
+      await queryClient.refetchQueries({ 
+        queryKey: ["/api/fub/calendar", { startDate, endDate, agentId: selectedAgentId }],
+        exact: true 
+      });
+      setLastManualRefresh(new Date());
+      toast({
+        title: "Calendar Refreshed",
+        description: "Successfully synced latest data from Follow Up Boss",
+      });
+    } catch (error) {
+      console.error('Refresh error:', error);
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh calendar. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
 
   const allItems = [...(data?.events || []), ...(data?.tasks || [])];
   
@@ -142,6 +169,11 @@ export default function CalendarPage() {
                 onAgentChange={setSelectedAgentId}
               />
             )}
+            <RefreshButton
+              lastManualRefresh={lastManualRefresh}
+              onRefresh={handleRefresh}
+              isLoading={isLoading}
+            />
             <a href="https://app.followupboss.com/calendar" target="_blank" rel="noopener noreferrer">
               <Button variant="outline" className="border-[#EF4923]/30 hover:bg-[#EF4923]/10 h-8 sm:h-9 px-2 sm:px-4 text-xs sm:text-sm">
                 <span className="hidden sm:inline">Open in FUB</span>
