@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Layout from "@/components/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Sparkles, RefreshCw, Copy, Check, Instagram, Facebook, Linkedin, Twitter } from "lucide-react";
+import { Calendar, Sparkles, RefreshCw, Copy, Check, Instagram, Facebook, Linkedin, Twitter, Bookmark, BookmarkCheck, Trash2, X } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface SocialMediaIdea {
   week: number;
@@ -26,6 +28,23 @@ interface CalendarResponse {
   ideas: SocialMediaIdea[];
 }
 
+interface SavedContentIdea {
+  id: number;
+  userId: string;
+  month: string;
+  year: number;
+  week: number;
+  theme: string | null;
+  platform: string;
+  contentType: string;
+  bestTime: string | null;
+  content: string;
+  hashtags: string | null;
+  status: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const months = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
@@ -35,8 +54,24 @@ const currentMonth = new Date().getMonth();
 const currentYear = new Date().getFullYear();
 
 export default function MarketingCalendarPage() {
+  const { isDark } = useTheme();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedMonth, setSelectedMonth] = useState(months[currentMonth]);
   const [copiedIndex, setCopiedIndex] = useState<string | null>(null);
+  const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
+  const [deletedPosts, setDeletedPosts] = useState<Set<string>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [savingPosts, setSavingPosts] = useState<Set<string>>(new Set());
+
+  const { data: savedIdeasData } = useQuery({
+    queryKey: ['/api/content-ideas/saved'],
+    queryFn: async () => {
+      const res = await fetch('/api/content-ideas/saved', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch saved ideas');
+      return res.json() as Promise<{ ideas: SavedContentIdea[] }>;
+    }
+  });
 
   const generateIdeas = useMutation({
     mutationFn: async (month: string) => {
@@ -49,6 +84,70 @@ export default function MarketingCalendarPage() {
       if (!res.ok) throw new Error("Failed to generate ideas");
       return res.json() as Promise<CalendarResponse>;
     },
+    onSuccess: () => {
+      setSavedPosts(new Set());
+      setDeletedPosts(new Set());
+    }
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: {
+      month: string;
+      year: number;
+      week: number;
+      theme: string;
+      platform: string;
+      contentType: string;
+      bestTime: string;
+      content: string;
+      hashtags: string[];
+      copyId: string;
+    }) => {
+      const res = await fetch('/api/content-ideas/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      return { ...(await res.json()), copyId: data.copyId };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/content-ideas/saved'] });
+      setSavedPosts(prev => new Set([...prev, data.copyId]));
+      setSavingPosts(prev => {
+        const next = new Set(prev);
+        next.delete(data.copyId);
+        return next;
+      });
+      toast({ title: "Content idea saved!", description: "You can find it in your saved ideas below." });
+    },
+    onError: (_, variables) => {
+      setSavingPosts(prev => {
+        const next = new Set(prev);
+        next.delete(variables.copyId);
+        return next;
+      });
+      toast({ title: "Failed to save", description: "Please try again.", variant: "destructive" });
+    }
+  });
+
+  const deleteSavedMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/content-ideas/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error('Failed to delete');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/content-ideas/saved'] });
+      toast({ title: "Content idea deleted" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete", description: "Please try again.", variant: "destructive" });
+    }
   });
 
   const handleGenerate = () => {
@@ -59,6 +158,39 @@ export default function MarketingCalendarPage() {
     await navigator.clipboard.writeText(text);
     setCopiedIndex(id);
     setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  const handleSave = (
+    weekNum: number,
+    theme: string,
+    post: { platform: string; type: string; caption: string; hashtags: string[]; bestTime: string },
+    copyId: string
+  ) => {
+    if (!generateIdeas.data || savedPosts.has(copyId) || savingPosts.has(copyId)) return;
+    
+    setSavingPosts(prev => new Set([...prev, copyId]));
+    
+    saveMutation.mutate({
+      month: generateIdeas.data.month,
+      year: generateIdeas.data.year,
+      week: weekNum,
+      theme,
+      platform: post.platform,
+      contentType: post.type,
+      bestTime: post.bestTime,
+      content: post.caption,
+      hashtags: post.hashtags,
+      copyId
+    });
+  };
+
+  const handleDelete = (copyId: string) => {
+    setDeletedPosts(prev => new Set([...prev, copyId]));
+    setShowDeleteConfirm(null);
+  };
+
+  const handleDeleteSaved = async (id: number) => {
+    await deleteSavedMutation.mutateAsync(id);
   };
 
   const getPlatformIcon = (platform: string) => {
@@ -82,6 +214,8 @@ export default function MarketingCalendarPage() {
       default: return "bg-gray-100 text-gray-700 border-gray-200";
     }
   };
+
+  const savedIdeas = savedIdeasData?.ideas || [];
 
   return (
     <Layout>
@@ -189,8 +323,42 @@ export default function MarketingCalendarPage() {
                 <CardContent className="space-y-4">
                   {week.posts.map((post, postIndex) => {
                     const copyId = `${weekIndex}-${postIndex}`;
+                    const isSaved = savedPosts.has(copyId);
+                    const isDeleted = deletedPosts.has(copyId);
+
+                    if (isDeleted) return null;
+
                     return (
-                      <div key={postIndex} className="p-4 rounded-lg border hover:bg-muted/30 transition-colors" data-testid={`post-${copyId}`}>
+                      <div key={postIndex} className="p-4 rounded-lg border hover:bg-muted/30 transition-colors relative" data-testid={`post-${copyId}`}>
+                        {showDeleteConfirm === copyId && (
+                          <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center backdrop-blur-sm z-10">
+                            <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 mx-4 shadow-xl border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                              <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>
+                                Remove this content idea?
+                              </p>
+                              <div className="flex gap-2 justify-end">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setShowDeleteConfirm(null)}
+                                  className="min-h-[44px] min-w-[44px]"
+                                  data-testid={`button-cancel-delete-${copyId}`}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleDelete(copyId)}
+                                  className="min-h-[44px] min-w-[44px] bg-red-500 hover:bg-red-600"
+                                  data-testid={`button-confirm-delete-${copyId}`}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 space-y-2">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -208,18 +376,48 @@ export default function MarketingCalendarPage() {
                               ))}
                             </div>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(`${post.caption}\n\n${post.hashtags.map(t => `#${t}`).join(' ')}`, copyId)}
-                            data-testid={`button-copy-${copyId}`}
-                          >
-                            {copiedIndex === copyId ? (
-                              <Check className="h-4 w-4 text-emerald-500" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSave(week.week, week.theme, post, copyId)}
+                              disabled={isSaved || savingPosts.has(copyId)}
+                              className={`min-h-[44px] min-w-[44px] ${isSaved ? 'text-green-500' : ''}`}
+                              title={isSaved ? 'Saved' : 'Save this idea'}
+                              data-testid={`button-save-${copyId}`}
+                            >
+                              {isSaved ? (
+                                <BookmarkCheck className="h-4 w-4" />
+                              ) : savingPosts.has(copyId) ? (
+                                <RefreshCw className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Bookmark className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => copyToClipboard(`${post.caption}\n\n${post.hashtags.map(t => `#${t}`).join(' ')}`, copyId)}
+                              className="min-h-[44px] min-w-[44px]"
+                              data-testid={`button-copy-${copyId}`}
+                            >
+                              {copiedIndex === copyId ? (
+                                <Check className="h-4 w-4 text-emerald-500" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setShowDeleteConfirm(copyId)}
+                              className="min-h-[44px] min-w-[44px] hover:text-red-500"
+                              title="Remove this idea"
+                              data-testid={`button-delete-${copyId}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -227,6 +425,86 @@ export default function MarketingCalendarPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        )}
+
+        {savedIdeas.length > 0 && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-display font-semibold flex items-center gap-2">
+                <BookmarkCheck className="h-5 w-5 text-[#EF4923]" />
+                Saved Content Ideas
+              </h2>
+              <Badge variant="secondary" className="bg-[#EF4923]/10 text-[#EF4923]">
+                {savedIdeas.length} Saved
+              </Badge>
+            </div>
+
+            <div className="grid gap-4">
+              {savedIdeas.map((idea) => (
+                <Card key={idea.id} data-testid={`saved-idea-${idea.id}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge className={getPlatformColor(idea.platform)} data-testid={`saved-badge-platform-${idea.id}`}>
+                            {getPlatformIcon(idea.platform)}
+                            <span className="ml-1">{idea.platform}</span>
+                          </Badge>
+                          <Badge variant="secondary" data-testid={`saved-badge-type-${idea.id}`}>{idea.contentType}</Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {idea.month} Week {idea.week}
+                          </Badge>
+                          {idea.bestTime && (
+                            <span className="text-xs text-muted-foreground">Best time: {idea.bestTime}</span>
+                          )}
+                        </div>
+                        {idea.theme && (
+                          <p className="text-xs text-muted-foreground">Theme: {idea.theme}</p>
+                        )}
+                        <p className="text-sm" data-testid={`saved-content-${idea.id}`}>{idea.content}</p>
+                        {idea.hashtags && (
+                          <div className="flex flex-wrap gap-1">
+                            {idea.hashtags.split(',').map((tag, i) => (
+                              <span key={i} className="text-xs text-[#EF4923]">#{tag.trim()}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(
+                            `${idea.content}\n\n${idea.hashtags ? idea.hashtags.split(',').map(t => `#${t.trim()}`).join(' ') : ''}`,
+                            `saved-${idea.id}`
+                          )}
+                          className="min-h-[44px] min-w-[44px]"
+                          data-testid={`button-copy-saved-${idea.id}`}
+                        >
+                          {copiedIndex === `saved-${idea.id}` ? (
+                            <Check className="h-4 w-4 text-emerald-500" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteSaved(idea.id)}
+                          disabled={deleteSavedMutation.isPending}
+                          className="min-h-[44px] min-w-[44px] hover:text-red-500"
+                          title="Delete saved idea"
+                          data-testid={`button-delete-saved-${idea.id}`}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         )}
 
@@ -249,7 +527,7 @@ export default function MarketingCalendarPage() {
           </Card>
         )}
 
-        {!generateIdeas.data && !generateIdeas.isPending && !generateIdeas.isError && (
+        {!generateIdeas.data && !generateIdeas.isPending && !generateIdeas.isError && savedIdeas.length === 0 && (
           <Card className="flex items-center justify-center h-64" data-testid="empty-state-calendar">
             <CardContent className="text-center text-muted-foreground">
               <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
