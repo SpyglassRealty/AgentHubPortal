@@ -386,16 +386,8 @@ export default function DashboardPage() {
           <div className="lg:col-span-2">
             <Card className={`${isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'} overflow-hidden`}>
               {/* Header */}
-              <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
+              <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
                 <h2 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Company Updates</h2>
-                <Link 
-                  href="/training"
-                  className="text-sm text-[#EF4923] hover:text-[#D4401F] flex items-center gap-1 transition-colors"
-                  data-testid="link-view-training-bottom"
-                >
-                  View Training
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
               </div>
 
               <CardContent className="p-4 space-y-4">
