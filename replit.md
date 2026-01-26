@@ -74,6 +74,16 @@ The application is a full-stack web application with a React frontend and an Exp
         - `/api/vimeo/training-videos` - Returns all videos from the Training Videos folder
         - `/api/vimeo/latest-video` - Returns the most recent video for Dashboard Company Updates
         - GET/POST for favorites, watch later, progress, and bulk preferences retrieval.
+- **Marketing Calendar**: AI-powered social media content idea generator.
+    - **Content Generation**: Uses GPT-4o to generate monthly social media content plans.
+    - **Save/Delete Functionality**: Users can save content ideas to their account and delete them.
+    - **Database Schema**: `savedContentIdeas` table stores saved content with platform, content type, hashtags, and status.
+    - **API Endpoints**:
+        - `POST /api/marketing/social-ideas` - Generate AI content ideas for a month
+        - `GET /api/content-ideas/saved` - Retrieve all saved content ideas
+        - `POST /api/content-ideas/save` - Save a content idea (Zod validated)
+        - `DELETE /api/content-ideas/:id` - Delete a saved content idea
+        - `PATCH /api/content-ideas/:id/status` - Update status (saved/scheduled/posted)
 
 ## External Dependencies
 
