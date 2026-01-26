@@ -8,6 +8,7 @@ import {
   userNotificationSettings,
   userVideoPreferences,
   syncStatus,
+  savedContentIdeas,
   type User, 
   type UpsertUser,
   type AgentProfile,
@@ -23,7 +24,9 @@ import {
   type InsertUserNotificationSettings,
   type UserVideoPreference,
   type InsertUserVideoPreference,
-  type SyncStatus
+  type SyncStatus,
+  type SavedContentIdea,
+  type InsertSavedContentIdea
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ne, desc, sql, gt, lt } from "drizzle-orm";
@@ -70,6 +73,11 @@ export interface IStorage {
   
   getSyncStatus(userId: string, section: string): Promise<SyncStatus | undefined>;
   upsertSyncStatus(userId: string, section: string, manualRefreshTime: Date): Promise<SyncStatus>;
+  
+  getSavedContentIdeas(userId: string): Promise<SavedContentIdea[]>;
+  saveContentIdea(idea: InsertSavedContentIdea): Promise<SavedContentIdea>;
+  deleteContentIdea(id: number, userId: string): Promise<boolean>;
+  updateContentIdeaStatus(id: number, userId: string, status: string): Promise<SavedContentIdea | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -435,6 +443,52 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return created;
     }
+  }
+
+  async getSavedContentIdeas(userId: string): Promise<SavedContentIdea[]> {
+    return db
+      .select()
+      .from(savedContentIdeas)
+      .where(eq(savedContentIdeas.userId, userId))
+      .orderBy(desc(savedContentIdeas.createdAt));
+  }
+
+  async saveContentIdea(idea: InsertSavedContentIdea): Promise<SavedContentIdea> {
+    const [saved] = await db
+      .insert(savedContentIdeas)
+      .values(idea)
+      .returning();
+    return saved;
+  }
+
+  async deleteContentIdea(id: number, userId: string): Promise<boolean> {
+    const [existing] = await db
+      .select()
+      .from(savedContentIdeas)
+      .where(and(
+        eq(savedContentIdeas.id, id),
+        eq(savedContentIdeas.userId, userId)
+      ))
+      .limit(1);
+
+    if (!existing) return false;
+
+    await db
+      .delete(savedContentIdeas)
+      .where(eq(savedContentIdeas.id, id));
+    return true;
+  }
+
+  async updateContentIdeaStatus(id: number, userId: string, status: string): Promise<SavedContentIdea | undefined> {
+    const [updated] = await db
+      .update(savedContentIdeas)
+      .set({ status, updatedAt: new Date() })
+      .where(and(
+        eq(savedContentIdeas.id, id),
+        eq(savedContentIdeas.userId, userId)
+      ))
+      .returning();
+    return updated;
   }
 }
 
