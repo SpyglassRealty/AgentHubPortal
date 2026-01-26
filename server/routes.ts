@@ -991,17 +991,19 @@ export async function registerRoutes(
   app.get('/api/vimeo/training-videos', isAuthenticated, async (req: any, res) => {
     try {
       const VIMEO_ACCESS_TOKEN = process.env.VIMEO_ACCESS_TOKEN;
-      const VIMEO_FOLDER_ID = process.env.VIMEO_FOLDER_ID;
+      const VIMEO_USER_ID = process.env.VIMEO_USER_ID || '192648675';
+      const VIMEO_FOLDER_ID = process.env.VIMEO_FOLDER_ID || '27970547';
       
       if (!VIMEO_ACCESS_TOKEN) {
         return res.status(503).json({ error: 'Vimeo not configured' });
       }
 
-      const endpoint = VIMEO_FOLDER_ID 
-        ? `https://api.vimeo.com/me/folders/${VIMEO_FOLDER_ID}/videos`
-        : 'https://api.vimeo.com/me/videos';
+      // Use the correct API path with user ID and folder ID (project)
+      const endpoint = `https://api.vimeo.com/users/${VIMEO_USER_ID}/projects/${VIMEO_FOLDER_ID}/videos?per_page=100&sort=date&direction=desc`;
       
-      const response = await fetch(`${endpoint}?per_page=50&sort=date&direction=desc`, {
+      console.log(`[Vimeo] Fetching training videos from: ${endpoint}`);
+      
+      const response = await fetch(endpoint, {
         headers: {
           'Authorization': `Bearer ${VIMEO_ACCESS_TOKEN}`,
           'Content-Type': 'application/json',
@@ -1010,6 +1012,8 @@ export async function registerRoutes(
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Vimeo API Error]', response.status, errorText);
         throw new Error('Failed to fetch from Vimeo');
       }
 
@@ -1021,10 +1025,14 @@ export async function registerRoutes(
         description: video.description || '',
         duration: video.duration,
         created_time: video.created_time,
+        modified_time: video.modified_time,
+        release_time: video.release_time,
         link: video.link,
         player_embed_url: video.player_embed_url,
         pictures: video.pictures
       }));
+
+      console.log(`[Vimeo] Fetched ${videos.length} videos from folder ${VIMEO_FOLDER_ID}`);
 
       res.json({ 
         videos,

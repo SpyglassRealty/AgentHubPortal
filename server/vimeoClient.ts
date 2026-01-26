@@ -1,4 +1,6 @@
 const VIMEO_API_BASE = "https://api.vimeo.com";
+const VIMEO_USER_ID = process.env.VIMEO_USER_ID || "192648675";
+const VIMEO_FOLDER_ID = process.env.VIMEO_FOLDER_ID || "27970547";
 
 function getVimeoToken(): string | undefined {
   return process.env.VIMEO_ACCESS_TOKEN;
@@ -52,7 +54,11 @@ export async function getLatestTrainingVideo(): Promise<LatestTrainingVideo | nu
   }
 
   try {
-    const response = await fetch(`${VIMEO_API_BASE}/me/videos?sort=date&direction=desc&per_page=1`, {
+    // Fetch from the specific Training Videos folder
+    const endpoint = `${VIMEO_API_BASE}/users/${VIMEO_USER_ID}/projects/${VIMEO_FOLDER_ID}/videos?sort=date&direction=desc&per_page=1`;
+    console.log(`[Vimeo] Fetching latest video from: ${endpoint}`);
+    
+    const response = await fetch(endpoint, {
       headers: {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -67,10 +73,10 @@ export async function getLatestTrainingVideo(): Promise<LatestTrainingVideo | nu
     }
 
     const data: VimeoResponse = await response.json();
-    console.log("Vimeo API response:", JSON.stringify(data, null, 2));
+    console.log(`[Vimeo] Found ${data.total} videos in folder ${VIMEO_FOLDER_ID}`);
     
     if (!data.data || data.data.length === 0) {
-      console.log("Vimeo: No videos found in response");
+      console.log("Vimeo: No videos found in folder");
       return null;
     }
 
