@@ -1,0 +1,545 @@
+### Add Unified Refresh Button System Across Mission Control
+
+**Goal:** Create a consistent, reusable refresh button component that displays sync timestamps for both manual and automatic refreshes. Apply to Leads, Reports, and any other data-synced sections.
+
+---
+
+## PART 1: Create Reusable RefreshButton Component
+
+### Create `client/src/components/ui/RefreshButton.tsx`:
+```tsx
+import React, { useState } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { formatDistanceToNow, format } from 'date-fns';
+
+interface RefreshButtonProps {
+  onRefresh: () => Promise<void>;
+  lastManualSync?: Date | string | null;
+  lastAutoSync?: Date | string | null;
+  isLoading?: boolean;
+  label?: string;
+  showTimestamps?: boolean;
+  className?: string;
+}
+
+export function RefreshButton({
+  onRefresh,
+  lastManualSync,
+  lastAutoSync,
+  isLoading = false,
+  label = 'Refresh',
+  showTimestamps = true,
+  className = ''
+}: RefreshButtonProps) {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { isDark } = useTheme();
+
+  const handleRefresh = async () => {
+    if (isRefreshing || isLoading) return;
+    
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const loading = isRefreshing || isLoading;
+
+  // Format timestamps
+  const formatSyncTime = (date: Date | string | null | undefined) => {
+    if (!date) return null;
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return {
+      relative: formatDistanceToNow(dateObj, { addSuffix: true }),
+      absolute: format(dateObj, 'MMM d, yyyy h:mm a')
+    };
+  };
+
+  const manualSyncFormatted = formatSyncTime(lastManualSync);
+  const autoSyncFormatted = formatSyncTime(lastAutoSync);
+
+  return (
+    <div className={`flex flex-col items-end gap-1 ${className}`}>
+      {/* Refresh Button */}
+      <button
+        onClick={handleRefresh}
+        disabled={loading}
+        className={`
+          flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm
+          transition-all duration-200 ease-in-out
+          min-h-[44px] min-w-[44px]
+          active:scale-95
+          ${isDark 
+            ? 'bg-gray-800 hover:bg-gray-700 text-white border border-gray-700' 
+            : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 shadow-sm'
+          }
+          ${loading ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
+        `}
+        title={`${label} - Click to fetch latest data`}
+      >
+        <RefreshCw 
+          className={`w-4 h-4 transition-transform ${loading ? 'animate-spin' : ''}`} 
+        />
+        <span className="hidden sm:inline">
+          {loading ? 'Refreshing...' : label}
+        </span>
+      </button>
+
+      {/* Sync Timestamps */}
+      {showTimestamps && (
+        <div className={`text-xs space-y-0.5 text-right ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+          {manualSyncFormatted && (
+            <p title={manualSyncFormatted.absolute}>
+              Manual: {manualSyncFormatted.relative}
+            </p>
+          )}
+          {autoSyncFormatted && (
+            <p title={autoSyncFormatted.absolute}>
+              Auto: {autoSyncFormatted.relative}
+            </p>
+          )}
+          {!manualSyncFormatted && !autoSyncFormatted && (
+            <p>Never synced</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+## PART 2: Create SyncStatus Component for Detailed View
+
+### Create `client/src/components/ui/SyncStatus.tsx`:
+```tsx
+import React from 'react';
+import { Clock, RefreshCw, CheckCircle } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { formatDistanceToNow, format } from 'date-fns';
+
+interface SyncStatusProps {
+  lastManualSync?: Date | string | null;
+  lastAutoSync?: Date | string | null;
+  nextAutoSync?: Date | string | null;
+  syncInterval?: string; // e.g., "Every 15 minutes"
+  compact?: boolean;
+}
+
+export function SyncStatus({
+  lastManualSync,
+  lastAutoSync,
+  nextAutoSync,
+  syncInterval,
+  compact = false
+}: SyncStatusProps) {
+  const { isDark } = useTheme();
+
+  const formatTime = (date: Date | string | null | undefined) => {
+    if (!date) return null;
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return {
+      relative: formatDistanceToNow(dateObj, { addSuffix: true }),
+      absolute: format(dateObj, 'MMM d, yyyy h:mm a')
+    };
+  };
+
+  const manual = formatTime(lastManualSync);
+  const auto = formatTime(lastAutoSync);
+  const next = formatTime(nextAutoSync);
+
+  const textMuted = isDark ? 'text-gray-500' : 'text-gray-400';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-500';
+  const bgSubtle = isDark ? 'bg-gray-800/50' : 'bg-gray-50';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+
+  if (compact) {
+    return (
+      <div className={`flex items-center gap-3 text-xs ${textMuted}`}>
+        {manual && (
+          <span className="flex items-center gap-1" title={`Manual: ${manual.absolute}`}>
+            <RefreshCw className="w-3 h-3" />
+            {manual.relative}
+          </span>
+        )}
+        {auto && (
+          <span className="flex items-center gap-1" title={`Auto: ${auto.absolute}`}>
+            <Clock className="w-3 h-3" />
+            {auto.relative}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`rounded-lg border ${borderColor} ${bgSubtle} p-3 text-sm`}>
+      <div className="flex items-center gap-2 mb-2">
+        <CheckCircle className={`w-4 h-4 ${isDark ? 'text-green-500' : 'text-green-600'}`} />
+        <span className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          Sync Status
+        </span>
+      </div>
+      
+      <div className={`space-y-1 ${textSecondary}`}>
+        {manual && (
+          <div className="flex justify-between">
+            <span>Last Manual Refresh:</span>
+            <span title={manual.absolute}>{manual.relative}</span>
+          </div>
+        )}
+        {auto && (
+          <div className="flex justify-between">
+            <span>Last Auto Sync:</span>
+            <span title={auto.absolute}>{auto.relative}</span>
+          </div>
+        )}
+        {next && (
+          <div className="flex justify-between">
+            <span>Next Auto Sync:</span>
+            <span title={next.absolute}>{next.relative}</span>
+          </div>
+        )}
+        {syncInterval && (
+          <div className="flex justify-between">
+            <span>Sync Interval:</span>
+            <span>{syncInterval}</span>
+          </div>
+        )}
+        {!manual && !auto && (
+          <p className={textMuted}>No sync data available</p>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## PART 3: Update Database Schema for Sync Timestamps
+
+### Update `shared/schema.ts`:
+```typescript
+// Add sync tracking fields to users table (or create separate sync_status table)
+
+// Option A: Add to users table
+export const users = pgTable('users', {
+  // ... existing fields ...
+  
+  // Leads sync tracking
+  leadsLastManualSync: timestamp('leads_last_manual_sync'),
+  leadsLastAutoSync: timestamp('leads_last_auto_sync'),
+  
+  // Reports sync tracking  
+  reportsLastManualSync: timestamp('reports_last_manual_sync'),
+  reportsLastAutoSync: timestamp('reports_last_auto_sync'),
+  
+  // Training sync tracking
+  trainingLastManualSync: timestamp('training_last_manual_sync'),
+  trainingLastAutoSync: timestamp('training_last_auto_sync'),
+});
+
+// Option B: Create dedicated sync_status table (cleaner)
+export const syncStatus = pgTable('sync_status', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  section: varchar('section', { length: 50 }).notNull(), // 'leads', 'reports', 'training'
+  lastManualSync: timestamp('last_manual_sync'),
+  lastAutoSync: timestamp('last_auto_sync'),
+  syncInterval: integer('sync_interval'), // minutes
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+```
+
+---
+
+## PART 4: Create Unified Sync API Endpoints
+
+### Add to `server/routes.ts`:
+```typescript
+// ============================================
+// UNIFIED SYNC ENDPOINTS
+// ============================================
+
+// GET /api/sync/status/:section - Get sync status for a section
+router.get('/api/sync/status/:section', async (req, res) => {
+  try {
+    const { section } = req.params;
+    const user = req.user;
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const validSections = ['leads', 'reports', 'training', 'performance'];
+    if (!validSections.includes(section)) {
+      return res.status(400).json({ error: 'Invalid section' });
+    }
+
+    // Fetch sync status from database
+    const status = await db
+      .select()
+      .from(syncStatus)
+      .where(and(
+        eq(syncStatus.userId, user.id),
+        eq(syncStatus.section, section)
+      ))
+      .limit(1);
+
+    res.json({
+      section,
+      lastManualSync: status[0]?.lastManualSync || null,
+      lastAutoSync: status[0]?.lastAutoSync || null,
+      syncInterval: status[0]?.syncInterval || null
+    });
+  } catch (error) {
+    console.error('[Sync Status] Error:', error);
+    res.status(500).json({ error: 'Failed to get sync status' });
+  }
+});
+
+// POST /api/sync/refresh/:section - Manual refresh for a section
+router.post('/api/sync/refresh/:section', async (req, res) => {
+  try {
+    const { section } = req.params;
+    const user = req.user;
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    console.log(`[Sync Refresh] User ${user.id} refreshing ${section}`);
+
+    let result;
+    const now = new Date();
+
+    switch (section) {
+      case 'leads':
+        result = await refreshLeadsFromFUB(user);
+        break;
+      case 'reports':
+        result = await refreshReportsFromReZen(user);
+        break;
+      case 'training':
+        result = await refreshTrainingFromVimeo(user);
+        break;
+      case 'performance':
+        result = await refreshPerformanceData(user);
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid section' });
+    }
+
+    // Update sync status
+    await db
+      .insert(syncStatus)
+      .values({
+        userId: user.id,
+        section,
+        lastManualSync: now,
+        updatedAt: now
+      })
+      .onConflictDoUpdate({
+        target: [syncStatus.userId, syncStatus.section],
+        set: {
+          lastManualSync: now,
+          updatedAt: now
+        }
+      });
+
+    res.json({
+      success: true,
+      section,
+      syncedAt: now.toISOString(),
+      ...result
+    });
+  } catch (error) {
+    console.error('[Sync Refresh] Error:', error);
+    res.status(500).json({ error: `Failed to refresh ${req.params.section}` });
+  }
+});
+
+// Helper functions for each section
+async function refreshLeadsFromFUB(user: User) {
+  // Fetch from Follow Up Boss API
+  const response = await fetch('https://api.followupboss.com/v1/people', {
+    headers: {
+      'Authorization': `Basic ${Buffer.from(user.fubApiKey + ':').toString('base64')}`,
+    }
+  });
+  const data = await response.json();
+  return { count: data.people?.length || 0 };
+}
+
+async function refreshReportsFromReZen(user: User) {
+  // Fetch from ReZen API
+  // ... implementation
+  return { count: 0 };
+}
+
+async function refreshTrainingFromVimeo(user: User) {
+  // Fetch from Vimeo API
+  // ... implementation
+  return { count: 0 };
+}
+
+async function refreshPerformanceData(user: User) {
+  // Fetch performance data
+  // ... implementation
+  return { count: 0 };
+}
+```
+
+---
+
+## PART 5: Apply to Leads Page
+
+### Update `client/src/pages/leads.tsx`:
+```tsx
+import { RefreshButton } from '@/components/ui/RefreshButton';
+import { SyncStatus } from '@/components/ui/SyncStatus';
+
+function LeadsPage() {
+  const { isDark } = useTheme();
+  const [syncData, setSyncData] = useState({
+    lastManualSync: null,
+    lastAutoSync: null
+  });
+
+  // Fetch sync status on mount
+  useEffect(() => {
+    fetchSyncStatus();
+  }, []);
+
+  const fetchSyncStatus = async () => {
+    const response = await fetch('/api/sync/status/leads');
+    const data = await response.json();
+    setSyncData(data);
+  };
+
+  const handleRefresh = async () => {
+    const response = await fetch('/api/sync/refresh/leads', { method: 'POST' });
+    if (response.ok) {
+      await refetchLeads();
+      await fetchSyncStatus();
+      toast.success('Leads refreshed successfully');
+    } else {
+      toast.error('Failed to refresh leads');
+    }
+  };
+
+  return (
+    <div className={`p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            Leads
+          </h1>
+          <SyncStatus
+            lastManualSync={syncData.lastManualSync}
+            lastAutoSync={syncData.lastAutoSync}
+            compact
+          />
+        </div>
+        
+        <RefreshButton
+          onRefresh={handleRefresh}
+          lastManualSync={syncData.lastManualSync}
+          lastAutoSync={syncData.lastAutoSync}
+          label="Refresh Leads"
+        />
+      </div>
+      
+      {/* Rest of leads content */}
+    </div>
+  );
+}
+```
+
+---
+
+## PART 6: Apply to Reports Page
+
+### Update `client/src/pages/reports.tsx`:
+```tsx
+import { RefreshButton } from '@/components/ui/RefreshButton';
+import { SyncStatus } from '@/components/ui/SyncStatus';
+
+function ReportsPage() {
+  const { isDark } = useTheme();
+  const [syncData, setSyncData] = useState({
+    lastManualSync: null,
+    lastAutoSync: null
+  });
+
+  useEffect(() => {
+    fetchSyncStatus();
+  }, []);
+
+  const fetchSyncStatus = async () => {
+    const response = await fetch('/api/sync/status/reports');
+    const data = await response.json();
+    setSyncData(data);
+  };
+
+  const handleRefresh = async () => {
+    const response = await fetch('/api/sync/refresh/reports', { method: 'POST' });
+    if (response.ok) {
+      await refetchReports();
+      await fetchSyncStatus();
+      toast.success('Reports refreshed successfully');
+    } else {
+      toast.error('Failed to refresh reports');
+    }
+  };
+
+  return (
+    <div className={`p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            Reports
+          </h1>
+          <SyncStatus
+            lastManualSync={syncData.lastManualSync}
+            lastAutoSync={syncData.lastAutoSync}
+            compact
+          />
+        </div>
+        
+        <RefreshButton
+          onRefresh={handleRefresh}
+          lastManualSync={syncData.lastManualSync}
+          lastAutoSync={syncData.lastAutoSync}
+          label="Refresh Reports"
+        />
+      </div>
+      
+      {/* Rest of reports content */}
+    </div>
+  );
+}
+```
+
+---
+
+## PART 7: Visual Design - Uniform Layout
+
+### Header Layout (All Pages)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  Leads                                              ┌─────────────────────┐ │
+│  ↻ Manual: 5 min ago  •  🕐 Auto: 15 min ago       │  ↻  Refresh Leads   │ │
+│                                                     └─────────────────────┘ │
+│                                                     Manual: 5 minutes ago   │
+│                                                     Auto: 15 minutes ago    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘

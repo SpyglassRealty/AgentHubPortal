@@ -8,6 +8,7 @@ import { AgentSelector } from "@/components/agent-selector";
 import { useAuth } from "@/hooks/useAuth";
 import { FubNotLinkedBanner } from "@/components/leads/FubNotLinkedBanner";
 import { useToast } from "@/hooks/use-toast";
+import { RefreshButton } from "@/components/ui/refresh-button";
 import { 
   Calendar, 
   Clock, 
@@ -21,7 +22,6 @@ import {
   ListTodo,
   Cake,
   ExternalLink,
-  RefreshCw,
   Users
 } from "lucide-react";
 import { format, formatDistanceToNow, differenceInDays, isToday, isPast } from "date-fns";
@@ -241,7 +241,7 @@ export default function LeadsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastManualSync, setLastManualSync] = useState<Date | null>(null);
 
   const getUrl = (base: string) => {
     return selectedAgentId ? `${base}?agentId=${selectedAgentId}` : base;
@@ -293,7 +293,6 @@ export default function LeadsPage() {
   });
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
     try {
       // Refetch all leads-related queries to get fresh data from FUB
       await Promise.all([
@@ -303,6 +302,8 @@ export default function LeadsPage() {
         queryClient.refetchQueries({ queryKey: ['/api/fub/leads/all', selectedAgentId], exact: true }),
         queryClient.refetchQueries({ queryKey: ['/api/fub/tasks/due', selectedAgentId], exact: true }),
       ]);
+      
+      setLastManualSync(new Date());
       
       toast({
         title: "Leads Refreshed",
@@ -315,8 +316,7 @@ export default function LeadsPage() {
         description: "Failed to refresh leads. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsRefreshing(false);
+      throw error; // Re-throw so RefreshButton knows refresh failed
     }
   };
 
@@ -342,21 +342,12 @@ export default function LeadsPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all
-                bg-card hover:bg-accent text-foreground border border-border
-                disabled:opacity-50 disabled:cursor-not-allowed
-                active:scale-95 min-h-[44px]"
-              title="Refresh leads from Follow Up Boss"
-              data-testid="button-refresh-leads"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">
-                {isRefreshing ? 'Refreshing...' : 'Refresh'}
-              </span>
-            </button>
+            <RefreshButton
+              onRefresh={handleRefresh}
+              lastManualSync={lastManualSync}
+              label="Refresh"
+              showTimestamps={true}
+            />
             {user?.isSuperAdmin && (
               <AgentSelector
                 selectedAgentId={selectedAgentId}
