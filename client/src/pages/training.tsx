@@ -7,6 +7,8 @@ import {
 import { useTheme } from '@/contexts/ThemeContext';
 import Layout from '@/components/layout';
 import { useIsTouchDevice, useWindowSize } from '@/hooks/use-mobile';
+import { RefreshButton } from '@/components/ui/refresh-button';
+import { useToast } from '@/hooks/use-toast';
 
 interface VimeoVideo {
   id: string;
@@ -694,6 +696,7 @@ export default function TrainingPage() {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
   const isTouch = useIsTouchDevice();
+  const { toast } = useToast();
   
   const [videos, setVideos] = useState<VimeoVideo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -701,6 +704,7 @@ export default function TrainingPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [preferences, setPreferences] = useState<Record<string, VideoPreference>>({});
   const [playingVideo, setPlayingVideo] = useState<VimeoVideo | null>(null);
+  const [lastManualRefresh, setLastManualRefresh] = useState<Date | null>(null);
 
   const pageBg = isDark ? 'bg-gray-900' : 'bg-gray-50';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
@@ -742,6 +746,26 @@ export default function TrainingPage() {
       }
     } catch (err) {
       console.error('Failed to fetch preferences:', err);
+    }
+  };
+
+  const handleRefresh = async () => {
+    try {
+      await fetchVideos();
+      await fetchPreferences();
+      setLastManualRefresh(new Date());
+      toast({
+        title: "Training Videos Refreshed",
+        description: "Successfully synced latest videos from Vimeo",
+      });
+    } catch (error) {
+      console.error('Refresh error:', error);
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh training videos. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
     }
   };
 
@@ -902,16 +926,23 @@ export default function TrainingPage() {
               </div>
             </div>
             
-            <div className="relative w-full sm:w-80">
-              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
-              <input
-                type="text"
-                placeholder="Search videos..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2.5 ${inputBg} border ${inputBorder} rounded-full text-sm ${textPrimary} placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#EF4923] focus:border-transparent transition-all`}
-                data-testid="input-search"
+            <div className="flex items-center gap-3">
+              <RefreshButton
+                lastManualRefresh={lastManualRefresh}
+                onRefresh={handleRefresh}
+                isLoading={loading}
               />
+              <div className="relative w-full sm:w-80">
+                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
+                <input
+                  type="text"
+                  placeholder="Search videos..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={`w-full pl-10 pr-4 py-2.5 ${inputBg} border ${inputBorder} rounded-full text-sm ${textPrimary} placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#EF4923] focus:border-transparent transition-all`}
+                  data-testid="input-search"
+                />
+              </div>
             </div>
           </div>
 

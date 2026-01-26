@@ -224,3 +224,16 @@ export const videoProgressSchema = z.object({
   videoThumbnail: z.string().optional(),
   videoDuration: z.number().optional(),
 });
+
+export const syncStatus = pgTable('sync_status', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar('user_id').references(() => users.id).notNull(),
+  section: varchar('section', { length: 50 }).notNull(),
+  lastManualRefresh: timestamp('last_manual_refresh'),
+  lastAutoRefresh: timestamp('last_auto_refresh'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export type SyncStatus = typeof syncStatus.$inferSelect;
+export type InsertSyncStatus = typeof syncStatus.$inferInsert;

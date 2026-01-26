@@ -1,0 +1,696 @@
+### Unified Refresh Button System - Consistent Across All Sections
+
+**Goal:** Create a uniform refresh button experience across ALL sections in Mission Control. The button should show a tooltip on hover displaying the last manual and automatic refresh times.
+
+---
+
+## Current State
+
+**Sections WITH refresh (keep existing, update to match new standard):**
+- Dashboard → Market Pulse
+- Dashboard → My Performance
+- Leads
+- Properties → Market Pulse
+
+**Sections NEEDING refresh added:**
+- Calendar
+- Reports
+- Training
+
+---
+
+## PART 1: Create Unified RefreshButton Component
+
+### Create `client/src/components/ui/RefreshButton.tsx`:
+```tsx
+import React, { useState } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { format } from 'date-fns';
+
+interface RefreshButtonProps {
+  onRefresh: () => Promise<void>;
+  lastManualRefresh?: Date | string | null;
+  lastAutoRefresh?: Date | string | null;
+  isLoading?: boolean;
+  size?: 'sm' | 'md';
+  className?: string;
+}
+
+export function RefreshButton({
+  onRefresh,
+  lastManualRefresh,
+  lastAutoRefresh,
+  isLoading = false,
+  size = 'sm',
+  className = ''
+}: RefreshButtonProps) {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const { isDark } = useTheme();
+
+  const handleRefresh = async () => {
+    if (isRefreshing || isLoading) return;
+    
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const loading = isRefreshing || isLoading;
+
+  // Format timestamps for tooltip
+  const formatTime = (date: Date | string | null | undefined): string | null => {
+    if (!date) return null;
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return format(dateObj, 'MMM d, yyyy h:mm a');
+  };
+
+  const manualTime = formatTime(lastManualRefresh);
+  const autoTime = formatTime(lastAutoRefresh);
+
+  // Size variants
+  const sizeClasses = {
+    sm: 'p-1.5 rounded',
+    md: 'p-2 rounded-lg'
+  };
+
+  const iconSizes = {
+    sm: 'w-4 h-4',
+    md: 'w-5 h-5'
+  };
+
+  return (
+    <div className={`relative inline-block ${className}`}>
+      {/* Refresh Button */}
+      <button
+        onClick={handleRefresh}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        onFocus={() => setShowTooltip(true)}
+        onBlur={() => setShowTooltip(false)}
+        disabled={loading}
+        className={`
+          ${sizeClasses[size]}
+          transition-all duration-200 ease-in-out
+          min-h-[44px] min-w-[44px]
+          flex items-center justify-center
+          active:scale-95
+          ${isDark 
+            ? 'text-gray-400 hover:text-white hover:bg-gray-700' 
+            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+          }
+          ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+          border ${isDark ? 'border-gray-700' : 'border-gray-200'}
+          rounded-md
+        `}
+        aria-label="Refresh data"
+      >
+        <RefreshCw 
+          className={`${iconSizes[size]} transition-transform ${loading ? 'animate-spin' : ''}`} 
+        />
+      </button>
+
+      {/* Hover Tooltip */}
+      {showTooltip && (manualTime || autoTime) && (
+        <div 
+          className={`
+            absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2
+            px-3 py-2 rounded-lg shadow-lg
+            text-xs whitespace-nowrap
+            ${isDark ? 'bg-gray-800 text-white border border-gray-700' : 'bg-white text-gray-900 border border-gray-200'}
+          `}
+        >
+          {/* Tooltip Arrow */}
+          <div 
+            className={`
+              absolute top-full left-1/2 -translate-x-1/2 -mt-px
+              border-4 border-transparent
+              ${isDark ? 'border-t-gray-800' : 'border-t-white'}
+            `}
+          />
+          
+          {/* Tooltip Content */}
+          <div className="space-y-1">
+            {manualTime && (
+              <div className="flex items-center gap-2">
+                <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Manual:</span>
+                <span className="font-medium">{manualTime}</span>
+              </div>
+            )}
+            {autoTime && (
+              <div className="flex items-center gap-2">
+                <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Auto:</span>
+                <span className="font-medium">{autoTime}</span>
+              </div>
+            )}
+            {!manualTime && !autoTime && (
+              <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Never synced</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+## PART 2: Create Hook for Sync Status
+
+### Create `client/src/hooks/useSyncStatus.ts`:
+```tsx
+import { useState, useEffect, useCallback } from 'react';
+import { useToast } from '@/hooks/use-toast';
+
+interface SyncStatus {
+  lastManualRefresh: string | null;
+  lastAutoRefresh: string | null;
+  isLoading: boolean;
+}
+
+export function useSyncStatus(section: string) {
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({
+    lastManualRefresh: null,
+    lastAutoRefresh: null,
+    isLoading: false
+  });
+  const { toast } = useToast();
+
+  // Fetch sync status on mount
+  useEffect(() => {
+    fetchSyncStatus();
+  }, [section]);
+
+  const fetchSyncStatus = async () => {
+    try {
+      const response = await fetch(`/api/sync/status/${section}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSyncStatus(prev => ({
+          ...prev,
+          lastManualRefresh: data.lastManualRefresh,
+          lastAutoRefresh: data.lastAutoRefresh
+        }));
+      }
+    } catch (error) {
+      console.error(`[useSyncStatus] Error fetching ${section} status:`, error);
+    }
+  };
+
+  const refresh = useCallback(async (onSuccess?: () => Promise<void>) => {
+    setSyncStatus(prev => ({ ...prev, isLoading: true }));
+    
+    try {
+      const response = await fetch(`/api/sync/refresh/${section}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSyncStatus(prev => ({
+          ...prev,
+          lastManualRefresh: data.syncedAt,
+          isLoading: false
+        }));
+        
+        // Execute callback to refetch data
+        if (onSuccess) {
+          await onSuccess();
+        }
+        
+        toast({
+          title: 'Refreshed',
+          description: `${section.charAt(0).toUpperCase() + section.slice(1)} data updated successfully`,
+        });
+      } else {
+        throw new Error('Refresh failed');
+      }
+    } catch (error) {
+      console.error(`[useSyncStatus] Error refreshing ${section}:`, error);
+      toast({
+        title: 'Error',
+        description: `Failed to refresh ${section} data`,
+        variant: 'destructive'
+      });
+      setSyncStatus(prev => ({ ...prev, isLoading: false }));
+    }
+  }, [section, toast]);
+
+  return {
+    ...syncStatus,
+    refresh,
+    refetchStatus: fetchSyncStatus
+  };
+}
+```
+
+---
+
+## PART 3: Create Sync API Endpoints
+
+### Add to `server/routes.ts`:
+```typescript
+// ============================================
+// SYNC STATUS & REFRESH ENDPOINTS
+// ============================================
+
+// Sync status table (add to schema if not exists)
+// section: 'leads' | 'reports' | 'calendar' | 'training' | 'market-pulse' | 'performance'
+
+// GET /api/sync/status/:section
+router.get('/api/sync/status/:section', async (req, res) => {
+  try {
+    const { section } = req.params;
+    const user = req.user;
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const validSections = ['leads', 'reports', 'calendar', 'training', 'market-pulse', 'performance'];
+    if (!validSections.includes(section)) {
+      return res.status(400).json({ error: 'Invalid section' });
+    }
+
+    // Fetch from sync_status table
+    const status = await db
+      .select()
+      .from(syncStatus)
+      .where(and(
+        eq(syncStatus.userId, user.id),
+        eq(syncStatus.section, section)
+      ))
+      .limit(1);
+
+    res.json({
+      section,
+      lastManualRefresh: status[0]?.lastManualRefresh || null,
+      lastAutoRefresh: status[0]?.lastAutoRefresh || null
+    });
+  } catch (error) {
+    console.error('[Sync Status] Error:', error);
+    res.status(500).json({ error: 'Failed to get sync status' });
+  }
+});
+
+// POST /api/sync/refresh/:section
+router.post('/api/sync/refresh/:section', async (req, res) => {
+  try {
+    const { section } = req.params;
+    const user = req.user;
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    console.log(`[Sync Refresh] User ${user.id} manually refreshing ${section}`);
+    const now = new Date();
+
+    // Perform section-specific refresh
+    let result = { count: 0 };
+    
+    switch (section) {
+      case 'leads':
+        result = await refreshLeadsData(user);
+        break;
+      case 'reports':
+        result = await refreshReportsData(user);
+        break;
+      case 'calendar':
+        result = await refreshCalendarData(user);
+        break;
+      case 'training':
+        result = await refreshTrainingData(user);
+        break;
+      case 'market-pulse':
+        result = await refreshMarketPulseData(user);
+        break;
+      case 'performance':
+        result = await refreshPerformanceData(user);
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid section' });
+    }
+
+    // Upsert sync status
+    await db
+      .insert(syncStatus)
+      .values({
+        userId: user.id,
+        section,
+        lastManualRefresh: now,
+        updatedAt: now
+      })
+      .onConflictDoUpdate({
+        target: [syncStatus.userId, syncStatus.section],
+        set: {
+          lastManualRefresh: now,
+          updatedAt: now
+        }
+      });
+
+    res.json({
+      success: true,
+      section,
+      syncedAt: now.toISOString(),
+      ...result
+    });
+  } catch (error) {
+    console.error('[Sync Refresh] Error:', error);
+    res.status(500).json({ error: `Failed to refresh ${req.params.section}` });
+  }
+});
+
+// Helper functions (implement based on your existing data fetching logic)
+async function refreshLeadsData(user: any) {
+  // Fetch from Follow Up Boss
+  return { count: 0 };
+}
+
+async function refreshReportsData(user: any) {
+  // Fetch from ReZen
+  return { count: 0 };
+}
+
+async function refreshCalendarData(user: any) {
+  // Fetch calendar events
+  return { count: 0 };
+}
+
+async function refreshTrainingData(user: any) {
+  // Fetch from Vimeo
+  return { count: 0 };
+}
+
+async function refreshMarketPulseData(user: any) {
+  // Fetch market data
+  return { count: 0 };
+}
+
+async function refreshPerformanceData(user: any) {
+  // Fetch performance data
+  return { count: 0 };
+}
+```
+
+---
+
+## PART 4: Add Sync Status Table to Schema
+
+### Update `shared/schema.ts`:
+```typescript
+export const syncStatus = pgTable('sync_status', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  section: varchar('section', { length: 50 }).notNull(), // leads, reports, calendar, training, market-pulse, performance
+  lastManualRefresh: timestamp('last_manual_refresh'),
+  lastAutoRefresh: timestamp('last_auto_refresh'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => ({
+  uniqueUserSection: unique().on(table.userId, table.section)
+}));
+```
+
+---
+
+## PART 5: Update Existing Sections with New RefreshButton
+
+### Update Market Pulse (Dashboard & Properties)
+
+Find existing refresh button and replace with unified component:
+```tsx
+import { RefreshButton } from '@/components/ui/RefreshButton';
+import { useSyncStatus } from '@/hooks/useSyncStatus';
+
+function MarketPulse() {
+  const { lastManualRefresh, lastAutoRefresh, isLoading, refresh } = useSyncStatus('market-pulse');
+  
+  const handleRefresh = async () => {
+    await refresh(async () => {
+      // Refetch market pulse data
+      await refetchMarketData();
+    });
+  };
+
+  return (
+    <div className="...">
+      <div className="flex items-center justify-between">
+        <h2>Market Pulse</h2>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500">
+            Updated: {formatTime(lastManualRefresh || lastAutoRefresh)}
+          </span>
+          <RefreshButton
+            onRefresh={handleRefresh}
+            lastManualRefresh={lastManualRefresh}
+            lastAutoRefresh={lastAutoRefresh}
+            isLoading={isLoading}
+          />
+        </div>
+      </div>
+      {/* Rest of content */}
+    </div>
+  );
+}
+```
+
+---
+
+## PART 6: Add Refresh to Calendar Section
+
+### Update `client/src/pages/calendar.tsx`:
+```tsx
+import { RefreshButton } from '@/components/ui/RefreshButton';
+import { useSyncStatus } from '@/hooks/useSyncStatus';
+
+function CalendarPage() {
+  const { isDark } = useTheme();
+  const { lastManualRefresh, lastAutoRefresh, isLoading, refresh } = useSyncStatus('calendar');
+
+  const handleRefresh = async () => {
+    await refresh(async () => {
+      await refetchCalendarEvents();
+    });
+  };
+
+  return (
+    <div className={`p-4 md:p-6 min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Page Header */}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          Calendar
+        </h1>
+        
+        <div className="flex items-center gap-2">
+          <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+            Updated: {formatTime(lastManualRefresh || lastAutoRefresh)}
+          </span>
+          <RefreshButton
+            onRefresh={handleRefresh}
+            lastManualRefresh={lastManualRefresh}
+            lastAutoRefresh={lastAutoRefresh}
+            isLoading={isLoading}
+          />
+        </div>
+      </div>
+      
+      {/* Rest of calendar content */}
+    </div>
+  );
+}
+```
+
+---
+
+## PART 7: Add Refresh to Reports Section
+
+### Update `client/src/pages/reports.tsx`:
+```tsx
+import { RefreshButton } from '@/components/ui/RefreshButton';
+import { useSyncStatus } from '@/hooks/useSyncStatus';
+
+function ReportsPage() {
+  const { isDark } = useTheme();
+  const { lastManualRefresh, lastAutoRefresh, isLoading, refresh } = useSyncStatus('reports');
+
+  const handleRefresh = async () => {
+    await refresh(async () => {
+      await refetchReports();
+    });
+  };
+
+  return (
+    <div className={`p-4 md:p-6 min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Page Header */}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          Reports
+        </h1>
+        
+        <div className="flex items-center gap-2">
+          <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+            Updated: {formatTime(lastManualRefresh || lastAutoRefresh)}
+          </span>
+          <RefreshButton
+            onRefresh={handleRefresh}
+            lastManualRefresh={lastManualRefresh}
+            lastAutoRefresh={lastAutoRefresh}
+            isLoading={isLoading}
+          />
+        </div>
+      </div>
+      
+      {/* Rest of reports content */}
+    </div>
+  );
+}
+```
+
+---
+
+## PART 8: Add Refresh to Training Section
+
+### Update `client/src/pages/training.tsx`:
+```tsx
+import { RefreshButton } from '@/components/ui/RefreshButton';
+import { useSyncStatus } from '@/hooks/useSyncStatus';
+
+function TrainingPage() {
+  const { isDark } = useTheme();
+  const { lastManualRefresh, lastAutoRefresh, isLoading, refresh } = useSyncStatus('training');
+
+  const handleRefresh = async () => {
+    await refresh(async () => {
+      await refetchTrainingVideos();
+    });
+  };
+
+  return (
+    <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Header with Title and Search */}
+      <div className="...">
+        <div className="flex items-center gap-3">
+          <GraduationCap className="..." />
+          <div>
+            <h1>Training Library</h1>
+            <p>50 videos</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {/* Search Input */}
+          <input ... />
+          
+          {/* Refresh Button */}
+          <RefreshButton
+            onRefresh={handleRefresh}
+            lastManualRefresh={lastManualRefresh}
+            lastAutoRefresh={lastAutoRefresh}
+            isLoading={isLoading}
+          />
+        </div>
+      </div>
+      
+      {/* Rest of training content */}
+    </div>
+  );
+}
+```
+
+---
+
+## Visual Design Reference
+
+### Refresh Button (Uniform Style)
+Default State:
+┌─────┐
+│  ↻  │  ← Gray icon, border
+└─────┘
+Hover State:
+┌─────┐
+│  ↻  │  ← Darker icon, subtle background
+└─────┘
+│
+▼
+┌─────────────────────────────┐
+│ Manual: Jan 26, 2026 3:09 AM│
+│ Auto:   Jan 26, 2026 2:00 AM│
+└─────────────────────────────┘
+Loading State:
+┌─────┐
+│  ↻  │  ← Spinning animation
+└─────┘
+
+### Header Layout Pattern
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│  Section Title                      Updated: 3:09 AM   [↻]     │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+---
+
+## 📱 Mobile Optimization
+
+**All changes must be optimized for iPad, iOS, and Android mobile web view:**
+
+| Device | Requirement |
+|--------|-------------|
+| iPad Safari | Button + timestamp visible |
+| iPhone Safari | Compact layout, tooltip works on long-press |
+| Android Chrome | Touch feedback, 44px minimum target |
+
+### Touch-friendly Tooltip:
+```tsx
+// For mobile, show tooltip on long-press or tap
+onTouchStart={() => setShowTooltip(true)}
+onTouchEnd={() => setTimeout(() => setShowTooltip(false), 2000)}
+```
+
+---
+
+## Testing Checklist
+
+### RefreshButton Component
+- [ ] Same icon (RefreshCw) used everywhere
+- [ ] Hover shows tooltip with timestamps
+- [ ] Loading state shows spinning icon
+- [ ] Button disabled during refresh
+- [ ] 44x44px minimum touch target
+- [ ] Works in light mode
+- [ ] Works in dark mode
+
+### Tooltip Display
+- [ ] Shows "Manual: [date time]" when manual refresh exists
+- [ ] Shows "Auto: [date time]" when auto refresh exists
+- [ ] Shows both when both exist
+- [ ] Positioned above button, centered
+- [ ] Disappears on mouse leave
+- [ ] Works on touch devices (long-press or tap)
+
+### Sections Updated
+- [ ] Dashboard → Market Pulse
+- [ ] Dashboard → My Performance
+- [ ] Leads page
+- [ ] Properties → Market Pulse
+- [ ] Calendar page (NEW)
+- [ ] Reports page (NEW)
+- [ ] Training page (NEW)
+
+### API Endpoints
+- [ ] GET /api/sync/status/:section returns timestamps
+- [ ] POST /api/sync/refresh/:section updates data
+- [ ] Sync status persists in database
+
+### Uniformity Check
+- [ ] All refresh buttons look identical
+- [ ] All tooltips have same format
+- [ ] All loading states behave the same
+- [ ] Consistent positioning in headers

@@ -1515,5 +1515,66 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // ============================================
+  // SYNC STATUS & REFRESH ENDPOINTS
+  // ============================================
+
+  const VALID_SYNC_SECTIONS = ['leads', 'reports', 'calendar', 'training', 'market-pulse', 'performance'];
+
+  app.get('/api/sync/status/:section', isAuthenticated, async (req: any, res) => {
+    try {
+      const { section } = req.params;
+      const user = await getDbUser(req);
+      
+      if (!user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      if (!VALID_SYNC_SECTIONS.includes(section)) {
+        return res.status(400).json({ error: 'Invalid section' });
+      }
+
+      const status = await storage.getSyncStatus(user.id, section);
+
+      res.json({
+        section,
+        lastManualRefresh: status?.lastManualRefresh || null,
+        lastAutoRefresh: status?.lastAutoRefresh || null
+      });
+    } catch (error) {
+      console.error('[Sync Status] Error:', error);
+      res.status(500).json({ error: 'Failed to get sync status' });
+    }
+  });
+
+  app.post('/api/sync/refresh/:section', isAuthenticated, async (req: any, res) => {
+    try {
+      const { section } = req.params;
+      const user = await getDbUser(req);
+      
+      if (!user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      if (!VALID_SYNC_SECTIONS.includes(section)) {
+        return res.status(400).json({ error: 'Invalid section' });
+      }
+
+      console.log(`[Sync Refresh] User ${user.id} manually refreshing ${section}`);
+      const now = new Date();
+
+      await storage.upsertSyncStatus(user.id, section, now);
+
+      res.json({
+        success: true,
+        section,
+        syncedAt: now.toISOString()
+      });
+    } catch (error) {
+      console.error('[Sync Refresh] Error:', error);
+      res.status(500).json({ error: `Failed to refresh ${req.params.section}` });
+    }
+  });
+
   return httpServer;
 }
