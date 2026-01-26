@@ -1,0 +1,88 @@
+### Fix: "View Training" Link Still Present - Remove It Completely
+
+**Issue:** The "View Training →" link is still showing in the Company Updates header. It was not removed.
+
+**Screenshot confirms:** The link is visible on the right side of "Company Updates" header.
+
+**Action Required:** Find and DELETE the "View Training →" link completely.
+
+---
+
+## Search for this code and DELETE it:
+
+Search the codebase for any of these patterns:
+
+1. `View Training`
+2. `href="/training"` near Company Updates
+3. `ArrowRight` near Company Updates header
+
+---
+
+## Likely Location:
+
+Check these files:
+- `client/src/pages/dashboard.tsx`
+- `client/src/components/dashboard/company-updates.tsx`
+- `client/src/components/CompanyUpdates.tsx`
+
+---
+
+## Find code that looks like this and DELETE the entire Link/anchor:
+```tsx
+// DELETE THIS ENTIRE BLOCK:
+<Link 
+  href="/training"
+  className="..."
+>
+  View Training
+  <ArrowRight className="w-4 h-4" />
+</Link>
+
+// OR this format:
+<a href="/training" className="...">
+  View Training →
+</a>
+
+// OR with span:
+<Link href="/training" className="...">
+  <span>View Training</span>
+  <ArrowRight ... />
+</Link>
+```
+
+---
+
+## The header should ONLY have the title after removal:
+
+**BEFORE:**
+```tsx
+<div className="flex items-center justify-between px-4 py-3 border-b ...">
+  <h2 className="font-semibold ...">Company Updates</h2>
+  <Link href="/training" className="...">    // ← DELETE THIS
+    View Training                             // ← DELETE THIS
+    <ArrowRight className="w-4 h-4" />        // ← DELETE THIS
+  </Link>                                     // ← DELETE THIS
+</div>
+```
+
+**AFTER:**
+```tsx
+<div className="flex items-center justify-between px-4 py-3 border-b ...">
+  <h2 className="font-semibold ...">Company Updates</h2>
+</div>
+```
+
+---
+
+## DO NOT TOUCH:
+- Training section sidebar link
+- "Go to Training" button elsewhere
+- "Watch Now" link in the video card
+- Any other Training-related links outside Company Updates header
+
+---
+
+## Testing
+- [ ] "View Training →" is completely gone from Company Updates header
+- [ ] Only "Company Updates" title remains in header
+- [ ] Video thumbnail and content still display correctly
