@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Layout from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AgentSelector } from "@/components/agent-selector";
 import { useAuth } from "@/hooks/useAuth";
 import { FubNotLinkedBanner } from "@/components/leads/FubNotLinkedBanner";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Calendar, 
   Clock, 
@@ -19,7 +20,9 @@ import {
   Activity,
   ListTodo,
   Cake,
-  ExternalLink
+  ExternalLink,
+  RefreshCw,
+  Users
 } from "lucide-react";
 import { format, formatDistanceToNow, differenceInDays, isToday, isPast } from "date-fns";
 
@@ -235,7 +238,10 @@ function EmptyState({ icon: Icon, message }: { icon: any; message: string }) {
 
 export default function LeadsPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const getUrl = (base: string) => {
     return selectedAgentId ? `${base}?agentId=${selectedAgentId}` : base;
@@ -244,7 +250,7 @@ export default function LeadsPage() {
   const { data: anniversaryData, isLoading: loadingAnniversary } = useQuery({
     queryKey: ['/api/fub/leads/anniversary', selectedAgentId],
     queryFn: async () => {
-      const res = await fetch(getUrl('/api/fub/leads/anniversary'));
+      const res = await fetch(getUrl('/api/fub/leads/anniversary'), { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch anniversary leads');
       return res.json();
     }
@@ -253,7 +259,7 @@ export default function LeadsPage() {
   const { data: recentActivityData, isLoading: loadingActivity } = useQuery({
     queryKey: ['/api/fub/leads/recent-activity', selectedAgentId],
     queryFn: async () => {
-      const res = await fetch(getUrl('/api/fub/leads/recent-activity'));
+      const res = await fetch(getUrl('/api/fub/leads/recent-activity'), { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch recent activity leads');
       return res.json();
     }
@@ -262,7 +268,7 @@ export default function LeadsPage() {
   const { data: tasksData, isLoading: loadingTasks } = useQuery({
     queryKey: ['/api/fub/tasks/due', selectedAgentId],
     queryFn: async () => {
-      const res = await fetch(getUrl('/api/fub/tasks/due'));
+      const res = await fetch(getUrl('/api/fub/tasks/due'), { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch tasks');
       return res.json();
     }
@@ -271,16 +277,54 @@ export default function LeadsPage() {
   const { data: birthdayData, isLoading: loadingBirthdays } = useQuery({
     queryKey: ['/api/fub/leads/birthdays', selectedAgentId],
     queryFn: async () => {
-      const res = await fetch(getUrl('/api/fub/leads/birthdays'));
+      const res = await fetch(getUrl('/api/fub/leads/birthdays'), { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch birthday leads');
       return res.json();
     }
   });
 
+  const { data: allLeadsData, isLoading: loadingAllLeads } = useQuery({
+    queryKey: ['/api/fub/leads/all', selectedAgentId],
+    queryFn: async () => {
+      const res = await fetch(getUrl('/api/fub/leads/all'), { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch all leads');
+      return res.json();
+    }
+  });
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // Refetch all leads-related queries to get fresh data from FUB
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['/api/fub/leads/anniversary', selectedAgentId], exact: true }),
+        queryClient.refetchQueries({ queryKey: ['/api/fub/leads/recent-activity', selectedAgentId], exact: true }),
+        queryClient.refetchQueries({ queryKey: ['/api/fub/leads/birthdays', selectedAgentId], exact: true }),
+        queryClient.refetchQueries({ queryKey: ['/api/fub/leads/all', selectedAgentId], exact: true }),
+        queryClient.refetchQueries({ queryKey: ['/api/fub/tasks/due', selectedAgentId], exact: true }),
+      ]);
+      
+      toast({
+        title: "Leads Refreshed",
+        description: "Successfully synced latest data from Follow Up Boss",
+      });
+    } catch (error) {
+      console.error('Refresh error:', error);
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh leads. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const anniversaryLeads: Lead[] = anniversaryData?.leads || [];
   const recentActivityLeads: Lead[] = recentActivityData?.leads || [];
   const dueTasks: Task[] = tasksData?.tasks || [];
   const birthdayLeads: Lead[] = birthdayData?.leads || [];
+  const allLeads: Lead[] = allLeadsData?.leads || [];
   
   // Check if FUB is linked (any response with linked: false means not linked)
   const isFubLinked = anniversaryData?.linked !== false;
@@ -297,16 +341,40 @@ export default function LeadsPage() {
                 : "Smart lists to help you stay connected with your clients"}
             </p>
           </div>
-          {user?.isSuperAdmin && (
-            <AgentSelector
-              selectedAgentId={selectedAgentId}
-              onAgentChange={setSelectedAgentId}
-            />
-          )}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all
+                bg-card hover:bg-accent text-foreground border border-border
+                disabled:opacity-50 disabled:cursor-not-allowed
+                active:scale-95 min-h-[44px]"
+              title="Refresh leads from Follow Up Boss"
+              data-testid="button-refresh-leads"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">
+                {isRefreshing ? 'Refreshing...' : 'Refresh'}
+              </span>
+            </button>
+            {user?.isSuperAdmin && (
+              <AgentSelector
+                selectedAgentId={selectedAgentId}
+                onAgentChange={setSelectedAgentId}
+              />
+            )}
+          </div>
         </div>
 
-        <Tabs defaultValue="anniversary" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+        <Tabs defaultValue="all" className="w-full">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+            <TabsTrigger value="all" className="gap-2" data-testid="tab-all-leads">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">All Leads</span>
+              {allLeads.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{allLeads.length}</Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="anniversary" className="gap-2" data-testid="tab-anniversary">
               <PartyPopper className="h-4 w-4" />
               <span className="hidden sm:inline">Anniversary</span>
@@ -336,6 +404,41 @@ export default function LeadsPage() {
               )}
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="all" className="mt-6">
+            {!isFubLinked ? (
+              <FubNotLinkedBanner />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-[#EF4923]" />
+                    All Leads
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {loadingAllLeads ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
+                      ))}
+                    </div>
+                  ) : allLeads.length === 0 ? (
+                    <EmptyState 
+                      icon={Users} 
+                      message="No leads found assigned to your account. Try refreshing or check your Follow Up Boss lead assignments." 
+                    />
+                  ) : (
+                    <div className="space-y-3">
+                      {allLeads.map((lead) => (
+                        <LeadCard key={lead.id} lead={lead} type="activity" />
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
 
           <TabsContent value="anniversary" className="mt-6">
             {!isFubLinked ? (

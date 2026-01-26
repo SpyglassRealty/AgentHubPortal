@@ -1,0 +1,199 @@
+### Fix: Leads Not Showing + Add Refresh Button for Connected Accounts
+
+**Issues Reported:**
+1. A lead was assigned to the user's account but is not displaying in Mission Control
+2. Need a refresh button for connected accounts to fetch fresh data on demand
+
+---
+
+## PART 1: Investigate Missing Leads
+
+### Diagnose Why Assigned Lead Is Not Showing
+
+**Check these potential causes:**
+
+1. **API Sync Issue** - Data may not be fetching from Follow Up Boss
+2. **Caching** - Stale data may be cached
+3. **Filter/Query Issue** - Lead may be filtered out by current query
+4. **User ID Mismatch** - Lead assignment may not match the logged-in user
+5. **Pagination** - Lead may be on a different page not loaded yet
+
+### Add Console Logging for Debugging
+
+In the Leads page (`client/src/pages/leads.tsx`), add temporary logging:
+```tsx
+useEffect(() => {
+  console.log('[Leads Debug] Fetching leads...');
+  console.log('[Leads Debug] User ID:', user?.id);
+  console.log('[Leads Debug] FUB Connected:', user?.fubConnected);
+}, []);
+
+// After fetch
+console.log('[Leads Debug] Leads received:', leads?.length);
+console.log('[Leads Debug] Lead IDs:', leads?.map(l => l.id));
+```
+
+### Check API Response
+
+Verify the API endpoint returns the expected leads:
+```tsx
+// In the leads fetch function
+const response = await fetch('/api/leads');
+const data = await response.json();
+console.log('[Leads API] Full response:', data);
+```
+
+---
+
+## PART 2: Add Refresh Button for Connected Accounts
+
+### Add Refresh Button to Leads Page Header
+
+**Location:** Leads page header, next to any existing filters/controls
+```tsx
+// client/src/pages/leads.tsx
+
+import { RefreshCw } from 'lucide-react';
+
+function LeadsPage() {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { isDark } = useTheme();
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // Force fresh fetch from FUB API (bypass cache)
+      const response = await fetch('/api/leads/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (response.ok) {
+        // Refetch leads data
+        await refetchLeads(); // or queryClient.invalidateQueries(['leads'])
+        toast.success('Leads refreshed successfully');
+      } else {
+        toast.error('Failed to refresh leads');
+      }
+    } catch (error) {
+      console.error('Refresh error:', error);
+      toast.error('Failed to refresh leads');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  return (
+    <div>
+      {/* Page Header */}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          Leads
+        </h1>
+        
+        <div className="flex items-center gap-3">
+          {/* Refresh Button */}
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all
+              ${isDark 
+                ? 'bg-gray-800 hover:bg-gray-700 text-white border border-gray-700' 
+                : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'
+              }
+              disabled:opacity-50 disabled:cursor-not-allowed
+              active:scale-95`}
+            title="Refresh leads from Follow Up Boss"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </span>
+          </button>
+          
+          {/* Other existing buttons/filters */}
+        </div>
+      </div>
+      
+      {/* Last Synced Indicator */}
+      <p className={`text-xs mb-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+        Last synced: {lastSyncTime ? formatRelativeTime(lastSyncTime) : 'Never'}
+      </p>
+      
+      {/* Rest of leads content */}
+    </div>
+  );
+}
+```
+
+---
+
+### Create Refresh API Endpoint
+
+**Add to `server/routes.ts`:**
+```typescript
+// POST /api/leads/refresh - Force refresh leads from Follow Up Boss
+router.post('/api/leads/refresh', async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    if (!user.fubApiKey) {
+      return res.status(400).json({ error: 'Follow Up Boss not connected' });
+    }
+
+    console.log(`[Leads Refresh] User ${user.id} requesting fresh leads`);
+
+    // Fetch fresh data from Follow Up Boss API
+    const fubResponse = await fetch('https://api.followupboss.com/v1/people', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${Buffer.from(user.fubApiKey + ':').toString('base64')}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!fubResponse.ok) {
+      console.error('[Leads Refresh] FUB API error:', fubResponse.status);
+      return res.status(fubResponse.status).json({ error: 'Failed to fetch from Follow Up Boss' });
+    }
+
+    const fubData = await fubResponse.json();
+    
+    // Update last sync timestamp
+    await db
+      .update(users)
+      .set({ lastLeadsSync: new Date() })
+      .where(eq(users.id, user.id));
+
+    console.log(`[Leads Refresh] Fetched ${fubData.people?.length || 0} leads`);
+
+    res.json({ 
+      success: true, 
+      count: fubData.people?.length || 0,
+      syncedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[Leads Refresh] Error:', error);
+    res.status(500).json({ error: 'Failed to refresh leads' });
+  }
+});
+```
+
+---
+
+### Add Last Sync Timestamp to Schema (if not exists)
+```typescript
+// shared/schema.ts - Add to users table if not present
+lastLeadsSync: timestamp('last_leads_sync'),
+```
+
+---
+
+## PART 3: Visual Design
+
+### Refresh Button States
+
+**Default State:**
