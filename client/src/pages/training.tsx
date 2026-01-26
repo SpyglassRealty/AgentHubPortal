@@ -346,7 +346,7 @@ function VideoRow({
   if (videos.length === 0 && !emptyMessage) return null;
 
   return (
-    <div className="mb-8" data-testid={`video-row-${title.toLowerCase().replace(/\s+/g, '-')}`}>
+    <div className="mb-8 overflow-visible" data-testid={`video-row-${title.toLowerCase().replace(/\s+/g, '-')}`}>
       <div className="flex items-center gap-3 mb-4 px-1">
         {icon}
         <h2 className={`text-xl font-bold ${textPrimary}`}>{title}</h2>
@@ -360,7 +360,7 @@ function VideoRow({
           <p>{emptyMessage}</p>
         </div>
       ) : (
-        <div className="relative group/row">
+        <div className="relative group/row overflow-visible">
           {/* Left Arrow - Desktop only */}
           {!isTouch && showLeftArrow && (
             <button
@@ -381,11 +381,12 @@ function VideoRow({
           {/* Videos - Horizontal scroll with touch support */}
           <div
             ref={scrollRef}
-            className="flex gap-3 md:gap-4 overflow-x-auto pb-4 px-4 md:px-1 snap-x snap-mandatory md:snap-none"
+            className="flex gap-3 md:gap-4 overflow-x-auto overflow-y-visible pb-4 px-4 md:px-1 snap-x snap-mandatory md:snap-none scroll-smooth"
             style={{ 
               scrollbarWidth: 'none', 
               msOverflowStyle: 'none',
-              WebkitOverflowScrolling: 'touch'
+              WebkitOverflowScrolling: 'touch',
+              minWidth: '100%'
             }}
           >
             {videos.map(video => (
@@ -889,7 +890,7 @@ export default function TrainingPage() {
   return (
     <Layout>
       <div className={`min-h-[80vh] ${pageBg} -m-4 sm:-m-6 p-4 sm:p-6`} data-testid="training-page">
-        <div className="max-w-[1600px] mx-auto">
+        <div className="max-w-[1600px] mx-auto overflow-visible">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-[#EF4923] rounded-lg flex items-center justify-center">
