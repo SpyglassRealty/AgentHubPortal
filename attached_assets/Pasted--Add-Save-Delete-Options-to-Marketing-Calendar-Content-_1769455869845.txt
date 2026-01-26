@@ -1,0 +1,714 @@
+### Add Save & Delete Options to Marketing Calendar Content Ideas
+
+**Goal:** Allow users to save content ideas they like and delete ones they don't want after generating them.
+
+---
+
+## PART 1: Database Schema for Saved Content Ideas
+
+### Add to `shared/schema.ts`:
+```typescript
+export const savedContentIdeas = pgTable('saved_content_ideas', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  
+  // Content details
+  month: varchar('month', { length: 20 }).notNull(), // 'February', 'March', etc.
+  year: integer('year').notNull(), // 2026
+  week: integer('week').notNull(), // 1, 2, 3, 4
+  theme: varchar('theme', { length: 100 }), // 'Market Insights', etc.
+  
+  // Platform & content type
+  platform: varchar('platform', { length: 50 }).notNull(), // 'Instagram', 'Facebook', 'LinkedIn'
+  contentType: varchar('content_type', { length: 50 }).notNull(), // 'Carousel', 'Photo Post', 'Article'
+  bestTime: varchar('best_time', { length: 50 }), // 'Tuesday 10am'
+  
+  // Content
+  content: text('content').notNull(),
+  hashtags: text('hashtags'), // JSON array or comma-separated
+  
+  // Status tracking
+  status: varchar('status', { length: 20 }).default('saved'), // 'saved', 'scheduled', 'posted'
+  
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+```
+
+---
+
+## PART 2: API Endpoints
+
+### Add to `server/routes.ts`:
+```typescript
+// ============================================
+// SAVED CONTENT IDEAS ENDPOINTS
+// ============================================
+
+// GET /api/content-ideas/saved - Get all saved content ideas
+router.get('/api/content-ideas/saved', async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const ideas = await db
+      .select()
+      .from(savedContentIdeas)
+      .where(eq(savedContentIdeas.userId, user.id))
+      .orderBy(desc(savedContentIdeas.createdAt));
+
+    res.json({ ideas });
+  } catch (error) {
+    console.error('[Content Ideas] Error fetching saved:', error);
+    res.status(500).json({ error: 'Failed to fetch saved ideas' });
+  }
+});
+
+// POST /api/content-ideas/save - Save a content idea
+router.post('/api/content-ideas/save', async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const {
+      month,
+      year,
+      week,
+      theme,
+      platform,
+      contentType,
+      bestTime,
+      content,
+      hashtags
+    } = req.body;
+
+    // Validate required fields
+    if (!month || !year || !week || !platform || !contentType || !content) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const [savedIdea] = await db
+      .insert(savedContentIdeas)
+      .values({
+        userId: user.id,
+        month,
+        year,
+        week,
+        theme,
+        platform,
+        contentType,
+        bestTime,
+        content,
+        hashtags: Array.isArray(hashtags) ? hashtags.join(',') : hashtags
+      })
+      .returning();
+
+    console.log(`[Content Ideas] User ${user.id} saved idea for ${platform}`);
+
+    res.json({ success: true, idea: savedIdea });
+  } catch (error) {
+    console.error('[Content Ideas] Error saving:', error);
+    res.status(500).json({ error: 'Failed to save content idea' });
+  }
+});
+
+// DELETE /api/content-ideas/:id - Delete a saved content idea
+router.delete('/api/content-ideas/:id', async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const ideaId = parseInt(req.params.id);
+
+    // Verify ownership before deleting
+    const [existing] = await db
+      .select()
+      .from(savedContentIdeas)
+      .where(and(
+        eq(savedContentIdeas.id, ideaId),
+        eq(savedContentIdeas.userId, user.id)
+      ))
+      .limit(1);
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Content idea not found' });
+    }
+
+    await db
+      .delete(savedContentIdeas)
+      .where(eq(savedContentIdeas.id, ideaId));
+
+    console.log(`[Content Ideas] User ${user.id} deleted idea ${ideaId}`);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[Content Ideas] Error deleting:', error);
+    res.status(500).json({ error: 'Failed to delete content idea' });
+  }
+});
+
+// PATCH /api/content-ideas/:id/status - Update status (saved/scheduled/posted)
+router.patch('/api/content-ideas/:id/status', async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const ideaId = parseInt(req.params.id);
+    const { status } = req.body;
+
+    const validStatuses = ['saved', 'scheduled', 'posted'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    const [updated] = await db
+      .update(savedContentIdeas)
+      .set({ status, updatedAt: new Date() })
+      .where(and(
+        eq(savedContentIdeas.id, ideaId),
+        eq(savedContentIdeas.userId, user.id)
+      ))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Content idea not found' });
+    }
+
+    res.json({ success: true, idea: updated });
+  } catch (error) {
+    console.error('[Content Ideas] Error updating status:', error);
+    res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+```
+
+---
+
+## PART 3: Update Content Idea Card Component
+
+### Update the content idea card in Marketing Calendar:
+```tsx
+import { Bookmark, BookmarkCheck, Trash2, Copy, Check } from 'lucide-react';
+import { useState } from 'react';
+
+interface ContentIdeaCardProps {
+  idea: {
+    platform: string;
+    contentType: string;
+    bestTime: string;
+    content: string;
+    hashtags: string[];
+  };
+  week: number;
+  theme: string;
+  month: string;
+  year: number;
+  savedId?: number; // If already saved, this will have an ID
+  onSave?: () => void;
+  onDelete?: () => void;
+}
+
+function ContentIdeaCard({ 
+  idea, 
+  week, 
+  theme, 
+  month, 
+  year,
+  savedId,
+  onSave,
+  onDelete 
+}: ContentIdeaCardProps) {
+  const { isDark } = useTheme();
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaved, setIsSaved] = useState(!!savedId);
+  const [copied, setCopied] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Platform colors
+  const platformColors: Record<string, string> = {
+    Instagram: 'bg-gradient-to-r from-purple-500 to-pink-500 text-white',
+    Facebook: 'bg-blue-600 text-white',
+    LinkedIn: 'bg-blue-700 text-white',
+    Twitter: 'bg-sky-500 text-white',
+    TikTok: 'bg-black text-white'
+  };
+
+  // Handle Save
+  const handleSave = async () => {
+    if (isSaving || isSaved) return;
+    
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/content-ideas/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          month,
+          year,
+          week,
+          theme,
+          platform: idea.platform,
+          contentType: idea.contentType,
+          bestTime: idea.bestTime,
+          content: idea.content,
+          hashtags: idea.hashtags
+        })
+      });
+
+      if (response.ok) {
+        setIsSaved(true);
+        onSave?.();
+        toast.success('Content idea saved!');
+      } else {
+        toast.error('Failed to save');
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      toast.error('Failed to save');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle Delete
+  const handleDelete = async () => {
+    if (isDeleting) return;
+    
+    setIsDeleting(true);
+    try {
+      if (savedId) {
+        // Delete from database
+        const response = await fetch(`/api/content-ideas/${savedId}`, {
+          method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Delete failed');
+        }
+      }
+      
+      onDelete?.();
+      toast.success('Content idea removed');
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  // Handle Copy
+  const handleCopy = async () => {
+    const textToCopy = `${idea.content}\n\n${idea.hashtags.join(' ')}`;
+    await navigator.clipboard.writeText(textToCopy);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const cardBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-500';
+
+  return (
+    <div className={`${cardBg} rounded-lg border ${borderColor} p-4 relative`}>
+      {/* Header Row */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Platform Badge */}
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${platformColors[idea.platform] || 'bg-gray-500 text-white'}`}>
+            {idea.platform === 'Instagram' && '📷 '}
+            {idea.platform === 'Facebook' && '👤 '}
+            {idea.platform === 'LinkedIn' && '💼 '}
+            {idea.platform}
+          </span>
+          
+          {/* Content Type */}
+          <span className={`px-2 py-1 rounded text-xs font-medium ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+            {idea.contentType}
+          </span>
+          
+          {/* Best Time */}
+          <span className={`text-xs ${textSecondary}`}>
+            Best time: {idea.bestTime}
+          </span>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-1">
+          {/* Save Button */}
+          <button
+            onClick={handleSave}
+            disabled={isSaving || isSaved}
+            className={`p-2 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center
+              ${isSaved 
+                ? 'text-green-500 cursor-default' 
+                : isDark 
+                  ? 'text-gray-400 hover:text-white hover:bg-gray-700' 
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+              }
+              ${isSaving ? 'opacity-50' : ''}
+            `}
+            title={isSaved ? 'Saved' : 'Save this idea'}
+          >
+            {isSaved ? (
+              <BookmarkCheck className="w-5 h-5" />
+            ) : (
+              <Bookmark className={`w-5 h-5 ${isSaving ? 'animate-pulse' : ''}`} />
+            )}
+          </button>
+
+          {/* Copy Button */}
+          <button
+            onClick={handleCopy}
+            className={`p-2 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center
+              ${copied 
+                ? 'text-green-500' 
+                : isDark 
+                  ? 'text-gray-400 hover:text-white hover:bg-gray-700' 
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+              }
+            `}
+            title={copied ? 'Copied!' : 'Copy to clipboard'}
+          >
+            {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+          </button>
+
+          {/* Delete Button */}
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            disabled={isDeleting}
+            className={`p-2 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center
+              ${isDark 
+                ? 'text-gray-400 hover:text-red-400 hover:bg-gray-700' 
+                : 'text-gray-500 hover:text-red-500 hover:bg-gray-100'
+              }
+              ${isDeleting ? 'opacity-50' : ''}
+            `}
+            title="Delete this idea"
+          >
+            <Trash2 className={`w-5 h-5 ${isDeleting ? 'animate-pulse' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <p className={`${textPrimary} text-sm mb-3 leading-relaxed`}>
+        {idea.content}
+      </p>
+
+      {/* Hashtags */}
+      {idea.hashtags && idea.hashtags.length > 0 && (
+        <p className="text-sm text-[#EF4923]">
+          {idea.hashtags.join(' ')}
+        </p>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center backdrop-blur-sm z-10">
+          <div className={`${cardBg} rounded-lg p-4 mx-4 shadow-xl border ${borderColor}`}>
+            <p className={`${textPrimary} text-sm font-medium mb-3`}>
+              Delete this content idea?
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                  ${isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}
+                `}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex-1 px-3 py-2 rounded-lg text-sm font-medium bg-red-500 hover:bg-red-600 text-white transition-colors disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+## PART 4: Add "Saved Ideas" Tab/Section
+
+### Update Marketing Calendar page to show saved ideas:
+```tsx
+import { useState } from 'react';
+import { Bookmark, Sparkles } from 'lucide-react';
+
+function MarketingCalendarPage() {
+  const { isDark } = useTheme();
+  const [activeTab, setActiveTab] = useState<'generate' | 'saved'>('generate');
+  
+  // Fetch saved ideas
+  const { data: savedIdeasData, refetch: refetchSaved } = useQuery({
+    queryKey: ['saved-content-ideas'],
+    queryFn: async () => {
+      const response = await fetch('/api/content-ideas/saved');
+      if (!response.ok) throw new Error('Failed to fetch');
+      return response.json();
+    }
+  });
+
+  const savedIdeas = savedIdeasData?.ideas || [];
+
+  return (
+    <div className={`p-4 md:p-6 min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-2">
+        <Calendar className="w-8 h-8 text-[#EF4923]" />
+        <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          Marketing Calendar
+        </h1>
+      </div>
+      <p className={`mb-6 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+        AI-powered social media content ideas for real estate agents
+      </p>
+
+      {/* Tab Navigation */}
+      <div className={`flex gap-2 mb-6 p-1 rounded-lg inline-flex ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
+        <button
+          onClick={() => setActiveTab('generate')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+            ${activeTab === 'generate'
+              ? 'bg-[#EF4923] text-white'
+              : isDark 
+                ? 'text-gray-400 hover:text-white' 
+                : 'text-gray-600 hover:text-gray-900'
+            }
+          `}
+        >
+          <Sparkles className="w-4 h-4" />
+          Generate Ideas
+        </button>
+        <button
+          onClick={() => setActiveTab('saved')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+            ${activeTab === 'saved'
+              ? 'bg-[#EF4923] text-white'
+              : isDark 
+                ? 'text-gray-400 hover:text-white' 
+                : 'text-gray-600 hover:text-gray-900'
+            }
+          `}
+        >
+          <Bookmark className="w-4 h-4" />
+          Saved Ideas
+          {savedIdeas.length > 0 && (
+            <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs
+              ${activeTab === 'saved' 
+                ? 'bg-white/20 text-white' 
+                : isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'
+              }
+            `}>
+              {savedIdeas.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Generate Tab Content */}
+      {activeTab === 'generate' && (
+        <div>
+          {/* Existing Generate Content Ideas section */}
+          {/* Month selector, Generate button, etc. */}
+          {/* Generated content cards with Save/Delete buttons */}
+        </div>
+      )}
+
+      {/* Saved Tab Content */}
+      {activeTab === 'saved' && (
+        <div>
+          {savedIdeas.length === 0 ? (
+            <div className={`text-center py-12 rounded-lg border-2 border-dashed
+              ${isDark ? 'border-gray-700 text-gray-500' : 'border-gray-300 text-gray-400'}
+            `}>
+              <Bookmark className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p className="text-lg font-medium mb-1">No saved ideas yet</p>
+              <p className="text-sm">Generate content ideas and save the ones you like!</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Group by month/year */}
+              {Object.entries(groupByMonth(savedIdeas)).map(([monthYear, ideas]) => (
+                <div key={monthYear}>
+                  <h2 className={`text-lg font-semibold mb-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {monthYear}
+                  </h2>
+                  <div className="space-y-3">
+                    {ideas.map((idea) => (
+                      <ContentIdeaCard
+                        key={idea.id}
+                        idea={{
+                          platform: idea.platform,
+                          contentType: idea.contentType,
+                          bestTime: idea.bestTime,
+                          content: idea.content,
+                          hashtags: idea.hashtags?.split(',') || []
+                        }}
+                        week={idea.week}
+                        theme={idea.theme}
+                        month={idea.month}
+                        year={idea.year}
+                        savedId={idea.id}
+                        onDelete={() => refetchSaved()}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Helper function to group saved ideas by month/year
+function groupByMonth(ideas: any[]) {
+  return ideas.reduce((acc, idea) => {
+    const key = `${idea.month} ${idea.year}`;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(idea);
+    return acc;
+  }, {} as Record<string, any[]>);
+}
+```
+
+---
+
+## PART 5: Visual Design
+
+### Button Layout on Each Card
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  [Instagram] [Carousel]  Best time: Tuesday 10am          [💾] [📋] [🗑️]  │
+│                                                                             │
+│  📊 Curious about the February 2026 real estate market trends? Check out   │
+│  this breakdown of key updates and insights to help you plan your next     │
+│  move! 🏡 Let's make this year your year to buy or sell. #MarketTrends     │
+│                                                                             │
+│  #realestate #marketinsights #2026trends                                   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+Buttons:
+[💾] = Save (Bookmark icon) → Filled when saved (BookmarkCheck)
+[📋] = Copy (Copy icon) → Checkmark when copied
+[🗑️] = Delete (Trash2 icon) → Shows confirmation overlay
+
+### Tab Navigation
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  📅 Marketing Calendar                                                      │
+│  AI-powered social media content ideas for real estate agents              │
+│                                                                             │
+│  ┌──────────────────────────────────────────┐                              │
+│  │ [✨ Generate Ideas] [🔖 Saved Ideas (5)] │                              │
+│  └──────────────────────────────────────────┘                              │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+### Delete Confirmation Overlay
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │
+│ ▓▓▓▓▓▓▓▓▓┌────────────────────────────────────┐▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │
+│ ▓▓▓▓▓▓▓▓▓│                                    │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │
+│ ▓▓▓▓▓▓▓▓▓│  Delete this content idea?         │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │
+│ ▓▓▓▓▓▓▓▓▓│                                    │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │
+│ ▓▓▓▓▓▓▓▓▓│  [Cancel]          [Delete]        │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │
+│ ▓▓▓▓▓▓▓▓▓│                                    │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │
+│ ▓▓▓▓▓▓▓▓▓└────────────────────────────────────┘▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │
+│ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+---
+
+## 📱 Mobile Optimization
+
+**All changes must be optimized for iPad, iOS, and Android mobile web view:**
+
+| Device | Requirement |
+|--------|-------------|
+| iPad Safari | Full button layout visible |
+| iPhone Safari | Buttons stack or icons only on very small screens |
+| Android Chrome | Touch feedback on all buttons |
+
+### Mobile-Specific Adjustments:
+```tsx
+// Responsive button layout
+<div className="flex items-center gap-1 sm:gap-2">
+  {/* Buttons maintain 44x44 touch target */}
+  <button className="min-w-[44px] min-h-[44px] ..." />
+</div>
+
+// Tab navigation scrollable on mobile
+<div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+  {/* Tabs */}
+</div>
+
+// Delete confirmation full-width on mobile
+<div className={`${cardBg} rounded-lg p-4 mx-2 sm:mx-4 ...`}>
+```
+
+---
+
+## Testing Checklist
+
+### Save Functionality
+- [ ] Save button appears on each content idea card
+- [ ] Clicking Save sends POST request to /api/content-ideas/save
+- [ ] Button changes to filled bookmark (BookmarkCheck) after save
+- [ ] Toast shows "Content idea saved!"
+- [ ] Saved count updates in "Saved Ideas" tab
+- [ ] Cannot save same idea twice
+
+### Delete Functionality
+- [ ] Delete button appears on each content idea card
+- [ ] Clicking Delete shows confirmation overlay
+- [ ] Cancel dismisses overlay
+- [ ] Confirm Delete removes card from view
+- [ ] If saved, DELETE request sent to /api/content-ideas/:id
+- [ ] Toast shows "Content idea removed"
+
+### Copy Functionality
+- [ ] Copy button copies content + hashtags to clipboard
+- [ ] Button changes to checkmark briefly after copy
+- [ ] Toast or visual feedback confirms copy
+
+### Saved Ideas Tab
+- [ ] Tab shows count of saved ideas
+- [ ] Saved ideas display grouped by month/year
+- [ ] Can delete from Saved Ideas tab
+- [ ] Empty state shows when no saved ideas
+
+### Theme Support
+- [ ] All buttons styled correctly in light mode
+- [ ] All buttons styled correctly in dark mode
+- [ ] Confirmation overlay works in both themes
+
+### Mobile
+- [ ] All buttons have 44x44 touch targets
+- [ ] Delete confirmation readable on small screens
+- [ ] Tab navigation works on mobile
+- [ ] Scrolling works properly
