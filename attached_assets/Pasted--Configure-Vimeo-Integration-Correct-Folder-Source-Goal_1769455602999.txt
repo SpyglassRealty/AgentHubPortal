@@ -1,0 +1,312 @@
+### Configure Vimeo Integration - Correct Folder Source
+
+**Goal:** Ensure the Training section and Dashboard Company Updates pull videos from the correct Vimeo folder.
+
+---
+
+## Vimeo Folder Details
+
+| Field | Value |
+|-------|-------|
+| **Vimeo User ID** | 192648675 |
+| **Folder ID** | 27970547 |
+| **Full URL** | https://vimeo.com/user/192648675/folder/27970547 |
+
+---
+
+## PART 1: Verify/Update Vimeo API Configuration
+
+### Check Environment Variables
+
+Ensure these are set in your environment:
+```env
+VIMEO_ACCESS_TOKEN=your_vimeo_access_token
+VIMEO_USER_ID=192648675
+VIMEO_FOLDER_ID=27970547
+```
+
+---
+
+## PART 2: Update Vimeo API Endpoint
+
+### Find and update the Vimeo fetch endpoint in `server/routes.ts`:
+```typescript
+// ============================================
+// VIMEO TRAINING VIDEOS ENDPOINT
+// ============================================
+
+const VIMEO_USER_ID = process.env.VIMEO_USER_ID || '192648675';
+const VIMEO_FOLDER_ID = process.env.VIMEO_FOLDER_ID || '27970547';
+const VIMEO_ACCESS_TOKEN = process.env.VIMEO_ACCESS_TOKEN;
+
+// GET /api/vimeo/training-videos
+router.get('/api/vimeo/training-videos', async (req, res) => {
+  try {
+    if (!VIMEO_ACCESS_TOKEN) {
+      console.error('[Vimeo] Missing access token');
+      return res.status(500).json({ error: 'Vimeo not configured' });
+    }
+
+    // Fetch videos from the specific folder
+    const vimeoUrl = `https://api.vimeo.com/users/${VIMEO_USER_ID}/projects/${VIMEO_FOLDER_ID}/videos`;
+    
+    console.log(`[Vimeo] Fetching from: ${vimeoUrl}`);
+
+    const response = await fetch(vimeoUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${VIMEO_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.vimeo.*+json;version=3.4'
+      }
+    });
+
+    if (!response.ok) {
+      console.error('[Vimeo] API error:', response.status, await response.text());
+      return res.status(response.status).json({ error: 'Failed to fetch from Vimeo' });
+    }
+
+    const data = await response.json();
+    
+    // Transform Vimeo response to our format
+    const videos = data.data?.map((video: any) => ({
+      id: video.uri.split('/').pop(),
+      name: video.name,
+      description: video.description,
+      duration: video.duration,
+      created_time: video.created_time,
+      modified_time: video.modified_time,
+      release_time: video.release_time,
+      thumbnail: video.pictures?.sizes?.find((s: any) => s.width >= 640)?.link 
+                 || video.pictures?.sizes?.[0]?.link,
+      player_embed_url: video.player_embed_url,
+      link: video.link
+    })) || [];
+
+    // Sort by created_time descending (newest first)
+    videos.sort((a: any, b: any) => 
+      new Date(b.created_time).getTime() - new Date(a.created_time).getTime()
+    );
+
+    console.log(`[Vimeo] Fetched ${videos.length} videos from folder ${VIMEO_FOLDER_ID}`);
+
+    // Update auto sync timestamp
+    await updateSyncStatus(req.user?.id, 'training', 'auto');
+
+    res.json({
+      total: data.total || videos.length,
+      videos
+    });
+  } catch (error) {
+    console.error('[Vimeo] Error:', error);
+    res.status(500).json({ error: 'Failed to fetch training videos' });
+  }
+});
+
+// GET /api/vimeo/latest-video - For Dashboard Company Updates
+router.get('/api/vimeo/latest-video', async (req, res) => {
+  try {
+    if (!VIMEO_ACCESS_TOKEN) {
+      return res.status(500).json({ error: 'Vimeo not configured' });
+    }
+
+    // Fetch just the most recent video from the folder
+    const vimeoUrl = `https://api.vimeo.com/users/${VIMEO_USER_ID}/projects/${VIMEO_FOLDER_ID}/videos?per_page=1&sort=date&direction=desc`;
+
+    const response = await fetch(vimeoUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${VIMEO_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.vimeo.*+json;version=3.4'
+      }
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: 'Failed to fetch from Vimeo' });
+    }
+
+    const data = await response.json();
+    const video = data.data?.[0];
+
+    if (!video) {
+      return res.json({ video: null });
+    }
+
+    res.json({
+      video: {
+        id: video.uri.split('/').pop(),
+        name: video.name,
+        description: video.description,
+        duration: video.duration,
+        created_time: video.created_time,
+        thumbnail: video.pictures?.sizes?.find((s: any) => s.width >= 640)?.link 
+                   || video.pictures?.sizes?.[0]?.link,
+        player_embed_url: video.player_embed_url,
+        link: video.link
+      }
+    });
+  } catch (error) {
+    console.error('[Vimeo] Error fetching latest video:', error);
+    res.status(500).json({ error: 'Failed to fetch latest video' });
+  }
+});
+```
+
+---
+
+## PART 3: Verify Training Page Uses Correct Endpoint
+
+### Check `client/src/pages/training.tsx`:
+```typescript
+// Should be fetching from:
+const { data: videosData, refetch: refetchVideos } = useQuery({
+  queryKey: ['training-videos'],
+  queryFn: async () => {
+    const response = await fetch('/api/vimeo/training-videos');
+    if (!response.ok) throw new Error('Failed to fetch videos');
+    return response.json();
+  }
+});
+
+const videos = videosData?.videos || [];
+```
+
+---
+
+## PART 4: Verify Dashboard Company Updates Uses Correct Endpoint
+
+### Check Dashboard's Company Updates component:
+```typescript
+// Should be fetching latest video from:
+const { data: latestVideo } = useQuery({
+  queryKey: ['latest-training-video'],
+  queryFn: async () => {
+    const response = await fetch('/api/vimeo/latest-video');
+    if (!response.ok) throw new Error('Failed to fetch latest video');
+    return response.json();
+  }
+});
+```
+
+---
+
+## PART 5: Add Pagination Support (if needed for 50+ videos)
+```typescript
+// GET /api/vimeo/training-videos with pagination
+router.get('/api/vimeo/training-videos', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const perPage = parseInt(req.query.per_page as string) || 50;
+
+    const vimeoUrl = `https://api.vimeo.com/users/${VIMEO_USER_ID}/projects/${VIMEO_FOLDER_ID}/videos?page=${page}&per_page=${perPage}&sort=date&direction=desc`;
+
+    // ... rest of implementation
+  }
+});
+```
+
+---
+
+## PART 6: Manual Refresh for Training
+
+### Add refresh endpoint:
+```typescript
+// POST /api/sync/refresh/training
+router.post('/api/sync/refresh/training', async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    // Force fresh fetch from Vimeo
+    const vimeoUrl = `https://api.vimeo.com/users/${VIMEO_USER_ID}/projects/${VIMEO_FOLDER_ID}/videos?per_page=100&sort=date&direction=desc`;
+
+    const response = await fetch(vimeoUrl, {
+      headers: {
+        'Authorization': `Bearer ${VIMEO_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.vimeo.*+json;version=3.4'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Vimeo API error');
+    }
+
+    const data = await response.json();
+    const now = new Date();
+
+    // Update sync status
+    await db
+      .insert(syncStatus)
+      .values({
+        userId: user.id,
+        section: 'training',
+        lastManualRefresh: now,
+        updatedAt: now
+      })
+      .onConflictDoUpdate({
+        target: [syncStatus.userId, syncStatus.section],
+        set: {
+          lastManualRefresh: now,
+          updatedAt: now
+        }
+      });
+
+    res.json({
+      success: true,
+      syncedAt: now.toISOString(),
+      count: data.total || data.data?.length || 0
+    });
+  } catch (error) {
+    console.error('[Training Refresh] Error:', error);
+    res.status(500).json({ error: 'Failed to refresh training videos' });
+  }
+});
+```
+
+---
+
+## 📱 Mobile Optimization
+
+**All changes must be optimized for iPad, iOS, and Android mobile web view:**
+
+- Video thumbnails load efficiently on mobile networks
+- Lazy loading for video list
+- Touch-friendly video cards
+- Responsive grid/scroll layouts
+
+---
+
+## Testing Checklist
+
+### Vimeo Configuration
+- [ ] VIMEO_ACCESS_TOKEN is set
+- [ ] VIMEO_USER_ID is set to 192648675
+- [ ] VIMEO_FOLDER_ID is set to 27970547
+
+### Training Page
+- [ ] Fetches videos from correct folder (27970547)
+- [ ] Shows all videos from the folder
+- [ ] Videos sorted by newest first
+- [ ] Thumbnails load correctly
+- [ ] Video count matches folder (currently 50)
+
+### Dashboard Company Updates
+- [ ] Shows latest video from the folder
+- [ ] Thumbnail displays correctly
+- [ ] "NEW" badge shows for videos < 7 days old
+- [ ] Duration displays correctly
+- [ ] "Watch Now" opens video
+
+### Refresh Functionality
+- [ ] Manual refresh fetches fresh data from Vimeo
+- [ ] Sync timestamp updates after refresh
+- [ ] Videos update if new ones added to folder
+
+### API Responses
+- [ ] /api/vimeo/training-videos returns video list
+- [ ] /api/vimeo/latest-video returns single video
+- [ ] /api/sync/refresh/training works correctly

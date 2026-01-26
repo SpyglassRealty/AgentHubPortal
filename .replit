@@ -41,3 +41,9 @@ waitForPort = 5000
 [agent]
 mockupState = "FULLSTACK"
 integrations = ["javascript_openai_ai_integrations:2.0.0"]
+
+[userenv]
+
+[userenv.shared]
+VIMEO_USER_ID = "192648675"
+VIMEO_FOLDER_ID = "27970547"
