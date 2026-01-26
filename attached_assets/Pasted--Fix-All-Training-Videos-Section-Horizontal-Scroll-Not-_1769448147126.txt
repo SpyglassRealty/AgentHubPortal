@@ -1,0 +1,189 @@
+### Fix: "All Training Videos" Section - Horizontal Scroll Not Working
+
+**Issue:** The "All Training Videos" section shows (50) videos but users cannot scroll horizontally to see all videos. The scroll stops or is limited, preventing access to the full list.
+
+**Location:** Training page → "All Training Videos" row (bottom section)
+
+---
+
+## Diagnose the Issue
+
+Check the horizontal scroll container for these common problems:
+
+1. **Missing overflow-x-auto** - Container may not allow horizontal scroll
+2. **Parent container constraining width** - A parent may have `overflow: hidden`
+3. **Flex container not allowing growth** - Children may not extend beyond viewport
+4. **Max-width constraint** - Container may have a max-width cutting off content
+
+---
+
+## Find the VideoRow Component
+
+Look for the "All Training Videos" row container, likely in:
+- `client/src/pages/training.tsx`
+- Or a `VideoRow` component
+
+---
+
+## Fix the Horizontal Scroll Container
+
+**Ensure the scroll container has these properties:**
+```tsx
+{/* Video Row Scroll Container */}
+<div
+  ref={scrollRef}
+  className="flex gap-3 md:gap-4 overflow-x-auto pb-4 px-4 md:px-0"
+  style={{ 
+    scrollbarWidth: 'none', 
+    msOverflowStyle: 'none',
+    WebkitOverflowScrolling: 'touch',
+    minWidth: '100%'
+  }}
+>
+  {videos.map(video => (
+    <div key={video.id} className="flex-shrink-0">
+      <VideoCard ... />
+    </div>
+  ))}
+</div>
+```
+
+**Key CSS requirements:**
+```css
+/* Parent container */
+.video-row-container {
+  position: relative;
+  width: 100%;
+  overflow: visible; /* NOT overflow: hidden */
+}
+
+/* Scroll container */
+.video-scroll {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 1rem;
+  -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+}
+
+/* Each video card wrapper */
+.video-card-wrapper {
+  flex-shrink: 0; /* Prevent cards from shrinking */
+}
+
+/* Hide scrollbar but keep functionality */
+.video-scroll::-webkit-scrollbar {
+  display: none;
+}
+.video-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+```
+
+---
+
+## Check for Parent Overflow Issues
+
+Look for any parent element with `overflow: hidden` that might be cutting off the scroll:
+```tsx
+// BAD - This will cut off horizontal scroll:
+<div className="overflow-hidden">
+  <VideoRow videos={allVideos} />
+</div>
+
+// GOOD - Allow overflow:
+<div className="overflow-visible">
+  <VideoRow videos={allVideos} />
+</div>
+
+// OR just remove overflow restriction:
+<div>
+  <VideoRow videos={allVideos} />
+</div>
+```
+
+---
+
+## Ensure Video Cards Have Fixed Width
+
+Each card must have a fixed width and `flex-shrink-0`:
+```tsx
+<div className="flex-shrink-0 w-44 sm:w-52 md:w-56 lg:w-64">
+  <VideoCard video={video} />
+</div>
+```
+
+---
+
+## Full VideoRow Fix
+```tsx
+function VideoRow({ title, videos, ... }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <div className="mb-6 md:mb-8 relative">
+      {/* Row Header */}
+      <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4 ...">
+        {title} ({videos.length})
+      </h2>
+      
+      {/* Scroll Container - MUST allow full horizontal scroll */}
+      <div className="relative overflow-visible">
+        <div
+          ref={scrollRef}
+          className="flex gap-3 md:gap-4 overflow-x-auto pb-4 scroll-smooth"
+          style={{ 
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
+          {videos.map(video => (
+            <div 
+              key={video.id} 
+              className="flex-shrink-0 w-44 sm:w-52 md:w-56 lg:w-64"
+            >
+              <VideoCard video={video} ... />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## 📱 Mobile Optimization
+
+Ensure horizontal scroll works on all devices:
+
+| Device | Requirement |
+|--------|-------------|
+| iPad Safari | Touch scroll with momentum |
+| iPhone Safari | Touch scroll with momentum |
+| Android Chrome | Touch scroll smooth |
+| Desktop | Mouse wheel horizontal scroll OR drag |
+
+**Add touch scroll support:**
+```css
+-webkit-overflow-scrolling: touch;
+scroll-behavior: smooth;
+```
+
+---
+
+## Testing Checklist
+
+- [ ] Can scroll horizontally through ALL 50 videos
+- [ ] Scroll reaches the last video (video #50)
+- [ ] Scroll works on desktop with mouse/trackpad
+- [ ] Scroll works on iPad with touch
+- [ ] Scroll works on iPhone with touch
+- [ ] Scroll works on Android with touch
+- [ ] No content is cut off
+- [ ] Scroll arrows work (if present)
+- [ ] Other video rows (My Favorites, Watch Later) also scroll properly
