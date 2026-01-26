@@ -237,3 +237,25 @@ export const syncStatus = pgTable('sync_status', {
 
 export type SyncStatus = typeof syncStatus.$inferSelect;
 export type InsertSyncStatus = typeof syncStatus.$inferInsert;
+
+export const savedContentIdeas = pgTable('saved_content_ideas', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar('user_id').references(() => users.id).notNull(),
+  month: varchar('month', { length: 20 }).notNull(),
+  year: integer('year').notNull(),
+  week: integer('week').notNull(),
+  theme: varchar('theme', { length: 100 }),
+  platform: varchar('platform', { length: 50 }).notNull(),
+  contentType: varchar('content_type', { length: 50 }).notNull(),
+  bestTime: varchar('best_time', { length: 50 }),
+  content: text('content').notNull(),
+  hashtags: text('hashtags'),
+  status: varchar('status', { length: 20 }).default('saved'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => [
+  index("idx_saved_content_ideas_user_id").on(table.userId),
+]);
+
+export type SavedContentIdea = typeof savedContentIdeas.$inferSelect;
+export type InsertSavedContentIdea = typeof savedContentIdeas.$inferInsert;
