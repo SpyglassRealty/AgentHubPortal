@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Play, Clock, ArrowRight, Megaphone } from 'lucide-react';
+import { Play, Clock, Megaphone } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Link } from 'wouter';
 
 interface LatestVideo {
   id: string;
@@ -91,16 +90,8 @@ export function CompanyUpdates({ onVideoClick }: CompanyUpdatesProps) {
 
   return (
     <div className={`${cardBg} rounded-xl border ${borderColor} overflow-hidden`} data-testid="company-updates-widget">
-      <div className={`flex items-center justify-between px-4 py-3 border-b ${borderColor}`}>
+      <div className={`px-4 py-3 border-b ${borderColor}`}>
         <h2 className={`font-semibold ${textPrimary}`}>Company Updates</h2>
-        <Link 
-          href="/training"
-          className={`text-sm text-[#EF4923] hover:text-[#D4401F] flex items-center gap-1 transition-colors`}
-          data-testid="link-view-training"
-        >
-          View Training
-          <ArrowRight className="w-4 h-4" />
-        </Link>
       </div>
 
       <div className="p-4 space-y-4">
