@@ -8,7 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import Layout from '@/components/layout';
 import { useIsTouchDevice, useWindowSize } from '@/hooks/use-mobile';
 import { RefreshButton } from '@/components/ui/refresh-button';
-import { useToast } from '@/hooks/use-toast';
+import { useSyncStatus } from '@/hooks/useSyncStatus';
 
 interface VimeoVideo {
   id: string;
@@ -696,7 +696,7 @@ export default function TrainingPage() {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
   const isTouch = useIsTouchDevice();
-  const { toast } = useToast();
+  const { lastManualRefresh, lastAutoRefresh, isLoading: isSyncing, refresh: refreshSync } = useSyncStatus('training');
   
   const [videos, setVideos] = useState<VimeoVideo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -704,7 +704,6 @@ export default function TrainingPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [preferences, setPreferences] = useState<Record<string, VideoPreference>>({});
   const [playingVideo, setPlayingVideo] = useState<VimeoVideo | null>(null);
-  const [lastManualRefresh, setLastManualRefresh] = useState<Date | null>(null);
 
   const pageBg = isDark ? 'bg-gray-900' : 'bg-gray-50';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
@@ -750,23 +749,10 @@ export default function TrainingPage() {
   };
 
   const handleRefresh = async () => {
-    try {
+    await refreshSync(async () => {
       await fetchVideos();
       await fetchPreferences();
-      setLastManualRefresh(new Date());
-      toast({
-        title: "Training Videos Refreshed",
-        description: "Successfully synced latest videos from Vimeo",
-      });
-    } catch (error) {
-      console.error('Refresh error:', error);
-      toast({
-        title: "Refresh Failed",
-        description: "Failed to refresh training videos. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
-    }
+    });
   };
 
   const getThumbnail = (video: VimeoVideo) => {
@@ -929,8 +915,9 @@ export default function TrainingPage() {
             <div className="flex items-center gap-3">
               <RefreshButton
                 lastManualRefresh={lastManualRefresh}
+                lastAutoRefresh={lastAutoRefresh}
                 onRefresh={handleRefresh}
-                isLoading={loading}
+                isLoading={loading || isSyncing}
               />
               <div className="relative w-full sm:w-80">
                 <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textSecondary}`} />

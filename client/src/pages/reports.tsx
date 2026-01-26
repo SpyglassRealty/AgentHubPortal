@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import Layout from "@/components/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentSelector } from "@/components/agent-selector";
 import { RefreshButton } from "@/components/ui/refresh-button";
-import { useToast } from "@/hooks/use-toast";
+import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { 
   TrendingUp, 
   DollarSign, 
@@ -46,16 +46,14 @@ function formatCurrency(amount: number): string {
 
 export default function ReportsPage() {
   const { user } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-  const [lastManualRefresh, setLastManualRefresh] = useState<Date | null>(null);
+  const { lastManualRefresh, lastAutoRefresh, isLoading: isSyncing, refresh: refreshSync } = useSyncStatus('reports');
 
   const dealsUrl = selectedAgentId 
     ? `/api/fub/deals?agentId=${selectedAgentId}`
     : `/api/fub/deals`;
 
-  const { data, isLoading, error } = useQuery<DealsResponse>({
+  const { data, isLoading, error, refetch } = useQuery<DealsResponse>({
     queryKey: ["/api/fub/deals", { agentId: selectedAgentId }],
     queryFn: async () => {
       const res = await fetch(dealsUrl, { credentials: "include" });
@@ -65,25 +63,9 @@ export default function ReportsPage() {
   });
 
   const handleRefresh = async () => {
-    try {
-      await queryClient.refetchQueries({ 
-        queryKey: ["/api/fub/deals", { agentId: selectedAgentId }],
-        exact: true 
-      });
-      setLastManualRefresh(new Date());
-      toast({
-        title: "Reports Refreshed",
-        description: "Successfully synced latest data from Follow Up Boss",
-      });
-    } catch (error) {
-      console.error('Refresh error:', error);
-      toast({
-        title: "Refresh Failed",
-        description: "Failed to refresh reports. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
-    }
+    await refreshSync(async () => {
+      await refetch();
+    });
   };
 
   const currentYear = new Date().getFullYear();
@@ -132,8 +114,9 @@ export default function ReportsPage() {
             )}
             <RefreshButton
               lastManualRefresh={lastManualRefresh}
+              lastAutoRefresh={lastAutoRefresh}
               onRefresh={handleRefresh}
-              isLoading={isLoading}
+              isLoading={isLoading || isSyncing}
             />
             <a href="https://app.followupboss.com/deals" target="_blank" rel="noopener noreferrer">
               <Button variant="outline" className="border-[#EF4923]/30 hover:bg-[#EF4923]/10">
