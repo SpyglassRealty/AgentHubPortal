@@ -5,7 +5,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { getFubClient } from "./fubClient";
 import { getRezenClient } from "./rezenClient";
 import { generateSuggestionsForUser } from "./contextEngine";
-import type { User } from "@shared/schema";
+import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema } from "@shared/schema";
 import OpenAI from "openai";
 import { getLatestTrainingVideo } from "./vimeoClient";
 
@@ -1150,21 +1150,15 @@ Respond with valid JSON in this exact format:
         return res.status(404).json({ message: "User not found" });
       }
 
-      const {
-        month,
-        year,
-        week,
-        theme,
-        platform,
-        contentType,
-        bestTime,
-        content,
-        hashtags
-      } = req.body;
-
-      if (!month || !year || !week || !platform || !contentType || !content) {
-        return res.status(400).json({ message: 'Missing required fields' });
+      const parseResult = saveContentIdeaSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          message: 'Invalid request data',
+          errors: parseResult.error.errors 
+        });
       }
+
+      const { month, year, week, theme, platform, contentType, bestTime, content, hashtags } = parseResult.data;
 
       const savedIdea = await storage.saveContentIdea({
         userId: user.id,
@@ -1219,13 +1213,16 @@ Respond with valid JSON in this exact format:
       }
 
       const ideaId = parseInt(req.params.id);
-      const { status } = req.body;
-
-      const validStatuses = ['saved', 'scheduled', 'posted'];
-      if (!validStatuses.includes(status)) {
-        return res.status(400).json({ message: 'Invalid status' });
+      
+      const parseResult = updateContentIdeaStatusSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          message: 'Invalid status',
+          errors: parseResult.error.errors 
+        });
       }
 
+      const { status } = parseResult.data;
       const updated = await storage.updateContentIdeaStatus(ideaId, user.id, status);
 
       if (!updated) {

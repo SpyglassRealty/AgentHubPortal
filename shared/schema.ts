@@ -259,3 +259,19 @@ export const savedContentIdeas = pgTable('saved_content_ideas', {
 
 export type SavedContentIdea = typeof savedContentIdeas.$inferSelect;
 export type InsertSavedContentIdea = typeof savedContentIdeas.$inferInsert;
+
+export const saveContentIdeaSchema = z.object({
+  month: z.string().min(1).max(20),
+  year: z.number().int().min(2000).max(2100),
+  week: z.number().int().min(1).max(5),
+  theme: z.string().max(100).optional(),
+  platform: z.string().min(1).max(50),
+  contentType: z.string().min(1).max(50),
+  bestTime: z.string().max(50).optional(),
+  content: z.string().min(1),
+  hashtags: z.union([z.array(z.string()), z.string()]).optional()
+});
+
+export const updateContentIdeaStatusSchema = z.object({
+  status: z.enum(['saved', 'scheduled', 'posted'])
+});
