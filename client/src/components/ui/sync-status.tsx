@@ -36,7 +36,7 @@ export function SyncStatus({
 
   const textMuted = isDark ? 'text-gray-500' : 'text-gray-400';
   const textSecondary = isDark ? 'text-gray-400' : 'text-gray-500';
-  const bgSubtle = isDark ? 'bg-gray-800/50' : 'bg-gray-50';
+  const bgSubtle = isDark ? 'bg-[#2a2a2a]/50' : 'bg-gray-50';
   const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
 
   if (compact) {

@@ -114,7 +114,7 @@ export default function MarketingCalendarPage() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/content-ideas/saved'] });
-      setSavedPosts(prev => new Set([...prev, data.copyId]));
+      setSavedPosts(prev => new Set(Array.from(prev).concat(data.copyId)));
       setSavingPosts(prev => {
         const next = new Set(prev);
         next.delete(data.copyId);
@@ -168,7 +168,7 @@ export default function MarketingCalendarPage() {
   ) => {
     if (!generateIdeas.data || savedPosts.has(copyId) || savingPosts.has(copyId)) return;
     
-    setSavingPosts(prev => new Set([...prev, copyId]));
+    setSavingPosts(prev => new Set(Array.from(prev).concat(copyId)));
     
     saveMutation.mutate({
       month: generateIdeas.data.month,
@@ -185,7 +185,7 @@ export default function MarketingCalendarPage() {
   };
 
   const handleDelete = (copyId: string) => {
-    setDeletedPosts(prev => new Set([...prev, copyId]));
+    setDeletedPosts(prev => new Set(Array.from(prev).concat(copyId)));
     setShowDeleteConfirm(null);
   };
 
@@ -332,7 +332,7 @@ export default function MarketingCalendarPage() {
                       <div key={postIndex} className="p-4 rounded-lg border hover:bg-muted/30 transition-colors relative" data-testid={`post-${copyId}`}>
                         {showDeleteConfirm === copyId && (
                           <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center backdrop-blur-sm z-10">
-                            <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 mx-4 shadow-xl border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                            <div className={`${isDark ? 'bg-[#2a2a2a]' : 'bg-white'} rounded-lg p-4 mx-4 shadow-xl border ${isDark ? 'border-[#333333]' : 'border-gray-200'}`}>
                               <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>
                                 Remove this content idea?
                               </p>

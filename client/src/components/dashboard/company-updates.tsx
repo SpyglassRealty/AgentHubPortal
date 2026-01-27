@@ -26,12 +26,12 @@ export function CompanyUpdates({ onVideoClick }: CompanyUpdatesProps) {
   const [latestVideo, setLatestVideo] = useState<LatestVideo | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const cardBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const cardBg = isDark ? 'bg-[#2a2a2a]' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
   const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
   const textMuted = isDark ? 'text-gray-500' : 'text-gray-400';
-  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
-  const hoverBg = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50';
+  const borderColor = isDark ? 'border-[#333333]' : 'border-gray-200';
+  const hoverBg = isDark ? 'hover:bg-[#333333]' : 'hover:bg-gray-50';
   const dividerColor = isDark ? 'border-gray-700' : 'border-gray-100';
 
   useEffect(() => {
@@ -110,7 +110,7 @@ export function CompanyUpdates({ onVideoClick }: CompanyUpdatesProps) {
             className={`w-full flex gap-4 p-2 -m-2 rounded-lg transition-colors ${hoverBg} text-left group`}
             data-testid="button-latest-video"
           >
-            <div className="relative flex-shrink-0 w-40 h-24 rounded-lg overflow-hidden bg-gray-900">
+            <div className="relative flex-shrink-0 w-40 h-24 rounded-lg overflow-hidden bg-[#222222]">
               {getThumbnail(latestVideo) ? (
                 <img 
                   src={getThumbnail(latestVideo)} 
@@ -118,7 +118,7 @@ export function CompanyUpdates({ onVideoClick }: CompanyUpdatesProps) {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                <div className="w-full h-full flex items-center justify-center bg-[#2a2a2a]">
                   <Play className="w-8 h-8 text-white/30" />
                 </div>
               )}

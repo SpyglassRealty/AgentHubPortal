@@ -384,7 +384,7 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
           <div className="lg:col-span-2">
-            <Card className={`${isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'} overflow-hidden`}>
+            <Card className={`${isDark ? 'bg-[#222222]/50 border-[#333333]' : 'bg-white border-gray-200'} overflow-hidden`}>
               {/* Header */}
               <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
                 <h2 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Company Updates</h2>
@@ -395,11 +395,11 @@ export default function DashboardPage() {
                 {bottomLatestVideo ? (
                   <button
                     onClick={handleBottomVideoClick}
-                    className={`w-full flex gap-4 p-2 -m-2 rounded-lg transition-colors ${isDark ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'} text-left group`}
+                    className={`w-full flex gap-4 p-2 -m-2 rounded-lg transition-colors ${isDark ? 'hover:bg-[#2a2a2a]/50' : 'hover:bg-gray-50'} text-left group`}
                     data-testid="button-open-training-videos"
                   >
                     {/* Thumbnail */}
-                    <div className="relative flex-shrink-0 w-40 h-24 rounded-lg overflow-hidden bg-gray-900" data-testid="thumbnail-video-bottom">
+                    <div className="relative flex-shrink-0 w-40 h-24 rounded-lg overflow-hidden bg-[#222222]" data-testid="thumbnail-video-bottom">
                       {bottomLatestVideo.thumbnail ? (
                         <img 
                           src={bottomLatestVideo.thumbnail} 
@@ -407,7 +407,7 @@ export default function DashboardPage() {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                        <div className="w-full h-full flex items-center justify-center bg-[#2a2a2a]">
                           <Play className="w-8 h-8 text-white/30" />
                         </div>
                       )}
@@ -474,7 +474,7 @@ export default function DashboardPage() {
                 <div className={`border-t ${isDark ? 'border-gray-800' : 'border-gray-200'}`}></div>
 
                 {/* Q4 Goals & Incentives */}
-                <div className={`flex gap-3 p-2 -m-2 rounded-lg ${isDark ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'} cursor-pointer transition-colors`} data-testid="row-announcement-q4">
+                <div className={`flex gap-3 p-2 -m-2 rounded-lg ${isDark ? 'hover:bg-[#2a2a2a]/50' : 'hover:bg-gray-50'} cursor-pointer transition-colors`} data-testid="row-announcement-q4">
                   <div className={`w-10 h-10 rounded-lg ${isDark ? 'bg-[#EF4923]/20' : 'bg-orange-100'} flex items-center justify-center flex-shrink-0`}>
                     <span className="text-lg text-[#EF4923] font-bold">S</span>
                   </div>

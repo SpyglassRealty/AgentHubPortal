@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 
 export function FubNotLinkedBanner() {
   return (
-    <div className="rounded-xl p-6 text-center bg-[#FEF2F0] dark:bg-gray-800 border border-[#FBD4CC] dark:border-gray-700">
-      <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-[#FDDDD5] dark:bg-gray-700">
+    <div className="rounded-xl p-6 text-center bg-[#FEF2F0] dark:bg-[#2a2a2a] border border-[#FBD4CC] dark:border-[#333333]">
+      <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-[#FDDDD5] dark:bg-[#333333]">
         <Link2Off className="w-8 h-8 text-[#EF4923] dark:text-[#F26B4A]" />
       </div>
 

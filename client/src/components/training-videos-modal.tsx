@@ -56,17 +56,17 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [watchLaterLoading, setWatchLaterLoading] = useState(false);
 
-  const modalBg = isDark ? 'bg-gray-900' : 'bg-white';
+  const modalBg = isDark ? 'bg-[#222222]' : 'bg-white';
   const overlayBg = isDark ? 'bg-black/80' : 'bg-black/50';
   
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
   const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
   
-  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
-  const hoverBg = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100';
+  const borderColor = isDark ? 'border-[#333333]' : 'border-gray-200';
+  const hoverBg = isDark ? 'hover:bg-[#333333]' : 'hover:bg-gray-100';
   
-  const buttonBg = isDark ? 'bg-gray-700' : 'bg-gray-100';
-  const buttonHover = isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-200';
+  const buttonBg = isDark ? 'bg-[#2a2a2a]' : 'bg-gray-100';
+  const buttonHover = isDark ? 'hover:bg-[#333333]' : 'hover:bg-gray-200';
   const buttonText = isDark ? 'text-gray-300' : 'text-gray-700';
 
   useEffect(() => {
@@ -432,7 +432,7 @@ export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: Trainin
         </div>
 
         {/* Video Player - NO overlay icons */}
-        <div className={`${isTheaterMode ? 'flex-1' : 'aspect-video'} ${isDark ? 'bg-black' : 'bg-gray-900'} flex items-center justify-center relative`}>
+        <div className={`${isTheaterMode ? 'flex-1' : 'aspect-video'} ${isDark ? 'bg-black' : 'bg-[#222222]'} flex items-center justify-center relative`}>
           {loading ? (
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="w-8 h-8 animate-spin text-white/50" />

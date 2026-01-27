@@ -90,11 +90,11 @@ function VideoCard({
           relative rounded-lg overflow-hidden cursor-pointer
           transition-all duration-300 ease-out
           ${!isTouch && isHovered ? `scale-105 z-20 ${shadowClass}` : 'scale-100 z-10'}
-          ${isDark ? 'bg-gray-800 shadow-md shadow-black/20' : 'bg-white shadow-md'}
+          ${isDark ? 'bg-[#2a2a2a] shadow-md shadow-black/20' : 'bg-white shadow-md'}
         `}
         onClick={() => onPlay(video)}
       >
-        <div className="relative aspect-video bg-gray-900">
+        <div className="relative aspect-video bg-[#222222]">
           {getThumbnail() ? (
             <img 
               src={getThumbnail()} 
@@ -175,7 +175,7 @@ function VideoCard({
               ${isHovered ? 'max-h-44 opacity-100' : 'max-h-0 opacity-0'}
             `}
           >
-            <div className={`p-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+            <div className={`p-3 ${isDark ? 'bg-[#2a2a2a]' : 'bg-white'}`}>
               <div className="flex items-center gap-2 mb-2">
                 <button 
                   className="w-9 h-9 bg-white rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors shadow"
@@ -460,7 +460,7 @@ function HeroBanner({ video, preference, onPlay, onToggleWatchLater, isDark }: H
 
   return (
     <div className="relative h-[400px] sm:h-[500px] mb-8 rounded-2xl overflow-hidden" data-testid="hero-banner">
-      <div className="absolute inset-0 bg-gray-900">
+      <div className="absolute inset-0 bg-[#222222]">
         {getThumbnail() && (
           <img 
             src={getThumbnail()} 
@@ -590,11 +590,11 @@ function VideoPlayerModal({
   };
 
   // Theme classes
-  const modalBg = isDark ? 'bg-gray-900' : 'bg-white';
+  const modalBg = isDark ? 'bg-[#222222]' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
   const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
   const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
-  const buttonBg = isDark ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-100 hover:bg-gray-200';
+  const buttonBg = isDark ? 'bg-[#2a2a2a] hover:bg-[#333333]' : 'bg-gray-100 hover:bg-gray-200';
 
   return (
     <div 
@@ -610,7 +610,7 @@ function VideoPlayerModal({
         <button
           onClick={onClose}
           className={`absolute top-2 left-2 sm:top-4 sm:left-4 z-20 min-w-[44px] min-h-[44px] p-2.5 rounded-full transition-colors flex items-center justify-center
-            ${isDark ? 'bg-gray-800/80 hover:bg-gray-700 text-white' : 'bg-white/80 hover:bg-white text-gray-900'}
+            ${isDark ? 'bg-[#2a2a2a]/80 hover:bg-[#333333] text-white' : 'bg-white/80 hover:bg-white text-gray-900'}
             backdrop-blur-sm`}
           data-testid="button-close-modal"
         >
@@ -705,10 +705,10 @@ export default function TrainingPage() {
   const [preferences, setPreferences] = useState<Record<string, VideoPreference>>({});
   const [playingVideo, setPlayingVideo] = useState<VimeoVideo | null>(null);
 
-  const pageBg = isDark ? 'bg-gray-900' : 'bg-gray-50';
+  const pageBg = isDark ? 'bg-[#222222]' : 'bg-gray-50';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
   const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
-  const inputBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const inputBg = isDark ? 'bg-[#2a2a2a]' : 'bg-white';
   const inputBorder = isDark ? 'border-gray-700' : 'border-gray-200';
 
   useEffect(() => {
