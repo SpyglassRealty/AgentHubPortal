@@ -22,6 +22,11 @@ The application is a full-stack web application with a React frontend and an Exp
     - Spyglass Red-Orange: `#EF4923` / `hsl(11, 86%, 54%)` / `rgb(239, 73, 35)`
     - Spyglass Black: `#222222` / `hsl(0, 0%, 13%)` / `rgb(34, 34, 34)`
   - All orange UI elements use `#EF4923`, hover states use `#D4401F`
+  - **Dark Mode Colors**:
+    - Background: `#222222` (Spyglass Black) - NOT pure black
+    - Cards/Elevated surfaces: `#2a2a2a` (slightly lighter)
+    - Secondary/Muted: `#333333`
+    - Borders: `#3a3a3a` / `border-[#333333]`
   - Responsive design with mobile/desktop breakpoints, 44px+ touch targets, and safe area insets
 - **Routing**: `Wouter` handles client-side routing, with conditional rendering based on authentication status.
 - **State Management**: `TanStack Query` manages server state, while a custom `useAuth` hook handles global authentication state.

@@ -85,7 +85,7 @@ export function RefreshButton({
           min-h-[44px] min-w-[44px]
           active:scale-95
           ${isDark 
-            ? 'bg-gray-800 hover:bg-gray-700 text-white border border-gray-700' 
+            ? 'bg-[#2a2a2a] hover:bg-[#333333] text-white border border-[#333333]' 
             : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 shadow-sm'
           }
           ${loading ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
@@ -109,7 +109,7 @@ export function RefreshButton({
             absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2
             px-3 py-2 rounded-lg shadow-lg
             text-xs whitespace-nowrap
-            ${isDark ? 'bg-gray-800 text-white border border-gray-700' : 'bg-white text-gray-900 border border-gray-200 shadow-md'}
+            ${isDark ? 'bg-[#2a2a2a] text-white border border-[#333333]' : 'bg-white text-gray-900 border border-gray-200 shadow-md'}
           `}
           role="tooltip"
         >
