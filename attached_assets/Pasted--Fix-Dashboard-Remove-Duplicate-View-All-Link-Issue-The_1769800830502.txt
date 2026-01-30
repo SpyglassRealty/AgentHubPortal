@@ -1,0 +1,83 @@
+### Fix Dashboard - Remove Duplicate "View All" Link
+
+**Issue:** The Dashboard has two links that do the same thing:
+1. "View All →" next to "Spyglass Realty Listings" header
+2. "View All Properties →" at the bottom of the section
+
+This is redundant and confusing. Remove the bottom one.
+
+---
+
+## Fix
+
+### Remove the "View All Properties →" link at the bottom
+
+In the Dashboard Market Pulse component, remove this section:
+```tsx
+// REMOVE THIS:
+<div className="text-center mt-4">
+  <button
+    onClick={() => navigate('/properties')}
+    className="text-[#EF4923] hover:underline text-sm font-medium"
+  >
+    View All Properties →
+  </button>
+</div>
+```
+
+### Keep only the "View All →" next to the header:
+```tsx
+{/* Spyglass Realty Listings Header */}
+<div className="flex items-center justify-between mb-3">
+  <div className="flex items-center gap-2">
+    <Building2 className="w-5 h-5 text-[#EF4923]" />
+    <div>
+      <p className={`text-sm font-semibold ${textPrimary}`}>Spyglass Realty Listings</p>
+      <p className={`text-[11px] ${textSecondary}`}>
+        Office 5220 • {spyglassListings.length} Active
+      </p>
+    </div>
+  </div>
+  {/* KEEP THIS ONE */}
+  <button
+    onClick={() => navigate('/properties?officeCode=5220')}
+    className="text-xs text-[#EF4923] hover:underline font-medium"
+  >
+    View All →
+  </button>
+</div>
+
+{/* Listings cards... */}
+
+{/* DO NOT ADD ANOTHER LINK HERE */}
+```
+
+---
+
+## Before vs After
+
+### Before (Confusing):
+┌─────────────────────────────────────────────────────┐
+│  🏢 Spyglass Realty Listings           View All →  │
+│  Office 5220 • 12 Active                            │
+│                                                     │
+│  [Card] [Card] [Card] [Card]                       │
+│                                                     │
+│              View All Properties →                  │  ← REMOVE THIS
+└─────────────────────────────────────────────────────┘
+
+### After (Clean):
+┌─────────────────────────────────────────────────────┐
+│  🏢 Spyglass Realty Listings           View All →  │
+│  Office 5220 • 12 Active                            │
+│                                                     │
+│  [Card] [Card] [Card] [Card]                       │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+
+---
+
+## Testing
+- [ ] Only ONE "View All" link exists
+- [ ] Link navigates to Properties page
+- [ ] No duplicate actions visible

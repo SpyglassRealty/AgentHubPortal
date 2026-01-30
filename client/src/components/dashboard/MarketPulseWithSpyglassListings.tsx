@@ -355,17 +355,6 @@ export function MarketPulseWithSpyglassListings() {
           </div>
         )}
 
-        {/* View All Link */}
-        <div className="text-center pt-3 border-t mt-3" style={{ borderColor: isDark ? '#333333' : '#e5e7eb' }}>
-          <button
-            onClick={() => setLocation('/properties')}
-            className="text-xs sm:text-sm text-[#EF4923] hover:underline min-h-[44px]"
-            data-testid="link-view-all-properties"
-          >
-            View All Properties →
-          </button>
-        </div>
-
         {/* Listing Detail Modal */}
         {selectedListing && (
           <SpyglassListingModal
