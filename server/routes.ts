@@ -1011,18 +1011,8 @@ export async function registerRoutes(
         return res.status(503).json({ message: "Listings API not configured" });
       }
 
-      let office = (req.query.office as string) || '';
-      const legacyOfficeCode = req.query.officeCode as string;
-      
-      if (legacyOfficeCode === '5220' || !office) {
-        office = 'austin';
-      }
-      
-      const officeConfig = SPYGLASS_OFFICES[office];
-      
-      if (!officeConfig) {
-        return res.status(400).json({ message: "Invalid office parameter" });
-      }
+      // Always use DEFAULT_OFFICE (Spyglass Realty) - office parameter ignored
+      const officeConfig = DEFAULT_OFFICE;
 
       const status = (req.query.status as string) || 'Active';
       const limit = Math.min(parseInt((req.query.limit as string) || '20', 10), 50);

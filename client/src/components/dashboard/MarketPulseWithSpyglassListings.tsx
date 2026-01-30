@@ -71,11 +71,11 @@ export function MarketPulseWithSpyglassListings() {
     retry: 1,
   });
 
-  // Fetch Spyglass Realty listings (Austin office - uses officeId=ACT1518371)
+  // Fetch Spyglass Realty listings (Office 5220 - officeId=ACT1518371)
   const { data: listingsData, isLoading: listingsLoading, isFetching: listingsFetching } = useQuery<CompanyListingsResponse>({
-    queryKey: ['company-listings-office', 'austin'],
+    queryKey: ['company-listings', 'spyglass', 'dashboard'],
     queryFn: async () => {
-      const response = await fetch('/api/company-listings/office?office=austin&status=Active&limit=20', {
+      const response = await fetch('/api/company-listings?status=Active&pageSize=20', {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to fetch company listings');
