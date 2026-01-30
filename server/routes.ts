@@ -729,8 +729,9 @@ export async function registerRoutes(
       const VALID_SORT_ORDERS = ['asc', 'desc'];
 
       // RESO status values: Active, Active Under Contract, Pending, Closed
+      // Handle empty string as 'all' for frontend compatibility
       const requestedStatus = (req.query.status as string) || 'Active';
-      const status = VALID_STATUSES.includes(requestedStatus) ? requestedStatus : 'Active';
+      const status = requestedStatus === '' ? 'all' : (VALID_STATUSES.includes(requestedStatus) ? requestedStatus : 'Active');
       
       const requestedSortBy = (req.query.sortBy as string) || 'listDate';
       const sortBy = VALID_SORT_FIELDS.includes(requestedSortBy) ? requestedSortBy : 'listDate';
@@ -744,21 +745,24 @@ export async function registerRoutes(
       const baseUrl = 'https://api.repliers.io/listings';
       const msaCounties = ['Travis', 'Williamson', 'Hays', 'Bastrop', 'Caldwell'];
       
+      // Build sortBy parameter in Repliers format (e.g., listPriceDesc, listDateAsc)
+      const sortDirection = sortOrder === 'asc' ? 'Asc' : 'Desc';
+      const sortByParam = sortBy === 'listPrice' ? `listPrice${sortDirection}` : `createdOn${sortDirection}`;
+      
       const params = new URLSearchParams({
         listings: 'true',
         type: 'Sale',
-        pageSize: limit.toString(),
-        sortBy: sortBy,
-        order: sortOrder,
+        resultsPerPage: limit.toString(),
+        sortBy: sortByParam,
       });
 
-      // Add county filters for Austin Metro Area
+      // Add county filters for Austin Metro Area (same as Market Pulse)
       msaCounties.forEach(county => params.append('county', county));
 
-      // Map RESO status to API parameters
+      // Map RESO status to Repliers API parameters (same approach as Market Pulse)
       if (status && status !== 'all') {
         if (status === 'Closed') {
-          // For closed listings, use last 30 days
+          // For closed/sold listings, use status=U with lastStatus=Sld
           const thirtyDaysAgo = new Date();
           thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
           params.append('status', 'U');
@@ -768,11 +772,16 @@ export async function registerRoutes(
           // Active, Active Under Contract, Pending use standardStatus
           params.append('standardStatus', status);
         }
+      } else {
+        // For 'all', get active listings
+        params.append('standardStatus', 'Active');
       }
 
+      const fullUrl = `${baseUrl}?${params.toString()}`;
       console.log(`[Company Listings] Fetching ${status} listings from ${city}...`);
+      console.log(`[Company Listings] API URL: ${fullUrl}`);
 
-      const response = await fetch(`${baseUrl}?${params.toString()}`, {
+      const response = await fetch(fullUrl, {
         headers: {
           'Accept': 'application/json',
           'REPLIERS-API-KEY': apiKey
@@ -780,7 +789,8 @@ export async function registerRoutes(
       });
 
       if (!response.ok) {
-        console.error('[Company Listings] Repliers API error:', response.status);
+        const errorText = await response.text();
+        console.error('[Company Listings] Repliers API error:', response.status, errorText);
         return res.status(502).json({ message: "Failed to fetch listings from API" });
       }
 
