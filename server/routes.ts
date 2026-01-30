@@ -714,7 +714,7 @@ export async function registerRoutes(
     }
   });
 
-  // Company Listings - Spyglass Realty office listings from Repliers API
+  // Company Listings - Austin Metro Area listings from Repliers API with RESO status support
   app.get('/api/company-listings', isAuthenticated, async (req: any, res) => {
     try {
       const apiKey = process.env.IDX_GRID_API_KEY;
@@ -722,40 +722,43 @@ export async function registerRoutes(
         return res.status(503).json({ message: "Listings API not configured" });
       }
 
-      const officeCode = (req.query.officeCode as string) || '5220';
-      const status = (req.query.status as string) || 'active';
+      // RESO status values: Active, Active Under Contract, Pending, Closed
+      const status = (req.query.status as string) || 'Active';
+      const sortBy = (req.query.sortBy as string) || 'listDate';
+      const sortOrder = (req.query.sortOrder as string) || 'desc';
       const limit = parseInt((req.query.limit as string) || '50', 10);
+      const city = (req.query.city as string) || 'Austin';
 
       const baseUrl = 'https://api.repliers.io/listings';
+      const msaCounties = ['Travis', 'Williamson', 'Hays', 'Bastrop', 'Caldwell'];
+      
       const params = new URLSearchParams({
         listings: 'true',
         type: 'Sale',
         pageSize: limit.toString(),
-        sortBy: 'listDate',
-        order: 'desc',
+        sortBy: sortBy,
+        order: sortOrder,
       });
 
-      // Map status to standardStatus parameter
+      // Add county filters for Austin Metro Area
+      msaCounties.forEach(county => params.append('county', county));
+
+      // Map RESO status to API parameters
       if (status && status !== 'all') {
-        switch (status.toLowerCase()) {
-          case 'active':
-            params.append('standardStatus', 'Active');
-            break;
-          case 'under-contract':
-            params.append('standardStatus', 'Active Under Contract');
-            break;
-          case 'pending':
-            params.append('standardStatus', 'Pending');
-            break;
-          case 'closed':
-            params.append('status', 'U');
-            params.append('lastStatus', 'Sld');
-            break;
+        if (status === 'Closed') {
+          // For closed listings, use last 30 days
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          params.append('status', 'U');
+          params.append('lastStatus', 'Sld');
+          params.append('minSoldDate', thirtyDaysAgo.toISOString().split('T')[0]);
+        } else {
+          // Active, Active Under Contract, Pending use standardStatus
+          params.append('standardStatus', status);
         }
       }
 
-      // Add office filter
-      params.append('listOfficeKey', officeCode);
+      console.log(`[Company Listings] Fetching ${status} listings from ${city}...`);
 
       const response = await fetch(`${baseUrl}?${params.toString()}`, {
         headers: {
@@ -771,34 +774,60 @@ export async function registerRoutes(
 
       const data = await response.json();
       
-      // Transform listings to a cleaner format
-      const listings = (data.listings || []).map((listing: any) => ({
-        id: listing.mlsNumber || listing.listingId,
-        mlsNumber: listing.mlsNumber,
-        status: listing.standardStatus || listing.status,
-        listPrice: listing.listPrice,
-        listDate: listing.listDate,
-        daysOnMarket: listing.daysOnMarket,
-        address: {
-          full: listing.address?.unparsedAddress || 
-                `${listing.address?.streetNumber || ''} ${listing.address?.streetName || ''}, ${listing.address?.city || ''}`.trim(),
-          streetNumber: listing.address?.streetNumber,
-          streetName: listing.address?.streetName,
-          city: listing.address?.city,
-          state: listing.address?.state,
-          postalCode: listing.address?.postalCode,
-        },
-        beds: listing.bedroomsTotal || listing.beds,
-        baths: listing.bathroomsTotalInteger || listing.baths,
-        livingArea: listing.livingArea,
-        photos: listing.photos || [],
-        subdivision: listing.subdivision,
-        propertyType: listing.propertyType,
-        listOfficeName: listing.listOfficeName,
-      }));
+      // Transform listings with complete addresses including zip codes
+      const listings = (data.listings || []).map((listing: any) => {
+        const streetNumber = listing.address?.streetNumber || '';
+        const streetName = listing.address?.streetName || '';
+        const streetSuffix = listing.address?.streetSuffix || '';
+        const cityName = listing.address?.city || 'Austin';
+        const state = listing.address?.state || 'TX';
+        const postalCode = listing.address?.postalCode || '';
+        
+        const streetAddress = [streetNumber, streetName, streetSuffix].filter(Boolean).join(' ');
+        const fullAddress = `${streetAddress}, ${cityName}, ${state} ${postalCode}`.trim();
 
-      console.log(`[Company Listings] Found ${listings.length} listings for office ${officeCode}`);
-      res.json({ listings, total: listings.length, office: officeCode });
+        return {
+          id: listing.mlsNumber || listing.listingId,
+          listingId: listing.listingId,
+          mlsNumber: listing.mlsNumber,
+          status: listing.standardStatus || listing.status || status,
+          listPrice: listing.listPrice,
+          closePrice: listing.closePrice,
+          closeDate: listing.closeDate,
+          listDate: listing.listDate,
+          daysOnMarket: listing.daysOnMarket || listing.simpleDaysOnMarket || 0,
+          address: {
+            streetNumber,
+            streetName,
+            streetSuffix,
+            city: cityName,
+            state,
+            postalCode,
+            full: fullAddress,
+          },
+          beds: listing.bedroomsTotal || listing.beds || 0,
+          baths: listing.bathroomsTotalInteger || listing.baths || 0,
+          livingArea: listing.livingArea || 0,
+          lotSize: listing.lotSize,
+          yearBuilt: listing.yearBuilt,
+          propertyType: listing.propertyType,
+          subdivision: listing.subdivision,
+          latitude: listing.latitude,
+          longitude: listing.longitude,
+          photos: listing.photos || [],
+          listOfficeName: listing.listOfficeName,
+        };
+      });
+
+      console.log(`[Company Listings] Found ${listings.length} ${status} listings`);
+      res.json({ 
+        listings, 
+        total: data.count || listings.length,
+        city,
+        status,
+        sortBy,
+        sortOrder
+      });
     } catch (error) {
       console.error("[Company Listings] Error:", error);
       res.status(500).json({ message: "Failed to fetch company listings" });

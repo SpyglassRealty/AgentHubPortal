@@ -48,10 +48,10 @@ export default function MarketPulse({ isClickable = true }: MarketPulseProps) {
   const isRefreshing = isFetching || refreshMutation.isPending;
 
   const chartData = data ? [
-    { name: 'Active', count: data.active, fill: 'hsl(142, 76%, 36%)', status: 'active' },
-    { name: 'Under Contract', count: data.activeUnderContract, fill: 'hsl(210, 76%, 50%)', status: 'under-contract' },
-    { name: 'Pending', count: data.pending, fill: 'hsl(45, 93%, 47%)', status: 'pending' },
-    { name: 'Closed', count: data.closed, fill: 'hsl(0, 0%, 45%)', status: 'closed' },
+    { name: 'Active', count: data.active, fill: '#22C55E', status: 'Active' },
+    { name: 'Under Contract', count: data.activeUnderContract, fill: '#3B82F6', status: 'Active Under Contract' },
+    { name: 'Pending', count: data.pending, fill: '#EAB308', status: 'Pending' },
+    { name: 'Closed', count: data.closed, fill: '#9CA3AF', status: 'Closed' },
   ].filter(item => item.count > 0) : [];
 
   const handleBarClick = (data: { status: string }) => {
@@ -209,7 +209,10 @@ export default function MarketPulse({ isClickable = true }: MarketPulseProps) {
         )}
 
         <div className="grid grid-cols-2 gap-2 sm:gap-3">
-          <Card className="bg-emerald-50 border-emerald-200">
+          <Card 
+            className={`bg-emerald-50 border-emerald-200 ${isClickable ? 'cursor-pointer hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200' : ''}`}
+            onClick={() => isClickable && setLocation('/properties?status=Active')}
+          >
             <CardContent className="p-2 sm:p-3">
               <div className="flex items-center gap-1 text-emerald-700 text-[10px] sm:text-xs font-medium mb-1 sm:mb-2">
                 <Home className="h-3 w-3" />
@@ -221,7 +224,10 @@ export default function MarketPulse({ isClickable = true }: MarketPulseProps) {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-blue-50 border-blue-200">
+          <Card 
+            className={`bg-blue-50 border-blue-200 ${isClickable ? 'cursor-pointer hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200' : ''}`}
+            onClick={() => isClickable && setLocation('/properties?status=Active%20Under%20Contract')}
+          >
             <CardContent className="p-2 sm:p-3">
               <div className="flex items-center gap-1 text-blue-700 text-[10px] sm:text-xs font-medium mb-1 sm:mb-2">
                 <FileCheck className="h-3 w-3" />
@@ -232,7 +238,10 @@ export default function MarketPulse({ isClickable = true }: MarketPulseProps) {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-amber-50 border-amber-200">
+          <Card 
+            className={`bg-amber-50 border-amber-200 ${isClickable ? 'cursor-pointer hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200' : ''}`}
+            onClick={() => isClickable && setLocation('/properties?status=Pending')}
+          >
             <CardContent className="p-2 sm:p-3">
               <div className="flex items-center gap-1 text-amber-700 text-[10px] sm:text-xs font-medium mb-1 sm:mb-2">
                 <Clock className="h-3 w-3" />
@@ -244,7 +253,10 @@ export default function MarketPulse({ isClickable = true }: MarketPulseProps) {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-gray-50 border-gray-200">
+          <Card 
+            className={`bg-gray-50 border-gray-200 ${isClickable ? 'cursor-pointer hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200' : ''}`}
+            onClick={() => isClickable && setLocation('/properties?status=Closed')}
+          >
             <CardContent className="p-2 sm:p-3">
               <div className="flex items-center gap-1 text-gray-700 text-[10px] sm:text-xs font-medium mb-1 sm:mb-2">
                 <CheckCircle2 className="h-3 w-3" />

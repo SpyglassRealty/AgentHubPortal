@@ -1,0 +1,958 @@
+### Company Listings + Clickable Market Pulse - Complete Implementation
+
+**Goals:**
+1. Add Company Listings widget to Properties page showing Austin Metro Area listings
+2. Make Market Pulse bars AND stat cards clickable - navigates to Properties page with status filter
+3. Add sorting options for property listings
+4. Ensure complete addresses with zip codes
+5. Use RESO-compliant status terminology
+6. Match listing counts between Market Pulse and Company Listings widget
+
+---
+
+## RESO Standard Status Terminology
+
+**Use these exact status values throughout the application:**
+
+| RESO Status | Display Label | Description | Bar Color |
+|-------------|---------------|-------------|-----------|
+| `Active` | Active | On Market | Green (#22C55E) |
+| `Active Under Contract` | Under Contract | Has accepted offer | Blue (#3B82F6) |
+| `Pending` | Pending | Closing Soon | Yellow (#EAB308) |
+| `Closed` | Closed | Sold/Completed | Gray (#9CA3AF) |
+
+**Important:** Repliers API uses RESO standard. Always use these exact status strings.
+
+---
+
+## PART 1: API Endpoints
+
+### 1A. Market Pulse Stats Endpoint
+
+Create/Update `GET /api/market-pulse/stats`:
+```typescript
+// GET /api/market-pulse/stats
+router.get('/api/market-pulse/stats', async (req, res) => {
+  try {
+    const city = req.query.city || 'Austin';
+
+    if (!REPLIERS_API_KEY) {
+      return res.status(500).json({ error: 'Repliers not configured' });
+    }
+
+    // Fetch counts for each RESO status
+    const statuses = ['Active', 'Active Under Contract', 'Pending', 'Closed'];
+    const counts: Record<string, number> = {};
+
+    for (const status of statuses) {
+      const params = new URLSearchParams({
+        'OriginatingSystemName': 'ACTRIS',
+        'city': city.toString(),
+        'status': status,
+        'limit': '1', // We only need the count
+      });
+
+      const response = await fetch(`${REPLIERS_BASE_URL}/listings?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${REPLIERS_API_KEY}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        counts[status] = data.total || 0;
+      } else {
+        counts[status] = 0;
+      }
+    }
+
+    // For Closed, only count last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const closedParams = new URLSearchParams({
+      'OriginatingSystemName': 'ACTRIS',
+      'city': city.toString(),
+      'status': 'Closed',
+      'closeDateMin': thirtyDaysAgo.toISOString().split('T')[0],
+      'limit': '1',
+    });
+
+    const closedResponse = await fetch(`${REPLIERS_BASE_URL}/listings?${closedParams}`, {
+      headers: {
+        'Authorization': `Bearer ${REPLIERS_API_KEY}`,
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (closedResponse.ok) {
+      const closedData = await closedResponse.json();
+      counts['Closed'] = closedData.total || 0;
+    }
+
+    // Calculate total active (Active + Active Under Contract + Pending)
+    const totalActive = counts['Active'] + counts['Active Under Contract'] + counts['Pending'];
+
+    res.json({
+      city,
+      stats: {
+        active: counts['Active'],
+        activeUnderContract: counts['Active Under Contract'],
+        pending: counts['Pending'],
+        closed: counts['Closed'],
+        totalActive
+      },
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[Market Pulse Stats] Error:', error);
+    res.status(500).json({ error: 'Failed to fetch market stats' });
+  }
+});
+```
+
+### 1B. Company Listings Endpoint
+
+Create/Update `GET /api/company-listings`:
+```typescript
+// GET /api/company-listings
+router.get('/api/company-listings', async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const status = req.query.status || 'Active'; // RESO status
+    const sortBy = req.query.sortBy || 'listDate';
+    const sortOrder = req.query.sortOrder || 'desc';
+    const limit = parseInt(req.query.limit as string) || 50;
+    const city = req.query.city || 'Austin';
+
+    if (!REPLIERS_API_KEY) {
+      return res.status(500).json({ error: 'Repliers not configured' });
+    }
+
+    // Build Repliers API request
+    const params = new URLSearchParams({
+      'OriginatingSystemName': 'ACTRIS',
+      'city': city.toString(),
+      'limit': limit.toString(),
+      'sortBy': sortBy.toString(),
+      'sortOrder': sortOrder.toString(),
+    });
+
+    // Add status filter if not 'all'
+    if (status && status !== 'all') {
+      params.append('status', status.toString());
+    }
+
+    const repliersUrl = `${REPLIERS_BASE_URL}/listings?${params}`;
+    
+    console.log(`[Company Listings] Fetching: ${repliersUrl}`);
+
+    const response = await fetch(repliersUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${REPLIERS_API_KEY}`,
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      console.error('[Company Listings] Repliers error:', response.status);
+      return res.status(response.status).json({ error: 'Failed to fetch from Repliers' });
+    }
+
+    const data = await response.json();
+
+    // Transform response - ensure complete address with zip
+    const listings = (data.listings || data.data || []).map((listing: any) => {
+      const streetAddress = [
+        listing.address?.streetNumber || listing.StreetNumber,
+        listing.address?.streetName || listing.StreetName,
+        listing.address?.streetSuffix || listing.StreetSuffix
+      ].filter(Boolean).join(' ');
+      
+      const cityName = listing.address?.city || listing.City || 'Austin';
+      const state = listing.address?.state || listing.StateOrProvince || 'TX';
+      const zipCode = listing.address?.postalCode || listing.PostalCode || '';
+      
+      const fullAddress = `${streetAddress}, ${cityName}, ${state} ${zipCode}`.trim();
+
+      return {
+        id: listing.id || listing.listingId,
+        listingId: listing.listingId,
+        mlsNumber: listing.mlsNumber || listing.ListingId,
+        status: listing.status || listing.StandardStatus || 'Active',
+        listPrice: listing.listPrice || listing.ListPrice,
+        closePrice: listing.closePrice || listing.ClosePrice,
+        closeDate: listing.closeDate || listing.CloseDate,
+        listDate: listing.listDate || listing.ListDate,
+        simpleDaysOnMarket: listing.simpleDaysOnMarket || listing.DaysOnMarket || 0,
+        address: {
+          streetNumber: listing.address?.streetNumber || listing.StreetNumber || '',
+          streetName: listing.address?.streetName || listing.StreetName || '',
+          streetSuffix: listing.address?.streetSuffix || listing.StreetSuffix || '',
+          city: cityName,
+          state: state,
+          postalCode: zipCode,
+          full: fullAddress,
+        },
+        beds: listing.beds || listing.BedroomsTotal || 0,
+        baths: listing.baths || listing.BathroomsTotalInteger || 0,
+        livingArea: listing.livingArea || listing.LivingArea || 0,
+        lotSize: listing.lotSize || listing.LotSizeSquareFeet,
+        yearBuilt: listing.yearBuilt || listing.YearBuilt,
+        propertyType: listing.propertyType || listing.PropertyType,
+        subdivision: listing.subdivision || listing.SubdivisionName,
+        latitude: listing.latitude || listing.Latitude,
+        longitude: listing.longitude || listing.Longitude,
+        photos: listing.photos || listing.Media?.map((m: any) => m.MediaURL) || [],
+      };
+    });
+
+    console.log(`[Company Listings] Fetched ${listings.length} ${status} listings`);
+
+    res.json({
+      total: data.total || listings.length,
+      listings,
+      city,
+      status,
+      sortBy,
+      sortOrder
+    });
+  } catch (error) {
+    console.error('[Company Listings] Error:', error);
+    res.status(500).json({ error: 'Failed to fetch listings' });
+  }
+});
+```
+
+---
+
+## PART 2: Market Pulse Component (Clickable)
+
+### Create/Update `client/src/components/MarketPulse.tsx`:
+```tsx
+import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { TrendingUp, Home, FileText, Clock, CheckCircle } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { RefreshButton } from '@/components/ui/RefreshButton';
+import { useSyncStatus } from '@/hooks/useSyncStatus';
+
+interface MarketPulseProps {
+  showHint?: boolean; // Show "Click to view listings" hint
+}
+
+export function MarketPulse({ showHint = false }: MarketPulseProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isDark } = useTheme();
+  const { lastManualRefresh, lastAutoRefresh, isLoading: isSyncLoading, refresh } = useSyncStatus('market-pulse');
+
+  const isOnDashboard = location.pathname === '/' || location.pathname === '/dashboard';
+
+  // Fetch market stats
+  const { data: statsData, isLoading, refetch } = useQuery({
+    queryKey: ['market-pulse-stats'],
+    queryFn: async () => {
+      const response = await fetch('/api/market-pulse/stats?city=Austin');
+      if (!response.ok) throw new Error('Failed to fetch');
+      return response.json();
+    },
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+  });
+
+  const stats = statsData?.stats || {
+    active: 0,
+    activeUnderContract: 0,
+    pending: 0,
+    closed: 0,
+    totalActive: 0
+  };
+
+  // Calculate max value for chart scaling
+  const maxValue = Math.max(stats.active, stats.activeUnderContract, stats.pending, stats.closed, 1);
+
+  const handleRefresh = async () => {
+    await refresh(async () => {
+      await refetch();
+    });
+  };
+
+  // Navigate to Properties page with status filter
+  const handleStatusClick = (status: string) => {
+    navigate(`/properties?status=${encodeURIComponent(status)}`);
+  };
+
+  // RESO Status configuration
+  const statusConfig = [
+    {
+      key: 'active',
+      resoStatus: 'Active',
+      label: 'Active',
+      sublabel: 'On Market',
+      value: stats.active,
+      color: '#22C55E', // Green
+      borderColor: 'border-green-200',
+      bgColor: isDark ? 'bg-green-900/20' : 'bg-green-50',
+      textColor: 'text-green-600',
+      icon: Home,
+    },
+    {
+      key: 'activeUnderContract',
+      resoStatus: 'Active Under Contract',
+      label: 'Under Contract',
+      sublabel: '',
+      value: stats.activeUnderContract,
+      color: '#3B82F6', // Blue
+      borderColor: 'border-blue-200',
+      bgColor: isDark ? 'bg-blue-900/20' : 'bg-blue-50',
+      textColor: 'text-blue-600',
+      icon: FileText,
+    },
+    {
+      key: 'pending',
+      resoStatus: 'Pending',
+      label: 'Pending',
+      sublabel: 'Closing Soon',
+      value: stats.pending,
+      color: '#EAB308', // Yellow
+      borderColor: 'border-yellow-200',
+      bgColor: isDark ? 'bg-yellow-900/20' : 'bg-yellow-50',
+      textColor: 'text-yellow-600',
+      icon: Clock,
+    },
+    {
+      key: 'closed',
+      resoStatus: 'Closed',
+      label: 'Closed (30d)',
+      sublabel: 'Sales',
+      value: stats.closed,
+      color: '#9CA3AF', // Gray
+      borderColor: 'border-gray-200',
+      bgColor: isDark ? 'bg-gray-800' : 'bg-gray-50',
+      textColor: 'text-gray-600',
+      icon: CheckCircle,
+    },
+  ];
+
+  // Theme classes
+  const cardBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+
+  return (
+    <div className={`${cardBg} rounded-xl border ${borderColor} p-4 md:p-6`}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-[#EF4923]" />
+          <h2 className={`text-lg font-semibold ${textPrimary}`}>Market Pulse</h2>
+        </div>
+        <RefreshButton
+          onRefresh={handleRefresh}
+          lastManualRefresh={lastManualRefresh}
+          lastAutoRefresh={lastAutoRefresh}
+          isLoading={isSyncLoading || isLoading}
+        />
+      </div>
+      
+      <p className={`text-sm ${textSecondary} mb-4`}>Austin Metro Area</p>
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#EF4923]"></div>
+        </div>
+      )}
+
+      {/* Chart + Stats */}
+      {!isLoading && (
+        <>
+          {/* Bar Chart - Clickable */}
+          <div className="mb-6">
+            {/* Y-axis labels */}
+            <div className="flex">
+              <div className="w-10 flex flex-col justify-between text-xs text-gray-400 pr-2">
+                <span>{Math.round(maxValue / 1000)}k</span>
+                <span>{Math.round(maxValue / 2000)}k</span>
+                <span>0</span>
+              </div>
+              
+              {/* Bars */}
+              <div className="flex-1 flex items-end gap-2 sm:gap-4 h-40">
+                {statusConfig.map((item) => (
+                  <div
+                    key={item.key}
+                    className="flex-1 flex flex-col items-center cursor-pointer group"
+                    onClick={() => handleStatusClick(item.resoStatus)}
+                  >
+                    {/* Bar */}
+                    <div
+                      className="w-full rounded-t-md transition-all duration-200 group-hover:opacity-80 group-hover:scale-105"
+                      style={{
+                        height: `${Math.max((item.value / maxValue) * 100, 5)}%`,
+                        backgroundColor: item.color,
+                        minHeight: '8px'
+                      }}
+                    />
+                    {/* Label */}
+                    <span className={`mt-2 text-xs ${textSecondary} group-hover:text-[#EF4923] transition-colors text-center`}>
+                      {item.label.replace(' (30d)', '')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Click Hint (Dashboard only) */}
+            {showHint && (
+              <p className={`text-xs text-center mt-3 ${textSecondary}`}>
+                Click any bar to view listings
+              </p>
+            )}
+          </div>
+
+          {/* Stat Cards - Clickable */}
+          <div className="grid grid-cols-2 gap-3">
+            {statusConfig.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={item.key}
+                  onClick={() => handleStatusClick(item.resoStatus)}
+                  className={`p-3 rounded-lg border cursor-pointer transition-all duration-200
+                    hover:shadow-md hover:scale-[1.02] active:scale-[0.98]
+                    ${item.bgColor} ${item.borderColor}
+                  `}
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Icon className={`w-4 h-4 ${item.textColor}`} />
+                    <span className={`text-sm font-medium ${item.textColor}`}>
+                      {item.label}
+                    </span>
+                  </div>
+                  {item.sublabel && (
+                    <p className={`text-xs ${textSecondary} mb-1`}>{item.sublabel}</p>
+                  )}
+                  <p className={`text-xl font-bold ${item.textColor} text-right`}>
+                    {item.value.toLocaleString()}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Total Active */}
+          <div className={`mt-4 pt-3 border-t ${borderColor} text-center`}>
+            <span className={textSecondary}>Total Active: </span>
+            <span className={`font-bold ${textPrimary}`}>{stats.totalActive.toLocaleString()}</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+## PART 3: Properties Page with URL Status Filter
+
+### Update `client/src/pages/properties.tsx`:
+```tsx
+import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Building2, ChevronLeft, ChevronRight, ChevronDown, Bed, Bath, Square } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { MarketPulse } from '@/components/MarketPulse';
+import { RefreshButton } from '@/components/ui/RefreshButton';
+import { useSyncStatus } from '@/hooks/useSyncStatus';
+
+// RESO Status mapping
+const RESO_STATUSES = {
+  'Active': { label: 'Active', value: 'Active' },
+  'Active Under Contract': { label: 'Under Contract', value: 'Active Under Contract' },
+  'Pending': { label: 'Pending', value: 'Pending' },
+  'Closed': { label: 'Closed', value: 'Closed' },
+  'all': { label: 'All', value: 'all' },
+};
+
+export default function PropertiesPage() {
+  const { isDark } = useTheme();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Get status from URL or default to 'Active'
+  const urlStatus = searchParams.get('status') || 'Active';
+  const [statusFilter, setStatusFilter] = useState<string>(urlStatus);
+  const [sortBy, setSortBy] = useState<string>('listDate');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [selectedListing, setSelectedListing] = useState<any>(null);
+  
+  const scrollRef = useRef<HTMLDivElement>(null);
+  
+  const { lastManualRefresh, lastAutoRefresh, isLoading: isSyncLoading, refresh } = useSyncStatus('company-listings');
+
+  // Sync URL with status filter
+  useEffect(() => {
+    const newStatus = searchParams.get('status');
+    if (newStatus && RESO_STATUSES[newStatus as keyof typeof RESO_STATUSES]) {
+      setStatusFilter(newStatus);
+    }
+  }, [searchParams]);
+
+  // Update URL when filter changes
+  const handleStatusChange = (status: string) => {
+    setStatusFilter(status);
+    if (status === 'all') {
+      searchParams.delete('status');
+    } else {
+      searchParams.set('status', status);
+    }
+    setSearchParams(searchParams);
+  };
+
+  // Sorting options
+  const sortOptions = [
+    { label: 'Newest Listed', value: 'listDate', order: 'desc' },
+    { label: 'Oldest Listed', value: 'listDate', order: 'asc' },
+    { label: 'Price: High to Low', value: 'listPrice', order: 'desc' },
+    { label: 'Price: Low to High', value: 'listPrice', order: 'asc' },
+    { label: 'Days on Market: Most', value: 'simpleDaysOnMarket', order: 'desc' },
+    { label: 'Days on Market: Least', value: 'simpleDaysOnMarket', order: 'asc' },
+    { label: 'Beds: Most', value: 'beds', order: 'desc' },
+    { label: 'Beds: Least', value: 'beds', order: 'asc' },
+    { label: 'SqFt: Largest', value: 'livingArea', order: 'desc' },
+    { label: 'SqFt: Smallest', value: 'livingArea', order: 'asc' },
+  ];
+
+  const currentSortLabel = sortOptions.find(
+    opt => opt.value === sortBy && opt.order === sortOrder
+  )?.label || 'Newest Listed';
+
+  // Fetch listings
+  const { data: listingsData, isLoading, refetch } = useQuery({
+    queryKey: ['company-listings', statusFilter, sortBy, sortOrder],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        city: 'Austin',
+        status: statusFilter === 'all' ? '' : statusFilter,
+        sortBy: sortBy,
+        sortOrder: sortOrder,
+        limit: '50'
+      });
+      const response = await fetch(`/api/company-listings?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch');
+      return response.json();
+    }
+  });
+
+  const listings = listingsData?.listings || [];
+
+  const handleSortChange = (value: string, order: 'asc' | 'desc') => {
+    setSortBy(value);
+    setSortOrder(order);
+    setShowSortDropdown(false);
+  };
+
+  const handleRefresh = async () => {
+    await refresh(async () => {
+      await refetch();
+    });
+  };
+
+  const scrollLeft = () => scrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' });
+  const scrollRight = () => scrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' });
+
+  // Theme classes
+  const cardBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+
+  // Status filter display labels
+  const statusTabs = [
+    { key: 'Active', label: 'Active' },
+    { key: 'Active Under Contract', label: 'Under Contract' },
+    { key: 'Pending', label: 'Pending' },
+    { key: 'Closed', label: 'Closed' },
+    { key: 'all', label: 'All' },
+  ];
+
+  return (
+    <div className={`min-h-screen p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Page Header */}
+      <div className="flex items-center gap-3 mb-2">
+        <Building2 className="w-8 h-8 text-[#EF4923]" />
+        <h1 className={`text-2xl font-bold ${textPrimary}`}>Properties</h1>
+      </div>
+      <p className={`mb-6 ${textSecondary}`}>
+        Access property data, listings, and market insights for the Austin Metro Area.
+      </p>
+
+      {/* Market Pulse Widget */}
+      <div className="mb-6">
+        <MarketPulse showHint={false} />
+      </div>
+
+      {/* ============================================ */}
+      {/* AUSTIN METRO LISTINGS WIDGET */}
+      {/* ============================================ */}
+      <div className={`${cardBg} rounded-xl border ${borderColor} p-4 md:p-6 mb-6`}>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3">
+            <Building2 className="w-6 h-6 text-[#EF4923]" />
+            <div>
+              <h2 className={`text-lg font-semibold ${textPrimary}`}>Austin Metro Listings</h2>
+              <p className={`text-sm ${textSecondary}`}>
+                {listingsData?.total?.toLocaleString() || listings.length} {statusFilter !== 'all' ? statusFilter.toLowerCase() : ''} listings
+              </p>
+            </div>
+          </div>
+          
+          <RefreshButton
+            onRefresh={handleRefresh}
+            lastManualRefresh={lastManualRefresh}
+            lastAutoRefresh={lastAutoRefresh}
+            isLoading={isSyncLoading}
+          />
+        </div>
+
+        {/* Filters Row */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+          {/* Status Filter Tabs */}
+          <div className={`flex gap-1 p-1 rounded-lg overflow-x-auto ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+            {statusTabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => handleStatusChange(tab.key)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-all
+                  ${statusFilter === tab.key
+                    ? 'bg-[#EF4923] text-white'
+                    : isDark 
+                      ? 'text-gray-400 hover:text-white' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }
+                `}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowSortDropdown(!showSortDropdown)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-all
+                ${isDark 
+                  ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }
+              `}
+            >
+              <span>Sort: {currentSortLabel}</span>
+              <ChevronDown className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showSortDropdown && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowSortDropdown(false)} />
+                <div className={`absolute left-0 sm:right-0 sm:left-auto top-full mt-1 z-50 w-56 rounded-lg shadow-lg border
+                  ${cardBg} ${borderColor}
+                `}>
+                  <div className="py-1 max-h-64 overflow-y-auto">
+                    {sortOptions.map((option, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSortChange(option.value, option.order as 'asc' | 'desc')}
+                        className={`w-full text-left px-4 py-2 text-sm transition-colors
+                          ${sortBy === option.value && sortOrder === option.order
+                            ? 'bg-[#EF4923] text-white'
+                            : isDark 
+                              ? 'text-gray-300 hover:bg-gray-700' 
+                              : 'text-gray-700 hover:bg-gray-100'
+                          }
+                        `}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#EF4923]"></div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!isLoading && listings.length === 0 && (
+          <div className={`text-center py-8 rounded-lg border-2 border-dashed ${borderColor}`}>
+            <Building2 className={`w-10 h-10 mx-auto mb-2 ${textSecondary}`} />
+            <p className={`font-medium ${textPrimary}`}>No {statusFilter.toLowerCase()} listings</p>
+            <p className={`text-sm ${textSecondary}`}>Try a different filter</p>
+          </div>
+        )}
+
+        {/* Listings Horizontal Scroll */}
+        {!isLoading && listings.length > 0 && (
+          <div className="relative">
+            <button
+              onClick={scrollLeft}
+              className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full shadow-lg
+                ${isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-white hover:bg-gray-50 text-gray-700'}
+                hidden md:flex items-center justify-center`}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+
+            <div
+              ref={scrollRef}
+              className="flex gap-4 overflow-x-auto pb-4 px-1 scroll-smooth"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+            >
+              {listings.map((listing: any) => (
+                <div key={listing.id} className="flex-shrink-0 w-72">
+                  <ListingCard
+                    listing={listing}
+                    isDark={isDark}
+                    onClick={() => setSelectedListing(listing)}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={scrollRight}
+              className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full shadow-lg
+                ${isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-white hover:bg-gray-50 text-gray-700'}
+                hidden md:flex items-center justify-center`}
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+
+            <p className={`text-xs text-center mt-2 md:hidden ${textSecondary}`}>
+              ← Swipe to see more →
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Property Apps & Tools section ... */}
+
+      {/* Listing Detail Modal */}
+      {selectedListing && (
+        <ListingDetailModal
+          listing={selectedListing}
+          isDark={isDark}
+          onClose={() => setSelectedListing(null)}
+        />
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+## PART 4: Listing Card with Complete Address
+```tsx
+interface ListingCardProps {
+  listing: any;
+  isDark: boolean;
+  onClick: () => void;
+}
+
+function ListingCard({ listing, isDark, onClick }: ListingCardProps) {
+  const cardBg = isDark ? 'bg-gray-700' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-600' : 'border-gray-200';
+
+  // RESO Status colors
+  const statusColors: Record<string, string> = {
+    'Active': 'bg-green-500',
+    'Active Under Contract': 'bg-blue-500',
+    'Pending': 'bg-yellow-500',
+    'Closed': 'bg-gray-500',
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
+  // Build display address
+  const streetAddress = [
+    listing.address?.streetNumber,
+    listing.address?.streetName,
+    listing.address?.streetSuffix
+  ].filter(Boolean).join(' ');
+  
+  const cityStateZip = `${listing.address?.city || ''}, ${listing.address?.state || 'TX'} ${listing.address?.postalCode || ''}`.trim();
+
+  // Status display label
+  const getStatusLabel = (status: string) => {
+    if (status === 'Active Under Contract') return 'Under Contract';
+    return status;
+  };
+
+  return (
+    <div
+      onClick={onClick}
+      className={`${cardBg} rounded-xl border ${borderColor} overflow-hidden cursor-pointer 
+        transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]`}
+    >
+      {/* Photo */}
+      <div className="relative aspect-[4/3] bg-gray-300">
+        {listing.photos?.[0] ? (
+          <img
+            src={listing.photos[0]}
+            alt={listing.address?.full}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Building2 className="w-10 h-10 text-gray-400" />
+          </div>
+        )}
+        
+        {/* Status Badge */}
+        <span className={`absolute top-2 left-2 px-2 py-0.5 rounded text-xs font-bold
+          ${statusColors[listing.status] || 'bg-gray-500'} text-white`}>
+          {getStatusLabel(listing.status)}
+        </span>
+        
+        {/* Days on Market */}
+        {listing.simpleDaysOnMarket > 0 && (
+          <span className={`absolute top-2 right-2 px-2 py-0.5 rounded text-xs font-medium
+            ${isDark ? 'bg-gray-800/80' : 'bg-white/90'} ${textPrimary}`}>
+            {listing.simpleDaysOnMarket} days
+          </span>
+        )}
+        
+        {/* Photo Count */}
+        {listing.photos?.length > 1 && (
+          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/60 text-white text-xs">
+            1/{listing.photos.length}
+          </span>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="p-3">
+        <p className={`text-lg font-bold ${textPrimary}`}>
+          {formatPrice(listing.listPrice)}
+        </p>
+        <p className={`text-sm font-medium ${textPrimary} truncate`}>
+          {streetAddress}
+        </p>
+        <p className={`text-sm ${textSecondary} truncate mb-2`}>
+          {cityStateZip}
+        </p>
+        <div className="flex items-center gap-3 text-sm">
+          <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <Bed className="w-4 h-4" /> {listing.beds}
+          </span>
+          <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <Bath className="w-4 h-4" /> {listing.baths}
+          </span>
+          <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <Square className="w-4 h-4" /> {listing.livingArea?.toLocaleString()}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## PART 5: Dashboard Integration
+
+### Update Dashboard to use MarketPulse component:
+```tsx
+// In dashboard.tsx
+import { MarketPulse } from '@/components/MarketPulse';
+
+// Replace existing Market Pulse section with:
+<MarketPulse showHint={true} />
+```
+
+---
+
+## 📱 Mobile Optimization
+
+**All changes must be optimized for iPad, iOS, and Android mobile web view:**
+
+| Device | Requirement |
+|--------|-------------|
+| iPad Safari | Full layout, clickable bars/cards |
+| iPhone Safari | Stacked filters, touch-friendly |
+| Android Chrome | 44px touch targets, swipe scroll |
+
+---
+
+## Testing Checklist
+
+### Market Pulse Stats
+- [ ] API returns correct counts for each RESO status
+- [ ] Counts match between Market Pulse and listing totals
+- [ ] Closed shows last 30 days only
+- [ ] Total Active = Active + Under Contract + Pending
+
+### Clickable Navigation
+- [ ] Clicking Active bar → /properties?status=Active
+- [ ] Clicking Under Contract bar → /properties?status=Active%20Under%20Contract
+- [ ] Clicking Pending bar → /properties?status=Pending
+- [ ] Clicking Closed bar → /properties?status=Closed
+- [ ] Clicking stat cards also navigates
+- [ ] Works from Dashboard
+- [ ] Works from Properties page
+
+### URL Status Filter
+- [ ] /properties?status=Active shows Active listings
+- [ ] /properties?status=Active%20Under%20Contract shows Under Contract
+- [ ] /properties?status=Pending shows Pending
+- [ ] /properties?status=Closed shows Closed
+- [ ] Filter tabs sync with URL
+- [ ] Changing tab updates URL
+
+### Sorting
+- [ ] Sort dropdown opens/closes
+- [ ] All sort options work
+- [ ] Selected option highlighted
+
+### Listing Cards
+- [ ] Complete address with zip code displays
+- [ ] RESO status badges show correct colors
+- [ ] "Under Contract" label (not "Active Under Contract")
+- [ ] Days on market displays
+- [ ] Click opens detail modal
+
+### Mobile
+- [ ] Status tabs scroll horizontally on small screens
+- [ ] Touch targets 44px minimum
+- [ ] Swipe scroll on listings
+- [ ] Dropdown positions correctly
