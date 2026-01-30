@@ -51,32 +51,26 @@ function MarketPulseWithListings() {
   const { isDark } = useTheme();
   const searchString = useSearch();
   
-  // Parse URL search params for initial status and office
+  // Parse URL search params for initial status
   const urlParams = new URLSearchParams(searchString);
   const urlStatus = urlParams.get('status') || 'Active';
-  const urlOffice = urlParams.get('office') || 'all';
   
   // State for status filter (passed to AustinMetroListings)
   const [statusFilter, setStatusFilter] = useState<string>(urlStatus);
-  const [officeFilter, setOfficeFilter] = useState<string>(urlOffice);
 
   const cardBg = isDark ? 'bg-[#2a2a2a]' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
   const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
   const borderColor = isDark ? 'border-[#333333]' : 'border-gray-200';
 
-  // Sync status and office filters with URL
+  // Sync status filter with URL
   useEffect(() => {
     const params = new URLSearchParams(searchString);
     const newStatus = params.get('status');
-    const newOffice = params.get('office');
     if (newStatus && RESO_STATUSES.some(s => s.key === newStatus)) {
       setStatusFilter(newStatus);
     } else {
       setStatusFilter('Active');
-    }
-    if (newOffice && (newOffice === 'all' || newOffice === 'spyglass')) {
-      setOfficeFilter(newOffice);
     }
   }, [searchString]);
   
@@ -135,7 +129,7 @@ function MarketPulseWithListings() {
               </div>
               <div>
                 <CardTitle className="text-base sm:text-lg">Market Pulse</CardTitle>
-                <p className={`text-xs sm:text-sm ${textSecondary}`}>Austin Metro Area</p>
+                <p className={`text-xs sm:text-sm ${textSecondary}`}>Spyglass Realty • Office 5220</p>
               </div>
             </div>
             
@@ -251,8 +245,8 @@ function MarketPulseWithListings() {
         </CardContent>
       </Card>
 
-      {/* Austin Metro Listings - Enhanced with Filters, Pagination, and View Modes */}
-      <AustinMetroListings initialStatus={statusFilter} initialOffice={officeFilter} />
+      {/* Spyglass Realty Listings - Enhanced with Filters, Pagination, and View Modes */}
+      <AustinMetroListings initialStatus={statusFilter} />
     </>
   );
 }
@@ -318,12 +312,12 @@ export default function PropertiesPage() {
               <h1 className="text-3xl font-display font-bold text-foreground">Properties</h1>
             </div>
             <p className="text-muted-foreground">
-              Access property data, listings, and market insights for the Austin Metro Area.
+              Access property data, listings, and market insights for Spyglass Realty.
             </p>
           </div>
         </div>
 
-        {/* Combined Market Pulse + Austin Metro Listings */}
+        {/* Combined Market Pulse + Spyglass Realty Listings */}
         <MarketPulseWithListings />
 
         <div className="space-y-4">

@@ -729,12 +729,8 @@ export async function registerRoutes(
       const VALID_SORT_FIELDS = ['listDate', 'listPrice', 'beds', 'livingArea', 'daysOnMarket'];
       const VALID_SORT_ORDERS = ['asc', 'desc'];
       
-      // Office filter: 'all' for Austin Metro, 'spyglass' for Spyglass Realty only
-      const officeFilter = (req.query.office as string) || 'all';
-      // Map 'spyglass' to the Austin office config (Spyglass Realty's primary office)
-      const officeConfig = (officeFilter === 'spyglass' || officeFilter === 'austin') 
-        ? SPYGLASS_OFFICES['austin'] 
-        : null;
+      // Always filter by Spyglass Realty office
+      const officeConfig = DEFAULT_OFFICE;
 
       // Pagination
       const page = Math.max(1, parseInt((req.query.page as string) || '1', 10));

@@ -174,7 +174,7 @@ export function MarketPulseWithSpyglassListings() {
           </Button>
         </div>
 
-        <p className={`text-sm ${textSecondary} mb-4`}>Austin Metro Area</p>
+        <p className={`text-sm ${textSecondary} mb-4`}>Spyglass Realty • Office 5220</p>
 
         {marketLoading ? (
           <div className="h-32 flex items-center justify-center">
@@ -280,7 +280,7 @@ export function MarketPulseWithSpyglassListings() {
             </div>
           </div>
           <button
-            onClick={() => setLocation('/properties?office=spyglass')}
+            onClick={() => setLocation('/properties')}
             className="text-xs text-[#EF4923] hover:underline font-medium min-h-[44px] min-w-[44px] flex items-center justify-center"
             data-testid="link-view-all-spyglass"
           >

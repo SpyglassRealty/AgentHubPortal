@@ -123,7 +123,7 @@ export async function fetchMarketPulseFromAPI(): Promise<MarketPulseData> {
   const pending = pendingData.count || 0;
   const closed = closedData.count || 0;
   
-  console.log(`[Market Pulse Service] Active: ${active}, Under Contract: ${activeUnderContract}, Pending: ${pending}, Closed (30d): ${closed}`);
+  console.log(`[Market Pulse Service] ${officeName} - Active: ${active}, Under Contract: ${activeUnderContract}, Pending: ${pending}, Closed (30d): ${closed}`);
 
   const totalInventory = active + activeUnderContract + pending;
 
@@ -133,7 +133,8 @@ export async function fetchMarketPulseFromAPI(): Promise<MarketPulseData> {
     activeUnderContract,
     pending,
     closed,
-    lastUpdatedAt: new Date().toISOString()
+    lastUpdatedAt: new Date().toISOString(),
+    officeName: officeName,
   };
 }
 
