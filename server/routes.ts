@@ -796,6 +796,15 @@ export async function registerRoutes(
 
       const data = await response.json();
       
+      // Log first listing to debug field names
+      if (data.listings?.length > 0) {
+        const sample = data.listings[0];
+        console.log('[Company Listings] Sample listing fields:', Object.keys(sample).join(', '));
+        console.log('[Company Listings] Sample address:', JSON.stringify(sample.address));
+        console.log('[Company Listings] Sample details:', JSON.stringify(sample.details));
+        console.log('[Company Listings] Sample images:', JSON.stringify(sample.images?.slice(0, 1)));
+      }
+      
       // Transform listings with complete addresses including zip codes
       const listings = (data.listings || []).map((listing: any) => {
         const streetNumber = listing.address?.streetNumber || '';
@@ -803,10 +812,22 @@ export async function registerRoutes(
         const streetSuffix = listing.address?.streetSuffix || '';
         const cityName = listing.address?.city || 'Austin';
         const state = listing.address?.state || 'TX';
-        const postalCode = listing.address?.postalCode || '';
+        // Try multiple possible zip field names
+        const postalCode = listing.address?.zip || listing.address?.postalCode || listing.address?.zipCode || '';
         
         const streetAddress = [streetNumber, streetName, streetSuffix].filter(Boolean).join(' ');
         const fullAddress = `${streetAddress}, ${cityName}, ${state} ${postalCode}`.trim();
+
+        // Get property details from nested details object or top-level
+        const details = listing.details || {};
+        const beds = listing.details?.numBedrooms || listing.numBedrooms || listing.bedroomsTotal || 0;
+        const baths = listing.details?.numBathrooms || listing.numBathrooms || listing.bathroomsTotalInteger || 0;
+        const sqft = listing.details?.sqft || listing.sqft || listing.livingArea || 0;
+
+        // Get photos from images array
+        const photos = (listing.images || listing.photos || []).map((img: any) => 
+          typeof img === 'string' ? img : img.url || img.src || img
+        );
 
         return {
           id: listing.mlsNumber || listing.listingId,
@@ -814,10 +835,10 @@ export async function registerRoutes(
           mlsNumber: listing.mlsNumber,
           status: listing.standardStatus || listing.status || status,
           listPrice: listing.listPrice,
-          closePrice: listing.closePrice,
-          closeDate: listing.closeDate,
+          closePrice: listing.closePrice || listing.soldPrice,
+          closeDate: listing.closeDate || listing.soldDate,
           listDate: listing.listDate,
-          daysOnMarket: listing.daysOnMarket || listing.simpleDaysOnMarket || 0,
+          daysOnMarket: listing.daysOnMarket || listing.dom || 0,
           address: {
             streetNumber,
             streetName,
@@ -827,17 +848,17 @@ export async function registerRoutes(
             postalCode,
             full: fullAddress,
           },
-          beds: listing.bedroomsTotal || listing.beds || 0,
-          baths: listing.bathroomsTotalInteger || listing.baths || 0,
-          livingArea: listing.livingArea || 0,
-          lotSize: listing.lotSize,
-          yearBuilt: listing.yearBuilt,
-          propertyType: listing.propertyType,
-          subdivision: listing.subdivision,
-          latitude: listing.latitude,
-          longitude: listing.longitude,
-          photos: listing.photos || [],
-          listOfficeName: listing.listOfficeName,
+          beds,
+          baths,
+          livingArea: sqft,
+          lotSize: listing.lotSize || details.lotSize,
+          yearBuilt: listing.yearBuilt || details.yearBuilt,
+          propertyType: listing.propertyType || listing.type || details.propertyType,
+          subdivision: listing.subdivision || listing.area,
+          latitude: listing.map?.latitude || listing.latitude,
+          longitude: listing.map?.longitude || listing.longitude,
+          photos,
+          listOfficeName: listing.office?.brokerageName || listing.listOfficeName,
         };
       });
 
