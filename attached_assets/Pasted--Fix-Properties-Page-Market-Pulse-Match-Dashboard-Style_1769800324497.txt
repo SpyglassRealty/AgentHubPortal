@@ -1,0 +1,153 @@
+### Fix Properties Page Market Pulse - Match Dashboard Style
+
+**Issue:** The Market Pulse bar chart on Properties page uses horizontal bars, but Dashboard uses vertical bars. They should be consistent.
+
+**Solution:** Update Properties page to use the same vertical bar chart style as Dashboard.
+
+---
+
+## Fix the Bar Chart in Properties Page
+
+### Update the bar chart section in `client/src/pages/properties.tsx`:
+
+Replace the current horizontal bar chart with this vertical bar chart (matching Dashboard):
+```tsx
+{/* Bar Chart - VERTICAL BARS (Matching Dashboard) */}
+<div className="mb-4">
+  <div className="flex">
+    {/* Y-axis labels */}
+    <div className="w-10 flex flex-col justify-between text-xs text-gray-400 pr-2 h-36">
+      <span>{Math.round(maxValue / 1000)}k</span>
+      <span>{Math.round(maxValue / 2000)}k</span>
+      <span>0</span>
+    </div>
+    
+    {/* Vertical Bars */}
+    <div className="flex-1 flex items-end gap-3 h-36">
+      {statusConfig.map((item) => (
+        <div
+          key={item.key}
+          className="flex-1 flex flex-col items-center cursor-pointer group"
+          onClick={() => handleStatusClick(item.key)}
+        >
+          {/* The Bar - grows upward */}
+          <div
+            className="w-full rounded-t-md transition-all duration-200 group-hover:opacity-80 group-hover:scale-105"
+            style={{
+              height: `${Math.max((item.value / maxValue) * 100, 5)}%`,
+              backgroundColor: item.color,
+              minHeight: '8px'
+            }}
+          />
+          {/* Label below bar */}
+          <span className={`mt-2 text-xs ${textSecondary} group-hover:text-[#EF4923] transition-colors text-center`}>
+            {item.label.replace(' (30d)', '')}
+          </span>
+        </div>
+      ))}
+    </div>
+  </div>
+</div>
+```
+
+---
+
+## Visual Reference - Both Should Match
+
+### Dashboard Market Pulse (Correct Style):
+  ████
+20k ████
+████
+10k ████  ████
+████  ████    ████
+0  ████  ████    ████    ────
+Active Under  Pending Closed
+Contract
+
+### Properties Market Pulse (Should Match Above):
+  ████
+20k ████
+████
+10k ████  ████
+████  ████    ████
+0  ████  ████    ████    ────
+Active Under  Pending Closed
+Contract
+
+---
+
+## Full Status Config (Ensure Colors Match)
+```tsx
+const statusConfig = [
+  { 
+    key: 'Active', 
+    label: 'Active', 
+    sublabel: 'On Market', 
+    value: stats.active, 
+    color: '#22C55E', // Green
+    textColor: 'text-green-600', 
+    bgColor: isDark ? 'bg-green-900/20' : 'bg-green-50', 
+    borderColor: 'border-green-200', 
+    icon: Home 
+  },
+  { 
+    key: 'ActiveUnderContract', 
+    label: 'Under Contract', 
+    sublabel: '', 
+    value: stats.activeUnderContract, 
+    color: '#3B82F6', // Blue
+    textColor: 'text-blue-600', 
+    bgColor: isDark ? 'bg-blue-900/20' : 'bg-blue-50', 
+    borderColor: 'border-blue-200', 
+    icon: FileText 
+  },
+  { 
+    key: 'Pending', 
+    label: 'Pending', 
+    sublabel: 'Closing Soon', 
+    value: stats.pending, 
+    color: '#EAB308', // Yellow
+    textColor: 'text-yellow-600', 
+    bgColor: isDark ? 'bg-yellow-900/20' : 'bg-yellow-50', 
+    borderColor: 'border-yellow-200', 
+    icon: Clock 
+  },
+  { 
+    key: 'Closed', 
+    label: 'Closed (30d)', 
+    sublabel: 'Sales', 
+    value: stats.closed, 
+    color: '#9CA3AF', // Gray
+    textColor: 'text-gray-600', 
+    bgColor: isDark ? 'bg-gray-700/50' : 'bg-gray-50', 
+    borderColor: 'border-gray-300', 
+    icon: CheckCircle 
+  },
+];
+```
+
+---
+
+## Key Points for Consistency
+
+| Element | Dashboard | Properties (Fix) |
+|---------|-----------|------------------|
+| Bar direction | Vertical (bottom to top) | Vertical (bottom to top) ✓ |
+| Y-axis | Left side (20k, 10k, 0) | Left side (20k, 10k, 0) ✓ |
+| Bar colors | Green, Blue, Yellow, Gray | Green, Blue, Yellow, Gray ✓ |
+| Labels | Below bars | Below bars ✓ |
+| Height | h-36 (144px) | h-36 (144px) ✓ |
+| Hover effect | Scale + opacity | Scale + opacity ✓ |
+| Click action | Navigate to filter | Navigate to filter ✓ |
+
+---
+
+## Testing Checklist
+
+- [ ] Properties page bar chart is VERTICAL (bars grow upward)
+- [ ] Y-axis shows on left (20k, 10k, 0)
+- [ ] Bar colors match: Green (Active), Blue (Under Contract), Yellow (Pending), Gray (Closed)
+- [ ] Labels appear below each bar
+- [ ] Hover effect scales bar slightly
+- [ ] Clicking bar updates the filter tabs below
+- [ ] Chart looks identical to Dashboard Market Pulse
