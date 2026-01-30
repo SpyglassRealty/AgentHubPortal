@@ -8,6 +8,7 @@ import { generateSuggestionsForUser } from "./contextEngine";
 import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema } from "@shared/schema";
 import OpenAI from "openai";
 import { getLatestTrainingVideo } from "./vimeoClient";
+import { SPYGLASS_OFFICES } from "./config/offices";
 
 // Helper function to get the actual database user from request
 // Handles both regular auth (ID lookup) and Google OAuth (email lookup)
@@ -727,6 +728,10 @@ export async function registerRoutes(
       // Whitelist of valid sort fields
       const VALID_SORT_FIELDS = ['listDate', 'listPrice', 'beds', 'livingArea', 'daysOnMarket'];
       const VALID_SORT_ORDERS = ['asc', 'desc'];
+      
+      // Office filter: 'all' for Austin Metro, 'spyglass' for Spyglass Realty only
+      const officeFilter = (req.query.office as string) || 'all';
+      const officeConfig = officeFilter === 'spyglass' ? SPYGLASS_OFFICES['austin'] : null;
 
       // Pagination
       const page = Math.max(1, parseInt((req.query.page as string) || '1', 10));
@@ -778,6 +783,12 @@ export async function registerRoutes(
 
       // Add county filters for Austin Metro Area (same as Market Pulse)
       msaCounties.forEach(county => params.append('county', county));
+      
+      // Add office filter if Spyglass selected
+      if (officeConfig) {
+        params.append('officeId', officeConfig.officeId);
+        console.log(`[Company Listings] Filtering by office: ${officeConfig.name} (${officeConfig.officeId})`);
+      }
 
       // City filter (if specified)
       if (city) {
