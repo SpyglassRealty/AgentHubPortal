@@ -1,0 +1,1162 @@
+### Austin Metro Listings - Enhanced Filters + Grid View with Pagination (Option A)
+
+**Goal:** Replace horizontal scroll with a proper filterable, paginated listing view that can handle 19,933+ listings efficiently.
+
+**Key Features:**
+1. Advanced filter panel (price, beds, baths, sqft, city, property type, DOM)
+2. Search box (address, MLS#, keyword)
+3. View toggle (Grid / List / Table)
+4. Proper pagination with accurate counts
+5. "Showing X-Y of Z results" that reflects ACTUAL data pulled
+
+---
+
+## PART 1: Update API Endpoint for Pagination & Filters
+
+### Update `GET /api/company-listings` in `server/routes.ts`:
+```typescript
+// GET /api/company-listings - With pagination and advanced filters
+router.get('/api/company-listings', async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    // Pagination
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 24;
+    const offset = (page - 1) * limit;
+
+    // Filters
+    const status = req.query.status?.toString() || 'Active';
+    const city = req.query.city?.toString() || '';
+    const minPrice = req.query.minPrice ? parseInt(req.query.minPrice as string) : undefined;
+    const maxPrice = req.query.maxPrice ? parseInt(req.query.maxPrice as string) : undefined;
+    const minBeds = req.query.minBeds ? parseInt(req.query.minBeds as string) : undefined;
+    const maxBeds = req.query.maxBeds ? parseInt(req.query.maxBeds as string) : undefined;
+    const minBaths = req.query.minBaths ? parseInt(req.query.minBaths as string) : undefined;
+    const minSqft = req.query.minSqft ? parseInt(req.query.minSqft as string) : undefined;
+    const maxSqft = req.query.maxSqft ? parseInt(req.query.maxSqft as string) : undefined;
+    const propertyType = req.query.propertyType?.toString() || '';
+    const maxDom = req.query.maxDom ? parseInt(req.query.maxDom as string) : undefined;
+    const search = req.query.search?.toString() || '';
+    
+    // Sorting
+    const sortBy = req.query.sortBy?.toString() || 'listDate';
+    const sortOrder = req.query.sortOrder?.toString() || 'desc';
+
+    if (!REPLIERS_API_KEY) {
+      return res.status(500).json({ error: 'Repliers not configured' });
+    }
+
+    // Build Repliers API request
+    const params = new URLSearchParams({
+      'OriginatingSystemName': 'ACTRIS',
+      'limit': limit.toString(),
+      'offset': offset.toString(),
+      'sortBy': sortBy,
+      'sortOrder': sortOrder,
+    });
+
+    // Add filters
+    if (status && status !== 'all') {
+      // Convert RESO status to Repliers format
+      const repliersStatus = status === 'ActiveUnderContract' ? 'Active Under Contract' : status;
+      params.append('status', repliersStatus);
+    }
+
+    if (city) {
+      params.append('city', city);
+    }
+
+    if (minPrice !== undefined) {
+      params.append('minPrice', minPrice.toString());
+    }
+
+    if (maxPrice !== undefined) {
+      params.append('maxPrice', maxPrice.toString());
+    }
+
+    if (minBeds !== undefined) {
+      params.append('minBeds', minBeds.toString());
+    }
+
+    if (maxBeds !== undefined) {
+      params.append('maxBeds', maxBeds.toString());
+    }
+
+    if (minBaths !== undefined) {
+      params.append('minBaths', minBaths.toString());
+    }
+
+    if (minSqft !== undefined) {
+      params.append('minLivingArea', minSqft.toString());
+    }
+
+    if (maxSqft !== undefined) {
+      params.append('maxLivingArea', maxSqft.toString());
+    }
+
+    if (propertyType) {
+      params.append('propertyType', propertyType);
+    }
+
+    if (maxDom !== undefined) {
+      params.append('maxDaysOnMarket', maxDom.toString());
+    }
+
+    if (search) {
+      // Search by address or MLS number
+      params.append('search', search);
+    }
+
+    const repliersUrl = `${REPLIERS_BASE_URL}/listings?${params}`;
+    
+    console.log(`[Company Listings] Fetching page ${page}: ${repliersUrl}`);
+
+    const response = await fetch(repliersUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${REPLIERS_API_KEY}`,
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      console.error('[Company Listings] Repliers error:', response.status);
+      return res.status(response.status).json({ error: 'Failed to fetch from Repliers' });
+    }
+
+    const data = await response.json();
+
+    // Transform listings
+    const listings = (data.listings || data.data || []).map((listing: any) => {
+      const streetNumber = listing.address?.streetNumber || listing.StreetNumber || '';
+      const streetName = listing.address?.streetName || listing.StreetName || '';
+      const streetSuffix = listing.address?.streetSuffix || listing.StreetSuffix || '';
+      const cityName = listing.address?.city || listing.City || 'Austin';
+      const state = listing.address?.state || listing.StateOrProvince || 'TX';
+      const postalCode = listing.address?.postalCode || listing.PostalCode || '';
+      
+      const streetAddress = [streetNumber, streetName, streetSuffix].filter(Boolean).join(' ');
+      const fullAddress = `${streetAddress}, ${cityName}, ${state} ${postalCode}`.trim();
+
+      return {
+        id: listing.id || listing.listingId,
+        mlsNumber: listing.mlsNumber || listing.ListingId,
+        status: listing.status || 'Active',
+        listPrice: listing.listPrice || listing.ListPrice || 0,
+        closePrice: listing.closePrice || listing.ClosePrice,
+        listDate: listing.listDate || listing.ListDate,
+        closeDate: listing.closeDate || listing.CloseDate,
+        daysOnMarket: listing.simpleDaysOnMarket || listing.DaysOnMarket || 0,
+        address: {
+          streetNumber,
+          streetName,
+          streetSuffix,
+          city: cityName,
+          state,
+          postalCode,
+          full: fullAddress,
+        },
+        beds: listing.beds || listing.BedroomsTotal || 0,
+        baths: listing.baths || listing.BathroomsTotalDecimal || 0,
+        sqft: listing.livingArea || listing.LivingArea || 0,
+        lotSize: listing.lotSize || listing.LotSizeSquareFeet,
+        yearBuilt: listing.yearBuilt || listing.YearBuilt,
+        propertyType: listing.propertyType || listing.PropertyType,
+        subdivision: listing.subdivision || listing.SubdivisionName,
+        latitude: listing.latitude || listing.Latitude,
+        longitude: listing.longitude || listing.Longitude,
+        photos: listing.photos || listing.Media?.map((m: any) => m.MediaURL) || [],
+        listAgentName: listing.listAgentName || listing.ListAgentFullName,
+      };
+    });
+
+    // Calculate pagination info
+    const total = data.total || 0;
+    const totalPages = Math.ceil(total / limit);
+    const startIndex = offset + 1;
+    const endIndex = Math.min(offset + listings.length, total);
+
+    console.log(`[Company Listings] Returning ${listings.length} of ${total} total (page ${page}/${totalPages})`);
+
+    res.json({
+      listings,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        startIndex,
+        endIndex,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+      filters: {
+        status,
+        city,
+        minPrice,
+        maxPrice,
+        minBeds,
+        maxBeds,
+        minBaths,
+        minSqft,
+        maxSqft,
+        propertyType,
+        maxDom,
+        search,
+      },
+      sortBy,
+      sortOrder,
+    });
+  } catch (error) {
+    console.error('[Company Listings] Error:', error);
+    res.status(500).json({ error: 'Failed to fetch listings' });
+  }
+});
+```
+
+---
+
+## PART 2: Austin Metro Listings Component with Filters & Pagination
+
+### Create `client/src/components/properties/AustinMetroListings.tsx`:
+```tsx
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { 
+  Building2, Search, X, ChevronLeft, ChevronRight, ChevronDown,
+  Grid3X3, List, Table, Bed, Bath, Square, Calendar, SlidersHorizontal,
+  RotateCcw
+} from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+
+type ViewMode = 'grid' | 'list' | 'table';
+
+interface Filters {
+  status: string;
+  minPrice: string;
+  maxPrice: string;
+  minBeds: string;
+  maxBeds: string;
+  minBaths: string;
+  minSqft: string;
+  maxSqft: string;
+  city: string;
+  propertyType: string;
+  maxDom: string;
+  search: string;
+}
+
+const DEFAULT_FILTERS: Filters = {
+  status: 'Active',
+  minPrice: '',
+  maxPrice: '',
+  minBeds: '',
+  maxBeds: '',
+  minBaths: '',
+  minSqft: '',
+  maxSqft: '',
+  city: '',
+  propertyType: '',
+  maxDom: '',
+  search: '',
+};
+
+export function AustinMetroListings() {
+  const { isDark } = useTheme();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // View mode
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(24);
+  
+  // Filters
+  const [filters, setFilters] = useState<Filters>({
+    ...DEFAULT_FILTERS,
+    status: searchParams.get('status') || 'Active',
+  });
+  const [showFilters, setShowFilters] = useState(true);
+  const [searchInput, setSearchInput] = useState('');
+  
+  // Sort
+  const [sortBy, setSortBy] = useState('listDate');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  
+  // Selected listing for modal
+  const [selectedListing, setSelectedListing] = useState<any>(null);
+
+  // Build query params for API
+  const buildQueryParams = () => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: itemsPerPage.toString(),
+      sortBy,
+      sortOrder,
+    });
+
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value && value !== 'all') {
+        params.append(key, value);
+      }
+    });
+
+    return params.toString();
+  };
+
+  // Fetch listings with filters and pagination
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['austin-metro-listings', page, itemsPerPage, filters, sortBy, sortOrder],
+    queryFn: async () => {
+      const response = await fetch(`/api/company-listings?${buildQueryParams()}`);
+      if (!response.ok) throw new Error('Failed to fetch');
+      return response.json();
+    },
+  });
+
+  const listings = data?.listings || [];
+  const pagination = data?.pagination || {
+    total: 0,
+    totalPages: 0,
+    startIndex: 0,
+    endIndex: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  };
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filters, sortBy, sortOrder, itemsPerPage]);
+
+  // Handle filter changes
+  const handleFilterChange = (key: keyof Filters, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  // Handle search submit
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleFilterChange('search', searchInput);
+  };
+
+  // Reset all filters
+  const resetFilters = () => {
+    setFilters(DEFAULT_FILTERS);
+    setSearchInput('');
+    setPage(1);
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = Object.entries(filters).some(
+    ([key, value]) => value && value !== DEFAULT_FILTERS[key as keyof Filters]
+  );
+
+  // Theme classes
+  const cardBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const inputBg = isDark ? 'bg-gray-700' : 'bg-gray-50';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+
+  // Sort options
+  const sortOptions = [
+    { label: 'Newest Listed', sortBy: 'listDate', sortOrder: 'desc' },
+    { label: 'Oldest Listed', sortBy: 'listDate', sortOrder: 'asc' },
+    { label: 'Price: High to Low', sortBy: 'listPrice', sortOrder: 'desc' },
+    { label: 'Price: Low to High', sortBy: 'listPrice', sortOrder: 'asc' },
+    { label: 'Beds: Most', sortBy: 'beds', sortOrder: 'desc' },
+    { label: 'Beds: Least', sortBy: 'beds', sortOrder: 'asc' },
+    { label: 'SqFt: Largest', sortBy: 'livingArea', sortOrder: 'desc' },
+    { label: 'SqFt: Smallest', sortBy: 'livingArea', sortOrder: 'asc' },
+    { label: 'Days on Market: Most', sortBy: 'simpleDaysOnMarket', sortOrder: 'desc' },
+    { label: 'Days on Market: Least', sortBy: 'simpleDaysOnMarket', sortOrder: 'asc' },
+  ];
+
+  const currentSortLabel = sortOptions.find(
+    opt => opt.sortBy === sortBy && opt.sortOrder === sortOrder
+  )?.label || 'Newest Listed';
+
+  // Status tabs
+  const statusTabs = [
+    { key: 'Active', label: 'Active' },
+    { key: 'ActiveUnderContract', label: 'Under Contract' },
+    { key: 'Pending', label: 'Pending' },
+    { key: 'Closed', label: 'Closed' },
+    { key: 'all', label: 'All' },
+  ];
+
+  // Austin Metro cities
+  const austinCities = [
+    '', 'Austin', 'Round Rock', 'Cedar Park', 'Georgetown', 'Pflugerville',
+    'Leander', 'Kyle', 'Buda', 'Dripping Springs', 'Lakeway', 'Bee Cave',
+    'Manor', 'Hutto', 'Taylor', 'Liberty Hill', 'Bastrop', 'Elgin',
+    'San Marcos', 'New Braunfels', 'Wimberley'
+  ];
+
+  // Property types
+  const propertyTypes = [
+    '', 'Single Family', 'Condo', 'Townhouse', 'Multi-Family', 'Land', 'Commercial'
+  ];
+
+  // Format price
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
+  return (
+    <div className={`${cardBg} rounded-xl border ${borderColor} p-4 md:p-6`}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Building2 className="w-5 h-5 text-[#EF4923]" />
+          <div>
+            <h2 className={`text-lg font-semibold ${textPrimary}`}>Austin Metro Listings</h2>
+            <p className={`text-sm ${textSecondary}`}>
+              {pagination.total.toLocaleString()} {filters.status !== 'all' ? filters.status.toLowerCase() : ''} listings
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+            ${showFilters 
+              ? 'bg-[#EF4923] text-white' 
+              : isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
+            }`}
+        >
+          <SlidersHorizontal className="w-4 h-4" />
+          <span className="hidden sm:inline">Filters</span>
+        </button>
+      </div>
+
+      {/* ========== FILTERS PANEL ========== */}
+      {showFilters && (
+        <div className={`p-4 rounded-lg border ${borderColor} ${isDark ? 'bg-gray-900' : 'bg-gray-50'} mb-4`}>
+          {/* Search Bar */}
+          <form onSubmit={handleSearchSubmit} className="mb-4">
+            <div className="relative">
+              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search address, MLS#, or keyword..."
+                className={`w-full pl-10 pr-10 py-2.5 rounded-lg border ${borderColor} ${inputBg} ${textPrimary}
+                  placeholder:${textSecondary} focus:outline-none focus:ring-2 focus:ring-[#EF4923]/50`}
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => { setSearchInput(''); handleFilterChange('search', ''); }}
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 ${textSecondary} hover:${textPrimary}`}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </form>
+
+          {/* Filter Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+            {/* Price Min */}
+            <div>
+              <label className={`block text-xs font-medium ${textSecondary} mb-1`}>Min Price</label>
+              <select
+                value={filters.minPrice}
+                onChange={(e) => handleFilterChange('minPrice', e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm`}
+              >
+                <option value="">No Min</option>
+                <option value="100000">$100K</option>
+                <option value="200000">$200K</option>
+                <option value="300000">$300K</option>
+                <option value="400000">$400K</option>
+                <option value="500000">$500K</option>
+                <option value="750000">$750K</option>
+                <option value="1000000">$1M</option>
+                <option value="1500000">$1.5M</option>
+                <option value="2000000">$2M</option>
+                <option value="3000000">$3M</option>
+                <option value="5000000">$5M</option>
+              </select>
+            </div>
+
+            {/* Price Max */}
+            <div>
+              <label className={`block text-xs font-medium ${textSecondary} mb-1`}>Max Price</label>
+              <select
+                value={filters.maxPrice}
+                onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm`}
+              >
+                <option value="">No Max</option>
+                <option value="200000">$200K</option>
+                <option value="300000">$300K</option>
+                <option value="400000">$400K</option>
+                <option value="500000">$500K</option>
+                <option value="750000">$750K</option>
+                <option value="1000000">$1M</option>
+                <option value="1500000">$1.5M</option>
+                <option value="2000000">$2M</option>
+                <option value="3000000">$3M</option>
+                <option value="5000000">$5M</option>
+                <option value="10000000">$10M+</option>
+              </select>
+            </div>
+
+            {/* Beds */}
+            <div>
+              <label className={`block text-xs font-medium ${textSecondary} mb-1`}>Beds</label>
+              <select
+                value={filters.minBeds}
+                onChange={(e) => handleFilterChange('minBeds', e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm`}
+              >
+                <option value="">Any</option>
+                <option value="1">1+</option>
+                <option value="2">2+</option>
+                <option value="3">3+</option>
+                <option value="4">4+</option>
+                <option value="5">5+</option>
+              </select>
+            </div>
+
+            {/* Baths */}
+            <div>
+              <label className={`block text-xs font-medium ${textSecondary} mb-1`}>Baths</label>
+              <select
+                value={filters.minBaths}
+                onChange={(e) => handleFilterChange('minBaths', e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm`}
+              >
+                <option value="">Any</option>
+                <option value="1">1+</option>
+                <option value="2">2+</option>
+                <option value="3">3+</option>
+                <option value="4">4+</option>
+              </select>
+            </div>
+
+            {/* City */}
+            <div>
+              <label className={`block text-xs font-medium ${textSecondary} mb-1`}>City</label>
+              <select
+                value={filters.city}
+                onChange={(e) => handleFilterChange('city', e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm`}
+              >
+                <option value="">All Cities</option>
+                {austinCities.filter(c => c).map(city => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Days on Market */}
+            <div>
+              <label className={`block text-xs font-medium ${textSecondary} mb-1`}>Days on Market</label>
+              <select
+                value={filters.maxDom}
+                onChange={(e) => handleFilterChange('maxDom', e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm`}
+              >
+                <option value="">Any</option>
+                <option value="1">1 day</option>
+                <option value="7">7 days</option>
+                <option value="14">14 days</option>
+                <option value="30">30 days</option>
+                <option value="60">60 days</option>
+                <option value="90">90 days</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Second Row - More Filters */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            {/* Min SqFt */}
+            <div>
+              <label className={`block text-xs font-medium ${textSecondary} mb-1`}>Min SqFt</label>
+              <select
+                value={filters.minSqft}
+                onChange={(e) => handleFilterChange('minSqft', e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm`}
+              >
+                <option value="">No Min</option>
+                <option value="500">500</option>
+                <option value="1000">1,000</option>
+                <option value="1500">1,500</option>
+                <option value="2000">2,000</option>
+                <option value="2500">2,500</option>
+                <option value="3000">3,000</option>
+                <option value="4000">4,000</option>
+                <option value="5000">5,000+</option>
+              </select>
+            </div>
+
+            {/* Max SqFt */}
+            <div>
+              <label className={`block text-xs font-medium ${textSecondary} mb-1`}>Max SqFt</label>
+              <select
+                value={filters.maxSqft}
+                onChange={(e) => handleFilterChange('maxSqft', e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm`}
+              >
+                <option value="">No Max</option>
+                <option value="1000">1,000</option>
+                <option value="1500">1,500</option>
+                <option value="2000">2,000</option>
+                <option value="2500">2,500</option>
+                <option value="3000">3,000</option>
+                <option value="4000">4,000</option>
+                <option value="5000">5,000</option>
+                <option value="10000">10,000+</option>
+              </select>
+            </div>
+
+            {/* Property Type */}
+            <div>
+              <label className={`block text-xs font-medium ${textSecondary} mb-1`}>Property Type</label>
+              <select
+                value={filters.propertyType}
+                onChange={(e) => handleFilterChange('propertyType', e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm`}
+              >
+                <option value="">All Types</option>
+                {propertyTypes.filter(t => t).map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Reset Button */}
+            <div className="flex items-end">
+              <button
+                onClick={resetFilters}
+                disabled={!hasActiveFilters}
+                className={`w-full px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2
+                  ${hasActiveFilters 
+                    ? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600' 
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
+                  }`}
+              >
+                <RotateCcw className="w-4 h-4" />
+                Reset Filters
+              </button>
+            </div>
+          </div>
+
+          {/* Status Tabs */}
+          <div className={`flex gap-1 p-1 rounded-lg ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
+            {statusTabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => handleFilterChange('status', tab.key)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-all
+                  ${filters.status === tab.key
+                    ? 'bg-[#EF4923] text-white'
+                    : isDark 
+                      ? 'text-gray-400 hover:text-white' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }
+                `}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ========== RESULTS HEADER ========== */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        {/* Results Count */}
+        <p className={`text-sm ${textSecondary}`}>
+          Showing <span className={`font-medium ${textPrimary}`}>{pagination.startIndex}-{pagination.endIndex}</span> of{' '}
+          <span className={`font-medium ${textPrimary}`}>{pagination.total.toLocaleString()}</span> results
+        </p>
+
+        <div className="flex items-center gap-3">
+          {/* View Toggle */}
+          <div className={`flex gap-1 p-1 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-[#EF4923] text-white' : textSecondary}`}
+              title="Grid View"
+            >
+              <Grid3X3 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-[#EF4923] text-white' : textSecondary}`}
+              title="List View"
+            >
+              <List className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-2 rounded-md transition-colors ${viewMode === 'table' ? 'bg-[#EF4923] text-white' : textSecondary}`}
+              title="Table View"
+            >
+              <Table className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowSortDropdown(!showSortDropdown)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm border ${borderColor}
+                ${isDark ? 'bg-gray-700 text-white' : 'bg-white text-gray-700'}`}
+            >
+              <span>{currentSortLabel}</span>
+              <ChevronDown className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showSortDropdown && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowSortDropdown(false)} />
+                <div className={`absolute right-0 top-full mt-1 z-50 w-48 rounded-lg shadow-lg border ${cardBg} ${borderColor}`}>
+                  {sortOptions.map((option) => (
+                    <button
+                      key={option.label}
+                      onClick={() => {
+                        setSortBy(option.sortBy);
+                        setSortOrder(option.sortOrder as 'asc' | 'desc');
+                        setShowSortDropdown(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm transition-colors first:rounded-t-lg last:rounded-b-lg
+                        ${sortBy === option.sortBy && sortOrder === option.sortOrder
+                          ? 'bg-[#EF4923] text-white'
+                          : isDark ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Items Per Page */}
+          <select
+            value={itemsPerPage}
+            onChange={(e) => setItemsPerPage(parseInt(e.target.value))}
+            className={`px-3 py-2 rounded-lg text-sm border ${borderColor} ${inputBg} ${textPrimary}`}
+          >
+            <option value={12}>12</option>
+            <option value={24}>24</option>
+            <option value={48}>48</option>
+            <option value={96}>96</option>
+          </select>
+        </div>
+      </div>
+
+      {/* ========== LOADING STATE ========== */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#EF4923]"></div>
+        </div>
+      )}
+
+      {/* ========== EMPTY STATE ========== */}
+      {!isLoading && listings.length === 0 && (
+        <div className={`text-center py-12 rounded-lg border-2 border-dashed ${borderColor}`}>
+          <Building2 className={`w-12 h-12 mx-auto mb-3 ${textSecondary}`} />
+          <p className={`font-medium ${textPrimary} mb-1`}>No listings found</p>
+          <p className={`text-sm ${textSecondary} mb-4`}>Try adjusting your filters</p>
+          <button
+            onClick={resetFilters}
+            className="px-4 py-2 bg-[#EF4923] text-white rounded-lg text-sm font-medium hover:bg-[#d63d1a]"
+          >
+            Reset Filters
+          </button>
+        </div>
+      )}
+
+      {/* ========== GRID VIEW ========== */}
+      {!isLoading && listings.length > 0 && viewMode === 'grid' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {listings.map((listing: any) => (
+            <GridListingCard
+              key={listing.id}
+              listing={listing}
+              isDark={isDark}
+              onClick={() => setSelectedListing(listing)}
+              formatPrice={formatPrice}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* ========== LIST VIEW ========== */}
+      {!isLoading && listings.length > 0 && viewMode === 'list' && (
+        <div className="space-y-3">
+          {listings.map((listing: any) => (
+            <ListListingCard
+              key={listing.id}
+              listing={listing}
+              isDark={isDark}
+              onClick={() => setSelectedListing(listing)}
+              formatPrice={formatPrice}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* ========== TABLE VIEW ========== */}
+      {!isLoading && listings.length > 0 && viewMode === 'table' && (
+        <div className="overflow-x-auto">
+          <table className={`w-full text-sm ${textPrimary}`}>
+            <thead className={`${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+              <tr>
+                <th className="text-left p-3 font-medium">Photo</th>
+                <th className="text-left p-3 font-medium">Address</th>
+                <th className="text-right p-3 font-medium">Price</th>
+                <th className="text-center p-3 font-medium">Beds</th>
+                <th className="text-center p-3 font-medium">Baths</th>
+                <th className="text-right p-3 font-medium">SqFt</th>
+                <th className="text-center p-3 font-medium">DOM</th>
+                <th className="text-center p-3 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {listings.map((listing: any, index: number) => (
+                <tr 
+                  key={listing.id}
+                  onClick={() => setSelectedListing(listing)}
+                  className={`cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors
+                    ${index % 2 === 0 ? '' : isDark ? 'bg-gray-800/50' : 'bg-gray-50'}`}
+                >
+                  <td className="p-2">
+                    <div className="w-16 h-12 rounded overflow-hidden bg-gray-200">
+                      {listing.photos?.[0] ? (
+                        <img src={listing.photos[0]} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Building2 className="w-4 h-4 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="p-3">
+                    <p className="font-medium truncate max-w-[200px]">
+                      {[listing.address?.streetNumber, listing.address?.streetName, listing.address?.streetSuffix].filter(Boolean).join(' ')}
+                    </p>
+                    <p className={`text-xs ${textSecondary}`}>
+                      {listing.address?.city}, {listing.address?.state} {listing.address?.postalCode}
+                    </p>
+                  </td>
+                  <td className="p-3 text-right font-medium">{formatPrice(listing.listPrice)}</td>
+                  <td className="p-3 text-center">{listing.beds}</td>
+                  <td className="p-3 text-center">{listing.baths}</td>
+                  <td className="p-3 text-right">{listing.sqft?.toLocaleString()}</td>
+                  <td className="p-3 text-center">{listing.daysOnMarket}</td>
+                  <td className="p-3 text-center">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium
+                      ${listing.status === 'Active' ? 'bg-green-100 text-green-700' : 
+                        listing.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 
+                        listing.status === 'Closed' ? 'bg-gray-100 text-gray-700' : 
+                        'bg-blue-100 text-blue-700'}`}>
+                      {listing.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ========== PAGINATION ========== */}
+      {!isLoading && listings.length > 0 && pagination.totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t ${borderColor}">
+          <p className={`text-sm ${textSecondary}`}>
+            Page {page} of {pagination.totalPages.toLocaleString()}
+          </p>
+
+          <div className="flex items-center gap-2">
+            {/* Prev */}
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={!pagination.hasPrevPage}
+              className={`p-2 rounded-lg border ${borderColor} min-w-[44px] min-h-[44px] flex items-center justify-center
+                ${pagination.hasPrevPage 
+                  ? 'hover:bg-gray-100 dark:hover:bg-gray-700' 
+                  : 'opacity-50 cursor-not-allowed'}`}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+
+            {/* Page Numbers */}
+            <div className="flex items-center gap-1">
+              {/* First page */}
+              {page > 3 && (
+                <>
+                  <button
+                    onClick={() => setPage(1)}
+                    className={`px-3 py-2 rounded-lg text-sm ${page === 1 ? 'bg-[#EF4923] text-white' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                  >
+                    1
+                  </button>
+                  {page > 4 && <span className={textSecondary}>...</span>}
+                </>
+              )}
+
+              {/* Nearby pages */}
+              {Array.from({ length: 5 }, (_, i) => page - 2 + i)
+                .filter(p => p > 0 && p <= pagination.totalPages)
+                .map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`px-3 py-2 rounded-lg text-sm min-w-[40px]
+                      ${p === page 
+                        ? 'bg-[#EF4923] text-white' 
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                  >
+                    {p}
+                  </button>
+                ))}
+
+              {/* Last page */}
+              {page < pagination.totalPages - 2 && (
+                <>
+                  {page < pagination.totalPages - 3 && <span className={textSecondary}>...</span>}
+                  <button
+                    onClick={() => setPage(pagination.totalPages)}
+                    className={`px-3 py-2 rounded-lg text-sm
+                      ${page === pagination.totalPages ? 'bg-[#EF4923] text-white' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                  >
+                    {pagination.totalPages}
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Next */}
+            <button
+              onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
+              disabled={!pagination.hasNextPage}
+              className={`p-2 rounded-lg border ${borderColor} min-w-[44px] min-h-[44px] flex items-center justify-center
+                ${pagination.hasNextPage 
+                  ? 'hover:bg-gray-100 dark:hover:bg-gray-700' 
+                  : 'opacity-50 cursor-not-allowed'}`}
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ========== LISTING DETAIL MODAL ========== */}
+      {selectedListing && (
+        <ListingDetailModal
+          listing={selectedListing}
+          isDark={isDark}
+          onClose={() => setSelectedListing(null)}
+          formatPrice={formatPrice}
+        />
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+## PART 3: Grid Card Component
+```tsx
+function GridListingCard({ listing, isDark, onClick, formatPrice }: any) {
+  const cardBg = isDark ? 'bg-gray-700' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-600' : 'border-gray-200';
+
+  const streetAddress = [
+    listing.address?.streetNumber,
+    listing.address?.streetName,
+    listing.address?.streetSuffix
+  ].filter(Boolean).join(' ');
+
+  const statusColors: Record<string, string> = {
+    'Active': 'bg-green-500',
+    'ActiveUnderContract': 'bg-blue-500',
+    'Pending': 'bg-yellow-500',
+    'Closed': 'bg-gray-500',
+  };
+
+  return (
+    <div
+      onClick={onClick}
+      className={`${cardBg} rounded-xl border ${borderColor} overflow-hidden cursor-pointer 
+        transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]`}
+    >
+      <div className="relative aspect-[4/3] bg-gray-800">
+        {listing.photos?.[0] ? (
+          <img src={listing.photos[0]} alt={streetAddress} className="w-full h-full object-cover" loading="lazy" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Building2 className="w-12 h-12 text-gray-600" />
+          </div>
+        )}
+        
+        <span className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold text-white
+          ${statusColors[listing.status] || 'bg-gray-500'}`}>
+          {listing.status === 'ActiveUnderContract' ? 'UNDER CONTRACT' : listing.status?.toUpperCase()}
+        </span>
+        
+        {listing.photos?.length > 1 && (
+          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/60 text-white text-xs">
+            1/{listing.photos.length}
+          </span>
+        )}
+      </div>
+
+      <div className="p-3">
+        <p className={`text-lg font-bold ${textPrimary}`}>{formatPrice(listing.listPrice)}</p>
+        <p className={`text-sm ${textPrimary} truncate`}>{streetAddress}</p>
+        <p className={`text-xs ${textSecondary} truncate mb-2`}>
+          {listing.address?.city}, {listing.address?.state} {listing.address?.postalCode}
+        </p>
+        <div className="flex items-center gap-3 text-xs">
+          <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <Bed className="w-4 h-4" /> {listing.beds}
+          </span>
+          <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <Bath className="w-4 h-4" /> {listing.baths}
+          </span>
+          <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <Square className="w-4 h-4" /> {listing.sqft?.toLocaleString()}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## PART 4: List Card Component
+```tsx
+function ListListingCard({ listing, isDark, onClick, formatPrice }: any) {
+  const cardBg = isDark ? 'bg-gray-700' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-600' : 'border-gray-200';
+
+  const streetAddress = [
+    listing.address?.streetNumber,
+    listing.address?.streetName,
+    listing.address?.streetSuffix
+  ].filter(Boolean).join(' ');
+
+  return (
+    <div
+      onClick={onClick}
+      className={`${cardBg} rounded-xl border ${borderColor} p-3 flex gap-4 cursor-pointer 
+        transition-all duration-200 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]`}
+    >
+      <div className="w-32 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-800">
+        {listing.photos?.[0] ? (
+          <img src={listing.photos[0]} alt={streetAddress} className="w-full h-full object-cover" loading="lazy" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Building2 className="w-8 h-8 text-gray-600" />
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className={`text-lg font-bold ${textPrimary}`}>{formatPrice(listing.listPrice)}</p>
+            <p className={`text-sm ${textPrimary}`}>{streetAddress}</p>
+            <p className={`text-xs ${textSecondary}`}>
+              {listing.address?.city}, {listing.address?.state} {listing.address?.postalCode}
+            </p>
+          </div>
+          <span className={`px-2 py-0.5 rounded text-xs font-medium
+            ${listing.status === 'Active' ? 'bg-green-100 text-green-700' : 
+              listing.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 
+              listing.status === 'Closed' ? 'bg-gray-100 text-gray-700' : 
+              'bg-blue-100 text-blue-700'}`}>
+            {listing.status === 'ActiveUnderContract' ? 'Under Contract' : listing.status}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-4 mt-2 text-sm">
+          <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <Bed className="w-4 h-4" /> {listing.beds} Beds
+          </span>
+          <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <Bath className="w-4 h-4" /> {listing.baths} Baths
+          </span>
+          <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <Square className="w-4 h-4" /> {listing.sqft?.toLocaleString()} sqft
+          </span>
+          <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <Calendar className="w-4 h-4" /> {listing.daysOnMarket} days
+          </span>
+        </div>
+
+        <p className={`text-xs ${textSecondary} mt-1`}>MLS# {listing.mlsNumber}</p>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## 📱 Mobile Optimization
+
+- [ ] Filter panel collapsible on mobile
+- [ ] Grid: 1 column on mobile, 2 on tablet, 4 on desktop
+- [ ] Touch targets 44x44px on all buttons
+- [ ] Pagination buttons large enough for touch
+- [ ] Horizontal scroll on table view for mobile
+
+---
+
+## Testing Checklist
+
+### Filters
+- [ ] All filter dropdowns work
+- [ ] Search box filters by address/MLS#
+- [ ] Reset filters clears all
+- [ ] Status tabs filter correctly
+- [ ] Filters persist after pagination
+
+### Pagination
+- [ ] "Showing 1-24 of 19,933" is accurate
+- [ ] Next/Prev buttons work
+- [ ] Page numbers clickable
+- [ ] Items per page changes results count
+- [ ] Page resets to 1 when filters change
+
+### Views
+- [ ] Grid view displays correctly
+- [ ] List view displays correctly
+- [ ] Table view displays correctly
+- [ ] View toggle saves preference
+
+### Data
+- [ ] Results match filter criteria
+- [ ] Correct number of items returned
+- [ ] All listing data displays correctly
+- [ ] Modal opens with full details
