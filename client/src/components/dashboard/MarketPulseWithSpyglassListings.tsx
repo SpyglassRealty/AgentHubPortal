@@ -71,11 +71,11 @@ export function MarketPulseWithSpyglassListings() {
     retry: 1,
   });
 
-  // Fetch Spyglass Realty listings (Office 5220)
+  // Fetch Spyglass Realty listings (Austin office - uses officeId=ACT1518371)
   const { data: listingsData, isLoading: listingsLoading, isFetching: listingsFetching } = useQuery<CompanyListingsResponse>({
-    queryKey: ['company-listings-office', '5220'],
+    queryKey: ['company-listings-office', 'austin'],
     queryFn: async () => {
-      const response = await fetch('/api/company-listings/office?officeCode=5220&status=Active&limit=20', {
+      const response = await fetch('/api/company-listings/office?office=austin&status=Active&limit=20', {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to fetch company listings');
@@ -96,7 +96,7 @@ export function MarketPulseWithSpyglassListings() {
     },
     onSuccess: (freshData) => {
       queryClient.setQueryData(['/api/market-pulse'], freshData);
-      queryClient.invalidateQueries({ queryKey: ['company-listings-office', '5220'] });
+      queryClient.invalidateQueries({ queryKey: ['company-listings-office', 'austin'] });
     },
   });
 
@@ -280,7 +280,7 @@ export function MarketPulseWithSpyglassListings() {
             </div>
           </div>
           <button
-            onClick={() => setLocation('/properties?officeCode=5220')}
+            onClick={() => setLocation('/properties')}
             className="text-xs text-[#EF4923] hover:underline font-medium min-h-[44px] min-w-[44px] flex items-center justify-center"
             data-testid="link-view-all-spyglass"
           >

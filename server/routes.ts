@@ -978,6 +978,21 @@ export async function registerRoutes(
     }
   });
 
+  // Spyglass Realty Office Configuration
+  const SPYGLASS_OFFICES: Record<string, { 
+    officeId: string; 
+    displayCode: string; 
+    name: string; 
+    address: string;
+  }> = {
+    austin: {
+      officeId: 'ACT1518371',
+      displayCode: '5220',
+      name: 'Spyglass Realty',
+      address: '2130 Goodrich Ave, Austin, TX 78704',
+    },
+  };
+
   // Company Listings by Office - Spyglass Realty specific listings
   app.get('/api/company-listings/office', isAuthenticated, async (req: any, res) => {
     try {
@@ -986,7 +1001,19 @@ export async function registerRoutes(
         return res.status(503).json({ message: "Listings API not configured" });
       }
 
-      const officeCode = (req.query.officeCode as string) || '5220';
+      let office = (req.query.office as string) || '';
+      const legacyOfficeCode = req.query.officeCode as string;
+      
+      if (legacyOfficeCode === '5220' || !office) {
+        office = 'austin';
+      }
+      
+      const officeConfig = SPYGLASS_OFFICES[office];
+      
+      if (!officeConfig) {
+        return res.status(400).json({ message: "Invalid office parameter" });
+      }
+
       const status = (req.query.status as string) || 'Active';
       const limit = Math.min(parseInt((req.query.limit as string) || '20', 10), 50);
       const sortBy = (req.query.sortBy as string) || 'listDate';
@@ -1003,7 +1030,7 @@ export async function registerRoutes(
         type: 'Sale',
         resultsPerPage: limit.toString(),
         sortBy: sortByParam,
-        listOfficeKey: officeCode,
+        officeId: officeConfig.officeId,
       });
 
       // Add status filter
@@ -1016,8 +1043,8 @@ export async function registerRoutes(
       }
 
       const fullUrl = `${baseUrl}?${params.toString()}`;
-      console.log(`[Company Listings Office] Fetching listings for office ${officeCode}...`);
-      console.log(`[Company Listings Office] API URL: ${fullUrl}`);
+      console.log(`[Spyglass Listings] Fetching ${officeConfig.name} (${officeConfig.officeId})...`);
+      console.log(`[Spyglass Listings] API URL: ${fullUrl}`);
 
       const response = await fetch(fullUrl, {
         headers: {
@@ -1028,7 +1055,7 @@ export async function registerRoutes(
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[Company Listings Office] Repliers API error:', response.status, errorText);
+        console.error('[Spyglass Listings] Repliers API error:', response.status, errorText);
         return res.status(502).json({ message: "Failed to fetch listings from API" });
       }
 
@@ -1037,7 +1064,7 @@ export async function registerRoutes(
       // Log sample listing fields for debugging
       if (data.listings?.length > 0) {
         const sample = data.listings[0];
-        console.log('[Company Listings Office] Sample fields:', Object.keys(sample).join(', '));
+        console.log('[Spyglass Listings] Sample brokerage:', sample.office?.brokerageName);
       }
       
       // Transform listings
@@ -1090,22 +1117,23 @@ export async function registerRoutes(
         };
       });
 
-      console.log(`[Company Listings Office] Found ${listings.length} listings for office ${officeCode}`);
-      
-      // Office info mapping
-      const officeInfo: Record<string, { name: string; address: string }> = {
-        '5220': { name: 'Spyglass Realty', address: '2130 Goodrich Ave, Austin, TX 78704' },
-      };
+      console.log(`[Spyglass Listings] Found ${listings.length} listings for ${officeConfig.name}`);
 
       res.json({
         total: data.count || listings.length,
         listings,
-        officeCode,
-        officeName: officeInfo[officeCode]?.name || 'Spyglass Realty',
-        officeAddress: officeInfo[officeCode]?.address || '',
+        office: {
+          id: officeConfig.officeId,
+          code: officeConfig.displayCode,
+          name: officeConfig.name,
+          address: officeConfig.address,
+        },
+        officeCode: officeConfig.displayCode,
+        officeName: officeConfig.name,
+        officeAddress: officeConfig.address,
       });
     } catch (error) {
-      console.error("[Company Listings Office] Error:", error);
+      console.error("[Spyglass Listings] Error:", error);
       res.status(500).json({ message: "Failed to fetch company listings by office" });
     }
   });

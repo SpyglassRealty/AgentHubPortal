@@ -1,0 +1,272 @@
+### FIX: Spyglass Realty Listings - Use Correct Office Filter
+
+**Problem Identified:** The current API uses `listOfficeKey=5220` which does NOT filter results. The Repliers API ignores this parameter.
+
+**Solution:** Use `officeId=ACT1518371` which correctly returns only Spyglass Realty's 131 listings.
+
+---
+
+## Findings from Query Test
+
+| Parameter | Value | Results | Works? |
+|-----------|-------|---------|--------|
+| `officeId` | `ACT1518371` | 131 | ✅ YES |
+| `agents.officeId` | `ACT1518371` | 131 | ✅ YES |
+| `listOfficeKey` | `5220` | 26,937 | ❌ NO |
+| `boardOfficeId` | `ACT5220` | 26,937 | ❌ NO |
+
+**Correct Office ID for Spyglass Realty Austin: `ACT1518371`**
+
+---
+
+## PART 1: Update the API Endpoint
+
+### Update `GET /api/company-listings/office` in `server/routes.ts`:
+```typescript
+// Spyglass Realty Office IDs
+const SPYGLASS_OFFICES = {
+  austin: {
+    officeId: 'ACT1518371',  // This is the CORRECT filter value
+    boardOfficeId: 'ACT5220', // For reference only - doesn't work as filter
+    displayCode: '5220',
+    name: 'Spyglass Realty',
+    address: '2130 Goodrich Ave, Austin, TX 78704',
+  },
+  // houston: { ... } // Add later when Houston data is available
+};
+
+// GET /api/company-listings/office - Spyglass Realty listings only
+router.get('/api/company-listings/office', async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    // Get office parameter (default to Austin)
+    const office = req.query.office?.toString() || 'austin';
+    const officeConfig = SPYGLASS_OFFICES[office as keyof typeof SPYGLASS_OFFICES];
+    
+    if (!officeConfig) {
+      return res.status(400).json({ error: 'Invalid office' });
+    }
+
+    const status = req.query.status || 'Active';
+    const limit = parseInt(req.query.limit as string) || 20;
+    const sortBy = req.query.sortBy || 'listDate';
+    const sortOrder = req.query.sortOrder || 'desc';
+
+    if (!REPLIERS_API_KEY) {
+      return res.status(500).json({ error: 'Repliers not configured' });
+    }
+
+    // Build Repliers API request with CORRECT office filter
+    const params = new URLSearchParams({
+      'OriginatingSystemName': 'ACTRIS',
+      'status': status.toString(),
+      'limit': limit.toString(),
+      'sortBy': sortBy.toString(),
+      'sortOrder': sortOrder.toString(),
+      'officeId': officeConfig.officeId,  // ✅ CORRECT PARAMETER
+    });
+
+    const repliersUrl = `${REPLIERS_BASE_URL}/listings?${params}`;
+    
+    console.log(`[Spyglass Listings] Fetching ${officeConfig.name} (${officeConfig.officeId}): ${repliersUrl}`);
+
+    const response = await fetch(repliersUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${REPLIERS_API_KEY}`,
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Spyglass Listings] Repliers error:', response.status, errorText);
+      return res.status(response.status).json({ error: 'Failed to fetch from Repliers' });
+    }
+
+    const data = await response.json();
+
+    console.log(`[Spyglass Listings] ${officeConfig.name} has ${data.total} ${status} listings`);
+
+    // Transform listings
+    const listings = (data.listings || data.data || []).map((listing: any) => {
+      const streetNumber = listing.address?.streetNumber || listing.StreetNumber || '';
+      const streetName = listing.address?.streetName || listing.StreetName || '';
+      const streetSuffix = listing.address?.streetSuffix || listing.StreetSuffix || '';
+      const cityName = listing.address?.city || listing.City || 'Austin';
+      const state = listing.address?.state || listing.StateOrProvince || 'TX';
+      const postalCode = listing.address?.postalCode || listing.PostalCode || '';
+      
+      const streetAddress = [streetNumber, streetName, streetSuffix].filter(Boolean).join(' ');
+      const fullAddress = `${streetAddress}, ${cityName}, ${state} ${postalCode}`.trim();
+
+      return {
+        id: listing.id || listing.listingId,
+        mlsNumber: listing.mlsNumber || listing.ListingId,
+        status: listing.status || 'Active',
+        listPrice: listing.listPrice || listing.ListPrice || 0,
+        listDate: listing.listDate || listing.ListDate,
+        daysOnMarket: listing.simpleDaysOnMarket || listing.DaysOnMarket || 0,
+        address: {
+          streetNumber,
+          streetName,
+          streetSuffix,
+          city: cityName,
+          state,
+          postalCode,
+          full: fullAddress,
+        },
+        beds: listing.beds || listing.BedroomsTotal || 0,
+        baths: listing.baths || listing.BathroomsTotalDecimal || 0,
+        sqft: listing.livingArea || listing.LivingArea || 0,
+        photos: listing.photos || listing.Media?.map((m: any) => m.MediaURL) || [],
+        // Agent info from the listing
+        listAgentName: listing.agents?.[0]?.name || listing.listAgentName || listing.ListAgentFullName,
+        listAgentEmail: listing.agents?.[0]?.email,
+        brokerageName: listing.office?.brokerageName || 'Spyglass Realty',
+      };
+    });
+
+    res.json({
+      total: data.total || listings.length,
+      listings,
+      office: {
+        id: officeConfig.officeId,
+        code: officeConfig.displayCode,
+        name: officeConfig.name,
+        address: officeConfig.address,
+      },
+    });
+  } catch (error) {
+    console.error('[Spyglass Listings] Error:', error);
+    res.status(500).json({ error: 'Failed to fetch company listings' });
+  }
+});
+```
+
+---
+
+## PART 2: Update Dashboard Component
+
+### Update the fetch call in `MarketPulseWithSpyglassListings.tsx`:
+```tsx
+// Fetch Spyglass Realty listings (Austin office)
+const { data: listingsData, isLoading: listingsLoading, refetch: refetchListings } = useQuery({
+  queryKey: ['spyglass-listings', 'austin'],
+  queryFn: async () => {
+    const response = await fetch('/api/company-listings/office?office=austin&status=Active&limit=20');
+    if (!response.ok) throw new Error('Failed to fetch');
+    return response.json();
+  },
+  refetchInterval: 5 * 60 * 1000,
+});
+
+const spyglassListings = listingsData?.listings || [];
+const officeInfo = listingsData?.office;
+```
+
+### Update the header to show correct count:
+```tsx
+{/* Spyglass Realty Listings Header */}
+<div className="flex items-center justify-between mb-3">
+  <div className="flex items-center gap-2">
+    <Building2 className="w-5 h-5 text-[#EF4923]" />
+    <div>
+      <p className={`text-sm font-semibold ${textPrimary}`}>Spyglass Realty Listings</p>
+      <p className={`text-[11px] ${textSecondary}`}>
+        {officeInfo?.name || 'Office 5220'} • {listingsData?.total || spyglassListings.length} Active
+      </p>
+    </div>
+  </div>
+  <button
+    onClick={() => navigate('/properties?office=austin')}
+    className="text-xs text-[#EF4923] hover:underline font-medium"
+  >
+    View All →
+  </button>
+</div>
+```
+
+---
+
+## PART 3: Add Environment Variable (Optional but Recommended)
+
+Add to `.env` for easier management:
+```env
+# Spyglass Realty Office IDs
+SPYGLASS_AUSTIN_OFFICE_ID=ACT1518371
+# SPYGLASS_HOUSTON_OFFICE_ID=xxx (add later)
+```
+
+Then in `server/routes.ts`:
+```typescript
+const SPYGLASS_OFFICES = {
+  austin: {
+    officeId: process.env.SPYGLASS_AUSTIN_OFFICE_ID || 'ACT1518371',
+    // ...
+  },
+};
+```
+
+---
+
+## Visual Verification
+
+### Before Fix (WRONG):
+┌─────────────────────────────────────────────────────┐
+│  🏢 Spyglass Realty Listings           View All →  │
+│  Office 5220 • 19,936 Active    ← WRONG! All Austin│
+│                                                     │
+│  [19,936 random Austin listings...]                │
+└─────────────────────────────────────────────────────┘
+
+### After Fix (CORRECT):
+┌─────────────────────────────────────────────────────┐
+│  🏢 Spyglass Realty Listings           View All →  │
+│  Spyglass Realty • 131 Active   ← CORRECT!         │
+│                                                     │
+│  [Only Spyglass Realty's 131 listings]            │
+└─────────────────────────────────────────────────────┘
+
+---
+
+## Testing Checklist
+
+- [ ] API endpoint uses `officeId=ACT1518371` (not `listOfficeKey=5220`)
+- [ ] Dashboard shows ~131 active listings (not 19,000+)
+- [ ] All displayed listings are from Spyglass Realty
+- [ ] Console logs confirm correct office filter
+- [ ] `brokerageName` shows "Spyglass Realty" in response
+
+---
+
+## Future: Adding Houston Office
+
+When Houston data is available, add to `SPYGLASS_OFFICES`:
+```typescript
+const SPYGLASS_OFFICES = {
+  austin: {
+    officeId: 'ACT1518371',
+    // ...
+  },
+  houston: {
+    officeId: 'HAR_XXXXXX',  // Get this from Repliers query
+    boardOfficeId: 'HARXXXX',
+    displayCode: 'XXXX',
+    name: 'Spyglass Realty Houston',
+    address: 'XXX Houston Address',
+  },
+};
+```
+
+Then UI can have office switcher:
+```tsx
+<select onChange={(e) => setOffice(e.target.value)}>
+  <option value="austin">Austin</option>
+  <option value="houston">Houston</option>
+</select>
+```
