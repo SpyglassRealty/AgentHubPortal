@@ -41,9 +41,11 @@ const DEFAULT_FILTERS: Filters = {
 
 interface AustinMetroListingsProps {
   initialStatus?: string;
+  controlledStatus?: string;
+  onStatusChange?: (status: string) => void;
 }
 
-export function AustinMetroListings({ initialStatus = 'Active' }: AustinMetroListingsProps) {
+export function AustinMetroListings({ initialStatus = 'Active', controlledStatus, onStatusChange }: AustinMetroListingsProps) {
   const { isDark } = useTheme();
   
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -52,8 +54,15 @@ export function AustinMetroListings({ initialStatus = 'Active' }: AustinMetroLis
   
   const [filters, setFilters] = useState<Filters>({
     ...DEFAULT_FILTERS,
-    status: initialStatus,
+    status: controlledStatus || initialStatus,
   });
+
+  useEffect(() => {
+    if (controlledStatus && controlledStatus !== filters.status) {
+      setFilters(prev => ({ ...prev, status: controlledStatus }));
+      setPage(1);
+    }
+  }, [controlledStatus]);
   const [showFilters, setShowFilters] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   
@@ -107,6 +116,9 @@ export function AustinMetroListings({ initialStatus = 'Active' }: AustinMetroLis
 
   const handleFilterChange = (key: keyof Filters, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
+    if (key === 'status' && onStatusChange) {
+      onStatusChange(value);
+    }
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -115,9 +127,13 @@ export function AustinMetroListings({ initialStatus = 'Active' }: AustinMetroLis
   };
 
   const resetFilters = () => {
-    setFilters(DEFAULT_FILTERS);
+    const resetStatus = controlledStatus || DEFAULT_FILTERS.status;
+    setFilters({ ...DEFAULT_FILTERS, status: resetStatus });
     setSearchInput('');
     setPage(1);
+    if (onStatusChange && resetStatus !== controlledStatus) {
+      onStatusChange(resetStatus);
+    }
   };
 
   const hasActiveFilters = Object.entries(filters).some(

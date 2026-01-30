@@ -63,20 +63,26 @@ function MarketPulseWithListings() {
   const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
   const borderColor = isDark ? 'border-[#333333]' : 'border-gray-200';
 
-  // Sync status filter with URL
+  // Sync status filter with URL only on initial page load
   useEffect(() => {
     const params = new URLSearchParams(searchString);
     const newStatus = params.get('status');
     if (newStatus && RESO_STATUSES.some(s => s.key === newStatus)) {
       setStatusFilter(newStatus);
-    } else {
-      setStatusFilter('Active');
     }
-  }, [searchString]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   // Handler to change status filter (used by bar chart clicks)
   const handleStatusChange = (newStatus: string) => {
     setStatusFilter(newStatus);
+    // Scroll to listings section for better UX
+    setTimeout(() => {
+      document.getElementById('listings-section')?.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }, 100);
   };
 
   // Fetch Market Pulse data
@@ -172,24 +178,30 @@ function MarketPulseWithListings() {
                     {STATUS_CONFIG.map((item) => {
                       const value = getStatValue(item.key);
                       const heightPercent = maxValue > 0 ? (value / maxValue) * 100 : 0;
+                      const isSelected = statusFilter === item.key;
                       
                       return (
                         <div
                           key={item.key}
-                          className="flex flex-col items-center flex-1 h-full justify-end cursor-pointer group"
+                          className={`flex flex-col items-center flex-1 h-full justify-end cursor-pointer group
+                            ${isSelected ? 'scale-105' : ''}`}
                           onClick={() => handleStatusChange(item.key)}
                           data-testid={`bar-${item.key.toLowerCase().replace(/\s+/g, '-')}`}
                         >
                           {/* Bar */}
                           <div
-                            className="w-full max-w-20 rounded-t-lg transition-all duration-200 group-hover:opacity-75 group-hover:scale-105"
+                            className={`w-full max-w-20 rounded-t-lg transition-all duration-200 
+                              group-hover:opacity-75 group-hover:scale-105
+                              ${isSelected ? 'ring-2 ring-offset-2 ring-[#EF4923]' : ''}`}
                             style={{
                               height: `${Math.max(heightPercent, 1)}%`,
                               backgroundColor: item.color,
                             }}
                           />
                           {/* Label */}
-                          <p className={`text-[10px] mt-2 text-center ${textSecondary} group-hover:text-[#EF4923]`}>
+                          <p className={`text-[10px] mt-2 text-center transition-colors
+                            ${isSelected ? 'text-[#EF4923] font-semibold' : textSecondary}
+                            group-hover:text-[#EF4923]`}>
                             {item.label.replace(' (30d)', '')}
                           </p>
                         </div>
@@ -208,13 +220,15 @@ function MarketPulseWithListings() {
                 {STATUS_CONFIG.map((item) => {
                   const Icon = item.icon;
                   const value = getStatValue(item.key);
+                  const isSelected = statusFilter === item.key;
                   return (
                     <div
                       key={item.key}
                       onClick={() => handleStatusChange(item.key)}
                       className={`p-3 rounded-lg border cursor-pointer transition-all duration-200
                         hover:shadow-md hover:scale-[1.02] active:scale-[0.98]
-                        ${isDark ? item.bgDark : item.bgLight} ${item.borderColor}`}
+                        ${isDark ? item.bgDark : item.bgLight} ${item.borderColor}
+                        ${isSelected ? 'ring-2 ring-[#EF4923] shadow-md' : ''}`}
                       data-testid={`stat-card-${item.key.toLowerCase().replace(/\s+/g, '-')}`}
                     >
                       <div className="flex items-center gap-1.5 mb-1">
@@ -246,7 +260,12 @@ function MarketPulseWithListings() {
       </Card>
 
       {/* Spyglass Realty Listings - Enhanced with Filters, Pagination, and View Modes */}
-      <AustinMetroListings initialStatus={statusFilter} />
+      <div id="listings-section">
+        <AustinMetroListings 
+          controlledStatus={statusFilter} 
+          onStatusChange={handleStatusChange} 
+        />
+      </div>
     </>
   );
 }
