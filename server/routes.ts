@@ -714,7 +714,7 @@ export async function registerRoutes(
     }
   });
 
-  // Company Listings - Austin Metro Area listings from Repliers API with RESO status support
+  // Company Listings - Austin Metro Area listings from Repliers API with RESO status support, pagination, and advanced filters
   app.get('/api/company-listings', isAuthenticated, async (req: any, res) => {
     try {
       const apiKey = process.env.IDX_GRID_API_KEY;
@@ -725,11 +725,15 @@ export async function registerRoutes(
       // Whitelist of valid RESO statuses
       const VALID_STATUSES = ['Active', 'Active Under Contract', 'Pending', 'Closed', 'all'];
       // Whitelist of valid sort fields
-      const VALID_SORT_FIELDS = ['listDate', 'listPrice'];
+      const VALID_SORT_FIELDS = ['listDate', 'listPrice', 'beds', 'livingArea', 'daysOnMarket'];
       const VALID_SORT_ORDERS = ['asc', 'desc'];
 
+      // Pagination
+      const page = Math.max(1, parseInt((req.query.page as string) || '1', 10));
+      const limit = Math.min(Math.max(1, parseInt((req.query.limit as string) || '24', 10)), 100);
+      const offset = (page - 1) * limit;
+
       // RESO status values: Active, Active Under Contract, Pending, Closed
-      // Handle empty string as 'all' for frontend compatibility
       const requestedStatus = (req.query.status as string) || 'Active';
       const status = requestedStatus === '' ? 'all' : (VALID_STATUSES.includes(requestedStatus) ? requestedStatus : 'Active');
       
@@ -738,26 +742,91 @@ export async function registerRoutes(
       
       const requestedSortOrder = (req.query.sortOrder as string) || 'desc';
       const sortOrder = VALID_SORT_ORDERS.includes(requestedSortOrder) ? requestedSortOrder : 'desc';
-      
-      const limit = Math.min(parseInt((req.query.limit as string) || '50', 10), 100);
-      const city = (req.query.city as string) || 'Austin';
+
+      // Advanced filters
+      const city = (req.query.city as string) || '';
+      const minPrice = req.query.minPrice ? parseInt(req.query.minPrice as string, 10) : undefined;
+      const maxPrice = req.query.maxPrice ? parseInt(req.query.maxPrice as string, 10) : undefined;
+      const minBeds = req.query.minBeds ? parseInt(req.query.minBeds as string, 10) : undefined;
+      const maxBeds = req.query.maxBeds ? parseInt(req.query.maxBeds as string, 10) : undefined;
+      const minBaths = req.query.minBaths ? parseInt(req.query.minBaths as string, 10) : undefined;
+      const minSqft = req.query.minSqft ? parseInt(req.query.minSqft as string, 10) : undefined;
+      const maxSqft = req.query.maxSqft ? parseInt(req.query.maxSqft as string, 10) : undefined;
+      const propertyType = (req.query.propertyType as string) || '';
+      const maxDom = req.query.maxDom ? parseInt(req.query.maxDom as string, 10) : undefined;
+      const search = (req.query.search as string) || '';
 
       const baseUrl = 'https://api.repliers.io/listings';
       const msaCounties = ['Travis', 'Williamson', 'Hays', 'Bastrop', 'Caldwell'];
       
       // Build sortBy parameter in Repliers format (e.g., listPriceDesc, listDateAsc)
       const sortDirection = sortOrder === 'asc' ? 'Asc' : 'Desc';
-      const sortByParam = sortBy === 'listPrice' ? `listPrice${sortDirection}` : `createdOn${sortDirection}`;
+      let sortByParam = 'createdOnDesc';
+      if (sortBy === 'listPrice') sortByParam = `listPrice${sortDirection}`;
+      else if (sortBy === 'listDate') sortByParam = `createdOn${sortDirection}`;
+      else if (sortBy === 'beds') sortByParam = `bedroomsTotal${sortDirection}`;
+      else if (sortBy === 'livingArea') sortByParam = `livingArea${sortDirection}`;
+      else if (sortBy === 'daysOnMarket') sortByParam = `daysOnMarket${sortDirection}`;
       
       const params = new URLSearchParams({
         listings: 'true',
         type: 'Sale',
         resultsPerPage: limit.toString(),
+        pageNum: page.toString(),
         sortBy: sortByParam,
       });
 
       // Add county filters for Austin Metro Area (same as Market Pulse)
       msaCounties.forEach(county => params.append('county', county));
+
+      // City filter (if specified)
+      if (city) {
+        params.append('city', city);
+      }
+
+      // Price filters
+      if (minPrice !== undefined) {
+        params.append('minPrice', minPrice.toString());
+      }
+      if (maxPrice !== undefined) {
+        params.append('maxPrice', maxPrice.toString());
+      }
+
+      // Bedroom filters
+      if (minBeds !== undefined) {
+        params.append('minBeds', minBeds.toString());
+      }
+      if (maxBeds !== undefined) {
+        params.append('maxBeds', maxBeds.toString());
+      }
+
+      // Bathroom filter
+      if (minBaths !== undefined) {
+        params.append('minBaths', minBaths.toString());
+      }
+
+      // Square footage filters
+      if (minSqft !== undefined) {
+        params.append('minSqft', minSqft.toString());
+      }
+      if (maxSqft !== undefined) {
+        params.append('maxSqft', maxSqft.toString());
+      }
+
+      // Property type filter
+      if (propertyType) {
+        params.append('propertyType', propertyType);
+      }
+
+      // Days on market filter
+      if (maxDom !== undefined) {
+        params.append('maxDom', maxDom.toString());
+      }
+
+      // Search filter (address, MLS#)
+      if (search) {
+        params.append('search', search);
+      }
 
       // Map RESO status to Repliers API parameters (same approach as Market Pulse)
       if (status && status !== 'all') {
@@ -778,7 +847,7 @@ export async function registerRoutes(
       }
 
       const fullUrl = `${baseUrl}?${params.toString()}`;
-      console.log(`[Company Listings] Fetching ${status} listings from ${city}...`);
+      console.log(`[Company Listings] Fetching page ${page} (limit ${limit}): ${status} listings...`);
       console.log(`[Company Listings] API URL: ${fullUrl}`);
 
       const response = await fetch(fullUrl, {
@@ -866,12 +935,40 @@ export async function registerRoutes(
         };
       });
 
-      console.log(`[Company Listings] Found ${listings.length} ${status} listings`);
+      // Calculate pagination info
+      const total = data.count || 0;
+      const totalPages = Math.ceil(total / limit);
+      const startIndex = total > 0 ? offset + 1 : 0;
+      const endIndex = Math.min(offset + listings.length, total);
+
+      console.log(`[Company Listings] Returning ${listings.length} of ${total} total (page ${page}/${totalPages})`);
+      
       res.json({ 
         listings, 
-        total: data.count || listings.length,
-        city,
-        status,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          startIndex,
+          endIndex,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+        filters: {
+          status,
+          city,
+          minPrice,
+          maxPrice,
+          minBeds,
+          maxBeds,
+          minBaths,
+          minSqft,
+          maxSqft,
+          propertyType,
+          maxDom,
+          search,
+        },
         sortBy,
         sortOrder
       });
