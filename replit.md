@@ -66,6 +66,14 @@ The application is a full-stack web application with a React frontend and an Exp
     - **Image CDN**: All images served via `https://cdn.repliers.io/` base URL.
     - **API Endpoint**: `GET /api/company-listings/office?office=austin&status=Active&limit=20` (legacy: `officeCode=5220` also supported)
     - **Dashboard Layout**: Vertical stack with Market Pulse at top and Spyglass listings below.
+- **Properties Page - Enhanced Austin Metro Listings**: Full-featured listings browser with office filter toggle.
+    - **Office Toggle**: "All Austin Metro" (~20k listings) vs "Spyglass Realty Only" (~109 listings)
+    - **URL Parameter**: `/properties?office=spyglass` - Pre-selects Spyglass filter
+    - **API Endpoint**: `GET /api/company-listings?office=all|spyglass` - Returns paginated listings with office filter
+    - **View Modes**: Grid (1-4 columns), List (horizontal cards), Table (scrollable)
+    - **Filters**: Status, Price Range, Beds, Baths, SqFt, City, Property Type, Days on Market, Search
+    - **Pagination**: Page numbers, prev/next buttons, items per page selector
+    - **Dashboard Integration**: "View All" from Spyglass Listings navigates to `/properties?office=spyglass`
 - **Notification System**: Centralized notification service with user preferences.
     - **Notification Types**: `lead_assigned`, `appointment_reminder`, `deal_update`, `task_due`, `system`.
     - **Preference Controls**: Per-type toggles, quiet hours (Central timezone), and delivery method preferences (push/email).
