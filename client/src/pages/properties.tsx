@@ -1,21 +1,18 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Layout from "@/components/layout";
 import { apps } from "@/lib/apps";
-import { Link, useLocation, useSearch } from "wouter";
+import { Link, useSearch } from "wouter";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
-  ArrowUpRight, ExternalLink, Building2, ChevronLeft, ChevronRight, 
-  Bed, Bath, Square, RefreshCw, Loader2, ChevronDown, TrendingUp,
-  Home, FileCheck, Clock, CheckCircle2, X, MapPin, Calendar
+  ArrowUpRight, ExternalLink, Building2, RefreshCw, Loader2, TrendingUp,
+  Home, FileCheck, Clock, CheckCircle2
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "@/contexts/ThemeContext";
-import { format } from "date-fns";
 import { AustinMetroListings } from "@/components/properties/AustinMetroListings";
 
 interface AppUsage {
@@ -32,41 +29,6 @@ interface MarketPulseData {
   lastUpdatedAt: string;
 }
 
-interface Listing {
-  id: string;
-  mlsNumber: string;
-  status: string;
-  listPrice: number;
-  listDate: string;
-  daysOnMarket: number;
-  address: {
-    full: string;
-    streetNumber?: string;
-    streetName?: string;
-    streetSuffix?: string;
-    city?: string;
-    state?: string;
-    postalCode?: string;
-  };
-  beds: number;
-  baths: number;
-  livingArea: number;
-  photos: string[];
-  subdivision?: string;
-  propertyType?: string;
-  listOfficeName?: string;
-  listAgentName?: string;
-}
-
-interface ListingsResponse {
-  listings: Listing[];
-  total: number;
-  city: string;
-  status: string;
-  sortBy: string;
-  sortOrder: string;
-}
-
 // RESO Status configuration
 const RESO_STATUSES = [
   { key: 'Active', label: 'Active' },
@@ -74,14 +36,6 @@ const RESO_STATUSES = [
   { key: 'Pending', label: 'Pending' },
   { key: 'Closed', label: 'Closed' },
   { key: 'all', label: 'All' },
-];
-
-// Sorting options
-const SORT_OPTIONS = [
-  { label: 'Newest Listed', value: 'listDate', order: 'desc' },
-  { label: 'Oldest Listed', value: 'listDate', order: 'asc' },
-  { label: 'Price: High to Low', value: 'listPrice', order: 'desc' },
-  { label: 'Price: Low to High', value: 'listPrice', order: 'asc' },
 ];
 
 // Status configuration for Market Pulse
@@ -92,340 +46,17 @@ const STATUS_CONFIG = [
   { key: 'Closed', label: 'Closed (30d)', sublabel: 'Sales', color: '#9CA3AF', textColor: 'text-gray-600', bgLight: 'bg-gray-50', bgDark: 'bg-gray-700/50', borderColor: 'border-gray-300', icon: CheckCircle2 },
 ];
 
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(price);
-}
-
-// Listing Card Component
-function ListingCard({ 
-  listing, 
-  isDark,
-  onClick 
-}: { 
-  listing: Listing; 
-  isDark: boolean;
-  onClick: () => void;
-}) {
-  const cardBg = isDark ? 'bg-[#2a2a2a]' : 'bg-white';
-  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
-  const borderColor = isDark ? 'border-[#333333]' : 'border-gray-200';
-
-  const statusColors: Record<string, string> = {
-    'Active': 'bg-green-500',
-    'Pending': 'bg-yellow-500',
-    'Closed': 'bg-gray-500',
-    'Active Under Contract': 'bg-blue-500',
-  };
-
-  const photoUrl = listing.photos?.[0] || null;
-
-  const streetAddress = [
-    listing.address?.streetNumber,
-    listing.address?.streetName,
-    listing.address?.streetSuffix
-  ].filter(Boolean).join(' ');
-
-  const cityStateZip = `${listing.address?.city || ''}, ${listing.address?.state || 'TX'} ${listing.address?.postalCode || ''}`;
-
-  return (
-    <div
-      onClick={onClick}
-      className={`${cardBg} rounded-xl border ${borderColor} overflow-hidden cursor-pointer 
-        transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]`}
-      data-testid={`listing-card-${listing.id}`}
-    >
-      <div className="relative aspect-[4/3] bg-[#222222]">
-        {photoUrl ? (
-          <img
-            src={photoUrl}
-            alt={listing.address?.full}
-            className="w-full h-full object-cover"
-            loading="lazy"
-            data-testid={`img-listing-${listing.id}`}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Building2 className="w-10 h-10 text-gray-500" />
-          </div>
-        )}
-        
-        <span 
-          className={`absolute top-2 left-2 px-2 py-0.5 rounded text-xs font-bold uppercase
-            ${statusColors[listing.status] || 'bg-gray-500'} text-white`}
-          data-testid={`badge-status-${listing.id}`}
-        >
-          {listing.status === 'Active Under Contract' ? 'Under Contract' : listing.status}
-        </span>
-        
-        {listing.photos?.length > 1 && (
-          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/60 text-white text-xs">
-            1/{listing.photos.length}
-          </span>
-        )}
-      </div>
-
-      <div className="p-3">
-        <p className={`text-lg font-bold ${textPrimary}`} data-testid={`text-price-${listing.id}`}>
-          {formatPrice(listing.listPrice)}
-        </p>
-        <p className={`text-sm ${textPrimary} truncate`} data-testid={`text-address-${listing.id}`}>
-          {streetAddress || listing.address?.full}
-        </p>
-        <p className={`text-xs ${textSecondary} truncate mb-2`}>
-          {cityStateZip}
-        </p>
-        <div className="flex items-center gap-3 text-sm">
-          {listing.beds > 0 && (
-            <span className={`flex items-center gap-1 ${textSecondary}`} data-testid={`text-beds-${listing.id}`}>
-              <Bed className="w-4 h-4" /> {listing.beds}
-            </span>
-          )}
-          {listing.baths > 0 && (
-            <span className={`flex items-center gap-1 ${textSecondary}`} data-testid={`text-baths-${listing.id}`}>
-              <Bath className="w-4 h-4" /> {listing.baths}
-            </span>
-          )}
-          {listing.livingArea > 0 && (
-            <span className={`flex items-center gap-1 ${textSecondary}`} data-testid={`text-sqft-${listing.id}`}>
-              <Square className="w-4 h-4" /> {listing.livingArea?.toLocaleString()}
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Listing Detail Modal Component
-function ListingDetailModal({ 
-  listing, 
-  isDark, 
-  onClose 
-}: { 
-  listing: Listing; 
-  isDark: boolean; 
-  onClose: () => void;
-}) {
-  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-  
-  const modalBg = isDark ? 'bg-[#222222]' : 'bg-white';
-  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
-  const borderColor = isDark ? 'border-[#333333]' : 'border-gray-200';
-
-  const photos = listing.photos || [];
-  const sqft = listing.livingArea || 0;
-  const pricePerSqft = sqft ? Math.round(listing.listPrice / sqft) : null;
-  const daysOnMarket = listing.daysOnMarket || 0;
-
-  const statusColors: Record<string, string> = {
-    'Active': 'bg-green-500',
-    'Pending': 'bg-yellow-500',
-    'Closed': 'bg-gray-500',
-    'Active Under Contract': 'bg-blue-500',
-  };
-
-  const streetAddress = [
-    listing.address?.streetNumber,
-    listing.address?.streetName,
-    listing.address?.streetSuffix
-  ].filter(Boolean).join(' ');
-
-  const cityStateZip = `${listing.address?.city || ''}, ${listing.address?.state || 'TX'} ${listing.address?.postalCode || ''}`;
-
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, []);
-
-  // Photo navigation
-  const nextPhoto = () => {
-    if (photos.length > 0) {
-      setCurrentPhotoIndex((prev) => (prev + 1) % photos.length);
-    }
-  };
-
-  const prevPhoto = () => {
-    if (photos.length > 0) {
-      setCurrentPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length);
-    }
-  };
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      if (e.key === 'ArrowLeft') prevPhoto();
-      if (e.key === 'ArrowRight') nextPhoto();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [photos.length]);
-
-  return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
-      onClick={onClose}
-      data-testid="modal-listing-detail"
-    >
-      <div 
-        className={`${modalBg} rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header with close button */}
-        <div className={`sticky top-0 z-10 ${modalBg} p-4 border-b ${borderColor} flex items-center justify-between`}>
-          <div className="flex items-center gap-2">
-            <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase
-              ${statusColors[listing.status] || 'bg-gray-500'} text-white`}>
-              {listing.status === 'Active Under Contract' ? 'Under Contract' : listing.status}
-            </span>
-            <span className={`text-sm ${textSecondary}`}>MLS# {listing.mlsNumber}</span>
-          </div>
-          <button
-            onClick={onClose}
-            className={`p-2 rounded-full min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors
-              ${isDark ? 'hover:bg-[#333333]' : 'hover:bg-gray-100'}`}
-            data-testid="button-close-modal"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Photo Gallery */}
-        <div className="relative aspect-[16/10] bg-[#222222]">
-          {photos.length > 0 ? (
-            <>
-              <img
-                src={photos[currentPhotoIndex]}
-                alt={`${streetAddress} - Photo ${currentPhotoIndex + 1}`}
-                className="w-full h-full object-cover"
-              />
-              {photos.length > 1 && (
-                <>
-                  <button
-                    onClick={prevPhoto}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 min-w-[44px] min-h-[44px] flex items-center justify-center"
-                    data-testid="button-prev-photo"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={nextPhoto}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 min-w-[44px] min-h-[44px] flex items-center justify-center"
-                    data-testid="button-next-photo"
-                  >
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/60 text-white text-sm">
-                    {currentPhotoIndex + 1} / {photos.length}
-                  </div>
-                </>
-              )}
-            </>
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Building2 className="w-16 h-16 text-gray-500" />
-            </div>
-          )}
-        </div>
-
-        {/* Property Details */}
-        <div className="p-4 space-y-4">
-          {/* Price and Address */}
-          <div>
-            <p className={`text-2xl font-bold ${textPrimary}`} data-testid="modal-text-price">
-              {formatPrice(listing.listPrice)}
-            </p>
-            <p className={`text-lg ${textPrimary} mt-1`} data-testid="modal-text-address">
-              {streetAddress || listing.address?.full}
-            </p>
-            <p className={`text-sm ${textSecondary}`}>
-              {cityStateZip}
-            </p>
-          </div>
-
-          {/* Key Stats */}
-          <div className={`grid grid-cols-4 gap-3 p-3 rounded-lg border ${borderColor} ${isDark ? 'bg-[#2a2a2a]' : 'bg-gray-50'}`} data-testid="modal-stats-grid">
-            <div className="text-center">
-              <p className={`text-lg font-bold ${textPrimary}`} data-testid="modal-text-beds">{listing.beds}</p>
-              <p className={`text-xs ${textSecondary}`}>Beds</p>
-            </div>
-            <div className="text-center">
-              <p className={`text-lg font-bold ${textPrimary}`} data-testid="modal-text-baths">{listing.baths}</p>
-              <p className={`text-xs ${textSecondary}`}>Baths</p>
-            </div>
-            <div className="text-center">
-              <p className={`text-lg font-bold ${textPrimary}`} data-testid="modal-text-sqft">{sqft.toLocaleString()}</p>
-              <p className={`text-xs ${textSecondary}`}>Sq Ft</p>
-            </div>
-            <div className="text-center">
-              <p className={`text-lg font-bold ${textPrimary}`}>{pricePerSqft ? `$${pricePerSqft}` : '-'}</p>
-              <p className={`text-xs ${textSecondary}`}>$/Sq Ft</p>
-            </div>
-          </div>
-
-          {/* Additional Info */}
-          <div className={`grid grid-cols-2 gap-4`}>
-            <div className="flex items-center gap-2">
-              <Calendar className={`w-4 h-4 ${textSecondary}`} />
-              <div>
-                <p className={`text-xs ${textSecondary}`}>Days on Market</p>
-                <p className={`text-sm font-medium ${textPrimary}`}>{daysOnMarket} days</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <MapPin className={`w-4 h-4 ${textSecondary}`} />
-              <div>
-                <p className={`text-xs ${textSecondary}`}>Listed</p>
-                <p className={`text-sm font-medium ${textPrimary}`}>
-                  {listing.listDate ? format(new Date(listing.listDate), 'MMM d, yyyy') : 'N/A'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Agent Info */}
-          {listing.listAgentName && (
-            <div className={`p-3 rounded-lg border ${borderColor}`}>
-              <p className={`text-xs ${textSecondary} mb-1`}>Listing Agent</p>
-              <p className={`text-sm font-medium ${textPrimary}`}>{listing.listAgentName}</p>
-              {listing.listOfficeName && (
-                <p className={`text-xs ${textSecondary}`}>{listing.listOfficeName}</p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // Combined Market Pulse + Listings Component
 function MarketPulseWithListings() {
   const { isDark } = useTheme();
-  const [, setLocation] = useLocation();
   const searchString = useSearch();
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const queryClient = useQueryClient();
   
-  // Parse URL search params
+  // Parse URL search params for initial status
   const urlParams = new URLSearchParams(searchString);
   const urlStatus = urlParams.get('status') || 'Active';
   
-  // State
+  // State for status filter (passed to AustinMetroListings)
   const [statusFilter, setStatusFilter] = useState<string>(urlStatus);
-  const [sortBy, setSortBy] = useState<string>('listDate');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
 
   const cardBg = isDark ? 'bg-[#2a2a2a]' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
@@ -459,67 +90,11 @@ function MarketPulseWithListings() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch Listings data
-  const { 
-    data: listingsData, 
-    isLoading: listingsLoading, 
-    refetch: refetchListings,
-    isFetching: listingsFetching 
-  } = useQuery<ListingsResponse>({
-    queryKey: ['austin-metro-listings', statusFilter, sortBy, sortOrder],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        city: 'Austin',
-        status: statusFilter === 'all' ? '' : statusFilter,
-        sortBy: sortBy,
-        sortOrder: sortOrder,
-        limit: '50'
-      });
-      const response = await fetch(`/api/company-listings?${params}`, {
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to fetch');
-      return response.json();
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  const isRefreshing = marketFetching;
 
-  const listings = listingsData?.listings || [];
-  const total = listingsData?.total || 0;
-  const isRefreshing = marketFetching || listingsFetching;
-
-  // Combined refresh function
   const handleRefresh = async () => {
-    await Promise.all([refetchMarket(), refetchListings()]);
+    await refetchMarket();
   };
-
-  // Update URL when filter changes
-  const handleStatusChange = (status: string) => {
-    setStatusFilter(status);
-    if (status === 'all' || status === 'Active') {
-      setLocation('/properties');
-    } else {
-      setLocation(`/properties?status=${encodeURIComponent(status)}`);
-    }
-  };
-
-  const scrollLeft = () => {
-    scrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' });
-  };
-
-  const scrollRight = () => {
-    scrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' });
-  };
-
-  const handleSortChange = (value: string, order: 'asc' | 'desc') => {
-    setSortBy(value);
-    setSortOrder(order);
-    setShowSortDropdown(false);
-  };
-
-  const currentSortLabel = SORT_OPTIONS.find(
-    opt => opt.value === sortBy && opt.order === sortOrder
-  )?.label || 'Newest Listed';
 
   // Market stats with values
   const getStatValue = (key: string) => {
