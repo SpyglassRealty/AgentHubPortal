@@ -280,7 +280,7 @@ export function MarketPulseWithSpyglassListings() {
             </div>
           </div>
           <button
-            onClick={() => setLocation('/properties')}
+            onClick={() => setLocation('/properties?office=spyglass')}
             className="text-xs text-[#EF4923] hover:underline font-medium min-h-[44px] min-w-[44px] flex items-center justify-center"
             data-testid="link-view-all-spyglass"
           >

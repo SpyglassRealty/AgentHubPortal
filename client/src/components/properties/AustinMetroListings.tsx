@@ -10,6 +10,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 type ViewMode = 'grid' | 'list' | 'table';
 
 interface Filters {
+  office: string;
   status: string;
   minPrice: string;
   maxPrice: string;
@@ -25,6 +26,7 @@ interface Filters {
 }
 
 const DEFAULT_FILTERS: Filters = {
+  office: 'all',
   status: 'Active',
   minPrice: '',
   maxPrice: '',
@@ -41,9 +43,10 @@ const DEFAULT_FILTERS: Filters = {
 
 interface AustinMetroListingsProps {
   initialStatus?: string;
+  initialOffice?: string;
 }
 
-export function AustinMetroListings({ initialStatus = 'Active' }: AustinMetroListingsProps) {
+export function AustinMetroListings({ initialStatus = 'Active', initialOffice = 'all' }: AustinMetroListingsProps) {
   const { isDark } = useTheme();
   
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -53,6 +56,7 @@ export function AustinMetroListings({ initialStatus = 'Active' }: AustinMetroLis
   const [filters, setFilters] = useState<Filters>({
     ...DEFAULT_FILTERS,
     status: initialStatus,
+    office: initialOffice,
   });
   const [showFilters, setShowFilters] = useState(false);
   const [searchInput, setSearchInput] = useState('');
@@ -115,7 +119,10 @@ export function AustinMetroListings({ initialStatus = 'Active' }: AustinMetroLis
   };
 
   const resetFilters = () => {
-    setFilters(DEFAULT_FILTERS);
+    setFilters({
+      ...DEFAULT_FILTERS,
+      office: initialOffice,
+    });
     setSearchInput('');
     setPage(1);
   };
@@ -181,9 +188,12 @@ export function AustinMetroListings({ initialStatus = 'Active' }: AustinMetroLis
         <div className="flex items-center gap-2">
           <Building2 className="w-5 h-5 text-[#EF4923]" />
           <div>
-            <h2 className={`text-lg font-semibold ${textPrimary}`}>Austin Metro Listings</h2>
+            <h2 className={`text-lg font-semibold ${textPrimary}`}>
+              {filters.office === 'spyglass' ? 'Spyglass Realty Listings' : 'Austin Metro Listings'}
+            </h2>
             <p className={`text-sm ${textSecondary}`}>
               {pagination.total.toLocaleString()} {filters.status !== 'all' ? filters.status.toLowerCase() : ''} listings
+              {filters.office === 'spyglass' && ' • Spyglass Realty Only'}
             </p>
           </div>
         </div>
@@ -232,6 +242,32 @@ export function AustinMetroListings({ initialStatus = 'Active' }: AustinMetroLis
               )}
             </div>
           </form>
+
+          {/* Office Toggle */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => handleFilterChange('office', 'all')}
+              data-testid="button-office-all"
+              className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors min-h-[44px]
+                ${filters.office === 'all' 
+                  ? 'bg-[#EF4923] text-white' 
+                  : isDark ? 'bg-[#333333] text-gray-300 hover:bg-[#3a3a3a]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+            >
+              All Austin Metro
+            </button>
+            <button
+              onClick={() => handleFilterChange('office', 'spyglass')}
+              data-testid="button-office-spyglass"
+              className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors min-h-[44px]
+                ${filters.office === 'spyglass' 
+                  ? 'bg-[#EF4923] text-white' 
+                  : isDark ? 'bg-[#333333] text-gray-300 hover:bg-[#3a3a3a]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+            >
+              Spyglass Realty Only
+            </button>
+          </div>
 
           {/* Filter Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">

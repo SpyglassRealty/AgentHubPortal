@@ -731,7 +731,10 @@ export async function registerRoutes(
       
       // Office filter: 'all' for Austin Metro, 'spyglass' for Spyglass Realty only
       const officeFilter = (req.query.office as string) || 'all';
-      const officeConfig = officeFilter === 'spyglass' ? SPYGLASS_OFFICES['austin'] : null;
+      // Map 'spyglass' to the Austin office config (Spyglass Realty's primary office)
+      const officeConfig = (officeFilter === 'spyglass' || officeFilter === 'austin') 
+        ? SPYGLASS_OFFICES['austin'] 
+        : null;
 
       // Pagination
       const page = Math.max(1, parseInt((req.query.page as string) || '1', 10));

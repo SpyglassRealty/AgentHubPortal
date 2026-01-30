@@ -51,26 +51,32 @@ function MarketPulseWithListings() {
   const { isDark } = useTheme();
   const searchString = useSearch();
   
-  // Parse URL search params for initial status
+  // Parse URL search params for initial status and office
   const urlParams = new URLSearchParams(searchString);
   const urlStatus = urlParams.get('status') || 'Active';
+  const urlOffice = urlParams.get('office') || 'all';
   
   // State for status filter (passed to AustinMetroListings)
   const [statusFilter, setStatusFilter] = useState<string>(urlStatus);
+  const [officeFilter, setOfficeFilter] = useState<string>(urlOffice);
 
   const cardBg = isDark ? 'bg-[#2a2a2a]' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
   const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
   const borderColor = isDark ? 'border-[#333333]' : 'border-gray-200';
 
-  // Sync status filter with URL
+  // Sync status and office filters with URL
   useEffect(() => {
     const params = new URLSearchParams(searchString);
     const newStatus = params.get('status');
+    const newOffice = params.get('office');
     if (newStatus && RESO_STATUSES.some(s => s.key === newStatus)) {
       setStatusFilter(newStatus);
     } else {
       setStatusFilter('Active');
+    }
+    if (newOffice && (newOffice === 'all' || newOffice === 'spyglass')) {
+      setOfficeFilter(newOffice);
     }
   }, [searchString]);
   
@@ -246,7 +252,7 @@ function MarketPulseWithListings() {
       </Card>
 
       {/* Austin Metro Listings - Enhanced with Filters, Pagination, and View Modes */}
-      <AustinMetroListings initialStatus={statusFilter} />
+      <AustinMetroListings initialStatus={statusFilter} initialOffice={officeFilter} />
     </>
   );
 }
