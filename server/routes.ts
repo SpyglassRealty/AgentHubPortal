@@ -824,10 +824,14 @@ export async function registerRoutes(
         const baths = listing.details?.numBathrooms || listing.numBathrooms || listing.bathroomsTotalInteger || 0;
         const sqft = listing.details?.sqft || listing.sqft || listing.livingArea || 0;
 
-        // Get photos from images array
-        const photos = (listing.images || listing.photos || []).map((img: any) => 
-          typeof img === 'string' ? img : img.url || img.src || img
-        );
+        // Get photos from images array with CDN URL
+        const photos = (listing.images || listing.photos || []).map((img: any) => {
+          const imagePath = typeof img === 'string' ? img : img.url || img.src || img;
+          if (imagePath && !imagePath.startsWith('http')) {
+            return `https://cdn.repliers.io/${imagePath}`;
+          }
+          return imagePath;
+        });
 
         return {
           id: listing.mlsNumber || listing.listingId,
@@ -874,6 +878,138 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[Company Listings] Error:", error);
       res.status(500).json({ message: "Failed to fetch company listings" });
+    }
+  });
+
+  // Company Listings by Office - Spyglass Realty specific listings
+  app.get('/api/company-listings/office', isAuthenticated, async (req: any, res) => {
+    try {
+      const apiKey = process.env.IDX_GRID_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ message: "Listings API not configured" });
+      }
+
+      const officeCode = (req.query.officeCode as string) || '5220';
+      const status = (req.query.status as string) || 'Active';
+      const limit = Math.min(parseInt((req.query.limit as string) || '20', 10), 50);
+      const sortBy = (req.query.sortBy as string) || 'listDate';
+      const sortOrder = (req.query.sortOrder as string) || 'desc';
+
+      const baseUrl = 'https://api.repliers.io/listings';
+      
+      // Build sortBy parameter in Repliers format
+      const sortDirection = sortOrder === 'asc' ? 'Asc' : 'Desc';
+      const sortByParam = sortBy === 'listPrice' ? `listPrice${sortDirection}` : `createdOn${sortDirection}`;
+      
+      const params = new URLSearchParams({
+        listings: 'true',
+        type: 'Sale',
+        resultsPerPage: limit.toString(),
+        sortBy: sortByParam,
+        listOfficeKey: officeCode,
+      });
+
+      // Add status filter
+      if (status === 'Active') {
+        params.append('standardStatus', 'Active');
+      } else if (status === 'all') {
+        params.append('status', 'A');
+      } else {
+        params.append('standardStatus', status);
+      }
+
+      const fullUrl = `${baseUrl}?${params.toString()}`;
+      console.log(`[Company Listings Office] Fetching listings for office ${officeCode}...`);
+      console.log(`[Company Listings Office] API URL: ${fullUrl}`);
+
+      const response = await fetch(fullUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'REPLIERS-API-KEY': apiKey
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Company Listings Office] Repliers API error:', response.status, errorText);
+        return res.status(502).json({ message: "Failed to fetch listings from API" });
+      }
+
+      const data = await response.json();
+      
+      // Log sample listing fields for debugging
+      if (data.listings?.length > 0) {
+        const sample = data.listings[0];
+        console.log('[Company Listings Office] Sample fields:', Object.keys(sample).join(', '));
+      }
+      
+      // Transform listings
+      const listings = (data.listings || []).map((listing: any) => {
+        const streetNumber = listing.address?.streetNumber || '';
+        const streetName = listing.address?.streetName || '';
+        const streetSuffix = listing.address?.streetSuffix || '';
+        const cityName = listing.address?.city || 'Austin';
+        const state = listing.address?.state || 'TX';
+        const postalCode = listing.address?.zip || listing.address?.postalCode || '';
+        
+        const streetAddress = [streetNumber, streetName, streetSuffix].filter(Boolean).join(' ');
+        const fullAddress = `${streetAddress}, ${cityName}, ${state} ${postalCode}`.trim();
+
+        const details = listing.details || {};
+        const beds = listing.details?.numBedrooms || listing.numBedrooms || listing.bedroomsTotal || 0;
+        const baths = listing.details?.numBathrooms || listing.numBathrooms || listing.bathroomsTotalInteger || 0;
+        const sqft = listing.details?.sqft || listing.sqft || listing.livingArea || 0;
+
+        const photos = (listing.images || listing.photos || []).map((img: any) => {
+          const imagePath = typeof img === 'string' ? img : img.url || img.src || img;
+          if (imagePath && !imagePath.startsWith('http')) {
+            return `https://cdn.repliers.io/${imagePath}`;
+          }
+          return imagePath;
+        });
+
+        return {
+          id: listing.mlsNumber || listing.listingId,
+          mlsNumber: listing.mlsNumber,
+          status: listing.standardStatus || listing.status || status,
+          listPrice: listing.listPrice,
+          listDate: listing.listDate,
+          daysOnMarket: listing.daysOnMarket || listing.dom || 0,
+          address: {
+            streetNumber,
+            streetName,
+            streetSuffix,
+            city: cityName,
+            state,
+            postalCode,
+            full: fullAddress,
+          },
+          beds,
+          baths,
+          sqft,
+          photos,
+          listAgentName: listing.agents?.[0]?.name || listing.listAgentName,
+          listAgentMlsId: listing.agents?.[0]?.mlsId || listing.listAgentMlsId,
+        };
+      });
+
+      console.log(`[Company Listings Office] Found ${listings.length} listings for office ${officeCode}`);
+      
+      // Office info mapping
+      const officeInfo: Record<string, { name: string; address: string }> = {
+        '5220': { name: 'Spyglass Realty', address: '2130 Goodrich Ave, Austin, TX 78704' },
+      };
+
+      res.json({
+        total: data.count || listings.length,
+        listings,
+        officeCode,
+        officeName: officeInfo[officeCode]?.name || 'Spyglass Realty',
+        officeAddress: officeInfo[officeCode]?.address || '',
+      });
+    } catch (error) {
+      console.error("[Company Listings Office] Error:", error);
+      res.status(500).json({ message: "Failed to fetch company listings by office" });
     }
   });
 
