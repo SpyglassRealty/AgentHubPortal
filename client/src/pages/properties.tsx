@@ -8,17 +8,27 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
   ArrowUpRight, ExternalLink, Building2, ChevronLeft, ChevronRight, 
-  Bed, Bath, Square, RefreshCw, Loader2, ChevronDown 
+  Bed, Bath, Square, RefreshCw, Loader2, ChevronDown, TrendingUp,
+  Home, FileCheck, Clock, CheckCircle2, X, MapPin, Calendar
 } from "lucide-react";
-import MarketPulse from "@/components/market-pulse";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "@/contexts/ThemeContext";
+import { format } from "date-fns";
 
 interface AppUsage {
   appId: string;
   clickCount: number;
+}
+
+interface MarketPulseData {
+  totalProperties: number;
+  active: number;
+  activeUnderContract: number;
+  pending: number;
+  closed: number;
+  lastUpdatedAt: string;
 }
 
 interface Listing {
@@ -32,6 +42,7 @@ interface Listing {
     full: string;
     streetNumber?: string;
     streetName?: string;
+    streetSuffix?: string;
     city?: string;
     state?: string;
     postalCode?: string;
@@ -43,6 +54,7 @@ interface Listing {
   subdivision?: string;
   propertyType?: string;
   listOfficeName?: string;
+  listAgentName?: string;
 }
 
 interface ListingsResponse {
@@ -63,7 +75,7 @@ const RESO_STATUSES = [
   { key: 'all', label: 'All' },
 ];
 
-// Sorting options - aligned with Repliers API supported fields
+// Sorting options
 const SORT_OPTIONS = [
   { label: 'Newest Listed', value: 'listDate', order: 'desc' },
   { label: 'Oldest Listed', value: 'listDate', order: 'asc' },
@@ -71,7 +83,32 @@ const SORT_OPTIONS = [
   { label: 'Price: Low to High', value: 'listPrice', order: 'asc' },
 ];
 
-function ListingCard({ listing, isDark }: { listing: Listing; isDark: boolean }) {
+// Status configuration for Market Pulse
+const STATUS_CONFIG = [
+  { key: 'Active', label: 'Active', sublabel: 'On Market', color: '#22C55E', textColor: 'text-green-600', bgLight: 'bg-green-50', bgDark: 'bg-green-900/20', borderColor: 'border-green-200', icon: Home },
+  { key: 'Active Under Contract', label: 'Under Contract', sublabel: '', color: '#3B82F6', textColor: 'text-blue-600', bgLight: 'bg-blue-50', bgDark: 'bg-blue-900/20', borderColor: 'border-blue-200', icon: FileCheck },
+  { key: 'Pending', label: 'Pending', sublabel: 'Closing Soon', color: '#EAB308', textColor: 'text-yellow-600', bgLight: 'bg-yellow-50', bgDark: 'bg-yellow-900/20', borderColor: 'border-yellow-200', icon: Clock },
+  { key: 'Closed', label: 'Closed (30d)', sublabel: 'Sales', color: '#9CA3AF', textColor: 'text-gray-600', bgLight: 'bg-gray-50', bgDark: 'bg-gray-700/50', borderColor: 'border-gray-300', icon: CheckCircle2 },
+];
+
+function formatPrice(price: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(price);
+}
+
+// Listing Card Component
+function ListingCard({ 
+  listing, 
+  isDark,
+  onClick 
+}: { 
+  listing: Listing; 
+  isDark: boolean;
+  onClick: () => void;
+}) {
   const cardBg = isDark ? 'bg-[#2a2a2a]' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
   const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
@@ -84,18 +121,19 @@ function ListingCard({ listing, isDark }: { listing: Listing; isDark: boolean })
     'Active Under Contract': 'bg-blue-500',
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
-
   const photoUrl = listing.photos?.[0] || null;
+
+  const streetAddress = [
+    listing.address?.streetNumber,
+    listing.address?.streetName,
+    listing.address?.streetSuffix
+  ].filter(Boolean).join(' ');
+
+  const cityStateZip = `${listing.address?.city || ''}, ${listing.address?.state || 'TX'} ${listing.address?.postalCode || ''}`;
 
   return (
     <div
+      onClick={onClick}
       className={`${cardBg} rounded-xl border ${borderColor} overflow-hidden cursor-pointer 
         transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]`}
       data-testid={`listing-card-${listing.id}`}
@@ -107,6 +145,7 @@ function ListingCard({ listing, isDark }: { listing: Listing; isDark: boolean })
             alt={listing.address?.full}
             className="w-full h-full object-cover"
             loading="lazy"
+            data-testid={`img-listing-${listing.id}`}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -114,8 +153,11 @@ function ListingCard({ listing, isDark }: { listing: Listing; isDark: boolean })
           </div>
         )}
         
-        <span className={`absolute top-2 left-2 px-2 py-0.5 rounded text-xs font-bold uppercase
-          ${statusColors[listing.status] || 'bg-gray-500'} text-white`}>
+        <span 
+          className={`absolute top-2 left-2 px-2 py-0.5 rounded text-xs font-bold uppercase
+            ${statusColors[listing.status] || 'bg-gray-500'} text-white`}
+          data-testid={`badge-status-${listing.id}`}
+        >
           {listing.status === 'Active Under Contract' ? 'Under Contract' : listing.status}
         </span>
         
@@ -127,25 +169,28 @@ function ListingCard({ listing, isDark }: { listing: Listing; isDark: boolean })
       </div>
 
       <div className="p-3">
-        <p className={`text-lg font-bold ${textPrimary}`}>
+        <p className={`text-lg font-bold ${textPrimary}`} data-testid={`text-price-${listing.id}`}>
           {formatPrice(listing.listPrice)}
         </p>
-        <p className={`text-sm ${textSecondary} truncate mb-2`}>
-          {listing.address?.full}
+        <p className={`text-sm ${textPrimary} truncate`} data-testid={`text-address-${listing.id}`}>
+          {streetAddress || listing.address?.full}
+        </p>
+        <p className={`text-xs ${textSecondary} truncate mb-2`}>
+          {cityStateZip}
         </p>
         <div className="flex items-center gap-3 text-sm">
           {listing.beds > 0 && (
-            <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <span className={`flex items-center gap-1 ${textSecondary}`} data-testid={`text-beds-${listing.id}`}>
               <Bed className="w-4 h-4" /> {listing.beds}
             </span>
           )}
           {listing.baths > 0 && (
-            <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <span className={`flex items-center gap-1 ${textSecondary}`} data-testid={`text-baths-${listing.id}`}>
               <Bath className="w-4 h-4" /> {listing.baths}
             </span>
           )}
           {listing.livingArea > 0 && (
-            <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <span className={`flex items-center gap-1 ${textSecondary}`} data-testid={`text-sqft-${listing.id}`}>
               <Square className="w-4 h-4" /> {listing.livingArea?.toLocaleString()}
             </span>
           )}
@@ -155,50 +200,271 @@ function ListingCard({ listing, isDark }: { listing: Listing; isDark: boolean })
   );
 }
 
-function AustinMetroListings() {
+// Listing Detail Modal Component
+function ListingDetailModal({ 
+  listing, 
+  isDark, 
+  onClose 
+}: { 
+  listing: Listing; 
+  isDark: boolean; 
+  onClose: () => void;
+}) {
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  
+  const modalBg = isDark ? 'bg-[#222222]' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-[#333333]' : 'border-gray-200';
+
+  const photos = listing.photos || [];
+  const sqft = listing.livingArea || 0;
+  const pricePerSqft = sqft ? Math.round(listing.listPrice / sqft) : null;
+  const daysOnMarket = listing.daysOnMarket || 0;
+
+  const statusColors: Record<string, string> = {
+    'Active': 'bg-green-500',
+    'Pending': 'bg-yellow-500',
+    'Closed': 'bg-gray-500',
+    'Active Under Contract': 'bg-blue-500',
+  };
+
+  const streetAddress = [
+    listing.address?.streetNumber,
+    listing.address?.streetName,
+    listing.address?.streetSuffix
+  ].filter(Boolean).join(' ');
+
+  const cityStateZip = `${listing.address?.city || ''}, ${listing.address?.state || 'TX'} ${listing.address?.postalCode || ''}`;
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  // Photo navigation
+  const nextPhoto = () => {
+    if (photos.length > 0) {
+      setCurrentPhotoIndex((prev) => (prev + 1) % photos.length);
+    }
+  };
+
+  const prevPhoto = () => {
+    if (photos.length > 0) {
+      setCurrentPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length);
+    }
+  };
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') prevPhoto();
+      if (e.key === 'ArrowRight') nextPhoto();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [photos.length]);
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+      onClick={onClose}
+      data-testid="modal-listing-detail"
+    >
+      <div 
+        className={`${modalBg} rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header with close button */}
+        <div className={`sticky top-0 z-10 ${modalBg} p-4 border-b ${borderColor} flex items-center justify-between`}>
+          <div className="flex items-center gap-2">
+            <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase
+              ${statusColors[listing.status] || 'bg-gray-500'} text-white`}>
+              {listing.status === 'Active Under Contract' ? 'Under Contract' : listing.status}
+            </span>
+            <span className={`text-sm ${textSecondary}`}>MLS# {listing.mlsNumber}</span>
+          </div>
+          <button
+            onClick={onClose}
+            className={`p-2 rounded-full min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors
+              ${isDark ? 'hover:bg-[#333333]' : 'hover:bg-gray-100'}`}
+            data-testid="button-close-modal"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Photo Gallery */}
+        <div className="relative aspect-[16/10] bg-[#222222]">
+          {photos.length > 0 ? (
+            <>
+              <img
+                src={photos[currentPhotoIndex]}
+                alt={`${streetAddress} - Photo ${currentPhotoIndex + 1}`}
+                className="w-full h-full object-cover"
+              />
+              {photos.length > 1 && (
+                <>
+                  <button
+                    onClick={prevPhoto}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                    data-testid="button-prev-photo"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={nextPhoto}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                    data-testid="button-next-photo"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/60 text-white text-sm">
+                    {currentPhotoIndex + 1} / {photos.length}
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Building2 className="w-16 h-16 text-gray-500" />
+            </div>
+          )}
+        </div>
+
+        {/* Property Details */}
+        <div className="p-4 space-y-4">
+          {/* Price and Address */}
+          <div>
+            <p className={`text-2xl font-bold ${textPrimary}`} data-testid="modal-text-price">
+              {formatPrice(listing.listPrice)}
+            </p>
+            <p className={`text-lg ${textPrimary} mt-1`} data-testid="modal-text-address">
+              {streetAddress || listing.address?.full}
+            </p>
+            <p className={`text-sm ${textSecondary}`}>
+              {cityStateZip}
+            </p>
+          </div>
+
+          {/* Key Stats */}
+          <div className={`grid grid-cols-4 gap-3 p-3 rounded-lg border ${borderColor} ${isDark ? 'bg-[#2a2a2a]' : 'bg-gray-50'}`} data-testid="modal-stats-grid">
+            <div className="text-center">
+              <p className={`text-lg font-bold ${textPrimary}`} data-testid="modal-text-beds">{listing.beds}</p>
+              <p className={`text-xs ${textSecondary}`}>Beds</p>
+            </div>
+            <div className="text-center">
+              <p className={`text-lg font-bold ${textPrimary}`} data-testid="modal-text-baths">{listing.baths}</p>
+              <p className={`text-xs ${textSecondary}`}>Baths</p>
+            </div>
+            <div className="text-center">
+              <p className={`text-lg font-bold ${textPrimary}`} data-testid="modal-text-sqft">{sqft.toLocaleString()}</p>
+              <p className={`text-xs ${textSecondary}`}>Sq Ft</p>
+            </div>
+            <div className="text-center">
+              <p className={`text-lg font-bold ${textPrimary}`}>{pricePerSqft ? `$${pricePerSqft}` : '-'}</p>
+              <p className={`text-xs ${textSecondary}`}>$/Sq Ft</p>
+            </div>
+          </div>
+
+          {/* Additional Info */}
+          <div className={`grid grid-cols-2 gap-4`}>
+            <div className="flex items-center gap-2">
+              <Calendar className={`w-4 h-4 ${textSecondary}`} />
+              <div>
+                <p className={`text-xs ${textSecondary}`}>Days on Market</p>
+                <p className={`text-sm font-medium ${textPrimary}`}>{daysOnMarket} days</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <MapPin className={`w-4 h-4 ${textSecondary}`} />
+              <div>
+                <p className={`text-xs ${textSecondary}`}>Listed</p>
+                <p className={`text-sm font-medium ${textPrimary}`}>
+                  {listing.listDate ? format(new Date(listing.listDate), 'MMM d, yyyy') : 'N/A'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Agent Info */}
+          {listing.listAgentName && (
+            <div className={`p-3 rounded-lg border ${borderColor}`}>
+              <p className={`text-xs ${textSecondary} mb-1`}>Listing Agent</p>
+              <p className={`text-sm font-medium ${textPrimary}`}>{listing.listAgentName}</p>
+              {listing.listOfficeName && (
+                <p className={`text-xs ${textSecondary}`}>{listing.listOfficeName}</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Combined Market Pulse + Listings Component
+function MarketPulseWithListings() {
   const { isDark } = useTheme();
   const [, setLocation] = useLocation();
   const searchString = useSearch();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
   
   // Parse URL search params
   const urlParams = new URLSearchParams(searchString);
   const urlStatus = urlParams.get('status') || 'Active';
   
-  // State for filters
+  // State
   const [statusFilter, setStatusFilter] = useState<string>(urlStatus);
   const [sortBy, setSortBy] = useState<string>('listDate');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
 
   const cardBg = isDark ? 'bg-[#2a2a2a]' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
   const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
   const borderColor = isDark ? 'border-[#333333]' : 'border-gray-200';
 
-  // Sync status filter with URL - reset to Active if missing or invalid status
+  // Sync status filter with URL
   useEffect(() => {
     const params = new URLSearchParams(searchString);
     const newStatus = params.get('status');
     if (newStatus && RESO_STATUSES.some(s => s.key === newStatus)) {
       setStatusFilter(newStatus);
     } else {
-      // Reset to Active for missing or invalid status values
       setStatusFilter('Active');
     }
   }, [searchString]);
 
-  // Update URL when filter changes
-  const handleStatusChange = (status: string) => {
-    setStatusFilter(status);
-    if (status === 'all' || status === 'Active') {
-      setLocation('/properties');
-    } else {
-      setLocation(`/properties?status=${encodeURIComponent(status)}`);
-    }
-  };
+  // Fetch Market Pulse data
+  const { 
+    data: marketData, 
+    isLoading: marketLoading, 
+    refetch: refetchMarket,
+    isFetching: marketFetching 
+  } = useQuery<MarketPulseData>({
+    queryKey: ['/api/market-pulse'],
+    queryFn: async () => {
+      const res = await fetch('/api/market-pulse');
+      if (!res.ok) throw new Error('Failed to fetch market data');
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const { data: listingsData, isLoading, refetch, isFetching } = useQuery<ListingsResponse>({
+  // Fetch Listings data
+  const { 
+    data: listingsData, 
+    isLoading: listingsLoading, 
+    refetch: refetchListings,
+    isFetching: listingsFetching 
+  } = useQuery<ListingsResponse>({
     queryKey: ['austin-metro-listings', statusFilter, sortBy, sortOrder],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -219,6 +485,22 @@ function AustinMetroListings() {
 
   const listings = listingsData?.listings || [];
   const total = listingsData?.total || 0;
+  const isRefreshing = marketFetching || listingsFetching;
+
+  // Combined refresh function
+  const handleRefresh = async () => {
+    await Promise.all([refetchMarket(), refetchListings()]);
+  };
+
+  // Update URL when filter changes
+  const handleStatusChange = (status: string) => {
+    setStatusFilter(status);
+    if (status === 'all' || status === 'Active') {
+      setLocation('/properties');
+    } else {
+      setLocation(`/properties?status=${encodeURIComponent(status)}`);
+    }
+  };
 
   const scrollLeft = () => {
     scrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' });
@@ -238,162 +520,289 @@ function AustinMetroListings() {
     opt => opt.value === sortBy && opt.order === sortOrder
   )?.label || 'Newest Listed';
 
-  const isRefreshing = isFetching;
+  // Market stats with values
+  const getStatValue = (key: string) => {
+    if (!marketData) return 0;
+    switch (key) {
+      case 'Active': return marketData.active;
+      case 'Active Under Contract': return marketData.activeUnderContract;
+      case 'Pending': return marketData.pending;
+      case 'Closed': return marketData.closed;
+      default: return 0;
+    }
+  };
+
+  const maxValue = marketData 
+    ? Math.max(marketData.active, marketData.activeUnderContract, marketData.pending, marketData.closed, 1)
+    : 1;
 
   return (
-    <Card className={`${cardBg} border ${borderColor}`} data-testid="card-austin-metro-listings">
-      <CardHeader className="pb-3 px-3 sm:px-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-[#EF4923]/10">
-              <Building2 className="w-5 h-5 text-[#EF4923]" />
+    <>
+      <Card className={`${cardBg} border ${borderColor}`} data-testid="card-market-pulse-listings">
+        {/* Header with unified refresh button */}
+        <CardHeader className="pb-3 px-3 sm:px-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-[#EF4923]/10">
+                <TrendingUp className="w-5 h-5 text-[#EF4923]" />
+              </div>
+              <div>
+                <CardTitle className="text-base sm:text-lg">Market Pulse</CardTitle>
+                <p className={`text-xs sm:text-sm ${textSecondary}`}>Austin Metro Area</p>
+              </div>
             </div>
+            
+            {/* Single Refresh Button for Both Sections */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="gap-1.5 h-8 px-2 sm:px-3 text-xs sm:text-sm self-start sm:self-auto"
+              data-testid="button-refresh-all"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent className="px-3 sm:px-6">
+          {/* Market Pulse Bar Chart */}
+          {marketLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-[#EF4923]" />
+            </div>
+          ) : (
+            <>
+              {/* Bar Chart */}
+              <div className="mb-4">
+                <div className="flex">
+                  <div className="w-10 flex flex-col justify-between text-xs text-gray-400 pr-2">
+                    <span>{Math.round(maxValue / 1000)}k</span>
+                    <span>{Math.round(maxValue / 2000)}k</span>
+                    <span>0</span>
+                  </div>
+                  <div className="flex-1 flex items-end gap-3 h-36">
+                    {STATUS_CONFIG.map((item) => {
+                      const value = getStatValue(item.key);
+                      return (
+                        <div
+                          key={item.key}
+                          className="flex-1 flex flex-col items-center cursor-pointer group"
+                          onClick={() => handleStatusChange(item.key)}
+                          data-testid={`bar-${item.key.toLowerCase().replace(/\s+/g, '-')}`}
+                        >
+                          <div
+                            className="w-full rounded-t-md transition-all duration-200 group-hover:opacity-80 group-hover:scale-105"
+                            style={{
+                              height: `${Math.max((value / maxValue) * 100, 5)}%`,
+                              backgroundColor: item.color,
+                              minHeight: '8px'
+                            }}
+                          />
+                          <span className={`mt-2 text-xs ${textSecondary} group-hover:text-[#EF4923] transition-colors text-center`}>
+                            {item.label.replace(' (30d)', '')}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Stat Cards Grid */}
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                {STATUS_CONFIG.map((item) => {
+                  const Icon = item.icon;
+                  const value = getStatValue(item.key);
+                  return (
+                    <div
+                      key={item.key}
+                      onClick={() => handleStatusChange(item.key)}
+                      className={`p-3 rounded-lg border cursor-pointer transition-all duration-200
+                        hover:shadow-md hover:scale-[1.02] active:scale-[0.98]
+                        ${isDark ? item.bgDark : item.bgLight} ${item.borderColor}`}
+                      data-testid={`stat-card-${item.key.toLowerCase().replace(/\s+/g, '-')}`}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Icon className={`w-4 h-4 ${item.textColor}`} />
+                        <span className={`text-sm font-medium ${item.textColor}`}>{item.label}</span>
+                      </div>
+                      {item.sublabel && (
+                        <p className={`text-xs ${textSecondary}`}>{item.sublabel}</p>
+                      )}
+                      <p className={`text-xl font-bold ${item.textColor} text-right`}>
+                        {value.toLocaleString()}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Total Active */}
+              <div className="mb-6 text-center">
+                <span className={textSecondary}>Total Active: </span>
+                <span className={`font-bold ${textPrimary}`}>
+                  {(marketData?.totalProperties || 0).toLocaleString()}
+                </span>
+              </div>
+            </>
+          )}
+
+          {/* Divider */}
+          <hr className={`${borderColor} mb-6`} />
+
+          {/* Austin Metro Listings Section */}
+          <div className="flex items-center gap-2 mb-4">
+            <Building2 className="w-5 h-5 text-[#EF4923]" />
             <div>
-              <CardTitle className="text-base sm:text-lg">Austin Metro Listings</CardTitle>
-              <p className={`text-xs sm:text-sm ${textSecondary}`}>
+              <h2 className={`text-lg font-semibold ${textPrimary}`}>Austin Metro Listings</h2>
+              <p className={`text-sm ${textSecondary}`}>
                 {total.toLocaleString()} {statusFilter !== 'all' ? statusFilter.toLowerCase() : ''} listings
               </p>
             </div>
           </div>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            disabled={isRefreshing}
-            className="gap-1.5 h-8 px-2 sm:px-3 text-xs sm:text-sm self-start sm:self-auto"
-            data-testid="button-refresh-listings"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Refresh</span>
-          </Button>
-        </div>
 
-        {/* Filters Row */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-3">
-          {/* Status Filter Tabs */}
-          <div className={`flex gap-1 p-1 rounded-lg overflow-x-auto ${isDark ? 'bg-[#333333]' : 'bg-gray-100'}`}>
-            {RESO_STATUSES.map((status) => (
-              <button
-                key={status.key}
-                onClick={() => handleStatusChange(status.key)}
-                className={`px-2 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium whitespace-nowrap transition-all min-h-[44px] touch-target
-                  ${statusFilter === status.key
-                    ? 'bg-[#EF4923] text-white'
-                    : isDark 
-                      ? 'text-gray-400 hover:text-white' 
-                      : 'text-gray-600 hover:text-gray-900'
-                  }
-                `}
-                data-testid={`filter-${status.key.toLowerCase().replace(/\s+/g, '-')}`}
-              >
-                {status.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Sort Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setShowSortDropdown(!showSortDropdown)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg border min-h-[44px] touch-target text-sm
-                ${isDark ? 'bg-[#333333] border-[#444444] text-white' : 'bg-white border-gray-200 text-gray-700'}
-                hover:border-[#EF4923] transition-colors`}
-              data-testid="button-sort-dropdown"
-            >
-              <span className="whitespace-nowrap">{currentSortLabel}</span>
-              <ChevronDown className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} />
-            </button>
-            
-            {showSortDropdown && (
-              <>
-                <div 
-                  className="fixed inset-0 z-40" 
-                  onClick={() => setShowSortDropdown(false)}
-                />
-                <div className={`absolute right-0 sm:left-0 top-full mt-1 z-50 rounded-lg shadow-lg border min-w-[200px]
-                  ${isDark ? 'bg-[#2a2a2a] border-[#444444]' : 'bg-white border-gray-200'}`}
+          {/* Filters Row */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+            {/* Status Filter Tabs */}
+            <div className={`flex gap-1 p-1 rounded-lg overflow-x-auto ${isDark ? 'bg-[#333333]' : 'bg-gray-100'}`}>
+              {RESO_STATUSES.map((status) => (
+                <button
+                  key={status.key}
+                  onClick={() => handleStatusChange(status.key)}
+                  className={`px-2 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium whitespace-nowrap transition-all min-h-[44px]
+                    ${statusFilter === status.key
+                      ? 'bg-[#EF4923] text-white'
+                      : isDark 
+                        ? 'text-gray-400 hover:text-white' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  data-testid={`filter-${status.key.toLowerCase().replace(/\s+/g, '-')}`}
                 >
-                  {SORT_OPTIONS.map((option) => (
-                    <button
-                      key={`${option.value}-${option.order}`}
-                      onClick={() => handleSortChange(option.value, option.order as 'asc' | 'desc')}
-                      className={`w-full text-left px-4 py-3 text-sm min-h-[44px] touch-target transition-colors
-                        ${sortBy === option.value && sortOrder === option.order
-                          ? 'bg-[#EF4923]/10 text-[#EF4923] font-medium'
-                          : isDark 
-                            ? 'text-gray-300 hover:bg-[#333333]' 
-                            : 'text-gray-700 hover:bg-gray-50'
-                        }
-                        first:rounded-t-lg last:rounded-b-lg`}
-                      data-testid={`sort-${option.value}-${option.order}`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="px-3 sm:px-6">
-        {isLoading && (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-8 h-8 animate-spin text-[#EF4923]" />
-          </div>
-        )}
-
-        {!isLoading && listings.length === 0 && (
-          <div className={`text-center py-8 rounded-lg border-2 border-dashed ${borderColor}`}>
-            <Building2 className={`w-10 h-10 mx-auto mb-2 ${textSecondary}`} />
-            <p className={`font-medium ${textPrimary}`}>No {statusFilter !== 'all' ? statusFilter.toLowerCase() : ''} listings found</p>
-            <p className={`text-sm ${textSecondary}`}>Try adjusting your filters</p>
-          </div>
-        )}
-
-        {!isLoading && listings.length > 0 && (
-          <div className="relative">
-            <button
-              onClick={scrollLeft}
-              className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full shadow-lg
-                ${isDark ? 'bg-[#2a2a2a] hover:bg-[#333333] text-white' : 'bg-white hover:bg-gray-50 text-gray-700'}
-                hidden md:flex items-center justify-center min-w-[44px] min-h-[44px]`}
-              data-testid="button-scroll-left"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-
-            <div
-              ref={scrollRef}
-              className="flex gap-4 overflow-x-auto pb-4 px-1 scroll-smooth scrollbar-hide"
-              style={{ WebkitOverflowScrolling: 'touch' }}
-            >
-              {listings.map((listing) => (
-                <div key={listing.id} className="flex-shrink-0 w-64 sm:w-72">
-                  <ListingCard listing={listing} isDark={isDark} />
-                </div>
+                  {status.label}
+                </button>
               ))}
             </div>
 
-            <button
-              onClick={scrollRight}
-              className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full shadow-lg
-                ${isDark ? 'bg-[#2a2a2a] hover:bg-[#333333] text-white' : 'bg-white hover:bg-gray-50 text-gray-700'}
-                hidden md:flex items-center justify-center min-w-[44px] min-h-[44px]`}
-              data-testid="button-scroll-right"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-
-            <p className={`text-xs text-center mt-2 md:hidden ${textSecondary}`}>
-              ← Swipe to see more →
-            </p>
+            {/* Sort Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowSortDropdown(!showSortDropdown)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border min-h-[44px] text-sm
+                  ${isDark ? 'bg-[#333333] border-[#444444] text-white' : 'bg-white border-gray-200 text-gray-700'}
+                  hover:border-[#EF4923] transition-colors`}
+                data-testid="button-sort-dropdown"
+              >
+                <span className="whitespace-nowrap">{currentSortLabel}</span>
+                <ChevronDown className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {showSortDropdown && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setShowSortDropdown(false)}
+                  />
+                  <div className={`absolute right-0 sm:left-0 top-full mt-1 z-50 rounded-lg shadow-lg border min-w-[200px]
+                    ${isDark ? 'bg-[#2a2a2a] border-[#444444]' : 'bg-white border-gray-200'}`}
+                  >
+                    {SORT_OPTIONS.map((option) => (
+                      <button
+                        key={`${option.value}-${option.order}`}
+                        onClick={() => handleSortChange(option.value, option.order as 'asc' | 'desc')}
+                        className={`w-full text-left px-4 py-3 text-sm min-h-[44px] transition-colors
+                          ${sortBy === option.value && sortOrder === option.order
+                            ? 'bg-[#EF4923]/10 text-[#EF4923] font-medium'
+                            : isDark 
+                              ? 'text-gray-300 hover:bg-[#333333]' 
+                              : 'text-gray-700 hover:bg-gray-50'
+                          }
+                          first:rounded-t-lg last:rounded-b-lg`}
+                        data-testid={`sort-${option.value}-${option.order}`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+
+          {/* Loading State */}
+          {listingsLoading && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-[#EF4923]" />
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!listingsLoading && listings.length === 0 && (
+            <div className={`text-center py-8 rounded-lg border-2 border-dashed ${borderColor}`}>
+              <Building2 className={`w-10 h-10 mx-auto mb-2 ${textSecondary}`} />
+              <p className={`font-medium ${textPrimary}`}>No {statusFilter !== 'all' ? statusFilter.toLowerCase() : ''} listings found</p>
+              <p className={`text-sm ${textSecondary}`}>Try adjusting your filters</p>
+            </div>
+          )}
+
+          {/* Listings Horizontal Scroll */}
+          {!listingsLoading && listings.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={scrollLeft}
+                className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full shadow-lg
+                  ${isDark ? 'bg-[#2a2a2a] hover:bg-[#333333] text-white' : 'bg-white hover:bg-gray-50 text-gray-700'}
+                  hidden md:flex items-center justify-center min-w-[44px] min-h-[44px]`}
+                data-testid="button-scroll-left"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+
+              <div
+                ref={scrollRef}
+                className="flex gap-4 overflow-x-auto pb-4 px-1 scroll-smooth scrollbar-hide"
+                style={{ WebkitOverflowScrolling: 'touch' }}
+              >
+                {listings.map((listing) => (
+                  <div key={listing.id} className="flex-shrink-0 w-64 sm:w-72">
+                    <ListingCard 
+                      listing={listing} 
+                      isDark={isDark} 
+                      onClick={() => setSelectedListing(listing)}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={scrollRight}
+                className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full shadow-lg
+                  ${isDark ? 'bg-[#2a2a2a] hover:bg-[#333333] text-white' : 'bg-white hover:bg-gray-50 text-gray-700'}
+                  hidden md:flex items-center justify-center min-w-[44px] min-h-[44px]`}
+                data-testid="button-scroll-right"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+
+              <p className={`text-xs text-center mt-2 md:hidden ${textSecondary}`}>
+                ← Swipe to see more →
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Listing Detail Modal */}
+      {selectedListing && (
+        <ListingDetailModal
+          listing={selectedListing}
+          isDark={isDark}
+          onClose={() => setSelectedListing(null)}
+        />
+      )}
+    </>
   );
 }
 
@@ -463,11 +872,8 @@ export default function PropertiesPage() {
           </div>
         </div>
 
-        {/* Market Pulse - not clickable on Properties page since we're already here */}
-        <MarketPulse isClickable={false} />
-
-        {/* Austin Metro Listings Widget */}
-        <AustinMetroListings />
+        {/* Combined Market Pulse + Austin Metro Listings */}
+        <MarketPulseWithListings />
 
         <div className="space-y-4">
           <h2 className="text-xl font-display font-semibold tracking-tight">Property Apps & Tools</h2>

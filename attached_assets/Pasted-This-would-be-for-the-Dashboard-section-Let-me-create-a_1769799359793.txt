@@ -1,0 +1,743 @@
+This would be for the Dashboard section
+
+Let me create a comprehensive prompt for this vertical stack layout.Send this to Mission Control Replit:
+### Option B: Spyglass Listings Vertical Stack Layout (RECOMMENDED)
+
+**Layout:** Market Pulse on top, Spyglass Realty Company Listings stacked below in a single combined card.
+
+**Data Source:** Repliers MLS API (ACTRIS)
+**Office Code:** 5220 (Spyglass Realty - Austin)
+
+---
+
+## Visual Design
+
+### Dashboard - Vertical Stack Layout
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Good morning, [Name]                                                       │
+│  Welcome to Mission Control. What would you like to work on today?          │
+│                                                                             │
+│  ┌───────────────────────────────────────────────┐  ┌─────────────────────┐ │
+│  │  📈 Market Pulse                  [↻ Refresh] │  │  ✨ Action Items    │ │
+│  │  Austin Metro Area                            │  │                     │ │
+│  │                                               │  │  No action items    │ │
+│  │  [Bar Chart]                                  │  │  right now          │ │
+│  │                                               │  │                     │ │
+│  │  ┌──────────┐ ┌──────────┐                   │  │                     │ │
+│  │  │🏠 Active │ │📋 Under  │                   │  │                     │ │
+│  │  │  19,930  │ │Contract  │                   │  │                     │ │
+│  │  └──────────┘ │  1,933   │                   │  │                     │ │
+│  │  ┌──────────┐ └──────────┘                   │  │                     │ │
+│  │  │⏳ Pending│ ┌──────────┐                   │  │                     │ │
+│  │  │  2,651   │ │✓ Closed  │                   │  │                     │ │
+│  │  └──────────┘ │   276    │                   │  │                     │ │
+│  │               └──────────┘                   │  │                     │ │
+│  │           Total Active: 24,514               │  │                     │ │
+│  │                                               │  │                     │ │
+│  │  ─────────────────────────────────────────── │  │                     │ │
+│  │                                               │  │                     │ │
+│  │  🏢 Spyglass Realty Listings      View All → │  │                     │ │
+│  │  Office 5220 • 12 Active                      │  │                     │ │
+│  │                                               │  │                     │ │
+│  │  ┌──────┐  ┌──────┐  ┌──────┐  ┌──────┐  → │  │                     │ │
+│  │  │PHOTO │  │PHOTO │  │PHOTO │  │PHOTO │     │  │                     │ │
+│  │  │$525K │  │$699K │  │$450K │  │$1.2M │     │  │                     │ │
+│  │  │123.. │  │456.. │  │789.. │  │321.. │     │  │                     │ │
+│  │  │3/2   │  │4/3   │  │2/1   │  │5/4   │     │  │                     │ │
+│  │  └──────┘  └──────┘  └──────┘  └──────┘     │  │                     │ │
+│  │                                               │  │                     │ │
+│  │           ← Swipe to see more →              │  │                     │ │
+│  └───────────────────────────────────────────────┘  └─────────────────────┘ │
+│                                                                             │
+│  [Action Items: 0] [Apps: 13] [Resources: 24/7]                            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+### Mobile Layout (Single Column)
+┌─────────────────────────────────────┐
+│  Good morning, [Name]               │
+│                                     │
+│  ┌─────────────────────────────────┐│
+│  │  📈 Market Pulse     [↻ Refresh]││
+│  │  Austin Metro Area              ││
+│  │                                 ││
+│  │  [Bar Chart]                    ││
+│  │                                 ││
+│  │  ┌─────────┐ ┌─────────┐       ││
+│  │  │🏠 Active│ │📋 Under │       ││
+│  │  │ 19,930  │ │Contract │       ││
+│  │  └─────────┘ │  1,933  │       ││
+│  │  ┌─────────┐ └─────────┘       ││
+│  │  │⏳Pending│ ┌─────────┐       ││
+│  │  │  2,651  │ │✓ Closed │       ││
+│  │  └─────────┘ │   276   │       ││
+│  │              └─────────┘       ││
+│  │       Total Active: 24,514     ││
+│  │                                 ││
+│  │  ───────────────────────────── ││
+│  │                                 ││
+│  │  🏢 Spyglass Realty  View All →││
+│  │  12 Active Listings             ││
+│  │                                 ││
+│  │  ┌──────┐ ┌──────┐ ┌──────┐ → ││
+│  │  │PHOTO │ │PHOTO │ │PHOTO │    ││
+│  │  │$525K │ │$699K │ │$450K │    ││
+│  │  └──────┘ └──────┘ └──────┘    ││
+│  │        ← Swipe →               ││
+│  └─────────────────────────────────┘│
+│                                     │
+│  ┌─────────────────────────────────┐│
+│  │  ✨ Action Items                ││
+│  │  No action items right now      ││
+│  └─────────────────────────────────┘│
+│                                     │
+└─────────────────────────────────────┘
+
+---
+
+## PART 1: Combined Market Pulse + Spyglass Listings Component
+
+### Create `client/src/components/dashboard/MarketPulseWithSpyglassListings.tsx`:
+```tsx
+import React, { useState, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { 
+  TrendingUp, Building2, Home, FileText, Clock, CheckCircle, 
+  ChevronLeft, ChevronRight, Bed, Bath, Square, X
+} from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { RefreshButton } from '@/components/ui/RefreshButton';
+
+export function MarketPulseWithSpyglassListings() {
+  const navigate = useNavigate();
+  const { isDark } = useTheme();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [selectedListing, setSelectedListing] = useState<any>(null);
+
+  // Fetch Market Pulse stats
+  const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useQuery({
+    queryKey: ['market-pulse-stats'],
+    queryFn: async () => {
+      const response = await fetch('/api/market-pulse/stats?city=Austin');
+      if (!response.ok) throw new Error('Failed to fetch');
+      return response.json();
+    },
+    refetchInterval: 5 * 60 * 1000,
+  });
+
+  // Fetch Spyglass Realty listings (Office 5220)
+  const { data: listingsData, isLoading: listingsLoading, refetch: refetchListings } = useQuery({
+    queryKey: ['spyglass-listings', '5220'],
+    queryFn: async () => {
+      const response = await fetch('/api/company-listings/office?officeCode=5220&status=Active&limit=20');
+      if (!response.ok) throw new Error('Failed to fetch');
+      return response.json();
+    },
+    refetchInterval: 5 * 60 * 1000,
+  });
+
+  const stats = statsData?.stats || {
+    active: 0,
+    activeUnderContract: 0,
+    pending: 0,
+    closed: 0,
+    totalActive: 0
+  };
+
+  const spyglassListings = listingsData?.listings || [];
+  const maxValue = Math.max(stats.active, stats.activeUnderContract, stats.pending, stats.closed, 1);
+  const isLoading = statsLoading || listingsLoading;
+
+  // Combined refresh
+  const handleRefresh = async () => {
+    await Promise.all([refetchStats(), refetchListings()]);
+  };
+
+  // Navigate to Properties with status filter
+  const handleStatusClick = (status: string) => {
+    navigate(`/properties?status=${encodeURIComponent(status)}`);
+  };
+
+  // Scroll functions
+  const scrollLeft = () => scrollRef.current?.scrollBy({ left: -240, behavior: 'smooth' });
+  const scrollRight = () => scrollRef.current?.scrollBy({ left: 240, behavior: 'smooth' });
+
+  // Theme classes
+  const cardBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+
+  // Status config
+  const statusConfig = [
+    { key: 'Active', label: 'Active', sublabel: 'On Market', value: stats.active, color: '#22C55E', textColor: 'text-green-600', bgColor: isDark ? 'bg-green-900/20' : 'bg-green-50', borderColor: 'border-green-200', icon: Home },
+    { key: 'ActiveUnderContract', label: 'Under Contract', sublabel: '', value: stats.activeUnderContract, color: '#3B82F6', textColor: 'text-blue-600', bgColor: isDark ? 'bg-blue-900/20' : 'bg-blue-50', borderColor: 'border-blue-200', icon: FileText },
+    { key: 'Pending', label: 'Pending', sublabel: 'Closing Soon', value: stats.pending, color: '#EAB308', textColor: 'text-yellow-600', bgColor: isDark ? 'bg-yellow-900/20' : 'bg-yellow-50', borderColor: 'border-yellow-200', icon: Clock },
+    { key: 'Closed', label: 'Closed (30d)', sublabel: 'Sales', value: stats.closed, color: '#9CA3AF', textColor: 'text-gray-600', bgColor: isDark ? 'bg-gray-700/50' : 'bg-gray-50', borderColor: 'border-gray-300', icon: CheckCircle },
+  ];
+
+  const formatPrice = (price: number) => {
+    if (price >= 1000000) {
+      return `$${(price / 1000000).toFixed(2)}M`;
+    }
+    return `$${(price / 1000).toFixed(0)}K`;
+  };
+
+  const formatPriceFull = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
+  return (
+    <div className={`${cardBg} rounded-xl border ${borderColor} p-4 md:p-6`}>
+      
+      {/* ======== MARKET PULSE SECTION ======== */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-[#EF4923]" />
+          <h2 className={`text-lg font-semibold ${textPrimary}`}>Market Pulse</h2>
+        </div>
+        {/* Single Refresh Button for Both Sections */}
+        <RefreshButton
+          onRefresh={handleRefresh}
+          lastManualRefresh={null}
+          lastAutoRefresh={null}
+          isLoading={isLoading}
+        />
+      </div>
+
+      <p className={`text-sm ${textSecondary} mb-4`}>Austin Metro Area</p>
+
+      {/* Bar Chart - Clickable */}
+      <div className="mb-4">
+        <div className="flex">
+          <div className="w-8 flex flex-col justify-between text-xs text-gray-400 pr-2">
+            <span>{Math.round(maxValue / 1000)}k</span>
+            <span>{Math.round(maxValue / 2000)}k</span>
+            <span>0</span>
+          </div>
+          <div className="flex-1 flex items-end gap-2 h-32">
+            {statusConfig.map((item) => (
+              <div
+                key={item.key}
+                className="flex-1 flex flex-col items-center cursor-pointer group"
+                onClick={() => handleStatusClick(item.key)}
+              >
+                <div
+                  className="w-full rounded-t transition-all duration-200 group-hover:opacity-80 group-hover:scale-105"
+                  style={{
+                    height: `${Math.max((item.value / maxValue) * 100, 5)}%`,
+                    backgroundColor: item.color,
+                    minHeight: '6px'
+                  }}
+                />
+                <span className={`mt-1.5 text-[10px] ${textSecondary} group-hover:text-[#EF4923] transition-colors text-center leading-tight`}>
+                  {item.label.replace(' (30d)', '')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <p className={`text-xs text-center mt-2 ${textSecondary}`}>
+          Click any bar to view listings
+        </p>
+      </div>
+
+      {/* Stat Cards - Clickable */}
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        {statusConfig.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div
+              key={item.key}
+              onClick={() => handleStatusClick(item.key)}
+              className={`p-2.5 rounded-lg border cursor-pointer transition-all duration-200
+                hover:shadow-md hover:scale-[1.02] active:scale-[0.98]
+                ${item.bgColor} ${item.borderColor}
+              `}
+            >
+              <div className="flex items-center gap-1 mb-0.5">
+                <Icon className={`w-3.5 h-3.5 ${item.textColor}`} />
+                <span className={`text-xs font-medium ${item.textColor}`}>{item.label}</span>
+              </div>
+              {item.sublabel && (
+                <p className={`text-[10px] ${textSecondary}`}>{item.sublabel}</p>
+              )}
+              <p className={`text-lg font-bold ${item.textColor} text-right`}>
+                {item.value.toLocaleString()}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Total Active */}
+      <div className={`text-center mb-6`}>
+        <span className={`text-sm ${textSecondary}`}>Total Active: </span>
+        <span className={`font-bold ${textPrimary}`}>{stats.totalActive.toLocaleString()}</span>
+      </div>
+
+      {/* ======== DIVIDER ======== */}
+      <hr className={`${borderColor} mb-6`} />
+
+      {/* ======== SPYGLASS REALTY LISTINGS SECTION ======== */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Building2 className="w-5 h-5 text-[#EF4923]" />
+          <div>
+            <p className={`text-sm font-semibold ${textPrimary}`}>Spyglass Realty Listings</p>
+            <p className={`text-[11px] ${textSecondary}`}>
+              Office 5220 • {spyglassListings.length} Active
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => navigate('/properties?officeCode=5220')}
+          className="text-xs text-[#EF4923] hover:underline font-medium"
+        >
+          View All →
+        </button>
+      </div>
+
+      {/* Loading */}
+      {listingsLoading && (
+        <div className="flex items-center justify-center py-6">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#EF4923]"></div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!listingsLoading && spyglassListings.length === 0 && (
+        <div className={`text-center py-6 rounded-lg border-2 border-dashed ${borderColor}`}>
+          <Building2 className={`w-8 h-8 mx-auto mb-2 ${textSecondary}`} />
+          <p className={`text-sm font-medium ${textPrimary}`}>No active listings</p>
+          <p className={`text-xs ${textSecondary}`}>Check back later</p>
+        </div>
+      )}
+
+      {/* Listings Horizontal Scroll */}
+      {!listingsLoading && spyglassListings.length > 0 && (
+        <div className="relative">
+          {/* Scroll Buttons */}
+          {spyglassListings.length > 3 && (
+            <>
+              <button
+                onClick={scrollLeft}
+                className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full shadow-lg
+                  ${isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-white hover:bg-gray-50 text-gray-700 border'}
+                  hidden sm:flex items-center justify-center`}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={scrollRight}
+                className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full shadow-lg
+                  ${isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-white hover:bg-gray-50 text-gray-700 border'}
+                  hidden sm:flex items-center justify-center`}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </>
+          )}
+
+          {/* Cards Container */}
+          <div
+            ref={scrollRef}
+            className="flex gap-3 overflow-x-auto pb-2 scroll-smooth"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+          >
+            {spyglassListings.map((listing: any) => (
+              <SpyglassListingCard
+                key={listing.id}
+                listing={listing}
+                isDark={isDark}
+                onClick={() => setSelectedListing(listing)}
+                formatPrice={formatPrice}
+              />
+            ))}
+          </div>
+
+          {/* Mobile Swipe Hint */}
+          <p className={`text-[10px] text-center mt-1 sm:hidden ${textSecondary}`}>
+            ← Swipe to see more →
+          </p>
+        </div>
+      )}
+
+      {/* Listing Detail Modal */}
+      {selectedListing && (
+        <SpyglassListingModal
+          listing={selectedListing}
+          isDark={isDark}
+          onClose={() => setSelectedListing(null)}
+          formatPrice={formatPriceFull}
+        />
+      )}
+    </div>
+  );
+}
+
+// ============================================
+// SPYGLASS LISTING CARD (Compact)
+// ============================================
+
+interface SpyglassListingCardProps {
+  listing: any;
+  isDark: boolean;
+  onClick: () => void;
+  formatPrice: (price: number) => string;
+}
+
+function SpyglassListingCard({ listing, isDark, onClick, formatPrice }: SpyglassListingCardProps) {
+  const cardBg = isDark ? 'bg-gray-700' : 'bg-gray-50';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-600' : 'border-gray-200';
+
+  const streetAddress = [
+    listing.address?.streetNumber,
+    listing.address?.streetName,
+    listing.address?.streetSuffix
+  ].filter(Boolean).join(' ');
+
+  return (
+    <div
+      onClick={onClick}
+      className={`flex-shrink-0 w-44 sm:w-48 ${cardBg} rounded-lg border ${borderColor} overflow-hidden cursor-pointer 
+        transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]`}
+    >
+      {/* Photo */}
+      <div className="relative aspect-[4/3] bg-gray-800">
+        {listing.photos?.[0] ? (
+          <img
+            src={listing.photos[0]}
+            alt={streetAddress}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Building2 className="w-8 h-8 text-gray-600" />
+          </div>
+        )}
+        
+        {/* Days on Market */}
+        {listing.daysOnMarket > 0 && (
+          <span className={`absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-[9px] font-medium
+            ${isDark ? 'bg-gray-900/80' : 'bg-white/90'} ${textPrimary}`}>
+            {listing.daysOnMarket}d
+          </span>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="p-2">
+        <p className={`text-sm font-bold ${textPrimary}`}>
+          {formatPrice(listing.listPrice)}
+        </p>
+        <p className={`text-[10px] ${textPrimary} truncate`}>
+          {streetAddress}
+        </p>
+        <p className={`text-[9px] ${textSecondary} truncate mb-1`}>
+          {listing.address?.city}, {listing.address?.state}
+        </p>
+        <div className="flex items-center gap-2 text-[9px]">
+          <span className={`flex items-center gap-0.5 ${textSecondary}`}>
+            <Bed className="w-3 h-3" /> {listing.beds}
+          </span>
+          <span className={`flex items-center gap-0.5 ${textSecondary}`}>
+            <Bath className="w-3 h-3" /> {listing.baths}
+          </span>
+          <span className={`flex items-center gap-0.5 ${textSecondary}`}>
+            <Square className="w-3 h-3" /> {(listing.sqft || listing.livingArea)?.toLocaleString()}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// SPYGLASS LISTING MODAL
+// ============================================
+
+function SpyglassListingModal({ listing, isDark, onClose, formatPrice }: any) {
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  
+  const modalBg = isDark ? 'bg-gray-900' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+
+  const photos = listing.photos || [];
+  const sqft = listing.sqft || listing.livingArea || 0;
+  const pricePerSqft = sqft ? Math.round(listing.listPrice / sqft) : null;
+
+  // Prevent body scroll
+  React.useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  // Photo navigation
+  const nextPhoto = () => setCurrentPhotoIndex((p) => (p + 1) % photos.length);
+  const prevPhoto = () => setCurrentPhotoIndex((p) => (p - 1 + photos.length) % photos.length);
+
+  // Keyboard nav
+  React.useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft' && photos.length > 1) prevPhoto();
+      if (e.key === 'ArrowRight' && photos.length > 1) nextPhoto();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [photos.length]);
+
+  const streetAddress = [
+    listing.address?.streetNumber,
+    listing.address?.streetName,
+    listing.address?.streetSuffix
+  ].filter(Boolean).join(' ');
+
+  const formatDate = (d: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      onClick={onClose}
+    >
+      <div 
+        className={`${modalBg} rounded-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className={`flex items-start justify-between p-3 border-b ${borderColor}`}>
+          <div>
+            <h2 className={`text-lg font-bold ${textPrimary}`}>{streetAddress}</h2>
+            <p className={`text-xs ${textSecondary}`}>MLS# {listing.mlsNumber}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className={`p-2 rounded-full min-w-[44px] min-h-[44px] flex items-center justify-center
+              ${isDark ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Photo */}
+          <div className="relative bg-black aspect-[16/10]">
+            {photos.length > 0 ? (
+              <img
+                src={photos[currentPhotoIndex]}
+                alt={`Photo ${currentPhotoIndex + 1}`}
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                <Building2 className="w-12 h-12 text-gray-600" />
+              </div>
+            )}
+            
+            {/* Nav Arrows */}
+            {photos.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); prevPhoto(); }}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white min-w-[44px] min-h-[44px] flex items-center justify-center"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); nextPhoto(); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white min-w-[44px] min-h-[44px] flex items-center justify-center"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </>
+            )}
+
+            {/* Counter */}
+            {photos.length > 0 && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/70 text-white text-sm">
+                {currentPhotoIndex + 1} / {photos.length}
+              </div>
+            )}
+          </div>
+
+          {/* Thumbnails */}
+          {photos.length > 1 && (
+            <div className="flex gap-1 p-2 overflow-x-auto bg-gray-900">
+              {photos.slice(0, 8).map((photo: string, i: number) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentPhotoIndex(i)}
+                  className={`flex-shrink-0 w-14 h-10 rounded overflow-hidden border-2 
+                    ${currentPhotoIndex === i ? 'border-[#EF4923]' : 'border-transparent opacity-60'}`}
+                >
+                  <img src={photo} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Details */}
+          <div className="p-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className={`text-xs ${textSecondary}`}>Price</p>
+                <p className={`text-xl font-bold ${textPrimary}`}>{formatPrice(listing.listPrice)}</p>
+              </div>
+              {pricePerSqft && (
+                <div>
+                  <p className={`text-xs ${textSecondary}`}>Price/SqFt</p>
+                  <p className={`text-xl font-bold ${textPrimary}`}>${pricePerSqft}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-4 gap-2">
+              <div>
+                <p className={`text-xs ${textSecondary}`}>Beds</p>
+                <p className={`text-lg font-bold ${textPrimary}`}>{listing.beds}</p>
+              </div>
+              <div>
+                <p className={`text-xs ${textSecondary}`}>Baths</p>
+                <p className={`text-lg font-bold ${textPrimary}`}>{listing.baths}</p>
+              </div>
+              <div>
+                <p className={`text-xs ${textSecondary}`}>SqFt</p>
+                <p className={`text-lg font-bold ${textPrimary}`}>{sqft?.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className={`text-xs ${textSecondary}`}>DOM</p>
+                <p className={`text-lg font-bold ${textPrimary}`}>{listing.daysOnMarket || 0}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className={`text-xs ${textSecondary}`}>Status</p>
+                <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-green-500 text-white">
+                  Active
+                </span>
+              </div>
+              <div>
+                <p className={`text-xs ${textSecondary}`}>List Date</p>
+                <p className={`text-sm font-medium ${textPrimary}`}>{formatDate(listing.listDate)}</p>
+              </div>
+            </div>
+
+            <div className={`pt-3 border-t ${borderColor}`}>
+              <p className={`text-xs ${textSecondary}`}>Address</p>
+              <p className={`font-medium ${textPrimary}`}>{listing.address?.full}</p>
+            </div>
+
+            {listing.listAgentName && (
+              <div>
+                <p className={`text-xs ${textSecondary}`}>Listing Agent</p>
+                <p className={`font-medium ${textPrimary}`}>{listing.listAgentName}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## PART 2: Update Dashboard Page
+
+### Update `client/src/pages/dashboard.tsx`:
+```tsx
+import { MarketPulseWithSpyglassListings } from '@/components/dashboard/MarketPulseWithSpyglassListings';
+
+// In the dashboard layout, replace the existing Market Pulse with:
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  {/* Market Pulse + Spyglass Listings (2 columns on desktop) */}
+  <div className="lg:col-span-2">
+    <MarketPulseWithSpyglassListings />
+  </div>
+  
+  {/* Action Items (1 column on desktop) */}
+  <div className="lg:col-span-1">
+    <ActionItemsWidget />
+  </div>
+</div>
+```
+
+---
+
+## 📱 Mobile Optimization Requirements
+
+**All changes must be optimized for:**
+
+| Device | Browser | Screen Size |
+|--------|---------|-------------|
+| iPad Pro | Safari | 1024 x 1366 |
+| iPad Air/Mini | Safari | 768 x 1024 |
+| iPhone 14/15 Pro | Safari | 393 x 852 |
+| iPhone SE | Safari | 375 x 667 |
+| Android Tablet | Chrome | 800 x 1280 |
+| Android Phone | Chrome | 360 x 800 |
+
+### Mobile UX Checklist:
+- [ ] Touch targets minimum 44x44px
+- [ ] No hover-only interactions (provide touch alternatives)
+- [ ] Responsive layouts (stack on mobile, side-by-side on tablet+)
+- [ ] Safe area insets for notched devices
+- [ ] Smooth scrolling with momentum
+- [ ] No horizontal overflow
+- [ ] Readable font sizes (min 16px for body text)
+- [ ] Works in portrait and landscape
+
+### Theme Sync:
+- [ ] Light mode styling correct
+- [ ] Dark mode styling correct
+- [ ] System theme detection works
+
+---
+
+## Testing Checklist
+
+### Market Pulse Section
+- [ ] Bar chart displays correctly
+- [ ] Stat cards show correct counts
+- [ ] Clicking bar/card navigates to Properties with filter
+- [ ] Total Active calculates correctly
+
+### Spyglass Listings Section
+- [ ] Fetches listings for office 5220
+- [ ] Shows listing count
+- [ ] Horizontal scroll works
+- [ ] Cards display photo, price, address, bed/bath/sqft
+- [ ] "View All" link works
+
+### Listing Modal
+- [ ] Opens when clicking any card
+- [ ] Photo carousel with arrows works
+- [ ] Thumbnail strip works
+- [ ] All details display correctly
+- [ ] Close button works (44x44 touch target)
+- [ ] Click outside closes modal
+- [ ] ESC key closes modal
+- [ ] Arrow keys navigate photos
+
+### Refresh
+- [ ] Single refresh button refreshes BOTH sections
+- [ ] Loading state shows for both
+
+### Mobile/Responsive
+- [ ] Stacks correctly on mobile
+- [ ] Swipe scroll works on listings
+- [ ] Modal full-screen on small devices
