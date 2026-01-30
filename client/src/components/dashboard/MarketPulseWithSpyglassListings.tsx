@@ -182,38 +182,48 @@ export function MarketPulseWithSpyglassListings() {
           </div>
         ) : (
           <>
-            {/* Bar Chart - Clickable */}
-            <div className="mb-4">
-              <div className="flex">
-                <div className={`w-8 flex flex-col justify-between text-xs ${textSecondary} pr-2`}>
+            {/* Vertical Bar Chart - Growing Upward */}
+            <div className="mb-6">
+              {/* Chart Container */}
+              <div className="relative h-44 flex items-end justify-around gap-2 px-4">
+                {/* Y-axis guideline */}
+                <div className="absolute left-0 top-0 bottom-0 w-10 flex flex-col justify-between text-[10px] text-gray-400 py-1">
                   <span>{Math.round(maxValue / 1000)}k</span>
-                  <span>{Math.round(maxValue / 2000)}k</span>
+                  <span>{Math.round((maxValue / 2) / 1000)}k</span>
                   <span>0</span>
                 </div>
-                <div className="flex-1 flex items-end gap-2 h-32">
-                  {statusConfig.map((item) => (
-                    <div
-                      key={item.key}
-                      className="flex-1 flex flex-col items-center cursor-pointer group"
-                      onClick={() => handleStatusClick(item.key)}
-                      data-testid={`bar-${item.key.toLowerCase().replace(/\s+/g, '-')}`}
-                    >
+                
+                {/* Bars */}
+                <div className="flex-1 flex items-end justify-around gap-3 h-full ml-8">
+                  {statusConfig.map((item) => {
+                    const heightPercent = maxValue > 0 ? (item.value / maxValue) * 100 : 0;
+                    
+                    return (
                       <div
-                        className="w-full rounded-t transition-all duration-200 group-hover:opacity-80 group-hover:scale-105"
-                        style={{
-                          height: `${Math.max((item.value / maxValue) * 100, 5)}%`,
-                          backgroundColor: item.color,
-                          minHeight: '6px'
-                        }}
-                      />
-                      <span className={`mt-1.5 text-[10px] ${textSecondary} group-hover:text-[#EF4923] transition-colors text-center leading-tight`}>
-                        {item.label.replace(' (30d)', '')}
-                      </span>
-                    </div>
-                  ))}
+                        key={item.key}
+                        className="flex flex-col items-center flex-1 h-full justify-end cursor-pointer group"
+                        onClick={() => handleStatusClick(item.key)}
+                        data-testid={`bar-${item.key.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        {/* Bar */}
+                        <div
+                          className="w-full max-w-20 rounded-t-lg transition-all duration-200 group-hover:opacity-75 group-hover:scale-105"
+                          style={{
+                            height: `${Math.max(heightPercent, 1)}%`,
+                            backgroundColor: item.color,
+                          }}
+                        />
+                        {/* Label */}
+                        <p className={`text-[10px] mt-2 text-center ${textSecondary} group-hover:text-[#EF4923]`}>
+                          {item.label.replace(' (30d)', '')}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-              <p className={`text-xs text-center mt-2 ${textSecondary}`}>
+              
+              <p className={`text-xs text-center mt-1 ${textSecondary}`}>
                 Click any bar to view listings
               </p>
             </div>
