@@ -670,7 +670,7 @@ function MarketPulseWithListings() {
             <div>
               <h2 className={`text-lg font-semibold ${textPrimary}`}>Austin Metro Listings</h2>
               <p className={`text-sm ${textSecondary}`}>
-                {total.toLocaleString()} {statusFilter !== 'all' ? statusFilter.toLowerCase() : ''} listings
+                {total.toLocaleString()} {statusFilter === 'all' ? 'active' : statusFilter.toLowerCase()} listings
               </p>
             </div>
           </div>
@@ -753,7 +753,7 @@ function MarketPulseWithListings() {
           {!listingsLoading && listings.length === 0 && (
             <div className={`text-center py-8 rounded-lg border-2 border-dashed ${borderColor}`}>
               <Building2 className={`w-10 h-10 mx-auto mb-2 ${textSecondary}`} />
-              <p className={`font-medium ${textPrimary}`}>No {statusFilter !== 'all' ? statusFilter.toLowerCase() : ''} listings found</p>
+              <p className={`font-medium ${textPrimary}`}>No {statusFilter === 'all' ? 'active' : statusFilter.toLowerCase()} listings found</p>
               <p className={`text-sm ${textSecondary}`}>Try adjusting your filters</p>
             </div>
           )}
