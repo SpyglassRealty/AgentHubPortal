@@ -1,14 +1,14 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Layout from "@/components/layout";
 import { apps } from "@/lib/apps";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
   ArrowUpRight, ExternalLink, Building2, ChevronLeft, ChevronRight, 
-  Bed, Bath, Square, RefreshCw, Loader2 
+  Bed, Bath, Square, RefreshCw, Loader2, ChevronDown 
 } from "lucide-react";
 import MarketPulse from "@/components/market-pulse";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -48,8 +48,32 @@ interface Listing {
 interface ListingsResponse {
   listings: Listing[];
   total: number;
-  office: string;
+  city: string;
+  status: string;
+  sortBy: string;
+  sortOrder: string;
 }
+
+// RESO Status configuration
+const RESO_STATUSES = [
+  { key: 'Active', label: 'Active' },
+  { key: 'Active Under Contract', label: 'Under Contract' },
+  { key: 'Pending', label: 'Pending' },
+  { key: 'Closed', label: 'Closed' },
+  { key: 'all', label: 'All' },
+];
+
+// Sorting options
+const SORT_OPTIONS = [
+  { label: 'Newest Listed', value: 'listDate', order: 'desc' },
+  { label: 'Oldest Listed', value: 'listDate', order: 'asc' },
+  { label: 'Price: High to Low', value: 'listPrice', order: 'desc' },
+  { label: 'Price: Low to High', value: 'listPrice', order: 'asc' },
+  { label: 'Days on Market: Most', value: 'daysOnMarket', order: 'desc' },
+  { label: 'Days on Market: Least', value: 'daysOnMarket', order: 'asc' },
+  { label: 'Beds: Most', value: 'bedroomsTotal', order: 'desc' },
+  { label: 'SqFt: Largest', value: 'livingArea', order: 'desc' },
+];
 
 function ListingCard({ listing, isDark }: { listing: Listing; isDark: boolean }) {
   const cardBg = isDark ? 'bg-[#2a2a2a]' : 'bg-white';
@@ -58,13 +82,9 @@ function ListingCard({ listing, isDark }: { listing: Listing; isDark: boolean })
   const borderColor = isDark ? 'border-[#333333]' : 'border-gray-200';
 
   const statusColors: Record<string, string> = {
-    'active': 'bg-green-500',
     'Active': 'bg-green-500',
-    'pending': 'bg-yellow-500',
     'Pending': 'bg-yellow-500',
-    'closed': 'bg-gray-500',
     'Closed': 'bg-gray-500',
-    'active under contract': 'bg-blue-500',
     'Active Under Contract': 'bg-blue-500',
   };
 
@@ -84,7 +104,6 @@ function ListingCard({ listing, isDark }: { listing: Listing; isDark: boolean })
         transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]`}
       data-testid={`listing-card-${listing.id}`}
     >
-      {/* Photo */}
       <div className="relative aspect-[4/3] bg-[#222222]">
         {photoUrl ? (
           <img
@@ -99,13 +118,11 @@ function ListingCard({ listing, isDark }: { listing: Listing; isDark: boolean })
           </div>
         )}
         
-        {/* Status Badge */}
         <span className={`absolute top-2 left-2 px-2 py-0.5 rounded text-xs font-bold uppercase
           ${statusColors[listing.status] || 'bg-gray-500'} text-white`}>
-          {listing.status}
+          {listing.status === 'Active Under Contract' ? 'Under Contract' : listing.status}
         </span>
         
-        {/* Photo Count */}
         {listing.photos?.length > 1 && (
           <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/60 text-white text-xs">
             1/{listing.photos.length}
@@ -113,7 +130,6 @@ function ListingCard({ listing, isDark }: { listing: Listing; isDark: boolean })
         )}
       </div>
 
-      {/* Info */}
       <div className="p-3">
         <p className={`text-lg font-bold ${textPrimary}`}>
           {formatPrice(listing.listPrice)}
@@ -143,22 +159,55 @@ function ListingCard({ listing, isDark }: { listing: Listing; isDark: boolean })
   );
 }
 
-function CompanyListings() {
+function AustinMetroListings() {
   const { isDark } = useTheme();
-  const [listingFilter, setListingFilter] = useState<'active' | 'pending' | 'closed' | 'all'>('active');
+  const [, setLocation] = useLocation();
+  const searchString = useSearch();
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Parse URL search params
+  const urlParams = new URLSearchParams(searchString);
+  const urlStatus = urlParams.get('status') || 'Active';
+  
+  // State for filters
+  const [statusFilter, setStatusFilter] = useState<string>(urlStatus);
+  const [sortBy, setSortBy] = useState<string>('listDate');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
 
   const cardBg = isDark ? 'bg-[#2a2a2a]' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
   const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
   const borderColor = isDark ? 'border-[#333333]' : 'border-gray-200';
 
+  // Sync status filter with URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const newStatus = params.get('status');
+    if (newStatus && RESO_STATUSES.some(s => s.key === newStatus)) {
+      setStatusFilter(newStatus);
+    }
+  }, [searchString]);
+
+  // Update URL when filter changes
+  const handleStatusChange = (status: string) => {
+    setStatusFilter(status);
+    if (status === 'all' || status === 'Active') {
+      setLocation('/properties');
+    } else {
+      setLocation(`/properties?status=${encodeURIComponent(status)}`);
+    }
+  };
+
   const { data: listingsData, isLoading, refetch, isFetching } = useQuery<ListingsResponse>({
-    queryKey: ['company-listings', listingFilter],
+    queryKey: ['austin-metro-listings', statusFilter, sortBy, sortOrder],
     queryFn: async () => {
       const params = new URLSearchParams({
-        officeCode: '5220',
-        status: listingFilter === 'all' ? '' : listingFilter,
+        city: 'Austin',
+        status: statusFilter === 'all' ? '' : statusFilter,
+        sortBy: sortBy,
+        sortOrder: sortOrder,
+        limit: '50'
       });
       const response = await fetch(`/api/company-listings?${params}`, {
         credentials: 'include'
@@ -170,6 +219,7 @@ function CompanyListings() {
   });
 
   const listings = listingsData?.listings || [];
+  const total = listingsData?.total || 0;
 
   const scrollLeft = () => {
     scrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' });
@@ -179,21 +229,30 @@ function CompanyListings() {
     scrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' });
   };
 
+  const handleSortChange = (value: string, order: 'asc' | 'desc') => {
+    setSortBy(value);
+    setSortOrder(order);
+    setShowSortDropdown(false);
+  };
+
+  const currentSortLabel = SORT_OPTIONS.find(
+    opt => opt.value === sortBy && opt.order === sortOrder
+  )?.label || 'Newest Listed';
+
   const isRefreshing = isFetching;
 
   return (
-    <Card className={`${cardBg} border ${borderColor}`} data-testid="card-company-listings">
+    <Card className={`${cardBg} border ${borderColor}`} data-testid="card-austin-metro-listings">
       <CardHeader className="pb-3 px-3 sm:px-6">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-[#EF4923]/10">
               <Building2 className="w-5 h-5 text-[#EF4923]" />
             </div>
             <div>
-              <CardTitle className="text-base sm:text-lg">Company Listings</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Austin Metro Listings</CardTitle>
               <p className={`text-xs sm:text-sm ${textSecondary}`}>
-                Spyglass Realty Austin Office (5220) • {listings.length} listings
+                {total.toLocaleString()} {statusFilter !== 'all' ? statusFilter.toLowerCase() : ''} listings
               </p>
             </div>
           </div>
@@ -211,92 +270,124 @@ function CompanyListings() {
           </Button>
         </div>
 
-        {/* Filter Tabs */}
-        <div className={`flex gap-1 sm:gap-2 mt-3 p-1 rounded-lg inline-flex ${isDark ? 'bg-[#333333]' : 'bg-gray-100'}`}>
-          {(['active', 'pending', 'closed', 'all'] as const).map((status) => (
+        {/* Filters Row */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-3">
+          {/* Status Filter Tabs */}
+          <div className={`flex gap-1 p-1 rounded-lg overflow-x-auto ${isDark ? 'bg-[#333333]' : 'bg-gray-100'}`}>
+            {RESO_STATUSES.map((status) => (
+              <button
+                key={status.key}
+                onClick={() => handleStatusChange(status.key)}
+                className={`px-2 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium whitespace-nowrap transition-all min-h-[44px] touch-target
+                  ${statusFilter === status.key
+                    ? 'bg-[#EF4923] text-white'
+                    : isDark 
+                      ? 'text-gray-400 hover:text-white' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }
+                `}
+                data-testid={`filter-${status.key.toLowerCase().replace(/\s+/g, '-')}`}
+              >
+                {status.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="relative">
             <button
-              key={status}
-              onClick={() => setListingFilter(status)}
-              className={`px-2 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium capitalize transition-all min-h-[44px] touch-target
-                ${listingFilter === status
-                  ? 'bg-[#EF4923] text-white'
-                  : isDark 
-                    ? 'text-gray-400 hover:text-white' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }
-              `}
-              data-testid={`filter-${status}`}
+              onClick={() => setShowSortDropdown(!showSortDropdown)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg border min-h-[44px] touch-target text-sm
+                ${isDark ? 'bg-[#333333] border-[#444444] text-white' : 'bg-white border-gray-200 text-gray-700'}
+                hover:border-[#EF4923] transition-colors`}
+              data-testid="button-sort-dropdown"
             >
-              {status}
+              <span className="whitespace-nowrap">{currentSortLabel}</span>
+              <ChevronDown className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} />
             </button>
-          ))}
+            
+            {showSortDropdown && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setShowSortDropdown(false)}
+                />
+                <div className={`absolute right-0 sm:left-0 top-full mt-1 z-50 rounded-lg shadow-lg border min-w-[200px]
+                  ${isDark ? 'bg-[#2a2a2a] border-[#444444]' : 'bg-white border-gray-200'}`}
+                >
+                  {SORT_OPTIONS.map((option) => (
+                    <button
+                      key={`${option.value}-${option.order}`}
+                      onClick={() => handleSortChange(option.value, option.order as 'asc' | 'desc')}
+                      className={`w-full text-left px-4 py-3 text-sm min-h-[44px] touch-target transition-colors
+                        ${sortBy === option.value && sortOrder === option.order
+                          ? 'bg-[#EF4923]/10 text-[#EF4923] font-medium'
+                          : isDark 
+                            ? 'text-gray-300 hover:bg-[#333333]' 
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }
+                        first:rounded-t-lg last:rounded-b-lg`}
+                      data-testid={`sort-${option.value}-${option.order}`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </CardHeader>
 
       <CardContent className="px-3 sm:px-6">
-        {/* Loading State */}
         {isLoading && (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-8 h-8 animate-spin text-[#EF4923]" />
           </div>
         )}
 
-        {/* Empty State */}
         {!isLoading && listings.length === 0 && (
           <div className={`text-center py-8 rounded-lg border-2 border-dashed ${borderColor}`}>
             <Building2 className={`w-10 h-10 mx-auto mb-2 ${textSecondary}`} />
-            <p className={`font-medium ${textPrimary}`}>No {listingFilter} listings</p>
-            <p className={`text-sm ${textSecondary}`}>Check back later or try a different filter</p>
+            <p className={`font-medium ${textPrimary}`}>No {statusFilter !== 'all' ? statusFilter.toLowerCase() : ''} listings found</p>
+            <p className={`text-sm ${textSecondary}`}>Try adjusting your filters</p>
           </div>
         )}
 
-        {/* Listings Horizontal Scroll */}
         {!isLoading && listings.length > 0 && (
           <div className="relative">
-            {/* Scroll Left Button */}
             <button
               onClick={scrollLeft}
               className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full shadow-lg
                 ${isDark ? 'bg-[#2a2a2a] hover:bg-[#333333] text-white' : 'bg-white hover:bg-gray-50 text-gray-700'}
-                hidden md:flex items-center justify-center touch-target`}
+                hidden md:flex items-center justify-center min-w-[44px] min-h-[44px]`}
               data-testid="button-scroll-left"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
 
-            {/* Listings Container */}
             <div
               ref={scrollRef}
               className="flex gap-4 overflow-x-auto pb-4 px-1 scroll-smooth scrollbar-hide"
-              style={{ 
-                WebkitOverflowScrolling: 'touch'
-              }}
+              style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {listings.map((listing) => (
-                <div 
-                  key={listing.id} 
-                  className="flex-shrink-0 w-64 sm:w-72"
-                >
-                  <ListingCard
-                    listing={listing}
-                    isDark={isDark}
-                  />
+                <div key={listing.id} className="flex-shrink-0 w-64 sm:w-72">
+                  <ListingCard listing={listing} isDark={isDark} />
                 </div>
               ))}
             </div>
 
-            {/* Scroll Right Button */}
             <button
               onClick={scrollRight}
               className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full shadow-lg
                 ${isDark ? 'bg-[#2a2a2a] hover:bg-[#333333] text-white' : 'bg-white hover:bg-gray-50 text-gray-700'}
-                hidden md:flex items-center justify-center touch-target`}
+                hidden md:flex items-center justify-center min-w-[44px] min-h-[44px]`}
               data-testid="button-scroll-right"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
 
-            {/* Scroll Hint Mobile */}
             <p className={`text-xs text-center mt-2 md:hidden ${textSecondary}`}>
               ← Swipe to see more →
             </p>
@@ -373,11 +464,11 @@ export default function PropertiesPage() {
           </div>
         </div>
 
-        {/* Market Pulse - clickable bars enabled, but no hint since we're already on Properties */}
+        {/* Market Pulse - not clickable on Properties page since we're already here */}
         <MarketPulse isClickable={false} />
 
-        {/* Company Listings Widget */}
-        <CompanyListings />
+        {/* Austin Metro Listings Widget */}
+        <AustinMetroListings />
 
         <div className="space-y-4">
           <h2 className="text-xl font-display font-semibold tracking-tight">Property Apps & Tools</h2>
