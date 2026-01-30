@@ -16,6 +16,7 @@ import { useMemo } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "@/contexts/ThemeContext";
 import { format } from "date-fns";
+import { AustinMetroListings } from "@/components/properties/AustinMetroListings";
 
 interface AppUsage {
   appId: string;
@@ -661,161 +662,11 @@ function MarketPulseWithListings() {
             </>
           )}
 
-          {/* Divider */}
-          <hr className={`${borderColor} mb-6`} />
-
-          {/* Austin Metro Listings Section */}
-          <div className="flex items-center gap-2 mb-4">
-            <Building2 className="w-5 h-5 text-[#EF4923]" />
-            <div>
-              <h2 className={`text-lg font-semibold ${textPrimary}`}>Austin Metro Listings</h2>
-              <p className={`text-sm ${textSecondary}`}>
-                {statusFilter === 'all' 
-                  ? `${(marketData?.totalProperties || 0).toLocaleString()} total listings`
-                  : `${total.toLocaleString()} ${statusFilter.toLowerCase()} listings`
-                }
-              </p>
-            </div>
-          </div>
-
-          {/* Filters Row */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-            {/* Status Filter Tabs */}
-            <div className={`flex gap-1 p-1 rounded-lg overflow-x-auto ${isDark ? 'bg-[#333333]' : 'bg-gray-100'}`}>
-              {RESO_STATUSES.map((status) => (
-                <button
-                  key={status.key}
-                  onClick={() => handleStatusChange(status.key)}
-                  className={`px-2 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium whitespace-nowrap transition-all min-h-[44px]
-                    ${statusFilter === status.key
-                      ? 'bg-[#EF4923] text-white'
-                      : isDark 
-                        ? 'text-gray-400 hover:text-white' 
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  data-testid={`filter-${status.key.toLowerCase().replace(/\s+/g, '-')}`}
-                >
-                  {status.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Sort Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setShowSortDropdown(!showSortDropdown)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg border min-h-[44px] text-sm
-                  ${isDark ? 'bg-[#333333] border-[#444444] text-white' : 'bg-white border-gray-200 text-gray-700'}
-                  hover:border-[#EF4923] transition-colors`}
-                data-testid="button-sort-dropdown"
-              >
-                <span className="whitespace-nowrap">{currentSortLabel}</span>
-                <ChevronDown className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} />
-              </button>
-              
-              {showSortDropdown && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-40" 
-                    onClick={() => setShowSortDropdown(false)}
-                  />
-                  <div className={`absolute right-0 sm:left-0 top-full mt-1 z-50 rounded-lg shadow-lg border min-w-[200px]
-                    ${isDark ? 'bg-[#2a2a2a] border-[#444444]' : 'bg-white border-gray-200'}`}
-                  >
-                    {SORT_OPTIONS.map((option) => (
-                      <button
-                        key={`${option.value}-${option.order}`}
-                        onClick={() => handleSortChange(option.value, option.order as 'asc' | 'desc')}
-                        className={`w-full text-left px-4 py-3 text-sm min-h-[44px] transition-colors
-                          ${sortBy === option.value && sortOrder === option.order
-                            ? 'bg-[#EF4923]/10 text-[#EF4923] font-medium'
-                            : isDark 
-                              ? 'text-gray-300 hover:bg-[#333333]' 
-                              : 'text-gray-700 hover:bg-gray-50'
-                          }
-                          first:rounded-t-lg last:rounded-b-lg`}
-                        data-testid={`sort-${option.value}-${option.order}`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Loading State */}
-          {listingsLoading && (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-[#EF4923]" />
-            </div>
-          )}
-
-          {/* Empty State */}
-          {!listingsLoading && listings.length === 0 && (
-            <div className={`text-center py-8 rounded-lg border-2 border-dashed ${borderColor}`}>
-              <Building2 className={`w-10 h-10 mx-auto mb-2 ${textSecondary}`} />
-              <p className={`font-medium ${textPrimary}`}>No {statusFilter === 'all' ? '' : statusFilter.toLowerCase() + ' '}listings found</p>
-              <p className={`text-sm ${textSecondary}`}>Try adjusting your filters</p>
-            </div>
-          )}
-
-          {/* Listings Horizontal Scroll */}
-          {!listingsLoading && listings.length > 0 && (
-            <div className="relative">
-              <button
-                onClick={scrollLeft}
-                className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full shadow-lg
-                  ${isDark ? 'bg-[#2a2a2a] hover:bg-[#333333] text-white' : 'bg-white hover:bg-gray-50 text-gray-700'}
-                  hidden md:flex items-center justify-center min-w-[44px] min-h-[44px]`}
-                data-testid="button-scroll-left"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-
-              <div
-                ref={scrollRef}
-                className="flex gap-4 overflow-x-auto pb-4 px-1 scroll-smooth scrollbar-hide"
-                style={{ WebkitOverflowScrolling: 'touch' }}
-              >
-                {listings.map((listing) => (
-                  <div key={listing.id} className="flex-shrink-0 w-64 sm:w-72">
-                    <ListingCard 
-                      listing={listing} 
-                      isDark={isDark} 
-                      onClick={() => setSelectedListing(listing)}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <button
-                onClick={scrollRight}
-                className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full shadow-lg
-                  ${isDark ? 'bg-[#2a2a2a] hover:bg-[#333333] text-white' : 'bg-white hover:bg-gray-50 text-gray-700'}
-                  hidden md:flex items-center justify-center min-w-[44px] min-h-[44px]`}
-                data-testid="button-scroll-right"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-
-              <p className={`text-xs text-center mt-2 md:hidden ${textSecondary}`}>
-                ← Swipe to see more →
-              </p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
-      {/* Listing Detail Modal */}
-      {selectedListing && (
-        <ListingDetailModal
-          listing={selectedListing}
-          isDark={isDark}
-          onClose={() => setSelectedListing(null)}
-        />
-      )}
+      {/* Austin Metro Listings - Enhanced with Filters, Pagination, and View Modes */}
+      <AustinMetroListings initialStatus={statusFilter} />
     </>
   );
 }
