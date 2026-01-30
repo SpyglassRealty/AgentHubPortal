@@ -1,5 +1,6 @@
 import { storage } from "./storage";
 import type { MarketPulseSnapshot, InsertMarketPulseSnapshot } from "@shared/schema";
+import { DEFAULT_OFFICE } from "./config/offices";
 
 export interface MarketPulseData {
   totalProperties: number;
@@ -8,6 +9,7 @@ export interface MarketPulseData {
   pending: number;
   closed: number;
   lastUpdatedAt: string;
+  officeName?: string;
 }
 
 const MAX_RETRIES = 3;
@@ -46,34 +48,31 @@ export async function fetchMarketPulseFromAPI(): Promise<MarketPulseData> {
   }
 
   const baseUrl = 'https://api.repliers.io/listings';
-  const msaCounties = ['Travis', 'Williamson', 'Hays', 'Bastrop', 'Caldwell'];
-  
-  const addCountyFilters = (params: URLSearchParams) => {
-    msaCounties.forEach(county => params.append('county', county));
-  };
+  const officeId = DEFAULT_OFFICE.officeId;
+  const officeName = DEFAULT_OFFICE.name;
   
   const activeParams = new URLSearchParams({
     listings: 'false',
     type: 'Sale',
-    standardStatus: 'Active'
+    standardStatus: 'Active',
+    officeId: officeId,
   });
-  addCountyFilters(activeParams);
   const activeUrl = `${baseUrl}?${activeParams.toString()}`;
   
   const activeUnderContractParams = new URLSearchParams({
     listings: 'false',
     type: 'Sale',
-    standardStatus: 'Active Under Contract'
+    standardStatus: 'Active Under Contract',
+    officeId: officeId,
   });
-  addCountyFilters(activeUnderContractParams);
   const activeUnderContractUrl = `${baseUrl}?${activeUnderContractParams.toString()}`;
   
   const pendingParams = new URLSearchParams({
     listings: 'false',
     type: 'Sale',
-    standardStatus: 'Pending'
+    standardStatus: 'Pending',
+    officeId: officeId,
   });
-  addCountyFilters(pendingParams);
   const pendingUrl = `${baseUrl}?${pendingParams.toString()}`;
   
   const thirtyDaysAgo = new Date();
@@ -85,12 +84,12 @@ export async function fetchMarketPulseFromAPI(): Promise<MarketPulseData> {
     type: 'Sale',
     status: 'U',
     lastStatus: 'Sld',
-    minSoldDate: minSoldDate
+    minSoldDate: minSoldDate,
+    officeId: officeId,
   });
-  addCountyFilters(closedParams);
   const closedUrl = `${baseUrl}?${closedParams.toString()}`;
 
-  console.log(`[Market Pulse Service] Fetching data from Repliers API...`);
+  console.log(`[Market Pulse Service] Fetching ${officeName} data from Repliers API...`);
 
   const headers = {
     'Accept': 'application/json',

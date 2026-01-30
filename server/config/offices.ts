@@ -12,6 +12,8 @@ export const SPYGLASS_OFFICES = {
 
 export type OfficeKey = keyof typeof SPYGLASS_OFFICES;
 
-export function getOfficeConfig(office: string) {
-  return SPYGLASS_OFFICES[office as OfficeKey] || null;
+export function getOfficeConfig(office: string = 'austin') {
+  return SPYGLASS_OFFICES[office as OfficeKey] || SPYGLASS_OFFICES.austin;
 }
+
+export const DEFAULT_OFFICE = SPYGLASS_OFFICES.austin;
