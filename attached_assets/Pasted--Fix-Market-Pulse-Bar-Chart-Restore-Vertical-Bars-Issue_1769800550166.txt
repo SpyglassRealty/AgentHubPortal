@@ -1,0 +1,194 @@
+### Fix Market Pulse Bar Chart - Restore Vertical Bars
+
+**Issue:** The bar chart is showing horizontal flat bars instead of vertical bars that grow upward. The bars should show relative heights (Active being the tallest since it has ~19,930 listings, Closed being shortest with ~279).
+
+**Fix:** Restore the proper vertical bar chart where bars grow UPWARD from a baseline.
+
+---
+
+## Correct Vertical Bar Chart Implementation
+
+### Replace the bar chart section in BOTH Dashboard and Properties:
+```tsx
+{/* Bar Chart - VERTICAL BARS (Growing Upward) */}
+<div className="mb-4">
+  <div className="flex">
+    {/* Y-axis labels on the left */}
+    <div className="w-10 flex flex-col justify-between text-xs text-gray-400 pr-2">
+      <span>{Math.round(maxValue / 1000)}k</span>
+      <span>{Math.round(maxValue / 2000)}k</span>
+      <span>0</span>
+    </div>
+    
+    {/* Bars Container - items-end makes bars grow UPWARD from bottom */}
+    <div className="flex-1 flex items-end justify-between gap-4 h-40 border-b border-l border-gray-200 dark:border-gray-700 pl-2 pb-0">
+      {statusConfig.map((item) => {
+        // Calculate bar height as percentage of max value
+        const heightPercent = Math.max((item.value / maxValue) * 100, 2);
+        
+        return (
+          <div
+            key={item.key}
+            className="flex-1 flex flex-col items-center cursor-pointer group"
+            onClick={() => handleStatusClick(item.key)}
+          >
+            {/* The Vertical Bar - height based on value */}
+            <div
+              className="w-full max-w-16 rounded-t-md transition-all duration-200 group-hover:opacity-80 group-hover:scale-x-105"
+              style={{
+                height: `${heightPercent}%`,
+                backgroundColor: item.color,
+                minHeight: '8px'
+              }}
+            />
+          </div>
+        );
+      })}
+    </div>
+  </div>
+  
+  {/* X-axis Labels (below the chart) */}
+  <div className="flex ml-10 mt-2">
+    {statusConfig.map((item) => (
+      <div 
+        key={item.key} 
+        className="flex-1 text-center"
+      >
+        <span className={`text-xs ${textSecondary}`}>
+          {item.label.replace(' (30d)', '')}
+        </span>
+      </div>
+    ))}
+  </div>
+  
+  <p className={`text-xs text-center mt-2 ${textSecondary}`}>
+    Click any bar to view listings
+  </p>
+</div>
+```
+
+---
+
+## Alternative Simpler Version (Recommended)
+
+If the above is complex, use this cleaner version:
+```tsx
+{/* Vertical Bar Chart */}
+<div className="mb-6">
+  {/* Chart Container */}
+  <div className="relative h-44 flex items-end justify-around gap-2 px-4">
+    {/* Y-axis guideline */}
+    <div className="absolute left-0 top-0 bottom-0 w-10 flex flex-col justify-between text-[10px] text-gray-400 py-1">
+      <span>{Math.round(maxValue / 1000)}k</span>
+      <span>{Math.round((maxValue / 2) / 1000)}k</span>
+      <span>0</span>
+    </div>
+    
+    {/* Bars */}
+    <div className="flex-1 flex items-end justify-around gap-3 h-full ml-8">
+      {statusConfig.map((item) => {
+        const heightPercent = maxValue > 0 ? (item.value / maxValue) * 100 : 0;
+        
+        return (
+          <div
+            key={item.key}
+            className="flex flex-col items-center flex-1 h-full justify-end cursor-pointer group"
+            onClick={() => handleStatusClick(item.key)}
+          >
+            {/* Bar */}
+            <div
+              className="w-full max-w-20 rounded-t-lg transition-all duration-200 group-hover:opacity-75 group-hover:scale-105"
+              style={{
+                height: `${Math.max(heightPercent, 1)}%`,
+                backgroundColor: item.color,
+              }}
+            />
+            {/* Label */}
+            <p className={`text-[10px] mt-2 text-center ${textSecondary} group-hover:text-[#EF4923]`}>
+              {item.label.replace(' (30d)', '')}
+            </p>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+  
+  <p className={`text-xs text-center mt-1 ${textSecondary}`}>
+    Click any bar to view listings
+  </p>
+</div>
+```
+
+---
+
+## Visual Reference - What It Should Look Like
+     ┌────┐
+20k  │████│
+     │████│
+     │████│
+10k  │████│  ┌────┐
+     │████│  │████│  ┌────┐
+     │████│  │████│  │████│
+ 0   │████│  │████│  │████│  ┌────┐
+     └────┘  └────┘  └────┘  └────┘
+     Active  Under   Pending Closed
+            Contract
+Bar Heights (proportional):
+
+Active: ~19,930 → tallest bar (~100%)
+Under Contract: ~1,927 → shorter (~10%)
+Pending: ~2,651 → medium (~13%)
+Closed: ~279 → shortest (~1.5%)
+
+
+---
+
+## Key CSS Properties for Vertical Bars
+```css
+/* Container must use items-end to align bars at bottom */
+.bar-container {
+  display: flex;
+  align-items: flex-end; /* THIS IS CRITICAL - bars grow UP from bottom */
+  height: 160px; /* Fixed height for chart area */
+}
+
+/* Each bar wrapper */
+.bar-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end; /* Push bar to bottom */
+  height: 100%;
+}
+
+/* The actual bar */
+.bar {
+  width: 100%;
+  max-width: 80px;
+  border-radius: 4px 4px 0 0; /* Rounded top only */
+  /* Height is set dynamically via style prop */
+}
+```
+
+---
+
+## Testing Checklist
+
+### Bar Chart Appearance
+- [ ] Bars grow UPWARD from the bottom (not horizontal)
+- [ ] Active bar is the TALLEST (since it has most listings ~19,930)
+- [ ] Closed bar is the SHORTEST (since it has least ~279)
+- [ ] Under Contract and Pending are proportionally sized
+- [ ] Y-axis shows scale on the left (20k, 10k, 0)
+- [ ] Labels appear BELOW each bar
+- [ ] All bars are visible (min-height for small values)
+
+### Interactivity
+- [ ] Hover effect on bars (scale/opacity change)
+- [ ] Clicking bar filters listings below
+- [ ] Cursor changes to pointer on hover
+
+### Consistency
+- [ ] Dashboard and Properties page charts look IDENTICAL
+- [ ] Colors match: Green, Blue, Yellow, Gray
+- [ ] Same proportions on both pages
