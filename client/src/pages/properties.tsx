@@ -73,6 +73,11 @@ function MarketPulseWithListings() {
       setStatusFilter('Active');
     }
   }, [searchString]);
+  
+  // Handler to change status filter (used by bar chart clicks)
+  const handleStatusChange = (newStatus: string) => {
+    setStatusFilter(newStatus);
+  };
 
   // Fetch Market Pulse data
   const { 
