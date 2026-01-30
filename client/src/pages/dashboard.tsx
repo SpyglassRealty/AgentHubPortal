@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Layout from "@/components/layout";
 import { apps } from "@/lib/apps";
@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowUpRight, ArrowRight, Plus, ExternalLink, Sparkles, ChevronDown, ChevronUp, Plug, Link2, PlayCircle, Play } from "lucide-react";
+import { ArrowUpRight, ArrowRight, Plus, ExternalLink, Sparkles, ChevronDown, ChevronUp, Plug, Link2, PlayCircle, Play, Building2, ChevronLeft, ChevronRight, Bed, Bath, Square, RefreshCw, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { OnboardingModal } from "@/components/onboarding-modal";
 import { SuggestionCard } from "@/components/suggestion-card";
@@ -88,6 +88,34 @@ interface BottomVideoData {
   pictures: any;
 }
 
+interface CompanyListing {
+  id: string;
+  mlsNumber: string;
+  status: string;
+  listPrice: number;
+  listDate: string;
+  daysOnMarket: number;
+  address: {
+    full: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+  };
+  beds: number;
+  baths: number;
+  sqft: number;
+  photos: string[];
+  listAgentName?: string;
+}
+
+interface CompanyListingsResponse {
+  total: number;
+  listings: CompanyListing[];
+  officeCode: string;
+  officeName: string;
+  officeAddress: string;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const { resolvedTheme } = useTheme();
@@ -98,6 +126,31 @@ export default function DashboardPage() {
   const [showTrainingVideos, setShowTrainingVideos] = useState(false);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [bottomLatestVideo, setBottomLatestVideo] = useState<BottomVideoData | null>(null);
+  const companyListingsScrollRef = useRef<HTMLDivElement>(null);
+
+  const { data: companyListingsData, isLoading: companyListingsLoading, isError: companyListingsError, refetch: refetchCompanyListings, isFetching: isCompanyListingsFetching } = useQuery<CompanyListingsResponse>({
+    queryKey: ['company-listings-office', '5220'],
+    queryFn: async () => {
+      const response = await fetch('/api/company-listings/office?officeCode=5220&status=Active&limit=20', {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch company listings');
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  const companyListings = companyListingsData?.listings || [];
+  const companyListingsTotal = companyListingsData?.total || 0;
+
+  const scrollCompanyListingsLeft = () => {
+    companyListingsScrollRef.current?.scrollBy({ left: -280, behavior: 'smooth' });
+  };
+
+  const scrollCompanyListingsRight = () => {
+    companyListingsScrollRef.current?.scrollBy({ left: 280, behavior: 'smooth' });
+  };
 
   // Fetch latest video with thumbnail for bottom section (with credentials)
   useEffect(() => {
@@ -207,10 +260,146 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Market Pulse and Company Listings - Side by Side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <MarketPulse />
           
-          {/* Action Items Card - Right of Market Pulse */}
+          {/* Company Listings Widget */}
+          <Card className="w-full" data-testid="card-company-listings">
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-[#EF4923]" />
+                  <CardTitle className="text-base sm:text-lg">Spyglass Listings</CardTitle>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">
+                    {companyListingsTotal} Active
+                  </Badge>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => refetchCompanyListings()}
+                    disabled={isCompanyListingsFetching}
+                    className="gap-1.5 h-8 px-2 sm:px-3 text-xs sm:text-sm"
+                    data-testid="button-refresh-company-listings"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${isCompanyListingsFetching ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">Refresh</span>
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs sm:text-sm text-muted-foreground">Office 5220 - Austin</p>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-6">
+              {companyListingsLoading ? (
+                <div className="h-[280px] flex items-center justify-center" data-testid="company-listings-loading">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#EF4923]" />
+                </div>
+              ) : companyListingsError ? (
+                <div className="h-[280px] flex flex-col items-center justify-center text-muted-foreground" data-testid="company-listings-error">
+                  <p className="mb-3">Unable to load listings</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => refetchCompanyListings()}
+                    className="gap-2"
+                    data-testid="button-retry-company-listings"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Retry
+                  </Button>
+                </div>
+              ) : companyListings.length === 0 ? (
+                <div className="h-[280px] flex items-center justify-center text-muted-foreground" data-testid="company-listings-empty">
+                  <p>No active listings found</p>
+                </div>
+              ) : (
+                <div className="relative" data-testid="company-listings-carousel">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full shadow-md hidden sm:flex"
+                    onClick={scrollCompanyListingsLeft}
+                    data-testid="button-scroll-listings-left"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <div 
+                    ref={companyListingsScrollRef}
+                    className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide scroll-smooth -webkit-overflow-scrolling-touch"
+                    style={{ scrollSnapType: 'x mandatory' }}
+                  >
+                    {companyListings.map((listing) => (
+                      <div
+                        key={listing.id}
+                        data-testid={`card-listing-${listing.id}`}
+                        className={`flex-shrink-0 w-[200px] sm:w-[220px] rounded-lg border ${isDark ? 'bg-[#2a2a2a] border-[#333333]' : 'bg-white border-gray-200'} overflow-hidden scroll-snap-align-start`}
+                        style={{ scrollSnapAlign: 'start' }}
+                      >
+                        <div className={`h-24 ${isDark ? 'bg-[#333333]' : 'bg-gray-100'} flex items-center justify-center`}>
+                          {listing.photos && listing.photos.length > 0 ? (
+                            <img 
+                              src={listing.photos[0]} 
+                              alt={listing.address.full}
+                              className="w-full h-full object-cover"
+                              data-testid={`img-listing-${listing.id}`}
+                            />
+                          ) : (
+                            <Building2 className="h-8 w-8 text-muted-foreground opacity-40" />
+                          )}
+                        </div>
+                        <div className="p-2">
+                          <p className="font-bold text-[#EF4923] text-sm" data-testid={`text-price-${listing.id}`}>
+                            ${listing.listPrice?.toLocaleString()}
+                          </p>
+                          <p className={`text-xs truncate ${isDark ? 'text-gray-300' : 'text-gray-700'}`} data-testid={`text-address-${listing.id}`}>
+                            {listing.address.full}
+                          </p>
+                          <div className={`flex items-center gap-2 mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {listing.beds > 0 && (
+                              <span className="flex items-center gap-0.5" data-testid={`text-beds-${listing.id}`}>
+                                <Bed className="h-3 w-3" /> {listing.beds}
+                              </span>
+                            )}
+                            {listing.baths > 0 && (
+                              <span className="flex items-center gap-0.5" data-testid={`text-baths-${listing.id}`}>
+                                <Bath className="h-3 w-3" /> {listing.baths}
+                              </span>
+                            )}
+                            {listing.sqft > 0 && (
+                              <span className="flex items-center gap-0.5" data-testid={`text-sqft-${listing.id}`}>
+                                <Square className="h-3 w-3" /> {listing.sqft.toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full shadow-md hidden sm:flex"
+                    onClick={scrollCompanyListingsRight}
+                    data-testid="button-scroll-listings-right"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              <div className="text-center pt-3 border-t mt-3">
+                <Link href="/properties" className="text-xs sm:text-sm text-[#EF4923] hover:underline" data-testid="link-view-all-properties">
+                  View All Properties →
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Action Items Section */}
+        <div className="grid grid-cols-1 gap-6">
+          {/* Action Items Card */}
           {suggestionsLoading ? (
             <Card className="h-full">
               <CardHeader>
