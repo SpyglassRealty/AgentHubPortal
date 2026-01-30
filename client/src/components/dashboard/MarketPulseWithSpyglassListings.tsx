@@ -257,9 +257,9 @@ export function MarketPulseWithSpyglassListings() {
               })}
             </div>
 
-            {/* Total Active */}
+            {/* Total Inventory */}
             <div className={`text-center mb-6`}>
-              <span className={`text-sm ${textSecondary}`}>Total Active: </span>
+              <span className={`text-sm ${textSecondary}`}>Total Inventory: </span>
               <span className={`font-bold ${textPrimary}`}>{stats.totalActive.toLocaleString()}</span>
             </div>
           </>
