@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, TrendingUp, Home, FileCheck, Clock, CheckCircle2 } from "lucide-react";
@@ -14,7 +15,12 @@ interface MarketPulseData {
   lastUpdatedAt: string;
 }
 
-export default function MarketPulse() {
+interface MarketPulseProps {
+  isClickable?: boolean;
+}
+
+export default function MarketPulse({ isClickable = true }: MarketPulseProps) {
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   
   const { data, isLoading, isError, refetch, isFetching } = useQuery<MarketPulseData>({
@@ -42,11 +48,17 @@ export default function MarketPulse() {
   const isRefreshing = isFetching || refreshMutation.isPending;
 
   const chartData = data ? [
-    { name: 'Active', count: data.active, fill: 'hsl(142, 76%, 36%)' },
-    { name: 'Under Contract', count: data.activeUnderContract, fill: 'hsl(210, 76%, 50%)' },
-    { name: 'Pending', count: data.pending, fill: 'hsl(45, 93%, 47%)' },
-    { name: 'Closed', count: data.closed, fill: 'hsl(0, 0%, 45%)' },
+    { name: 'Active', count: data.active, fill: 'hsl(142, 76%, 36%)', status: 'active' },
+    { name: 'Under Contract', count: data.activeUnderContract, fill: 'hsl(210, 76%, 50%)', status: 'under-contract' },
+    { name: 'Pending', count: data.pending, fill: 'hsl(45, 93%, 47%)', status: 'pending' },
+    { name: 'Closed', count: data.closed, fill: 'hsl(0, 0%, 45%)', status: 'closed' },
   ].filter(item => item.count > 0) : [];
+
+  const handleBarClick = (data: { status: string }) => {
+    if (isClickable) {
+      setLocation(`/properties?status=${data.status}`);
+    }
+  };
 
   const totalProperties = data?.totalProperties || 0;
   const active = data?.active || 0;
@@ -175,14 +187,26 @@ export default function MarketPulse() {
               <Bar 
                 dataKey="count" 
                 radius={[4, 4, 0, 0]}
+                cursor={isClickable ? 'pointer' : 'default'}
+                onClick={(data) => handleBarClick(data)}
               >
                 {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={entry.fill}
+                    className={isClickable ? 'hover:opacity-80 transition-opacity' : ''}
+                  />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
+
+        {isClickable && (
+          <p className="text-xs text-center text-muted-foreground -mt-1 mb-1">
+            Click any bar to view listings
+          </p>
+        )}
 
         <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <Card className="bg-emerald-50 border-emerald-200">

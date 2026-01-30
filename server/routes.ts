@@ -714,6 +714,97 @@ export async function registerRoutes(
     }
   });
 
+  // Company Listings - Spyglass Realty office listings from Repliers API
+  app.get('/api/company-listings', isAuthenticated, async (req: any, res) => {
+    try {
+      const apiKey = process.env.IDX_GRID_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ message: "Listings API not configured" });
+      }
+
+      const officeCode = (req.query.officeCode as string) || '5220';
+      const status = (req.query.status as string) || 'active';
+      const limit = parseInt((req.query.limit as string) || '50', 10);
+
+      const baseUrl = 'https://api.repliers.io/listings';
+      const params = new URLSearchParams({
+        listings: 'true',
+        type: 'Sale',
+        pageSize: limit.toString(),
+        sortBy: 'listDate',
+        order: 'desc',
+      });
+
+      // Map status to standardStatus parameter
+      if (status && status !== 'all') {
+        switch (status.toLowerCase()) {
+          case 'active':
+            params.append('standardStatus', 'Active');
+            break;
+          case 'under-contract':
+            params.append('standardStatus', 'Active Under Contract');
+            break;
+          case 'pending':
+            params.append('standardStatus', 'Pending');
+            break;
+          case 'closed':
+            params.append('status', 'U');
+            params.append('lastStatus', 'Sld');
+            break;
+        }
+      }
+
+      // Add office filter
+      params.append('listOfficeKey', officeCode);
+
+      const response = await fetch(`${baseUrl}?${params.toString()}`, {
+        headers: {
+          'Accept': 'application/json',
+          'REPLIERS-API-KEY': apiKey
+        }
+      });
+
+      if (!response.ok) {
+        console.error('[Company Listings] Repliers API error:', response.status);
+        return res.status(502).json({ message: "Failed to fetch listings from API" });
+      }
+
+      const data = await response.json();
+      
+      // Transform listings to a cleaner format
+      const listings = (data.listings || []).map((listing: any) => ({
+        id: listing.mlsNumber || listing.listingId,
+        mlsNumber: listing.mlsNumber,
+        status: listing.standardStatus || listing.status,
+        listPrice: listing.listPrice,
+        listDate: listing.listDate,
+        daysOnMarket: listing.daysOnMarket,
+        address: {
+          full: listing.address?.unparsedAddress || 
+                `${listing.address?.streetNumber || ''} ${listing.address?.streetName || ''}, ${listing.address?.city || ''}`.trim(),
+          streetNumber: listing.address?.streetNumber,
+          streetName: listing.address?.streetName,
+          city: listing.address?.city,
+          state: listing.address?.state,
+          postalCode: listing.address?.postalCode,
+        },
+        beds: listing.bedroomsTotal || listing.beds,
+        baths: listing.bathroomsTotalInteger || listing.baths,
+        livingArea: listing.livingArea,
+        photos: listing.photos || [],
+        subdivision: listing.subdivision,
+        propertyType: listing.propertyType,
+        listOfficeName: listing.listOfficeName,
+      }));
+
+      console.log(`[Company Listings] Found ${listings.length} listings for office ${officeCode}`);
+      res.json({ listings, total: listings.length, office: officeCode });
+    } catch (error) {
+      console.error("[Company Listings] Error:", error);
+      res.status(500).json({ message: "Failed to fetch company listings" });
+    }
+  });
+
   app.get('/api/fub/leads/anniversary', isAuthenticated, async (req: any, res) => {
     console.log('[Leads API] ========== Anniversary endpoint called ==========');
     try {
