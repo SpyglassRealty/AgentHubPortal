@@ -63,16 +63,12 @@ const RESO_STATUSES = [
   { key: 'all', label: 'All' },
 ];
 
-// Sorting options
+// Sorting options - aligned with Repliers API supported fields
 const SORT_OPTIONS = [
   { label: 'Newest Listed', value: 'listDate', order: 'desc' },
   { label: 'Oldest Listed', value: 'listDate', order: 'asc' },
   { label: 'Price: High to Low', value: 'listPrice', order: 'desc' },
   { label: 'Price: Low to High', value: 'listPrice', order: 'asc' },
-  { label: 'Days on Market: Most', value: 'daysOnMarket', order: 'desc' },
-  { label: 'Days on Market: Least', value: 'daysOnMarket', order: 'asc' },
-  { label: 'Beds: Most', value: 'bedroomsTotal', order: 'desc' },
-  { label: 'SqFt: Largest', value: 'livingArea', order: 'desc' },
 ];
 
 function ListingCard({ listing, isDark }: { listing: Listing; isDark: boolean }) {
@@ -180,12 +176,15 @@ function AustinMetroListings() {
   const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
   const borderColor = isDark ? 'border-[#333333]' : 'border-gray-200';
 
-  // Sync status filter with URL
+  // Sync status filter with URL - reset to Active if missing or invalid status
   useEffect(() => {
     const params = new URLSearchParams(searchString);
     const newStatus = params.get('status');
     if (newStatus && RESO_STATUSES.some(s => s.key === newStatus)) {
       setStatusFilter(newStatus);
+    } else {
+      // Reset to Active for missing or invalid status values
+      setStatusFilter('Active');
     }
   }, [searchString]);
 

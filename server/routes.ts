@@ -722,11 +722,23 @@ export async function registerRoutes(
         return res.status(503).json({ message: "Listings API not configured" });
       }
 
+      // Whitelist of valid RESO statuses
+      const VALID_STATUSES = ['Active', 'Active Under Contract', 'Pending', 'Closed', 'all'];
+      // Whitelist of valid sort fields
+      const VALID_SORT_FIELDS = ['listDate', 'listPrice'];
+      const VALID_SORT_ORDERS = ['asc', 'desc'];
+
       // RESO status values: Active, Active Under Contract, Pending, Closed
-      const status = (req.query.status as string) || 'Active';
-      const sortBy = (req.query.sortBy as string) || 'listDate';
-      const sortOrder = (req.query.sortOrder as string) || 'desc';
-      const limit = parseInt((req.query.limit as string) || '50', 10);
+      const requestedStatus = (req.query.status as string) || 'Active';
+      const status = VALID_STATUSES.includes(requestedStatus) ? requestedStatus : 'Active';
+      
+      const requestedSortBy = (req.query.sortBy as string) || 'listDate';
+      const sortBy = VALID_SORT_FIELDS.includes(requestedSortBy) ? requestedSortBy : 'listDate';
+      
+      const requestedSortOrder = (req.query.sortOrder as string) || 'desc';
+      const sortOrder = VALID_SORT_ORDERS.includes(requestedSortOrder) ? requestedSortOrder : 'desc';
+      
+      const limit = Math.min(parseInt((req.query.limit as string) || '50', 10), 100);
       const city = (req.query.city as string) || 'Austin';
 
       const baseUrl = 'https://api.repliers.io/listings';
