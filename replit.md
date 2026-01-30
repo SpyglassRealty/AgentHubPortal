@@ -60,11 +60,12 @@ The application is a full-stack web application with a React frontend and an Exp
     - **Data**: Covers Active, Active Under Contract, Pending, and Closed listings (30 days).
     - **Caching**: Data is cached in the `market_pulse_snapshots` table and refreshed daily via `node-cron` or manually.
 - **Company Listings Widget**: Dashboard widget showing Spyglass Realty office-specific listings.
-    - **Office Filtering**: Uses `listOfficeKey=5220` to filter for Spyglass Realty listings.
+    - **Office Filtering**: Uses `officeId=ACT1518371` to filter for Spyglass Realty listings (NOT listOfficeKey=5220).
+    - **SPYGLASS_OFFICES Config**: Maps office names to Repliers officeId values (e.g., `austin` → `ACT1518371`).
     - **Display**: Horizontal scrolling cards with property photo, price, address, bed/bath/sqft.
     - **Image CDN**: All images served via `https://cdn.repliers.io/` base URL.
-    - **API Endpoint**: `GET /api/company-listings/office?officeCode=5220&status=Active&limit=20`
-    - **Dashboard Layout**: Side-by-side with Market Pulse in 2-column grid, Action Items below.
+    - **API Endpoint**: `GET /api/company-listings/office?office=austin&status=Active&limit=20` (legacy: `officeCode=5220` also supported)
+    - **Dashboard Layout**: Vertical stack with Market Pulse at top and Spyglass listings below.
 - **Notification System**: Centralized notification service with user preferences.
     - **Notification Types**: `lead_assigned`, `appointment_reminder`, `deal_update`, `task_due`, `system`.
     - **Preference Controls**: Per-type toggles, quiet hours (Central timezone), and delivery method preferences (push/email).
