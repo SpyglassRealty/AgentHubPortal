@@ -12,9 +12,12 @@ import { nanoid } from "nanoid";
 
 const getOidcConfig = memoize(
   async () => {
+    if (!process.env.REPL_ID) {
+      return null; // Skip Replit OIDC when not running on Replit
+    }
     return await client.discovery(
       new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
-      process.env.REPL_ID!
+      process.env.REPL_ID
     );
   },
   { maxAge: 3600 * 1000 }
@@ -71,6 +74,9 @@ export async function setupAuth(app: Express) {
   app.use(passport.session());
 
   const config = await getOidcConfig();
+  const isReplitEnvironment = !!config;
+
+  console.log(`[Auth Setup] Replit OIDC configured: ${isReplitEnvironment}`);
 
   const verify: VerifyFunction = async (
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
@@ -173,21 +179,29 @@ export async function setupAuth(app: Express) {
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
-  app.get("/api/login", (req, res, next) => {
-    ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent",
-      scope: ["openid", "email", "profile", "offline_access"],
-    })(req, res, next);
-  });
+  // Replit OIDC routes (only when running on Replit)
+  if (isReplitEnvironment) {
+    app.get("/api/login", (req, res, next) => {
+      ensureStrategy(req.hostname);
+      passport.authenticate(`replitauth:${req.hostname}`, {
+        prompt: "login consent",
+        scope: ["openid", "email", "profile", "offline_access"],
+      })(req, res, next);
+    });
 
-  app.get("/api/callback", (req, res, next) => {
-    ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
-    })(req, res, next);
-  });
+    app.get("/api/callback", (req, res, next) => {
+      ensureStrategy(req.hostname);
+      passport.authenticate(`replitauth:${req.hostname}`, {
+        successReturnToOrRedirect: "/",
+        failureRedirect: "/api/login",
+      })(req, res, next);
+    });
+  } else {
+    // Redirect /api/login to Google OAuth when not on Replit
+    app.get("/api/login", (req, res) => {
+      res.redirect("/api/auth/google");
+    });
+  }
 
   app.get("/api/logout", (req, res) => {
     const user = req.user as any;
@@ -195,13 +209,13 @@ export async function setupAuth(app: Express) {
     
     req.logout(() => {
       req.session.destroy((err) => {
-        if (isGoogleUser) {
-          // Google users just redirect to home
+        if (isGoogleUser || !isReplitEnvironment) {
+          // Google users or non-Replit environments just redirect to home
           res.redirect("/");
         } else {
           // Replit OIDC users need to call end session endpoint
           res.redirect(
-            client.buildEndSessionUrl(config, {
+            client.buildEndSessionUrl(config!, {
               client_id: process.env.REPL_ID!,
               post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
             }).href
