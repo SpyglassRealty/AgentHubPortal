@@ -22,7 +22,10 @@ import {
   ListTodo,
   Cake,
   ExternalLink,
-  Users
+  Users,
+  UserX,
+  Sparkles,
+  PhoneCall
 } from "lucide-react";
 import { format, formatDistanceToNow, differenceInDays, isToday, isPast } from "date-fns";
 
@@ -47,6 +50,15 @@ interface Task {
   completed: boolean;
   personId?: number;
   personName?: string;
+}
+
+interface StaleLead extends Lead {
+  daysSinceActivity?: number;
+}
+
+interface SmartSuggestion extends Lead {
+  priority: number;
+  reason: string;
 }
 
 function LeadCard({ lead, type }: { lead: Lead; type: 'anniversary' | 'activity' | 'birthday' }) {
@@ -227,6 +239,115 @@ function TaskCard({ task }: { task: Task }) {
   );
 }
 
+function StaleLeadCard({ lead }: { lead: StaleLead }) {
+  const getStaleSeverity = (days: number | undefined) => {
+    if (!days) return 'text-muted-foreground';
+    if (days >= 180) return 'text-red-500';
+    if (days >= 90) return 'text-orange-500';
+    return 'text-yellow-500';
+  };
+
+  return (
+    <Card className="hover:bg-accent/50 transition-colors" data-testid={`card-stale-${lead.id}`}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <a 
+                href={`https://app.followupboss.com/2/people/view/${lead.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium truncate hover:text-[#EF4923] hover:underline transition-colors flex items-center gap-1.5 group"
+              >
+                {lead.name}
+                <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+              </a>
+              {lead.stage && (
+                <Badge variant="secondary" className="text-xs shrink-0">
+                  {lead.stage}
+                </Badge>
+              )}
+            </div>
+            
+            <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+              {lead.phone && (
+                <a href={`tel:${lead.phone}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                  <Phone className="h-3 w-3" />
+                  <span>{lead.phone}</span>
+                </a>
+              )}
+              {lead.email && (
+                <a href={`mailto:${lead.email}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                  <Mail className="h-3 w-3" />
+                  <span className="truncate max-w-[200px]">{lead.email}</span>
+                </a>
+              )}
+            </div>
+          </div>
+
+          <div className="text-right shrink-0">
+            <div className={`flex items-center gap-1 ${getStaleSeverity(lead.daysSinceActivity)}`}>
+              <UserX className="h-4 w-4" />
+              <span className="font-semibold">{lead.daysSinceActivity} days</span>
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              since last contact
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SmartSuggestionCard({ suggestion, index }: { suggestion: SmartSuggestion; index: number }) {
+  return (
+    <Card className="hover:bg-accent/50 transition-colors border-l-4 border-l-[#EF4923]" data-testid={`card-suggestion-${suggestion.id}`}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#EF4923] text-white font-bold text-sm shrink-0">
+              {index + 1}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <a 
+                  href={`https://app.followupboss.com/2/people/view/${suggestion.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium truncate hover:text-[#EF4923] hover:underline transition-colors flex items-center gap-1.5 group"
+                >
+                  {suggestion.name}
+                  <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </a>
+              </div>
+              
+              <div className="text-sm text-[#EF4923] font-medium mb-2">
+                {suggestion.reason}
+              </div>
+              
+              <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                {suggestion.phone && (
+                  <a href={`tel:${suggestion.phone}`} className="flex items-center gap-1 hover:text-foreground transition-colors bg-accent/50 px-2 py-1 rounded">
+                    <PhoneCall className="h-3 w-3" />
+                    <span>{suggestion.phone}</span>
+                  </a>
+                )}
+                {suggestion.email && (
+                  <a href={`mailto:${suggestion.email}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    <Mail className="h-3 w-3" />
+                    <span className="truncate max-w-[200px]">{suggestion.email}</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function EmptyState({ icon: Icon, message }: { icon: any; message: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
@@ -292,6 +413,29 @@ export default function LeadsPage() {
     }
   });
 
+  const [staleDaysFilter, setStaleDaysFilter] = useState<number>(60);
+
+  const { data: staleData, isLoading: loadingStale } = useQuery({
+    queryKey: ['/api/fub/leads/stale', selectedAgentId, staleDaysFilter],
+    queryFn: async () => {
+      const url = selectedAgentId 
+        ? `/api/fub/leads/stale?agentId=${selectedAgentId}&minDays=${staleDaysFilter}`
+        : `/api/fub/leads/stale?minDays=${staleDaysFilter}`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch stale contacts');
+      return res.json();
+    }
+  });
+
+  const { data: suggestionsData, isLoading: loadingSuggestions } = useQuery({
+    queryKey: ['/api/fub/leads/suggestions', selectedAgentId],
+    queryFn: async () => {
+      const res = await fetch(getUrl('/api/fub/leads/suggestions'), { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch smart suggestions');
+      return res.json();
+    }
+  });
+
   const handleRefresh = async () => {
     try {
       // Refetch all leads-related queries to get fresh data from FUB
@@ -301,6 +445,8 @@ export default function LeadsPage() {
         queryClient.refetchQueries({ queryKey: ['/api/fub/leads/birthdays', selectedAgentId], exact: true }),
         queryClient.refetchQueries({ queryKey: ['/api/fub/leads/all', selectedAgentId], exact: true }),
         queryClient.refetchQueries({ queryKey: ['/api/fub/tasks/due', selectedAgentId], exact: true }),
+        queryClient.refetchQueries({ queryKey: ['/api/fub/leads/stale', selectedAgentId, staleDaysFilter], exact: true }),
+        queryClient.refetchQueries({ queryKey: ['/api/fub/leads/suggestions', selectedAgentId], exact: true }),
       ]);
       
       setLastManualSync(new Date());
@@ -325,6 +471,8 @@ export default function LeadsPage() {
   const dueTasks: Task[] = tasksData?.tasks || [];
   const birthdayLeads: Lead[] = birthdayData?.leads || [];
   const allLeads: Lead[] = allLeadsData?.leads || [];
+  const staleLeads: StaleLead[] = staleData?.leads || [];
+  const smartSuggestions: SmartSuggestion[] = suggestionsData?.suggestions || [];
   
   // Check if FUB is linked (any response with linked: false means not linked)
   const isFubLinked = anniversaryData?.linked !== false;
@@ -356,8 +504,43 @@ export default function LeadsPage() {
           </div>
         </div>
 
+        {/* Smart Suggestions - Call These 5 This Week */}
+        {isFubLinked && (
+          <Card className="bg-gradient-to-r from-[#EF4923]/5 to-[#EF4923]/10 border-[#EF4923]/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Sparkles className="h-5 w-5 text-[#EF4923]" />
+                Call These 5 This Week
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Priority contacts based on birthdays, anniversaries, and time since last contact
+              </p>
+            </CardHeader>
+            <CardContent>
+              {loadingSuggestions ? (
+                <div className="grid gap-3 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />
+                  ))}
+                </div>
+              ) : smartSuggestions.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <CheckCircle2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No priority contacts right now. Great job staying in touch!</p>
+                </div>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+                  {smartSuggestions.map((suggestion, index) => (
+                    <SmartSuggestionCard key={suggestion.id} suggestion={suggestion} index={index} />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <Tabs defaultValue="all" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
             <TabsTrigger value="all" className="gap-2" data-testid="tab-all-leads">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">All Leads</span>
@@ -391,6 +574,13 @@ export default function LeadsPage() {
               <span className="hidden sm:inline">Due Tasks</span>
               {dueTasks.length > 0 && (
                 <Badge variant="secondary" className="ml-1">{dueTasks.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="stale" className="gap-2" data-testid="tab-stale">
+              <UserX className="h-4 w-4" />
+              <span className="hidden sm:inline">Stale</span>
+              {staleLeads.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{staleLeads.length}</Badge>
               )}
             </TabsTrigger>
           </TabsList>
@@ -568,6 +758,60 @@ export default function LeadsPage() {
                     <div className="space-y-3">
                       {dueTasks.map((task) => (
                         <TaskCard key={task.id} task={task} />
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="stale" className="mt-6">
+            {!isFubLinked ? (
+              <FubNotLinkedBanner />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <UserX className="h-5 w-5 text-orange-500" />
+                        Stale Contacts
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Contacts you haven't reached out to in a while
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Show:</span>
+                      <select
+                        value={staleDaysFilter}
+                        onChange={(e) => setStaleDaysFilter(parseInt(e.target.value, 10))}
+                        className="text-sm border rounded px-2 py-1 bg-background"
+                      >
+                        <option value={60}>60+ days</option>
+                        <option value={90}>90+ days</option>
+                        <option value={180}>180+ days</option>
+                      </select>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {loadingStale ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
+                      ))}
+                    </div>
+                  ) : staleLeads.length === 0 ? (
+                    <EmptyState 
+                      icon={CheckCircle2} 
+                      message={`No contacts have gone ${staleDaysFilter}+ days without activity. Great job staying in touch!`}
+                    />
+                  ) : (
+                    <div className="space-y-3">
+                      {staleLeads.map((lead) => (
+                        <StaleLeadCard key={lead.id} lead={lead} />
                       ))}
                     </div>
                   )}
