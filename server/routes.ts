@@ -1316,6 +1316,86 @@ export async function registerRoutes(
     }
   });
 
+  // Stale Contacts - people not contacted in X days
+  app.get('/api/fub/leads/stale', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const fubClient = getFubClient();
+      if (!fubClient) {
+        return res.status(503).json({ message: "Follow Up Boss integration not configured" });
+      }
+
+      let fubUserId = user.fubUserId;
+      const requestedAgentId = req.query.agentId as string;
+      const minDays = parseInt(req.query.minDays as string, 10) || 60;
+
+      if (requestedAgentId && user.isSuperAdmin) {
+        fubUserId = parseInt(requestedAgentId, 10);
+      } else if (!fubUserId && user.email) {
+        const fubUser = await fubClient.getUserByEmail(user.email);
+        if (fubUser) {
+          fubUserId = fubUser.id;
+          await storage.updateUserFubId(user.id, fubUserId);
+        }
+      }
+
+      if (!fubUserId) {
+        return res.json({ leads: [], linked: false, message: "No Follow Up Boss account linked" });
+      }
+
+      const leads = await fubClient.getStaleContacts(fubUserId, minDays);
+      res.json({ leads, linked: true });
+    } catch (error) {
+      console.error("Error fetching stale contacts:", error);
+      res.status(500).json({ message: "Failed to fetch stale contacts" });
+    }
+  });
+
+  // Smart Suggestions - priority-scored contacts to call this week
+  app.get('/api/fub/leads/suggestions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const fubClient = getFubClient();
+      if (!fubClient) {
+        return res.status(503).json({ message: "Follow Up Boss integration not configured" });
+      }
+
+      let fubUserId = user.fubUserId;
+      const requestedAgentId = req.query.agentId as string;
+      const limit = parseInt(req.query.limit as string, 10) || 5;
+
+      if (requestedAgentId && user.isSuperAdmin) {
+        fubUserId = parseInt(requestedAgentId, 10);
+      } else if (!fubUserId && user.email) {
+        const fubUser = await fubClient.getUserByEmail(user.email);
+        if (fubUser) {
+          fubUserId = fubUser.id;
+          await storage.updateUserFubId(user.id, fubUserId);
+        }
+      }
+
+      if (!fubUserId) {
+        return res.json({ suggestions: [], linked: false, message: "No Follow Up Boss account linked" });
+      }
+
+      const suggestions = await fubClient.getSmartSuggestions(fubUserId, limit);
+      res.json({ suggestions, linked: true });
+    } catch (error) {
+      console.error("Error fetching smart suggestions:", error);
+      res.status(500).json({ message: "Failed to fetch smart suggestions" });
+    }
+  });
+
   app.get('/api/fub/tasks/due', isAuthenticated, async (req: any, res) => {
     try {
       const user = await getDbUser(req);

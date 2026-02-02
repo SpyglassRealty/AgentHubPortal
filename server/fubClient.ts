@@ -537,6 +537,128 @@ class FubClient {
     }
   }
 
+  async getStaleContacts(userId: number, minDays: number = 60): Promise<FubPerson[]> {
+    console.log('[Leads Debug] ========== getStaleContacts START ==========');
+    console.log('[Leads Debug] minDays:', minDays);
+    
+    const people = await this.getPeople(userId);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    
+    const staleContacts = people.filter(person => {
+      // Must have some activity date to be considered (otherwise brand new)
+      const lastActivityDate = person.lastActivity || person.lastLeadActivity;
+      if (!lastActivityDate) return false;
+      
+      const activityDate = new Date(lastActivityDate);
+      if (isNaN(activityDate.getTime())) return false;
+      
+      const daysSinceActivity = Math.floor((now.getTime() - activityDate.getTime()) / (1000 * 60 * 60 * 24));
+      return daysSinceActivity >= minDays;
+    }).map(person => {
+      const lastActivityDate = person.lastActivity || person.lastLeadActivity;
+      const activityDate = new Date(lastActivityDate!);
+      const daysSinceActivity = Math.floor((now.getTime() - activityDate.getTime()) / (1000 * 60 * 60 * 24));
+      return { ...person, daysSinceActivity };
+    }).sort((a: any, b: any) => b.daysSinceActivity - a.daysSinceActivity);
+    
+    console.log('[Leads Debug] Stale contacts found:', staleContacts.length);
+    console.log('[Leads Debug] ========== getStaleContacts END ==========');
+    
+    return staleContacts;
+  }
+
+  async getSmartSuggestions(userId: number, limit: number = 5): Promise<Array<FubPerson & { priority: number; reason: string }>> {
+    console.log('[Leads Debug] ========== getSmartSuggestions START ==========');
+    
+    const people = await this.getPeople(userId);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    
+    // Score each contact based on various factors
+    const scoredPeople = people.map(person => {
+      let priority = 0;
+      let reasons: string[] = [];
+      
+      // 1. Birthday coming up (within 7 days) - high priority
+      if (person.birthday) {
+        const parsed = this.parseAnniversaryDate(person.birthday);
+        if (parsed) {
+          const daysUntil = this.getDaysUntilAnniversary(parsed.month, parsed.day, now);
+          if (daysUntil >= 0 && daysUntil <= 7) {
+            priority += 50;
+            reasons.push(`Birthday in ${daysUntil === 0 ? 'today!' : daysUntil + ' days'}`);
+          }
+        }
+      }
+      
+      // 2. Anniversary coming up (within 14 days) - high priority
+      if (person.homePurchaseAnniversary) {
+        const parsed = this.parseAnniversaryDate(person.homePurchaseAnniversary);
+        if (parsed) {
+          const daysUntil = this.getDaysUntilAnniversary(parsed.month, parsed.day, now);
+          if (daysUntil >= 0 && daysUntil <= 14) {
+            priority += 40;
+            reasons.push(`Home anniversary in ${daysUntil === 0 ? 'today!' : daysUntil + ' days'}`);
+          }
+        }
+      }
+      
+      // 3. Stale contact (no activity in 60+ days) - needs nurturing
+      const lastActivityDate = person.lastActivity || person.lastLeadActivity;
+      if (lastActivityDate) {
+        const activityDate = new Date(lastActivityDate);
+        if (!isNaN(activityDate.getTime())) {
+          const daysSinceActivity = Math.floor((now.getTime() - activityDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (daysSinceActivity >= 90) {
+            priority += 30;
+            reasons.push(`No contact in ${daysSinceActivity} days`);
+          } else if (daysSinceActivity >= 60) {
+            priority += 20;
+            reasons.push(`No contact in ${daysSinceActivity} days`);
+          }
+        }
+      }
+      
+      // 4. Past client stages get higher priority (they're your SOI)
+      const pastClientStages = ['past client', 'closed', 'sold', 'sphere', 'soi'];
+      if (person.stage && pastClientStages.some(s => person.stage!.toLowerCase().includes(s))) {
+        priority += 15;
+        if (reasons.length === 0) reasons.push('Past client - maintain relationship');
+      }
+      
+      // 5. Recent lead activity but agent hasn't followed up (they reached out to you!)
+      if (person.lastLeadActivity) {
+        const leadActivityDate = new Date(person.lastLeadActivity);
+        if (!isNaN(leadActivityDate.getTime())) {
+          const daysSinceLeadActivity = Math.floor((now.getTime() - leadActivityDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (daysSinceLeadActivity <= 3 && daysSinceLeadActivity >= 0) {
+            priority += 35;
+            reasons.push('Recent activity - follow up!');
+          }
+        }
+      }
+      
+      return {
+        ...person,
+        priority,
+        reason: reasons.join(' • ') || 'General check-in'
+      };
+    });
+    
+    // Filter to only include people with a reason to call, then sort by priority
+    const suggestions = scoredPeople
+      .filter(p => p.priority > 0)
+      .sort((a, b) => b.priority - a.priority)
+      .slice(0, limit);
+    
+    console.log('[Leads Debug] Smart suggestions generated:', suggestions.length);
+    console.log('[Leads Debug] Top suggestion:', suggestions[0] ? { name: suggestions[0].name, priority: suggestions[0].priority, reason: suggestions[0].reason } : 'none');
+    console.log('[Leads Debug] ========== getSmartSuggestions END ==========');
+    
+    return suggestions;
+  }
+
   private mapEventType(type: string): FubEvent['type'] {
     const typeMap: Record<string, FubEvent['type']> = {
       'appointment': 'appointment',
