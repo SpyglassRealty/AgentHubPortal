@@ -98,17 +98,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
       <div className="p-6 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <img 
-            src="/spyglass-logo.png" 
-            alt="Spyglass Realty" 
-            className="h-8 w-auto"
-          />
-          <div className="flex flex-col">
-            <span className="font-display font-bold text-base leading-tight text-white">Mission Control</span>
-            <span className="text-[10px] text-sidebar-foreground/50 uppercase tracking-widest">Spyglass Realty</span>
+        <Link href="/">
+          <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+            <img 
+              src="/spyglass-logo.png" 
+              alt="Spyglass Realty" 
+              className="h-8 w-auto"
+            />
+            <div className="flex flex-col">
+              <span className="font-display font-bold text-base leading-tight text-white">Mission Control</span>
+              <span className="text-[10px] text-sidebar-foreground/50 uppercase tracking-widest">Spyglass Realty</span>
+            </div>
           </div>
-        </div>
+        </Link>
       </div>
 
       <div className="flex-1 px-3 py-6 space-y-1">
@@ -171,7 +173,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <SidebarContent />
               </SheetContent>
             </Sheet>
-            <span className="font-display font-bold text-base sm:text-lg">Mission Control</span>
+            <Link href="/">
+              <span className="font-display font-bold text-base sm:text-lg cursor-pointer hover:opacity-80 transition-opacity">Mission Control</span>
+            </Link>
           </div>
 
           {mobileSearchOpen ? (
