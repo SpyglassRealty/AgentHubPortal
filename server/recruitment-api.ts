@@ -11,6 +11,75 @@ import type { AgentProfile, AgentSearchFilters, AgentSearchResults, VolumeChartD
 const REPLIERS_API_URL = process.env.REPLIERS_API_URL || 'https://api.repliers.io';
 const REPLIERS_API_KEY = process.env.REPLIERS_API_KEY || '';
 
+// Agent cache for fast search (Repliers /members doesn't support server-side search)
+interface CachedAgent {
+  agentId: string;
+  name: string;
+  nameLower: string;
+  phones: string[];
+  email?: string;
+  brokerage: string;
+  brokerageLower: string;
+}
+
+let agentCache: CachedAgent[] = [];
+let cacheLoaded = false;
+let cacheLoading = false;
+
+async function loadAgentCache() {
+  if (cacheLoading || cacheLoaded) return;
+  cacheLoading = true;
+  
+  console.log('[Recruitment] Loading agent cache from Repliers API...');
+  const allAgents: CachedAgent[] = [];
+  let page = 1;
+  const pageSize = 500;
+  let totalPages = 1;
+  
+  try {
+    while (page <= totalPages && page <= 30) { // Cap at 15,000 agents
+      const data = await repliersRequest('/members', {
+        resultsPerPage: String(pageSize),
+        pageNum: String(page),
+      });
+      
+      totalPages = data.numPages || 1;
+      
+      for (const m of data.members || []) {
+        allAgents.push({
+          agentId: m.agentId,
+          name: m.name || '',
+          nameLower: (m.name || '').toLowerCase(),
+          phones: m.phones || [],
+          email: m.email,
+          brokerage: m.brokerage?.name || 'Unknown',
+          brokerageLower: (m.brokerage?.name || '').toLowerCase(),
+        });
+      }
+      
+      page++;
+      // Small delay to avoid rate limiting
+      await new Promise(r => setTimeout(r, 50));
+    }
+    
+    agentCache = allAgents;
+    cacheLoaded = true;
+    console.log(`[Recruitment] Agent cache loaded: ${agentCache.length} agents`);
+  } catch (error) {
+    console.error('[Recruitment] Failed to load agent cache:', error);
+    cacheLoading = false;
+  }
+}
+
+function searchCachedAgents(query: string, limit = 20): CachedAgent[] {
+  const searchTerms = query.toLowerCase().split(/\s+/);
+  return agentCache
+    .filter(agent => searchTerms.every(term => 
+      agent.nameLower.includes(term) || agent.brokerageLower.includes(term)
+    ))
+    .slice(0, limit);
+}
+
 // Brokerage colors for the chart
 const BROKERAGE_COLORS: Record<string, string> = {
   'Spyglass Realty': '#EF4923',
@@ -316,42 +385,58 @@ export function registerRecruitmentRoutes(app: Express) {
         return res.json({ agents: [], total: 0, page: 1, pageSize: 20, hasMore: false });
       }
       
-      // Search by name
-      const members = await searchAgentByName(query);
+      // Ensure cache is loaded
+      if (!cacheLoaded) {
+        await loadAgentCache();
+      }
       
-      // For each agent, get quick stats
+      // Search cached agents
+      const matchedAgents = searchCachedAgents(query, 20);
+      
+      if (matchedAgents.length === 0) {
+        return res.json({ 
+          agents: [], 
+          total: 0, 
+          page: 1, 
+          pageSize: 20, 
+          hasMore: false,
+          cacheStatus: { loaded: cacheLoaded, count: agentCache.length }
+        });
+      }
+      
+      // For each matched agent, get quick stats (parallel, limited)
       const agentSummaries = await Promise.all(
-        members.slice(0, 10).map(async (member) => {
+        matchedAgents.slice(0, 10).map(async (agent) => {
           try {
             // Quick count of sold listings
             const countData = await repliersRequest('/listings', {
-              agentId: member.agentId,
+              agentId: agent.agentId,
               status: 'U',
               lastStatus: 'Sld',
               listings: 'false',
             });
             
             return {
-              agentId: member.agentId,
-              mlsId: member.boardAgentId || member.agentId,
-              licenseNumber: `MLS#${member.boardAgentId || member.agentId}`,
-              name: member.name,
-              email: member.email || null,
-              phone: member.phones?.[0] || null,
-              photo: member.photo?.large || null,
-              currentBrokerage: member.brokerage?.name || 'Unknown',
+              agentId: agent.agentId,
+              mlsId: agent.agentId,
+              licenseNumber: `MLS#${agent.agentId}`,
+              name: agent.name,
+              email: agent.email || null,
+              phone: agent.phones?.[0] || null,
+              photo: null,
+              currentBrokerage: agent.brokerage,
               transactionCount: countData.count || 0,
             };
           } catch (e) {
             return {
-              agentId: member.agentId,
-              mlsId: member.boardAgentId || member.agentId,
-              licenseNumber: `MLS#${member.boardAgentId || member.agentId}`,
-              name: member.name,
-              email: member.email || null,
-              phone: member.phones?.[0] || null,
-              photo: member.photo?.large || null,
-              currentBrokerage: member.brokerage?.name || 'Unknown',
+              agentId: agent.agentId,
+              mlsId: agent.agentId,
+              licenseNumber: `MLS#${agent.agentId}`,
+              name: agent.name,
+              email: agent.email || null,
+              phone: agent.phones?.[0] || null,
+              photo: null,
+              currentBrokerage: agent.brokerage,
               transactionCount: 0,
             };
           }
@@ -360,10 +445,11 @@ export function registerRecruitmentRoutes(app: Express) {
       
       res.json({
         agents: agentSummaries,
-        total: members.length,
+        total: matchedAgents.length,
         page: 1,
         pageSize: 20,
-        hasMore: members.length > 10,
+        hasMore: matchedAgents.length > 10,
+        cacheStatus: { loaded: cacheLoaded, count: agentCache.length }
       });
     } catch (error) {
       console.error('Agent search error:', error);
@@ -431,7 +517,11 @@ export function registerRecruitmentRoutes(app: Express) {
         repliersConnected: true,
         hasSoldDataAccess: true,
         totalSoldListings: response.count,
-        message: 'Full data access available',
+        agentCacheLoaded: cacheLoaded,
+        agentCacheCount: agentCache.length,
+        message: cacheLoaded 
+          ? 'Full data access available' 
+          : 'Loading agent cache... First search may be slow.',
       });
     } catch (error) {
       res.json({
@@ -442,4 +532,7 @@ export function registerRecruitmentRoutes(app: Express) {
       });
     }
   });
+
+  // Start loading agent cache in background
+  loadAgentCache().catch(console.error);
 }
