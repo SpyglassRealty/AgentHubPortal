@@ -18,7 +18,6 @@ import PropertiesPage from "@/pages/properties";
 import MarketingPage from "@/pages/marketing";
 import MarketingCalendarPage from "@/pages/marketing-calendar";
 import TrainingPage from "@/pages/training";
-import RecruitmentPage from "@/pages/recruitment";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -57,7 +56,6 @@ function Router() {
       <Route path="/marketing" component={MarketingPage} />
       <Route path="/marketing-calendar" component={MarketingCalendarPage} />
       <Route path="/training" component={TrainingPage} />
-      <Route path="/recruitment" component={RecruitmentPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/app/:id" component={AppView} />
       <Route component={NotFound} />
