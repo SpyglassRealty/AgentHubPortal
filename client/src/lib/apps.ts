@@ -200,6 +200,5 @@ export const navItems = [
   { label: "Marketing", icon: Megaphone, href: "/marketing" },
   { label: "Marketing Calendar", icon: CalendarDays, href: "/marketing-calendar" },
   { label: "Training", icon: GraduationCap, href: "/training" },
-  { label: "Recruitment", icon: UserPlus, href: "/recruitment" },
   { label: "Settings", icon: Settings, href: "/settings" },
 ];
