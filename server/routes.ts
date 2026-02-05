@@ -9,6 +9,7 @@ import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema } from 
 import OpenAI from "openai";
 import { getLatestTrainingVideo } from "./vimeoClient";
 import { SPYGLASS_OFFICES, DEFAULT_OFFICE, getOfficeConfig } from "./config/offices";
+import { registerRecruitmentRoutes } from "./recruitment-api";
 
 // Helper function to get the actual database user from request
 // Handles both regular auth (ID lookup) and Google OAuth (email lookup)
@@ -2201,6 +2202,9 @@ Respond with valid JSON in this exact format:
       res.status(500).json({ error: `Failed to refresh ${req.params.section}` });
     }
   });
+
+  // Register recruitment routes
+  registerRecruitmentRoutes(app);
 
   return httpServer;
 }
