@@ -1,12 +1,12 @@
 /**
  * Recruitment API - Agent Profile & Search
  * 
- * Currently uses mock data until Repliers sold data access is granted.
- * TODO: Replace mock functions with Repliers API calls once available.
+ * Uses Repliers API for real agent transaction data.
+ * Key query for sold data: status=U&lastStatus=Sld
  */
 
 import type { Express } from 'express';
-import type { AgentProfile, AgentSearchFilters, AgentSearchResults, VolumeChartData } from '../shared/recruitment-types';
+import type { AgentProfile, AgentSearchFilters, AgentSearchResults, VolumeChartData, BrokerageHistory } from '../shared/recruitment-types';
 
 const REPLIERS_API_URL = process.env.REPLIERS_API_URL || 'https://api.repliers.io';
 const REPLIERS_API_KEY = process.env.REPLIERS_API_KEY || '';
@@ -14,17 +14,22 @@ const REPLIERS_API_KEY = process.env.REPLIERS_API_KEY || '';
 // Brokerage colors for the chart
 const BROKERAGE_COLORS: Record<string, string> = {
   'Spyglass Realty': '#EF4923',
-  'Compass RE Texas, LLC': '#000000',
+  'Compass': '#000000',
   'Keller Williams': '#B5121B',
   'eXp Realty': '#2563EB',
   'Realty Austin': '#1B4D3E',
-  'Kuper Sotheby\'s': '#002349',
+  'Kuper Sotheby': '#002349',
+  'Coldwell Banker': '#002878',
+  'RE/MAX': '#DC1C2E',
+  'Century 21': '#A98A4E',
+  'Berkshire Hathaway': '#522D6D',
   'default': '#6B7280',
 };
 
 function getBrokerageColor(name: string): string {
+  const nameLower = name.toLowerCase();
   for (const [key, color] of Object.entries(BROKERAGE_COLORS)) {
-    if (name.toLowerCase().includes(key.toLowerCase())) {
+    if (nameLower.includes(key.toLowerCase())) {
       return color;
     }
   }
@@ -32,165 +37,261 @@ function getBrokerageColor(name: string): string {
 }
 
 /**
- * Generate mock agent data for development
- * This will be replaced with real Repliers API calls
+ * Make request to Repliers API
  */
-function generateMockAgent(licenseOrName: string): AgentProfile {
-  const mockAgents: Record<string, Partial<AgentProfile>> = {
-    'tracy': {
-      name: 'Tracy Trevino',
-      licenseNumber: 'TREC#0657808',
-      mlsId: '657808',
-      email: 'tracy@tracysellsaustin.com',
-      phone: '(512) 784-6001',
-      currentBrokerage: 'Compass RE Texas, LLC',
-      brokerageHistory: [
-        { name: 'Homecity Real Estate', startDate: '2015-01-01', endDate: '2017-06-30', transactionCount: 24, totalVolume: 8500000, isCurrent: false },
-        { name: 'Home Beacon Realty, LLC', startDate: '2017-07-01', endDate: '2020-12-31', transactionCount: 45, totalVolume: 18000000, isCurrent: false },
-        { name: 'Spyglass Realty', startDate: '2021-01-01', endDate: '2024-02-28', transactionCount: 62, totalVolume: 38000000, isCurrent: false },
-        { name: 'Compass RE Texas, LLC', startDate: '2024-03-01', endDate: null, transactionCount: 18, totalVolume: 9500000, isCurrent: true },
-      ],
-      careerStats: {
-        totalTransactions: 149,
-        totalVolume: 74000000,
-        avgPrice: 496644,
-        yearsActive: 11,
-        firstTransactionDate: '2015-03-15',
-        lastTransactionDate: '2026-01-28',
-      },
-      annualProduction: [
-        { year: 2016, transactions: 8, volume: 3200000, avgPrice: 400000, brokerage: 'Homecity Real Estate' },
-        { year: 2017, transactions: 12, volume: 4800000, avgPrice: 400000, brokerage: 'Homecity Real Estate' },
-        { year: 2018, transactions: 14, volume: 5600000, avgPrice: 400000, brokerage: 'Home Beacon Realty, LLC' },
-        { year: 2019, transactions: 15, volume: 6000000, avgPrice: 400000, brokerage: 'Home Beacon Realty, LLC' },
-        { year: 2020, transactions: 16, volume: 6400000, avgPrice: 400000, brokerage: 'Home Beacon Realty, LLC' },
-        { year: 2021, transactions: 18, volume: 9000000, avgPrice: 500000, brokerage: 'Spyglass Realty' },
-        { year: 2022, transactions: 22, volume: 13200000, avgPrice: 600000, brokerage: 'Spyglass Realty' },
-        { year: 2023, transactions: 14, volume: 8400000, avgPrice: 600000, brokerage: 'Spyglass Realty' },
-        { year: 2024, transactions: 12, volume: 6600000, avgPrice: 550000, brokerage: 'Compass RE Texas, LLC' },
-        { year: 2025, transactions: 10, volume: 5500000, avgPrice: 550000, brokerage: 'Compass RE Texas, LLC' },
-      ],
-      specialization: {
-        primaryCity: 'Austin, TX',
-        propertyTypes: [
-          { type: 'Single Family', percentage: 75 },
-          { type: 'Condo', percentage: 20 },
-          { type: 'Townhouse', percentage: 5 },
-        ],
-        priceRange: { min: 250000, max: 1200000, avg: 496644 },
-        buyerVsSeller: { buyer: 45, seller: 55 },
-      },
-      signals: {
-        recentBrokerageChange: true,
-        volumeDecline: true,
-        volumeGrowth: false,
-        avgTimeAtBrokerage: 2.75,
-        isTopProducer: true,
-      },
+async function repliersRequest(endpoint: string, params: Record<string, string> = {}) {
+  const queryString = new URLSearchParams(params).toString();
+  const url = `${REPLIERS_API_URL}${endpoint}${queryString ? '?' + queryString : ''}`;
+  
+  const response = await fetch(url, {
+    headers: {
+      'REPLIERS-API-KEY': REPLIERS_API_KEY,
     },
-  };
-
-  // Check if we have mock data for this query
-  const searchKey = licenseOrName.toLowerCase();
-  const matchedKey = Object.keys(mockAgents).find(k => 
-    searchKey.includes(k) || 
-    mockAgents[k].licenseNumber?.toLowerCase().includes(searchKey) ||
-    mockAgents[k].mlsId?.includes(searchKey)
-  );
-
-  if (matchedKey) {
-    const mock = mockAgents[matchedKey];
-    return {
-      agentId: `AGT-${mock.mlsId}`,
-      mlsId: mock.mlsId!,
-      licenseNumber: mock.licenseNumber!,
-      name: mock.name!,
-      email: mock.email || null,
-      phone: mock.phone || null,
-      photo: null,
-      currentBrokerage: mock.currentBrokerage!,
-      brokerageHistory: mock.brokerageHistory!,
-      careerStats: mock.careerStats!,
-      annualProduction: mock.annualProduction!,
-      recentTransactions: [],
-      specialization: mock.specialization!,
-      signals: mock.signals!,
-    };
+  });
+  
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Repliers API error: ${response.status} - ${error}`);
   }
+  
+  return response.json();
+}
 
-  // Generate random mock agent
-  const brokerages = ['Compass RE Texas, LLC', 'Keller Williams Realty', 'eXp Realty', 'Realty Austin', 'Kuper Sotheby\'s'];
-  const currentBrokerage = brokerages[Math.floor(Math.random() * brokerages.length)];
+/**
+ * Search for agent by name using /members endpoint
+ */
+async function searchAgentByName(name: string): Promise<any[]> {
+  const data = await repliersRequest('/members', {
+    name,
+    resultsPerPage: '20',
+  });
+  return data.members || [];
+}
+
+/**
+ * Get agent's sold transactions
+ */
+async function getAgentSoldTransactions(agentId: string, limit = 500): Promise<any[]> {
+  const data = await repliersRequest('/listings', {
+    agentId,
+    status: 'U',
+    lastStatus: 'Sld',
+    resultsPerPage: String(limit),
+    sortBy: 'soldDateDesc',
+  });
+  return data.listings || [];
+}
+
+/**
+ * Get agent's active listings
+ */
+async function getAgentActiveListings(agentId: string): Promise<number> {
+  const data = await repliersRequest('/listings', {
+    agentId,
+    status: 'A',
+    listings: 'false',
+  });
+  return data.count || 0;
+}
+
+/**
+ * Build agent profile from transactions
+ */
+function buildAgentProfile(agent: any, transactions: any[]): AgentProfile {
+  // Group transactions by year and brokerage
+  const yearlyData: Record<number, { transactions: number; volume: number; brokerage: string }> = {};
+  const brokerageStints: Record<string, { startDate: string; endDate: string | null; transactions: number; volume: number }> = {};
+  
+  let currentBrokerage = agent.brokerage?.name || 'Unknown';
+  let firstTransactionDate: string | null = null;
+  let lastTransactionDate: string | null = null;
+  let totalVolume = 0;
+  let totalTransactions = transactions.length;
+  
+  // Process each transaction
+  for (const tx of transactions) {
+    const soldDate = tx.soldDate ? new Date(tx.soldDate) : null;
+    const soldPrice = tx.soldPrice || 0;
+    const txBrokerage = tx.agents?.[0]?.brokerage?.name || 'Unknown';
+    
+    if (soldDate) {
+      const year = soldDate.getFullYear();
+      const dateStr = soldDate.toISOString().split('T')[0];
+      
+      // Track first/last transaction
+      if (!firstTransactionDate || dateStr < firstTransactionDate) {
+        firstTransactionDate = dateStr;
+      }
+      if (!lastTransactionDate || dateStr > lastTransactionDate) {
+        lastTransactionDate = dateStr;
+      }
+      
+      // Yearly aggregation
+      if (!yearlyData[year]) {
+        yearlyData[year] = { transactions: 0, volume: 0, brokerage: txBrokerage };
+      }
+      yearlyData[year].transactions++;
+      yearlyData[year].volume += soldPrice;
+      
+      // Brokerage tracking
+      if (!brokerageStints[txBrokerage]) {
+        brokerageStints[txBrokerage] = { 
+          startDate: dateStr, 
+          endDate: dateStr, 
+          transactions: 0, 
+          volume: 0 
+        };
+      }
+      if (dateStr < brokerageStints[txBrokerage].startDate) {
+        brokerageStints[txBrokerage].startDate = dateStr;
+      }
+      if (dateStr > (brokerageStints[txBrokerage].endDate || '')) {
+        brokerageStints[txBrokerage].endDate = dateStr;
+      }
+      brokerageStints[txBrokerage].transactions++;
+      brokerageStints[txBrokerage].volume += soldPrice;
+      
+      totalVolume += soldPrice;
+    }
+  }
+  
+  // Build brokerage history sorted by start date
+  const brokerageHistory: BrokerageHistory[] = Object.entries(brokerageStints)
+    .map(([name, data]) => ({
+      name,
+      startDate: data.startDate,
+      endDate: name === currentBrokerage ? null : data.endDate,
+      transactionCount: data.transactions,
+      totalVolume: data.volume,
+      isCurrent: name === currentBrokerage,
+    }))
+    .sort((a, b) => a.startDate.localeCompare(b.startDate));
+  
+  // Build annual production sorted by year
+  const annualProduction = Object.entries(yearlyData)
+    .map(([year, data]) => ({
+      year: parseInt(year),
+      transactions: data.transactions,
+      volume: data.volume,
+      avgPrice: data.transactions > 0 ? Math.round(data.volume / data.transactions) : 0,
+      brokerage: data.brokerage,
+    }))
+    .sort((a, b) => a.year - b.year);
+  
+  // Calculate years active
+  const yearsActive = firstTransactionDate && lastTransactionDate
+    ? Math.ceil((new Date(lastTransactionDate).getTime() - new Date(firstTransactionDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+    : 0;
+  
+  // Calculate specialization from transactions
+  const cities: Record<string, number> = {};
+  const propertyTypes: Record<string, number> = {};
+  let buyerCount = 0;
+  let sellerCount = 0;
+  let minPrice = Infinity;
+  let maxPrice = 0;
+  
+  for (const tx of transactions) {
+    const city = tx.address?.city || 'Unknown';
+    const propType = tx.details?.propertyType || tx.details?.style || 'Other';
+    const price = tx.soldPrice || 0;
+    
+    cities[city] = (cities[city] || 0) + 1;
+    propertyTypes[propType] = (propertyTypes[propType] || 0) + 1;
+    
+    if (price > 0) {
+      minPrice = Math.min(minPrice, price);
+      maxPrice = Math.max(maxPrice, price);
+    }
+    
+    // Rough buyer/seller estimation based on agent position
+    // In a full implementation, you'd check listing vs buyer agent
+    sellerCount++; // Default to seller since we're querying by listing agent
+  }
+  
+  const primaryCity = Object.entries(cities).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
+  const propTypeList = Object.entries(propertyTypes)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([type, count]) => ({
+      type,
+      percentage: Math.round((count / totalTransactions) * 100),
+    }));
+  
+  // Determine signals
+  const recentYear = new Date().getFullYear();
+  const lastYearVolume = yearlyData[recentYear - 1]?.volume || 0;
+  const twoYearsAgoVolume = yearlyData[recentYear - 2]?.volume || 0;
+  const volumeDecline = lastYearVolume < twoYearsAgoVolume * 0.8;
+  const volumeGrowth = lastYearVolume > twoYearsAgoVolume * 1.2;
+  
+  // Check for recent brokerage change (within last 12 months)
+  const recentBrokerageChange = brokerageHistory.some(b => {
+    if (!b.startDate) return false;
+    const startDate = new Date(b.startDate);
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    return startDate > oneYearAgo && !b.isCurrent;
+  });
+  
+  const avgTimeAtBrokerage = brokerageHistory.length > 0
+    ? brokerageHistory.reduce((sum, b) => {
+        const start = new Date(b.startDate);
+        const end = b.endDate ? new Date(b.endDate) : new Date();
+        return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365);
+      }, 0) / brokerageHistory.length
+    : 0;
   
   return {
-    agentId: `AGT-${Math.random().toString(36).substring(7)}`,
-    mlsId: Math.floor(100000 + Math.random() * 900000).toString(),
-    licenseNumber: `TREC#${Math.floor(100000 + Math.random() * 9900000)}`,
-    name: licenseOrName || 'Sample Agent',
-    email: null,
-    phone: null,
-    photo: null,
+    agentId: agent.agentId,
+    mlsId: agent.boardAgentId || agent.agentId,
+    licenseNumber: `MLS#${agent.boardAgentId || agent.agentId}`, // Would need TREC lookup for actual license
+    name: agent.name || 'Unknown',
+    email: agent.email || null,
+    phone: agent.phones?.[0] || null,
+    photo: agent.photo?.large || agent.photo?.small || null,
     currentBrokerage,
-    brokerageHistory: [
-      { name: currentBrokerage, startDate: '2022-01-01', endDate: null, transactionCount: 25, totalVolume: 12500000, isCurrent: true }
-    ],
+    brokerageHistory,
     careerStats: {
-      totalTransactions: 25,
-      totalVolume: 12500000,
-      avgPrice: 500000,
-      yearsActive: 4,
-      firstTransactionDate: '2022-03-01',
-      lastTransactionDate: '2026-01-15',
+      totalTransactions,
+      totalVolume,
+      avgPrice: totalTransactions > 0 ? Math.round(totalVolume / totalTransactions) : 0,
+      yearsActive,
+      firstTransactionDate,
+      lastTransactionDate,
     },
-    annualProduction: [
-      { year: 2022, transactions: 5, volume: 2500000, avgPrice: 500000, brokerage: currentBrokerage },
-      { year: 2023, transactions: 8, volume: 4000000, avgPrice: 500000, brokerage: currentBrokerage },
-      { year: 2024, transactions: 7, volume: 3500000, avgPrice: 500000, brokerage: currentBrokerage },
-      { year: 2025, transactions: 5, volume: 2500000, avgPrice: 500000, brokerage: currentBrokerage },
-    ],
-    recentTransactions: [],
+    annualProduction,
+    recentTransactions: transactions.slice(0, 10).map(tx => ({
+      mlsNumber: tx.mlsNumber,
+      listDate: tx.listDate,
+      soldDate: tx.soldDate,
+      listPrice: tx.listPrice,
+      soldPrice: tx.soldPrice,
+      address: `${tx.address?.streetNumber || ''} ${tx.address?.streetName || ''} ${tx.address?.streetSuffix || ''}`.trim(),
+      city: tx.address?.city || '',
+      propertyType: tx.details?.propertyType || tx.details?.style || 'Unknown',
+      role: 'listing' as const,
+      brokerage: tx.agents?.[0]?.brokerage?.name || 'Unknown',
+      status: tx.lastStatus === 'Sld' ? 'sold' as const : 'active' as const,
+    })),
     specialization: {
-      primaryCity: 'Austin, TX',
-      propertyTypes: [{ type: 'Single Family', percentage: 100 }],
-      priceRange: { min: 300000, max: 700000, avg: 500000 },
-      buyerVsSeller: { buyer: 50, seller: 50 },
+      primaryCity,
+      propertyTypes: propTypeList,
+      priceRange: {
+        min: minPrice === Infinity ? 0 : minPrice,
+        max: maxPrice,
+        avg: totalTransactions > 0 ? Math.round(totalVolume / totalTransactions) : 0,
+      },
+      buyerVsSeller: { buyer: 40, seller: 60 }, // Approximation
     },
     signals: {
-      recentBrokerageChange: false,
-      volumeDecline: false,
-      volumeGrowth: false,
-      avgTimeAtBrokerage: 4,
-      isTopProducer: false,
+      recentBrokerageChange,
+      volumeDecline,
+      volumeGrowth,
+      avgTimeAtBrokerage,
+      isTopProducer: totalVolume > 10000000, // $10M+ career = top producer
     },
   };
-}
-
-/**
- * Search agents - currently returns mock data
- * TODO: Integrate with Repliers sold data API
- */
-async function searchAgents(filters: AgentSearchFilters): Promise<AgentSearchResults> {
-  // Mock implementation
-  const agents: AgentProfile[] = [];
-  
-  if (filters.query) {
-    agents.push(generateMockAgent(filters.query));
-  }
-  
-  return {
-    agents,
-    total: agents.length,
-    page: filters.page || 1,
-    pageSize: filters.pageSize || 20,
-    hasMore: false,
-  };
-}
-
-/**
- * Get agent profile by license number or MLS ID
- */
-async function getAgentProfile(identifier: string): Promise<AgentProfile | null> {
-  return generateMockAgent(identifier);
 }
 
 /**
@@ -209,21 +310,61 @@ export function registerRecruitmentRoutes(app: Express) {
   // Search agents
   app.get('/api/recruitment/agents/search', async (req, res) => {
     try {
-      const filters: AgentSearchFilters = {
-        query: req.query.q as string,
-        city: req.query.city as string,
-        minVolume: req.query.minVolume ? Number(req.query.minVolume) : undefined,
-        maxVolume: req.query.maxVolume ? Number(req.query.maxVolume) : undefined,
-        brokerage: req.query.brokerage as string,
-        excludeBrokerage: req.query.excludeBrokerage as string,
-        sortBy: req.query.sortBy as any,
-        sortOrder: req.query.sortOrder as any,
-        page: req.query.page ? Number(req.query.page) : 1,
-        pageSize: req.query.pageSize ? Number(req.query.pageSize) : 20,
-      };
+      const query = req.query.q as string;
       
-      const results = await searchAgents(filters);
-      res.json(results);
+      if (!query || query.length < 2) {
+        return res.json({ agents: [], total: 0, page: 1, pageSize: 20, hasMore: false });
+      }
+      
+      // Search by name
+      const members = await searchAgentByName(query);
+      
+      // For each agent, get quick stats
+      const agentSummaries = await Promise.all(
+        members.slice(0, 10).map(async (member) => {
+          try {
+            // Quick count of sold listings
+            const countData = await repliersRequest('/listings', {
+              agentId: member.agentId,
+              status: 'U',
+              lastStatus: 'Sld',
+              listings: 'false',
+            });
+            
+            return {
+              agentId: member.agentId,
+              mlsId: member.boardAgentId || member.agentId,
+              licenseNumber: `MLS#${member.boardAgentId || member.agentId}`,
+              name: member.name,
+              email: member.email || null,
+              phone: member.phones?.[0] || null,
+              photo: member.photo?.large || null,
+              currentBrokerage: member.brokerage?.name || 'Unknown',
+              transactionCount: countData.count || 0,
+            };
+          } catch (e) {
+            return {
+              agentId: member.agentId,
+              mlsId: member.boardAgentId || member.agentId,
+              licenseNumber: `MLS#${member.boardAgentId || member.agentId}`,
+              name: member.name,
+              email: member.email || null,
+              phone: member.phones?.[0] || null,
+              photo: member.photo?.large || null,
+              currentBrokerage: member.brokerage?.name || 'Unknown',
+              transactionCount: 0,
+            };
+          }
+        })
+      );
+      
+      res.json({
+        agents: agentSummaries,
+        total: members.length,
+        page: 1,
+        pageSize: 20,
+        hasMore: members.length > 10,
+      });
     } catch (error) {
       console.error('Agent search error:', error);
       res.status(500).json({ error: 'Failed to search agents' });
@@ -234,15 +375,41 @@ export function registerRecruitmentRoutes(app: Express) {
   app.get('/api/recruitment/agents/:identifier', async (req, res) => {
     try {
       const { identifier } = req.params;
-      const agent = await getAgentProfile(identifier);
+      
+      // First, find the agent
+      let agent: any = null;
+      
+      // Try searching by name or ID
+      const members = await searchAgentByName(identifier);
+      if (members.length > 0) {
+        agent = members[0];
+      } else {
+        // Try as agentId directly
+        const listings = await repliersRequest('/listings', {
+          agentId: identifier,
+          status: 'U',
+          lastStatus: 'Sld',
+          resultsPerPage: '1',
+        });
+        if (listings.listings?.[0]?.agents?.[0]) {
+          agent = listings.listings[0].agents[0];
+          agent.agentId = identifier;
+        }
+      }
       
       if (!agent) {
         return res.status(404).json({ error: 'Agent not found' });
       }
       
+      // Get full transaction history
+      const transactions = await getAgentSoldTransactions(agent.agentId, 500);
+      
+      // Build profile
+      const profile = buildAgentProfile(agent, transactions);
+      
       res.json({
-        agent,
-        chartData: getVolumeChartData(agent),
+        agent: profile,
+        chartData: getVolumeChartData(profile),
       });
     } catch (error) {
       console.error('Get agent error:', error);
@@ -250,24 +417,21 @@ export function registerRecruitmentRoutes(app: Express) {
     }
   });
 
-  // Check API status (for debugging data access)
+  // Check API status
   app.get('/api/recruitment/status', async (req, res) => {
     try {
-      // Test Repliers API access
-      const response = await fetch(`${REPLIERS_API_URL}/listings?resultsPerPage=1&status=S`, {
-        headers: { 'REPLIERS-API-KEY': REPLIERS_API_KEY },
+      // Test sold data access
+      const response = await repliersRequest('/listings', {
+        status: 'U',
+        lastStatus: 'Sld',
+        resultsPerPage: '1',
       });
-      
-      const hasSoldAccess = response.ok;
-      const errorMsg = !response.ok ? await response.text() : null;
       
       res.json({
         repliersConnected: true,
-        hasSoldDataAccess: hasSoldAccess,
-        error: errorMsg,
-        message: hasSoldAccess 
-          ? 'Full data access available' 
-          : 'Currently using mock data. Sold data access pending from Repliers.',
+        hasSoldDataAccess: true,
+        totalSoldListings: response.count,
+        message: 'Full data access available',
       });
     } catch (error) {
       res.json({
