@@ -157,7 +157,7 @@ export default function CalendarPage() {
               onRefresh={handleRefresh}
               isLoading={isLoading || isSyncing}
             />
-            <a href="https://app.followupboss.com/calendar" target="_blank" rel="noopener noreferrer">
+            <a href="https://app.followupboss.com/app/tasks" target="_blank" rel="noopener noreferrer">
               <Button variant="outline" className="border-[#EF4923]/30 hover:bg-[#EF4923]/10 h-8 sm:h-9 px-2 sm:px-4 text-xs sm:text-sm">
                 <span className="hidden sm:inline">Open in FUB</span>
                 <span className="sm:hidden">FUB</span>
