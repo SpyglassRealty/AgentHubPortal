@@ -1,6 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
 import Layout from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +36,7 @@ import {
   ChevronDown,
   ChevronUp,
   Map,
+  FileText,
 } from "lucide-react";
 import {
   Select,
@@ -66,6 +69,8 @@ interface PropertyData {
   photo?: string | null;
   stories?: number | null;
   subdivision?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 interface CmaData {
@@ -99,6 +104,7 @@ interface SearchFilters {
   minYearBuilt: string;
   maxYearBuilt: string;
   search: string;
+  dateSoldDays: string;
 }
 
 const defaultFilters: SearchFilters = {
@@ -123,7 +129,40 @@ const defaultFilters: SearchFilters = {
   minYearBuilt: "",
   maxYearBuilt: "",
   search: "",
+  dateSoldDays: "180",
 };
+
+// RESO Standard Property Types
+const RESO_PROPERTY_TYPES = [
+  "Single Family Residence",
+  "Condominium",
+  "Townhouse",
+  "Multi-Family",
+  "Ranch",
+  "Manufactured Home",
+  "Unimproved Land",
+  "Multiple Lots",
+];
+
+// Bed/Bath dropdown options
+const BED_BATH_OPTIONS = [
+  { label: "Any", value: "" },
+  { label: "1", value: "1" },
+  { label: "2", value: "2" },
+  { label: "3", value: "3" },
+  { label: "4", value: "4" },
+  { label: "5", value: "5" },
+  { label: "6+", value: "6" },
+];
+
+// Date Sold dropdown options
+const DATE_SOLD_OPTIONS = [
+  { label: "Last 90 Days", value: "90" },
+  { label: "Last 120 Days", value: "120" },
+  { label: "Last 150 Days", value: "150" },
+  { label: "Last 180 Days", value: "180" },
+  { label: "Last 360 Days", value: "360" },
+];
 
 function formatPrice(price: number | null | undefined): string {
   if (!price) return "—";
@@ -230,7 +269,7 @@ function SubjectPropertyPanel({
               <p className="text-lg font-bold text-[#EF4923] mt-1">
                 {formatPrice(subject.listPrice)}
               </p>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+              <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mt-1">
                 <span className="flex items-center gap-1">
                   <BedDouble className="h-3 w-3" /> {subject.beds} bd
                 </span>
@@ -240,6 +279,21 @@ function SubjectPropertyPanel({
                 <span className="flex items-center gap-1">
                   <Ruler className="h-3 w-3" /> {formatNumber(subject.sqft)} sqft
                 </span>
+                {subject.lotSizeAcres && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3" /> {subject.lotSizeAcres.toFixed(2)} ac
+                  </span>
+                )}
+                {subject.yearBuilt && (
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" /> {subject.yearBuilt}
+                  </span>
+                )}
+                {subject.propertyType && (
+                  <span className="flex items-center gap-1">
+                    <Building2 className="h-3 w-3" /> {subject.propertyType}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -610,6 +664,9 @@ function AnalysisPanel({
   );
 }
 
+// Mapbox access token
+const MAPBOX_TOKEN = 'pk.eyJ1Ijoic3B5Z2xhc3NyZWFsdHkiLCJhIjoiY21sYmJjYjR5MG5teDNkb29oYnlldGJ6bCJ9.h6al6oHtIP5YiiIW97zhDw';
+
 // Search Properties Section
 function SearchPropertiesSection({
   onAddComp,
@@ -618,6 +675,7 @@ function SearchPropertiesSection({
   onAddComp: (prop: PropertyData) => void;
   existingMlsNumbers: Set<string>;
 }) {
+  const { toast } = useToast();
   const [filters, setFilters] = useState<SearchFilters>(defaultFilters);
   const [searchResults, setSearchResults] = useState<PropertyData[]>([]);
   const [searching, setSearching] = useState(false);
@@ -625,6 +683,21 @@ function SearchPropertiesSection({
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [filtersExpanded, setFiltersExpanded] = useState(true);
+  const [activeTab, setActiveTab] = useState("criteria");
+  const [showMlsPaste, setShowMlsPaste] = useState(false);
+  const [mlsPasteText, setMlsPasteText] = useState("");
+  const [mlsLookupLoading, setMlsLookupLoading] = useState(false);
+
+  // Map state
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const popupRef = useRef<mapboxgl.Popup | null>(null);
+  const [mapSearching, setMapSearching] = useState(false);
+  const [mapResults, setMapResults] = useState<PropertyData[]>([]);
+  const [mapTotalResults, setMapTotalResults] = useState(0);
+  const [showSearchButton, setShowSearchButton] = useState(true);
+  const [mapReady, setMapReady] = useState(false);
 
   const updateFilter = (key: keyof SearchFilters, value: any) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -634,13 +707,39 @@ function SearchPropertiesSection({
     setFilters((prev) => {
       const current = prev.statuses;
       if (current.includes(status)) {
-        return { ...prev, statuses: current.filter((s) => s !== status) };
+        const newStatuses = current.filter((s) => s !== status);
+        // If removing Closed, clear dateSoldDays
+        if (status === "Closed") {
+          return { ...prev, statuses: newStatuses, dateSoldDays: "180" };
+        }
+        return { ...prev, statuses: newStatuses };
       }
-      return { ...prev, statuses: [...current, status] };
+      const newStatuses = [...current, status];
+      // If adding Closed, default dateSoldDays to 180
+      if (status === "Closed") {
+        return { ...prev, statuses: newStatuses, dateSoldDays: "180" };
+      }
+      return { ...prev, statuses: newStatuses };
     });
   };
 
   const handleSearch = async (pageNum = 1) => {
+    // Validate required fields (only when not doing a free-text search)
+    if (!filters.search) {
+      if (!filters.propertyType) {
+        toast({ title: "Property Type is required", description: "Please select a property type before searching.", variant: "destructive" });
+        return;
+      }
+      if (!filters.minBeds) {
+        toast({ title: "Min Beds is required", description: "Please select minimum bedrooms.", variant: "destructive" });
+        return;
+      }
+      if (!filters.minBaths) {
+        toast({ title: "Min Baths is required", description: "Please select minimum bathrooms.", variant: "destructive" });
+        return;
+      }
+    }
+
     setSearching(true);
     try {
       const body: any = {
@@ -669,6 +768,10 @@ function SearchPropertiesSection({
       if (filters.minYearBuilt) body.minYearBuilt = parseInt(filters.minYearBuilt);
       if (filters.maxYearBuilt) body.maxYearBuilt = parseInt(filters.maxYearBuilt);
       if (filters.search) body.search = filters.search;
+      // Include dateSoldDays when Closed is selected
+      if (filters.statuses.includes("Closed") && filters.dateSoldDays) {
+        body.dateSoldDays = parseInt(filters.dateSoldDays);
+      }
 
       const res = await apiRequest("POST", "/api/cma/search-properties", body);
       const data = await res.json();
@@ -676,11 +779,80 @@ function SearchPropertiesSection({
       setTotalResults(data.total || 0);
       setPage(data.page || 1);
       setTotalPages(data.totalPages || 1);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Search failed:", err);
+      toast({
+        title: "Search failed",
+        description: err?.message || "An error occurred while searching properties. Please try again.",
+        variant: "destructive",
+      });
       setSearchResults([]);
     } finally {
       setSearching(false);
+    }
+  };
+
+  // MLS bulk lookup handler
+  const handleMlsLookup = async () => {
+    if (!mlsPasteText.trim()) {
+      toast({ title: "No MLS numbers entered", description: "Please paste MLS numbers to look up.", variant: "destructive" });
+      return;
+    }
+
+    // Parse MLS numbers (comma, newline, or space separated)
+    const mlsNumbers = mlsPasteText
+      .split(/[,\n\r\s]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    if (mlsNumbers.length === 0) {
+      toast({ title: "No valid MLS numbers found", variant: "destructive" });
+      return;
+    }
+
+    setMlsLookupLoading(true);
+    try {
+      const res = await apiRequest("POST", "/api/cma/search-properties", {
+        mlsNumbers,
+      });
+      const data = await res.json();
+      const listings: PropertyData[] = data.listings || [];
+      const mlsLookup = data.mlsLookup || { found: [], notFound: [] };
+
+      // Add each found listing as a comp (skip duplicates)
+      let addedCount = 0;
+      for (const listing of listings) {
+        if (!existingMlsNumbers.has(listing.mlsNumber)) {
+          onAddComp(listing);
+          addedCount++;
+        }
+      }
+
+      const notFoundCount = mlsLookup.notFound?.length || 0;
+      const alreadyExisting = listings.length - addedCount;
+
+      let description = `${addedCount} comp${addedCount !== 1 ? "s" : ""} added.`;
+      if (alreadyExisting > 0) description += ` ${alreadyExisting} already existed.`;
+      if (notFoundCount > 0) description += ` ${notFoundCount} not found: ${mlsLookup.notFound.join(", ")}`;
+
+      toast({
+        title: `MLS Lookup Complete`,
+        description,
+        variant: notFoundCount > 0 ? "destructive" : "default",
+      });
+
+      // Clear the paste field
+      setMlsPasteText("");
+      setShowMlsPaste(false);
+    } catch (err: any) {
+      console.error("MLS lookup failed:", err);
+      toast({
+        title: "MLS lookup failed",
+        description: err?.message || "An error occurred during the MLS lookup.",
+        variant: "destructive",
+      });
+    } finally {
+      setMlsLookupLoading(false);
     }
   };
 
@@ -689,6 +861,189 @@ function SearchPropertiesSection({
     setSearchResults([]);
     setTotalResults(0);
   };
+
+  // Map search by viewport bounds
+  const handleMapSearch = useCallback(async () => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const bounds = map.getBounds();
+    if (!bounds) return;
+    const sw = bounds.getSouthWest();
+    const ne = bounds.getNorthEast();
+
+    setMapSearching(true);
+    setShowSearchButton(false);
+    try {
+      const body: any = {
+        page: 1,
+        limit: 50,
+        statuses: ['Active', 'Active Under Contract'],
+        mapBounds: {
+          sw: { lat: sw.lat, lng: sw.lng },
+          ne: { lat: ne.lat, lng: ne.lng },
+        },
+      };
+
+      const res = await apiRequest("POST", "/api/cma/search-properties", body);
+      const data = await res.json();
+      const listings: PropertyData[] = data.listings || [];
+      setMapResults(listings);
+      setMapTotalResults(data.total || 0);
+
+      // Clear existing markers
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+
+      // Add markers for each result
+      listings.forEach((prop) => {
+        if (!prop.latitude || !prop.longitude) return;
+
+        // Create custom marker element
+        const el = document.createElement('div');
+        el.className = 'cma-map-marker';
+        el.style.cssText = `
+          width: 28px; height: 28px;
+          background: #EF4923;
+          border: 2px solid white;
+          border-radius: 50%;
+          cursor: pointer;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          transition: transform 0.15s ease;
+        `;
+        el.addEventListener('mouseenter', () => {
+          el.style.transform = 'scale(1.2)';
+        });
+        el.addEventListener('mouseleave', () => {
+          el.style.transform = 'scale(1)';
+        });
+
+        const marker = new mapboxgl.Marker({ element: el })
+          .setLngLat([prop.longitude!, prop.latitude!])
+          .addTo(map);
+
+        // Popup on click
+        el.addEventListener('click', () => {
+          // Close existing popup
+          if (popupRef.current) {
+            popupRef.current.remove();
+          }
+
+          const isAlreadyAdded = existingMlsNumbers.has(prop.mlsNumber);
+          const popupHtml = `
+            <div style="min-width: 220px; font-family: system-ui, sans-serif;">
+              ${prop.photo ? `<img src="${prop.photo}" style="width: 100%; height: 100px; object-fit: cover; border-radius: 6px 6px 0 0; margin: -10px -10px 8px -10px; width: calc(100% + 20px);" />` : ''}
+              <div style="font-weight: 600; font-size: 13px; margin-bottom: 2px;">${prop.address}</div>
+              ${prop.mlsNumber ? `<div style="font-size: 11px; color: #888; margin-bottom: 4px;">MLS# ${prop.mlsNumber}</div>` : ''}
+              <div style="font-size: 16px; font-weight: 700; color: #EF4923; margin-bottom: 4px;">
+                ${formatPrice(prop.listPrice)}
+                ${prop.soldPrice ? `<span style="font-size: 12px; color: #666; font-weight: 400; margin-left: 4px;">Sold: ${formatPrice(prop.soldPrice)}</span>` : ''}
+              </div>
+              <div style="font-size: 12px; color: #555; margin-bottom: 8px;">
+                ${prop.beds} bd · ${prop.baths} ba · ${formatNumber(prop.sqft)} sqft
+                ${prop.yearBuilt ? ` · Built ${prop.yearBuilt}` : ''}
+              </div>
+              <button id="add-comp-${prop.mlsNumber}" style="
+                width: 100%;
+                padding: 6px 12px;
+                background: ${isAlreadyAdded ? '#22c55e' : '#EF4923'};
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: 600;
+                cursor: ${isAlreadyAdded ? 'default' : 'pointer'};
+                opacity: ${isAlreadyAdded ? '0.7' : '1'};
+              ">
+                ${isAlreadyAdded ? '✓ Already Added' : '+ Add as Comp'}
+              </button>
+            </div>
+          `;
+
+          const popup = new mapboxgl.Popup({
+            closeOnClick: true,
+            maxWidth: '280px',
+            offset: 15,
+          })
+            .setLngLat([prop.longitude!, prop.latitude!])
+            .setHTML(popupHtml)
+            .addTo(map);
+
+          popupRef.current = popup;
+
+          // Attach click handler after popup is added to DOM
+          popup.on('open', () => {
+            setTimeout(() => {
+              const btn = document.getElementById(`add-comp-${prop.mlsNumber}`);
+              if (btn && !isAlreadyAdded) {
+                btn.addEventListener('click', () => {
+                  onAddComp(prop);
+                  popup.remove();
+                });
+              }
+            }, 50);
+          });
+        });
+
+        markersRef.current.push(marker);
+      });
+    } catch (err) {
+      console.error("Map search failed:", err);
+      setMapResults([]);
+    } finally {
+      setMapSearching(false);
+    }
+  }, [existingMlsNumbers, onAddComp]);
+
+  // Initialize map when tab switches to "map"
+  useEffect(() => {
+    if (activeTab !== 'map') return;
+
+    // Small delay to ensure container is visible and has dimensions
+    const timer = setTimeout(() => {
+      if (!mapContainerRef.current) return;
+
+      // If map already exists, just resize it
+      if (mapRef.current) {
+        mapRef.current.resize();
+        return;
+      }
+
+      mapboxgl.accessToken = MAPBOX_TOKEN;
+
+      const map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [-97.7431, 30.2672], // Austin, TX
+        zoom: 10,
+      });
+
+      map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+      map.on('load', () => {
+        setMapReady(true);
+      });
+
+      map.on('moveend', () => {
+        setShowSearchButton(true);
+      });
+
+      mapRef.current = map;
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [activeTab]);
+
+  // Cleanup map on unmount
+  useEffect(() => {
+    return () => {
+      markersRef.current.forEach((m) => m.remove());
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -713,7 +1068,7 @@ function SearchPropertiesSection({
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="criteria">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="w-full mb-4">
               <TabsTrigger value="criteria" className="flex-1">
                 <Search className="h-4 w-4 mr-2" />
@@ -805,22 +1160,44 @@ function SearchPropertiesSection({
                   {/* Property details */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Min Beds</Label>
-                      <Input
-                        type="number"
-                        placeholder="Min"
-                        value={filters.minBeds}
-                        onChange={(e) => updateFilter("minBeds", e.target.value)}
-                      />
+                      <Label className="text-xs font-medium text-muted-foreground">
+                        Min Beds <span className="text-red-500">*</span>
+                      </Label>
+                      <Select
+                        value={filters.minBeds || "any"}
+                        onValueChange={(v) => updateFilter("minBeds", v === "any" ? "" : v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Any" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BED_BATH_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value || "any"} value={opt.value || "any"}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Min Baths</Label>
-                      <Input
-                        type="number"
-                        placeholder="Min"
-                        value={filters.minBaths}
-                        onChange={(e) => updateFilter("minBaths", e.target.value)}
-                      />
+                      <Label className="text-xs font-medium text-muted-foreground">
+                        Min Baths <span className="text-red-500">*</span>
+                      </Label>
+                      <Select
+                        value={filters.minBaths || "any"}
+                        onValueChange={(v) => updateFilter("minBaths", v === "any" ? "" : v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Any" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BED_BATH_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value || "any"} value={opt.value || "any"}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
                       <Label className="text-xs font-medium text-muted-foreground">Min Price</Label>
@@ -845,20 +1222,21 @@ function SearchPropertiesSection({
                   {/* Property type and status */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Property Type</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">
+                        Property Type <span className="text-red-500">*</span>
+                      </Label>
                       <Select
                         value={filters.propertyType || "all"}
                         onValueChange={(v) => updateFilter("propertyType", v === "all" ? "" : v)}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Any" />
+                          <SelectValue placeholder="Select Property Type" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Any</SelectItem>
-                          <SelectItem value="Detached">Detached</SelectItem>
-                          <SelectItem value="Att/Row/Twnhouse">Townhouse</SelectItem>
-                          <SelectItem value="Semi-Detached">Semi-Detached</SelectItem>
-                          <SelectItem value="Condo Apt">Condo</SelectItem>
+                          {RESO_PROPERTY_TYPES.map((pt) => (
+                            <SelectItem key={pt} value={pt}>{pt}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -879,6 +1257,28 @@ function SearchPropertiesSection({
                       </div>
                     </div>
                   </div>
+
+                  {/* Date Sold dropdown - only visible when Closed is selected */}
+                  {filters.statuses.includes("Closed") && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs font-medium text-muted-foreground">Date Sold</Label>
+                        <Select
+                          value={filters.dateSoldDays || "180"}
+                          onValueChange={(v) => updateFilter("dateSoldDays", v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select date range" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DATE_SOLD_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Size, lot, stories, year */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -974,14 +1374,101 @@ function SearchPropertiesSection({
             </TabsContent>
 
             <TabsContent value="map">
-              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                <Map className="h-12 w-12 mb-3 opacity-40" />
-                <p className="text-sm font-medium">Map Search Coming Soon</p>
-                <p className="text-xs mt-1">Use the criteria tab to search for properties.</p>
+              <div className="relative">
+                {/* Map container */}
+                <div
+                  ref={mapContainerRef}
+                  className="w-full h-[500px] rounded-lg overflow-hidden border"
+                />
+
+                {/* Search This Area button */}
+                {showSearchButton && !mapSearching && (
+                  <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
+                    <Button
+                      size="sm"
+                      className="bg-[#EF4923] hover:bg-[#d4401f] text-white shadow-lg"
+                      onClick={handleMapSearch}
+                    >
+                      <Search className="h-4 w-4 mr-2" />
+                      Search This Area
+                    </Button>
+                  </div>
+                )}
+
+                {/* Loading overlay */}
+                {mapSearching && (
+                  <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
+                    <div className="flex items-center gap-2 bg-background px-4 py-2 rounded-full shadow-lg border">
+                      <Loader2 className="h-4 w-4 animate-spin text-[#EF4923]" />
+                      <span className="text-sm font-medium">Searching properties...</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Results count badge */}
+                {mapResults.length > 0 && !mapSearching && (
+                  <div className="absolute bottom-3 left-3 z-10">
+                    <Badge className="bg-[#EF4923] text-white shadow-lg px-3 py-1">
+                      {mapResults.length} of {formatNumber(mapTotalResults)} properties shown
+                    </Badge>
+                  </div>
+                )}
               </div>
+
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Pan and zoom the map, then click "Search This Area" to find properties. Click a pin to view details and add as a comp.
+              </p>
             </TabsContent>
           </Tabs>
         </CardContent>
+      </Card>
+
+      {/* Add by MLS# Section */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Plus className="h-5 w-5 text-[#EF4923]" />
+              Add by MLS#
+            </CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowMlsPaste(!showMlsPaste)}
+            >
+              {showMlsPaste ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+        </CardHeader>
+        {showMlsPaste && (
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Paste multiple MLS numbers below (comma, space, or newline separated) to bulk-add comparable properties.
+            </p>
+            <textarea
+              className="w-full min-h-[80px] p-3 border rounded-lg text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[#EF4923]/50 bg-background"
+              placeholder={"MLS12345, MLS67890\nMLS11111\nMLS22222"}
+              value={mlsPasteText}
+              onChange={(e) => setMlsPasteText(e.target.value)}
+            />
+            <Button
+              className="w-full bg-[#EF4923] hover:bg-[#d4401f] text-white"
+              onClick={handleMlsLookup}
+              disabled={mlsLookupLoading || !mlsPasteText.trim()}
+            >
+              {mlsLookupLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Search className="h-4 w-4 mr-2" />
+              )}
+              Lookup MLS Numbers
+            </Button>
+          </CardContent>
+        )}
       </Card>
 
       {/* Search Results */}
@@ -1172,7 +1659,11 @@ export default function CmaBuilderPage() {
 
   const handleSave = () => {
     if (!cma.name.trim()) {
-      toast({ title: "Please enter a CMA name", variant: "destructive" });
+      toast({ title: "CMA Name is required", description: "Please enter a name for this CMA before saving.", variant: "destructive" });
+      return;
+    }
+    if (!cma.subjectProperty) {
+      toast({ title: "Subject Property is required", description: "Please set a subject property before saving.", variant: "destructive" });
       return;
     }
     saveMutation.mutate(cma);
@@ -1242,6 +1733,15 @@ export default function CmaBuilderPage() {
                 Unsaved changes
               </Badge>
             )}
+            {!isNew && (
+              <Button
+                variant="outline"
+                onClick={() => setLocation(`/cma/${cmaId}/presentation`)}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Presentation
+              </Button>
+            )}
             <Button
               className="bg-[#EF4923] hover:bg-[#d4401f] text-white"
               onClick={handleSave}
@@ -1285,7 +1785,7 @@ export default function CmaBuilderPage() {
           />
         </div>
 
-        {/* Search Properties */}
+        {/* Search Properties (includes MLS paste) */}
         <SearchPropertiesSection
           onAddComp={addComp}
           existingMlsNumbers={existingMlsNumbers}

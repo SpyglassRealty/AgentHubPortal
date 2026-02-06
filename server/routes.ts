@@ -2321,13 +2321,14 @@ Respond with valid JSON in this exact format:
     try {
       const user = await getDbUser(req);
       if (!user) return res.status(401).json({ message: "Not authenticated" });
-      const { name, subjectProperty, comparableProperties, notes, status } = req.body;
+      const { name, subjectProperty, comparableProperties, notes, status, presentationConfig } = req.body;
       const updated = await storage.updateCma(req.params.id, user.id, {
         ...(name !== undefined && { name }),
         ...(subjectProperty !== undefined && { subjectProperty }),
         ...(comparableProperties !== undefined && { comparableProperties }),
         ...(notes !== undefined && { notes }),
         ...(status !== undefined && { status }),
+        ...(presentationConfig !== undefined && { presentationConfig }),
       });
       if (!updated) return res.status(404).json({ message: "CMA not found" });
       res.json(updated);
@@ -2370,7 +2371,10 @@ Respond with valid JSON in this exact format:
         minSqft, maxSqft, minLotAcres, maxLotAcres,
         stories, minYearBuilt, maxYearBuilt,
         search, // address search
-        page, limit
+        page, limit,
+        mapBounds, // { sw: { lat, lng }, ne: { lat, lng } } for map search
+        dateSoldDays, // number of days for closed listings (90, 120, 150, 180, 360)
+        mlsNumbers, // array of MLS numbers for bulk lookup
       } = req.body;
 
       const pageNum = Math.max(1, parseInt(page || '1', 10));
@@ -2399,6 +2403,115 @@ Respond with valid JSON in this exact format:
       if (middleSchool) params.append('middleSchool', middleSchool);
       if (highSchool) params.append('highSchool', highSchool);
 
+      // If mlsNumbers provided, search by MLS numbers instead of criteria
+      if (mlsNumbers && Array.isArray(mlsNumbers) && mlsNumbers.length > 0) {
+        // For bulk MLS lookup, search each MLS number
+        // Repliers supports searching by mlsNumber parameter
+        const allListings: any[] = [];
+        const foundMls: string[] = [];
+        const notFoundMls: string[] = [];
+
+        for (const mls of mlsNumbers) {
+          const mlsClean = mls.trim();
+          if (!mlsClean) continue;
+          try {
+            const mlsParams = new URLSearchParams({
+              listings: 'true',
+              type: 'Sale',
+              resultsPerPage: '5',
+              pageNum: '1',
+              search: mlsClean,
+            });
+            const mlsUrl = `${baseUrl}?${mlsParams.toString()}`;
+            const mlsResponse = await fetch(mlsUrl, {
+              headers: {
+                'Accept': 'application/json',
+                'REPLIERS-API-KEY': apiKey
+              }
+            });
+            if (mlsResponse.ok) {
+              const mlsData = await mlsResponse.json();
+              const mlsListings = mlsData.listings || [];
+              // Find exact MLS match
+              const exact = mlsListings.find((l: any) => l.mlsNumber === mlsClean);
+              if (exact) {
+                allListings.push(exact);
+                foundMls.push(mlsClean);
+              } else if (mlsListings.length > 0) {
+                allListings.push(mlsListings[0]);
+                foundMls.push(mlsClean);
+              } else {
+                notFoundMls.push(mlsClean);
+              }
+            } else {
+              notFoundMls.push(mlsClean);
+            }
+          } catch (err) {
+            console.error(`[CMA Search] Error looking up MLS# ${mlsClean}:`, err);
+            notFoundMls.push(mlsClean);
+          }
+        }
+
+        // Transform the found listings
+        const listings = allListings.map((listing: any) => {
+          const streetNumber = listing.address?.streetNumber || '';
+          const streetName = listing.address?.streetName || '';
+          const streetSuffix = listing.address?.streetSuffix || '';
+          const cityName = listing.address?.city || '';
+          const state = listing.address?.state || 'TX';
+          const postalCode = listing.address?.zip || listing.address?.postalCode || '';
+          const streetAddress = [streetNumber, streetName, streetSuffix].filter(Boolean).join(' ');
+          const fullAddress = `${streetAddress}, ${cityName}, ${state} ${postalCode}`.trim();
+
+          let photo = null;
+          if (listing.images && listing.images.length > 0) {
+            const imagePath = listing.images[0];
+            if (typeof imagePath === 'string') {
+              photo = imagePath.startsWith('http') ? imagePath : `https://cdn.repliers.io/${imagePath}`;
+            }
+          }
+
+          return {
+            mlsNumber: listing.mlsNumber || listing.listingId || '',
+            address: fullAddress,
+            streetAddress,
+            city: cityName,
+            state,
+            zip: postalCode,
+            listPrice: listing.listPrice || 0,
+            soldPrice: listing.soldPrice || listing.closePrice || null,
+            beds: listing.details?.numBedrooms || listing.bedroomsTotal || 0,
+            baths: listing.details?.numBathrooms || listing.bathroomsTotal || 0,
+            sqft: listing.details?.sqft || listing.livingArea || 0,
+            lotSizeAcres: listing.lot?.acres || (listing.lotSizeArea ? listing.lotSizeArea / 43560 : null),
+            yearBuilt: listing.details?.yearBuilt || null,
+            propertyType: listing.details?.propertyType || listing.propertyType || '',
+            status: listing.standardStatus || listing.status || '',
+            listDate: listing.listDate || '',
+            soldDate: listing.soldDate || listing.closeDate || null,
+            daysOnMarket: listing.daysOnMarket || 0,
+            photo,
+            stories: listing.details?.numStoreys || null,
+            subdivision: listing.address?.area || listing.address?.neighborhood || '',
+            latitude: listing.map?.latitude || listing.address?.latitude || null,
+            longitude: listing.map?.longitude || listing.address?.longitude || null,
+          };
+        });
+
+        console.log(`[CMA Search] MLS Bulk Lookup: ${foundMls.length} found, ${notFoundMls.length} not found`);
+        return res.json({
+          listings,
+          total: listings.length,
+          page: 1,
+          totalPages: 1,
+          resultsPerPage: listings.length,
+          mlsLookup: {
+            found: foundMls,
+            notFound: notFoundMls,
+          },
+        });
+      }
+
       // Property filters
       if (minBeds) params.append('minBeds', minBeds.toString());
       if (minBaths) params.append('minBaths', minBaths.toString());
@@ -2426,18 +2539,19 @@ Respond with valid JSON in this exact format:
       if (statusArray.length === 0) {
         // No status filter - search all listings (useful for address lookups)
       } else if (hasClosed && !hasActive && !hasAUC) {
-        // Only closed
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 365);
+        // Only closed - use dateSoldDays if provided, otherwise default to 365
+        const soldDays = dateSoldDays ? parseInt(dateSoldDays.toString(), 10) : 365;
+        const minDate = new Date();
+        minDate.setDate(minDate.getDate() - soldDays);
         params.append('status', 'U');
         params.append('lastStatus', 'Sld');
-        params.append('minSoldDate', thirtyDaysAgo.toISOString().split('T')[0]);
+        params.append('minSoldDate', minDate.toISOString().split('T')[0]);
       } else if (!hasClosed) {
         // Only active statuses
         statusArray.forEach(s => params.append('standardStatus', s));
       } else {
-        // Mix of active and closed - default to active statuses, closed needs separate handling
-        // For simplicity, prioritize active statuses
+        // Mix of active and closed - for now prioritize active statuses
+        // In a future iteration, we could make two API calls and merge results
         const activeStatuses = statusArray.filter(s => s !== 'Closed');
         if (activeStatuses.length > 0) {
           activeStatuses.forEach(s => params.append('standardStatus', s));
@@ -2447,12 +2561,35 @@ Respond with valid JSON in this exact format:
       const fullUrl = `${baseUrl}?${params.toString()}`;
       console.log(`[CMA Search] Searching properties: ${fullUrl}`);
 
-      const response = await fetch(fullUrl, {
-        headers: {
-          'Accept': 'application/json',
-          'REPLIERS-API-KEY': apiKey
-        }
-      });
+      // If mapBounds provided, use POST with map polygon body
+      let response: Response;
+      if (mapBounds && mapBounds.sw && mapBounds.ne) {
+        const { sw, ne } = mapBounds;
+        const polygon = [
+          [sw.lng, sw.lat],
+          [ne.lng, sw.lat],
+          [ne.lng, ne.lat],
+          [sw.lng, ne.lat],
+          [sw.lng, sw.lat],
+        ];
+        console.log(`[CMA Search] Using map bounds polygon:`, JSON.stringify(polygon));
+        response = await fetch(fullUrl, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'REPLIERS-API-KEY': apiKey
+          },
+          body: JSON.stringify({ map: [polygon] }),
+        });
+      } else {
+        response = await fetch(fullUrl, {
+          headers: {
+            'Accept': 'application/json',
+            'REPLIERS-API-KEY': apiKey
+          }
+        });
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -2504,6 +2641,8 @@ Respond with valid JSON in this exact format:
           photo,
           stories: listing.details?.numStoreys || null,
           subdivision: listing.address?.area || listing.address?.neighborhood || '',
+          latitude: listing.map?.latitude || listing.address?.latitude || null,
+          longitude: listing.map?.longitude || listing.address?.longitude || null,
         };
       });
 
