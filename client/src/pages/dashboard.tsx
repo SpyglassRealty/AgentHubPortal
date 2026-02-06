@@ -378,6 +378,10 @@ export default function DashboardPage() {
                     <Link href={app.url}>
                       {cardContent}
                     </Link>
+                  ) : (
+                    <Link href={`/app/${app.id}`}>
+                      {cardContent}
+                    </Link>
                   )}
                 </motion.div>
               );
