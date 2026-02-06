@@ -2416,13 +2416,16 @@ Respond with valid JSON in this exact format:
       if (maxLotAcres) params.append('maxLotWidth', (maxLotAcres * 43560).toString());
 
       // Status handling - support multiple statuses
-      const statusArray: string[] = statuses || ['Active'];
+      // When doing address search with no explicit statuses, search all statuses
+      const statusArray: string[] = statuses || (search && !city && !zip ? [] : ['Active']);
       // If includes Closed, we need a separate approach
       const hasActive = statusArray.includes('Active');
       const hasAUC = statusArray.includes('Active Under Contract');
       const hasClosed = statusArray.includes('Closed');
 
-      if (hasClosed && !hasActive && !hasAUC) {
+      if (statusArray.length === 0) {
+        // No status filter - search all listings (useful for address lookups)
+      } else if (hasClosed && !hasActive && !hasAUC) {
         // Only closed
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 365);
