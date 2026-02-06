@@ -18,6 +18,8 @@ import PropertiesPage from "@/pages/properties";
 import MarketingPage from "@/pages/marketing";
 import MarketingCalendarPage from "@/pages/marketing-calendar";
 import TrainingPage from "@/pages/training";
+import CmaPage from "@/pages/cma";
+import CmaBuilderPage from "@/pages/cma-builder";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -53,6 +55,8 @@ function Router() {
       <Route path="/reports" component={ReportsPage} />
       <Route path="/leads" component={LeadsPage} />
       <Route path="/properties" component={PropertiesPage} />
+      <Route path="/cma" component={CmaPage} />
+      <Route path="/cma/:id" component={CmaBuilderPage} />
       <Route path="/marketing" component={MarketingPage} />
       <Route path="/marketing-calendar" component={MarketingCalendarPage} />
       <Route path="/training" component={TrainingPage} />
