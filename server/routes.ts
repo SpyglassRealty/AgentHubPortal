@@ -1617,10 +1617,14 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Month and year are required" });
       }
 
-      const openai = new OpenAI({
-        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-      });
+      const openaiConfig: { apiKey: string | undefined; baseURL?: string } = {
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
+      };
+      // Only set baseURL if explicitly configured (otherwise use OpenAI default)
+      if (process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) {
+        openaiConfig.baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+      }
+      const openai = new OpenAI(openaiConfig);
 
       const prompt = `Generate a social media content calendar for real estate agents for ${month} ${year}. 
 
