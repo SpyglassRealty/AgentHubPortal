@@ -50,10 +50,67 @@ export async function registerRoutes(
         return res.status(404).json({ message: "User not found" });
       }
       
+      // Auto-link FUB account on login if not already linked
+      if (!user.fubUserId && user.email) {
+        try {
+          const fubClient = getFubClient();
+          if (fubClient) {
+            const fubUser = await fubClient.getUserByEmail(user.email);
+            if (fubUser) {
+              await storage.updateUserFubId(user.id, fubUser.id);
+              user = { ...user, fubUserId: fubUser.id };
+              console.log(`[Auth] Auto-linked FUB user ID ${fubUser.id} to user ${user.id} (${user.email})`);
+            } else {
+              console.log(`[Auth] No FUB match found for ${user.email}`);
+            }
+          }
+        } catch (fubError) {
+          console.error('[Auth] FUB auto-link failed:', fubError);
+          // Don't block login if FUB linking fails
+        }
+      }
+      
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Manual FUB account linking - admin can link any user, users can re-link themselves
+  app.post('/api/auth/link-fub', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const { email: linkEmail, userId: targetUserId } = req.body;
+
+      // Determine which user to link
+      let targetUser = user;
+      if (targetUserId && user.isSuperAdmin) {
+        const found = await storage.getUser(targetUserId);
+        if (found) targetUser = found;
+      }
+
+      const fubClient = getFubClient();
+      if (!fubClient) return res.status(503).json({ message: "FUB not configured" });
+
+      // Use provided email or fall back to user's email
+      const searchEmail = linkEmail || targetUser.email;
+      if (!searchEmail) return res.status(400).json({ message: "No email provided" });
+
+      const fubUser = await fubClient.getUserByEmail(searchEmail);
+      if (!fubUser) {
+        return res.status(404).json({ message: `No FUB account found for ${searchEmail}` });
+      }
+
+      await storage.updateUserFubId(targetUser.id, fubUser.id);
+      console.log(`[Auth] Manually linked FUB user ID ${fubUser.id} to user ${targetUser.id} (${searchEmail})`);
+      
+      res.json({ success: true, fubUserId: fubUser.id, fubName: fubUser.name });
+    } catch (error) {
+      console.error("Error linking FUB account:", error);
+      res.status(500).json({ message: "Failed to link FUB account" });
     }
   });
 
