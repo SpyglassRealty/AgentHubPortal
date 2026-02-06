@@ -374,8 +374,8 @@ export default function DashboardPage() {
                     <div onClick={handleAppClick} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && handleAppClick()}>
                       {cardContent}
                     </div>
-                  ) : (
-                    <Link href={`/app/${app.id}`}>
+                  ) : app.url?.startsWith('/') ? (
+                    <Link href={app.url}>
                       {cardContent}
                     </Link>
                   )}
