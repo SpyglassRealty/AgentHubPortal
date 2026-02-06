@@ -180,6 +180,16 @@ export const apps: AppDefinition[] = [
     connectionType: "embedded"
   },
   {
+    id: "cma-builder",
+    name: "CMA Builder",
+    description: "Create professional Comparative Market Analyses with live MLS data and adjustments.",
+    icon: FileBarChart,
+    categories: ["Core", "Sales"],
+    color: "bg-emerald-100 text-emerald-700",
+    url: "/cma",
+    connectionType: "embedded"
+  },
+  {
     id: "jointly",
     name: "Jointly",
     description: "Collaborate with clients and partners on real estate transactions.",
