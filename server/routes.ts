@@ -2263,5 +2263,264 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // ==========================================
+  // CMA (Comparative Market Analysis) Routes
+  // ==========================================
+
+  // List all CMAs for the authenticated user
+  app.get('/api/cma', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const cmaList = await storage.getCmas(user.id);
+      res.json({ cmas: cmaList });
+    } catch (error) {
+      console.error('[CMA] Error listing CMAs:', error);
+      res.status(500).json({ message: "Failed to list CMAs" });
+    }
+  });
+
+  // Create a new CMA
+  app.post('/api/cma', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const { name, subjectProperty, comparableProperties, notes, status } = req.body;
+      if (!name) return res.status(400).json({ message: "Name is required" });
+      const cma = await storage.createCma({
+        userId: user.id,
+        name,
+        subjectProperty: subjectProperty || null,
+        comparableProperties: comparableProperties || [],
+        notes: notes || null,
+        status: status || 'draft',
+      });
+      res.json(cma);
+    } catch (error) {
+      console.error('[CMA] Error creating CMA:', error);
+      res.status(500).json({ message: "Failed to create CMA" });
+    }
+  });
+
+  // Get a single CMA by ID
+  app.get('/api/cma/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const cma = await storage.getCma(req.params.id, user.id);
+      if (!cma) return res.status(404).json({ message: "CMA not found" });
+      res.json(cma);
+    } catch (error) {
+      console.error('[CMA] Error getting CMA:', error);
+      res.status(500).json({ message: "Failed to get CMA" });
+    }
+  });
+
+  // Update a CMA
+  app.put('/api/cma/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const { name, subjectProperty, comparableProperties, notes, status } = req.body;
+      const updated = await storage.updateCma(req.params.id, user.id, {
+        ...(name !== undefined && { name }),
+        ...(subjectProperty !== undefined && { subjectProperty }),
+        ...(comparableProperties !== undefined && { comparableProperties }),
+        ...(notes !== undefined && { notes }),
+        ...(status !== undefined && { status }),
+      });
+      if (!updated) return res.status(404).json({ message: "CMA not found" });
+      res.json(updated);
+    } catch (error) {
+      console.error('[CMA] Error updating CMA:', error);
+      res.status(500).json({ message: "Failed to update CMA" });
+    }
+  });
+
+  // Delete a CMA
+  app.delete('/api/cma/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const deleted = await storage.deleteCma(req.params.id, user.id);
+      if (!deleted) return res.status(404).json({ message: "CMA not found" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[CMA] Error deleting CMA:', error);
+      res.status(500).json({ message: "Failed to delete CMA" });
+    }
+  });
+
+  // Search properties for CMA comparables via Repliers API
+  app.post('/api/cma/search-properties', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+
+      const apiKey = process.env.IDX_GRID_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ message: "Listings API not configured" });
+      }
+
+      const {
+        city, subdivision, zip, schoolDistrict, 
+        elementarySchool, middleSchool, highSchool,
+        minBeds, minBaths, minPrice, maxPrice,
+        propertyType, statuses, // array of statuses: ['Active', 'Active Under Contract', 'Closed']
+        minSqft, maxSqft, minLotAcres, maxLotAcres,
+        stories, minYearBuilt, maxYearBuilt,
+        search, // address search
+        page, limit
+      } = req.body;
+
+      const pageNum = Math.max(1, parseInt(page || '1', 10));
+      const resultsPerPage = Math.min(Math.max(1, parseInt(limit || '25', 10)), 50);
+
+      const baseUrl = 'https://api.repliers.io/listings';
+      const params = new URLSearchParams({
+        listings: 'true',
+        type: 'Sale',
+        resultsPerPage: resultsPerPage.toString(),
+        pageNum: pageNum.toString(),
+        sortBy: 'createdOnDesc',
+      });
+
+      // Address search
+      if (search) params.append('search', search);
+
+      // Location filters
+      if (city) params.append('city', city);
+      if (zip) params.append('zip', zip);
+      if (subdivision) params.append('area', subdivision);
+
+      // School filters
+      if (schoolDistrict) params.append('schoolDistrict', schoolDistrict);
+      if (elementarySchool) params.append('elementarySchool', elementarySchool);
+      if (middleSchool) params.append('middleSchool', middleSchool);
+      if (highSchool) params.append('highSchool', highSchool);
+
+      // Property filters
+      if (minBeds) params.append('minBeds', minBeds.toString());
+      if (minBaths) params.append('minBaths', minBaths.toString());
+      if (minPrice) params.append('minPrice', minPrice.toString());
+      if (maxPrice) params.append('maxPrice', maxPrice.toString());
+      if (minSqft) params.append('minSqft', minSqft.toString());
+      if (maxSqft) params.append('maxSqft', maxSqft.toString());
+      if (propertyType) params.append('propertyType', propertyType);
+      if (stories) params.append('stories', stories.toString());
+      if (minYearBuilt) params.append('minYearBuilt', minYearBuilt.toString());
+      if (maxYearBuilt) params.append('maxYearBuilt', maxYearBuilt.toString());
+
+      // Lot size in acres -> convert to sqft for API if needed
+      if (minLotAcres) params.append('minLotWidth', (minLotAcres * 43560).toString());
+      if (maxLotAcres) params.append('maxLotWidth', (maxLotAcres * 43560).toString());
+
+      // Status handling - support multiple statuses
+      const statusArray: string[] = statuses || ['Active'];
+      // If includes Closed, we need a separate approach
+      const hasActive = statusArray.includes('Active');
+      const hasAUC = statusArray.includes('Active Under Contract');
+      const hasClosed = statusArray.includes('Closed');
+
+      if (hasClosed && !hasActive && !hasAUC) {
+        // Only closed
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 365);
+        params.append('status', 'U');
+        params.append('lastStatus', 'Sld');
+        params.append('minSoldDate', thirtyDaysAgo.toISOString().split('T')[0]);
+      } else if (!hasClosed) {
+        // Only active statuses
+        statusArray.forEach(s => params.append('standardStatus', s));
+      } else {
+        // Mix of active and closed - default to active statuses, closed needs separate handling
+        // For simplicity, prioritize active statuses
+        const activeStatuses = statusArray.filter(s => s !== 'Closed');
+        if (activeStatuses.length > 0) {
+          activeStatuses.forEach(s => params.append('standardStatus', s));
+        }
+      }
+
+      const fullUrl = `${baseUrl}?${params.toString()}`;
+      console.log(`[CMA Search] Searching properties: ${fullUrl}`);
+
+      const response = await fetch(fullUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'REPLIERS-API-KEY': apiKey
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[CMA Search] Repliers API error:', response.status, errorText);
+        return res.status(502).json({ message: "Failed to search properties" });
+      }
+
+      const data = await response.json();
+
+      // Transform listings
+      const listings = (data.listings || []).map((listing: any) => {
+        const streetNumber = listing.address?.streetNumber || '';
+        const streetName = listing.address?.streetName || '';
+        const streetSuffix = listing.address?.streetSuffix || '';
+        const cityName = listing.address?.city || '';
+        const state = listing.address?.state || 'TX';
+        const postalCode = listing.address?.zip || listing.address?.postalCode || '';
+        const streetAddress = [streetNumber, streetName, streetSuffix].filter(Boolean).join(' ');
+        const fullAddress = `${streetAddress}, ${cityName}, ${state} ${postalCode}`.trim();
+
+        // Get photo
+        let photo = null;
+        if (listing.images && listing.images.length > 0) {
+          const imagePath = listing.images[0];
+          if (typeof imagePath === 'string') {
+            photo = imagePath.startsWith('http') ? imagePath : `https://cdn.repliers.io/${imagePath}`;
+          }
+        }
+
+        return {
+          mlsNumber: listing.mlsNumber || listing.listingId || '',
+          address: fullAddress,
+          streetAddress,
+          city: cityName,
+          state,
+          zip: postalCode,
+          listPrice: listing.listPrice || 0,
+          soldPrice: listing.soldPrice || listing.closePrice || null,
+          beds: listing.details?.numBedrooms || listing.bedroomsTotal || 0,
+          baths: listing.details?.numBathrooms || listing.bathroomsTotal || 0,
+          sqft: listing.details?.sqft || listing.livingArea || 0,
+          lotSizeAcres: listing.lot?.acres || (listing.lotSizeArea ? listing.lotSizeArea / 43560 : null),
+          yearBuilt: listing.details?.yearBuilt || null,
+          propertyType: listing.details?.propertyType || listing.propertyType || '',
+          status: listing.standardStatus || listing.status || '',
+          listDate: listing.listDate || '',
+          soldDate: listing.soldDate || listing.closeDate || null,
+          daysOnMarket: listing.daysOnMarket || 0,
+          photo,
+          stories: listing.details?.numStoreys || null,
+          subdivision: listing.address?.area || listing.address?.neighborhood || '',
+        };
+      });
+
+      const total = data.count || data.numResults || listings.length;
+      const totalPages = Math.ceil(total / resultsPerPage);
+
+      console.log(`[CMA Search] Returning ${listings.length} of ${total} results`);
+
+      res.json({
+        listings,
+        total,
+        page: pageNum,
+        totalPages,
+        resultsPerPage,
+      });
+    } catch (error) {
+      console.error('[CMA Search] Error:', error);
+      res.status(500).json({ message: "Failed to search properties" });
+    }
+  });
+
   return httpServer;
 }

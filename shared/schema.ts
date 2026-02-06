@@ -275,3 +275,21 @@ export const saveContentIdeaSchema = z.object({
 export const updateContentIdeaStatusSchema = z.object({
   status: z.enum(['saved', 'scheduled', 'posted'])
 });
+
+// CMA (Comparative Market Analysis) tables
+export const cmas = pgTable("cmas", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  name: varchar("name").notNull(),
+  subjectProperty: jsonb("subject_property"), // { address, city, state, zip, listPrice, beds, baths, sqft, mlsNumber, photo }
+  comparableProperties: jsonb("comparable_properties").default([]), // array of comparable property objects
+  notes: text("notes"),
+  status: varchar("status").default("draft"), // 'draft', 'completed', 'shared'
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_cmas_user_id").on(table.userId),
+]);
+
+export type Cma = typeof cmas.$inferSelect;
+export type InsertCma = typeof cmas.$inferInsert;

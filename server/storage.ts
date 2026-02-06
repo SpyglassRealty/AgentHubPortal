@@ -9,6 +9,7 @@ import {
   userVideoPreferences,
   syncStatus,
   savedContentIdeas,
+  cmas,
   type User, 
   type UpsertUser,
   type AgentProfile,
@@ -26,7 +27,9 @@ import {
   type InsertUserVideoPreference,
   type SyncStatus,
   type SavedContentIdea,
-  type InsertSavedContentIdea
+  type InsertSavedContentIdea,
+  type Cma,
+  type InsertCma
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ne, desc, sql, gt, lt } from "drizzle-orm";
@@ -78,6 +81,13 @@ export interface IStorage {
   saveContentIdea(idea: InsertSavedContentIdea): Promise<SavedContentIdea>;
   deleteContentIdea(id: number, userId: string): Promise<boolean>;
   updateContentIdeaStatus(id: number, userId: string, status: string): Promise<SavedContentIdea | undefined>;
+  
+  // CMA methods
+  getCmas(userId: string): Promise<Cma[]>;
+  getCma(id: string, userId: string): Promise<Cma | undefined>;
+  createCma(cma: InsertCma): Promise<Cma>;
+  updateCma(id: string, userId: string, data: Partial<InsertCma>): Promise<Cma | undefined>;
+  deleteCma(id: string, userId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -489,6 +499,39 @@ export class DatabaseStorage implements IStorage {
       ))
       .returning();
     return updated;
+  }
+  // CMA methods
+  async getCmas(userId: string): Promise<Cma[]> {
+    return db.select().from(cmas).where(eq(cmas.userId, userId)).orderBy(desc(cmas.updatedAt));
+  }
+
+  async getCma(id: string, userId: string): Promise<Cma | undefined> {
+    const [cma] = await db.select().from(cmas).where(and(eq(cmas.id, id), eq(cmas.userId, userId)));
+    return cma;
+  }
+
+  async createCma(cma: InsertCma): Promise<Cma> {
+    const [created] = await db.insert(cmas).values(cma).returning();
+    return created;
+  }
+
+  async updateCma(id: string, userId: string, data: Partial<InsertCma>): Promise<Cma | undefined> {
+    const [updated] = await db
+      .update(cmas)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(cmas.id, id), eq(cmas.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteCma(id: string, userId: string): Promise<boolean> {
+    const [existing] = await db.select()
+      .from(cmas)
+      .where(and(eq(cmas.id, id), eq(cmas.userId, userId)))
+      .limit(1);
+    if (!existing) return false;
+    await db.delete(cmas).where(eq(cmas.id, id));
+    return true;
   }
 }
 
