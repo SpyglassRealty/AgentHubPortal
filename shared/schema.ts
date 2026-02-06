@@ -285,6 +285,7 @@ export const cmas = pgTable("cmas", {
   comparableProperties: jsonb("comparable_properties").default([]), // array of comparable property objects
   notes: text("notes"),
   status: varchar("status").default("draft"), // 'draft', 'completed', 'shared'
+  presentationConfig: jsonb("presentation_config"), // { sections: [...], layout: { theme, primaryColor } }
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
