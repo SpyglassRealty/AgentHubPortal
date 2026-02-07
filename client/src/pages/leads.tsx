@@ -301,50 +301,60 @@ function StaleLeadCard({ lead }: { lead: StaleLead }) {
 }
 
 function SmartSuggestionCard({ suggestion, index }: { suggestion: SmartSuggestion; index: number }) {
+  const fubUrl = `https://app.followupboss.com/2/people/view/${suggestion.id}`;
+  
   return (
-    <Card className="hover:bg-accent/50 transition-colors border-l-4 border-l-[#EF4923]" data-testid={`card-suggestion-${suggestion.id}`}>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#EF4923] text-white font-bold text-sm shrink-0">
-              {index + 1}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <a 
-                  href={`https://app.followupboss.com/2/people/view/${suggestion.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium truncate hover:text-[#EF4923] hover:underline transition-colors flex items-center gap-1.5 group"
-                >
-                  {suggestion.name}
-                  <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                </a>
+    <a 
+      href={fubUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block"
+    >
+      <Card className="hover:bg-accent/50 hover:shadow-md transition-all border-l-4 border-l-[#EF4923] cursor-pointer group" data-testid={`card-suggestion-${suggestion.id}`}>
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#EF4923] text-white font-bold text-sm shrink-0">
+                {index + 1}
               </div>
-              
-              <div className="text-sm text-[#EF4923] font-medium mb-2">
-                {suggestion.reason}
-              </div>
-              
-              <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                {suggestion.phone && (
-                  <a href={`tel:${suggestion.phone}`} className="flex items-center gap-1 hover:text-foreground transition-colors bg-accent/50 px-2 py-1 rounded">
-                    <PhoneCall className="h-3 w-3" />
-                    <span>{suggestion.phone}</span>
-                  </a>
-                )}
-                {suggestion.email && (
-                  <a href={`mailto:${suggestion.email}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
-                    <Mail className="h-3 w-3" />
-                    <span className="truncate max-w-[200px]">{suggestion.email}</span>
-                  </a>
-                )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-medium truncate group-hover:text-[#EF4923] transition-colors flex items-center gap-1.5">
+                    {suggestion.name}
+                    <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  </span>
+                </div>
+                
+                <div className="text-sm text-[#EF4923] font-medium mb-2">
+                  {suggestion.reason}
+                </div>
+                
+                <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                  {suggestion.phone && (
+                    <span 
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(`tel:${suggestion.phone}`); }}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors bg-accent/50 px-2 py-1 rounded cursor-pointer"
+                    >
+                      <PhoneCall className="h-3 w-3" />
+                      <span>{suggestion.phone}</span>
+                    </span>
+                  )}
+                  {suggestion.email && (
+                    <span 
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(`mailto:${suggestion.email}`); }}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      <Mail className="h-3 w-3" />
+                      <span className="truncate max-w-[200px]">{suggestion.email}</span>
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </a>
   );
 }
 
