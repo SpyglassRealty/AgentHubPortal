@@ -2373,6 +2373,7 @@ Respond with valid JSON in this exact format:
         search, // address search
         page, limit,
         mapBounds, // { sw: { lat, lng }, ne: { lat, lng } } for map search
+        polygon, // array of [lng, lat] coordinate pairs for polygon map search
         dateSoldDays, // number of days for closed listings (90, 120, 150, 180, 360)
         mlsNumbers, // array of MLS numbers for bulk lookup
       } = req.body;
@@ -2561,18 +2562,18 @@ Respond with valid JSON in this exact format:
       const fullUrl = `${baseUrl}?${params.toString()}`;
       console.log(`[CMA Search] Searching properties: ${fullUrl}`);
 
-      // If mapBounds provided, use POST with map polygon body
+      // If polygon or mapBounds provided, use POST with map polygon body
       let response: Response;
-      if (mapBounds && mapBounds.sw && mapBounds.ne) {
-        const { sw, ne } = mapBounds;
-        const polygon = [
-          [sw.lng, sw.lat],
-          [ne.lng, sw.lat],
-          [ne.lng, ne.lat],
-          [sw.lng, ne.lat],
-          [sw.lng, sw.lat],
-        ];
-        console.log(`[CMA Search] Using map bounds polygon:`, JSON.stringify(polygon));
+      if (polygon && Array.isArray(polygon) && polygon.length >= 3) {
+        // User-drawn polygon: array of [lng, lat] coordinate pairs
+        // Ensure the polygon is closed (first point === last point)
+        const polyCoords = [...polygon];
+        const first = polyCoords[0];
+        const last = polyCoords[polyCoords.length - 1];
+        if (first[0] !== last[0] || first[1] !== last[1]) {
+          polyCoords.push(first);
+        }
+        console.log(`[CMA Search] Using drawn polygon (${polyCoords.length} points):`, JSON.stringify(polyCoords));
         response = await fetch(fullUrl, {
           method: 'POST',
           headers: {
@@ -2580,7 +2581,26 @@ Respond with valid JSON in this exact format:
             'Content-Type': 'application/json',
             'REPLIERS-API-KEY': apiKey
           },
-          body: JSON.stringify({ map: [polygon] }),
+          body: JSON.stringify({ map: [polyCoords] }),
+        });
+      } else if (mapBounds && mapBounds.sw && mapBounds.ne) {
+        const { sw, ne } = mapBounds;
+        const boundsPolygon = [
+          [sw.lng, sw.lat],
+          [ne.lng, sw.lat],
+          [ne.lng, ne.lat],
+          [sw.lng, ne.lat],
+          [sw.lng, sw.lat],
+        ];
+        console.log(`[CMA Search] Using map bounds polygon:`, JSON.stringify(boundsPolygon));
+        response = await fetch(fullUrl, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'REPLIERS-API-KEY': apiKey
+          },
+          body: JSON.stringify({ map: [boundsPolygon] }),
         });
       } else {
         response = await fetch(fullUrl, {
