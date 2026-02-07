@@ -62,6 +62,7 @@ interface SmartSuggestion extends Lead {
 }
 
 function LeadCard({ lead, type }: { lead: Lead; type: 'anniversary' | 'activity' | 'birthday' }) {
+  const fubUrl = `https://app.followupboss.com/2/people/view/${lead.id}`;
   const getDateInfo = (dateStr: string | undefined) => {
     if (!dateStr) return null;
     const date = new Date(dateStr);
@@ -84,21 +85,16 @@ function LeadCard({ lead, type }: { lead: Lead; type: 'anniversary' | 'activity'
   const birthdayInfo = type === 'birthday' ? getDateInfo(lead.birthday) : null;
 
   return (
-    <Card className="hover:bg-accent/50 transition-colors" data-testid={`card-lead-${lead.id}`}>
+    <a href={fubUrl} target="_blank" rel="noopener noreferrer" className="block">
+    <Card className="hover:bg-accent/50 hover:shadow-md transition-all cursor-pointer group" data-testid={`card-lead-${lead.id}`}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <a 
-                href={`https://app.followupboss.com/2/people/view/${lead.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium truncate hover:text-[#EF4923] hover:underline transition-colors flex items-center gap-1.5 group"
-                data-testid={`link-lead-${lead.id}`}
-              >
+              <span className="font-medium truncate group-hover:text-[#EF4923] transition-colors flex items-center gap-1.5" data-testid={`link-lead-${lead.id}`}>
                 {lead.name}
                 <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-              </a>
+              </span>
               {lead.stage && (
                 <Badge variant="secondary" className="text-xs shrink-0">
                   {lead.stage}
@@ -108,16 +104,16 @@ function LeadCard({ lead, type }: { lead: Lead; type: 'anniversary' | 'activity'
             
             <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
               {lead.phone && (
-                <a href={`tel:${lead.phone}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(`tel:${lead.phone}`); }} className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer">
                   <Phone className="h-3 w-3" />
                   <span>{lead.phone}</span>
-                </a>
+                </span>
               )}
               {lead.email && (
-                <a href={`mailto:${lead.email}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(`mailto:${lead.email}`); }} className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer">
                   <Mail className="h-3 w-3" />
                   <span className="truncate max-w-[200px]">{lead.email}</span>
-                </a>
+                </span>
               )}
               {lead.source && (
                 <span className="flex items-center gap-1">
@@ -179,6 +175,7 @@ function LeadCard({ lead, type }: { lead: Lead; type: 'anniversary' | 'activity'
         </div>
       </CardContent>
     </Card>
+    </a>
   );
 }
 
@@ -240,6 +237,7 @@ function TaskCard({ task }: { task: Task }) {
 }
 
 function StaleLeadCard({ lead }: { lead: StaleLead }) {
+  const fubUrl = `https://app.followupboss.com/2/people/view/${lead.id}`;
   const getStaleSeverity = (days: number | undefined) => {
     if (!days) return 'text-muted-foreground';
     if (days >= 180) return 'text-red-500';
@@ -248,55 +246,52 @@ function StaleLeadCard({ lead }: { lead: StaleLead }) {
   };
 
   return (
-    <Card className="hover:bg-accent/50 transition-colors" data-testid={`card-stale-${lead.id}`}>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <a 
-                href={`https://app.followupboss.com/2/people/view/${lead.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium truncate hover:text-[#EF4923] hover:underline transition-colors flex items-center gap-1.5 group"
-              >
-                {lead.name}
-                <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-              </a>
-              {lead.stage && (
-                <Badge variant="secondary" className="text-xs shrink-0">
-                  {lead.stage}
-                </Badge>
-              )}
+    <a href={fubUrl} target="_blank" rel="noopener noreferrer" className="block">
+      <Card className="hover:bg-accent/50 hover:shadow-md transition-all cursor-pointer group" data-testid={`card-stale-${lead.id}`}>
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-medium truncate group-hover:text-[#EF4923] transition-colors flex items-center gap-1.5">
+                  {lead.name}
+                  <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </span>
+                {lead.stage && (
+                  <Badge variant="secondary" className="text-xs shrink-0">
+                    {lead.stage}
+                  </Badge>
+                )}
+              </div>
+              
+              <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                {lead.phone && (
+                  <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(`tel:${lead.phone}`); }} className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer">
+                    <Phone className="h-3 w-3" />
+                    <span>{lead.phone}</span>
+                  </span>
+                )}
+                {lead.email && (
+                  <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(`mailto:${lead.email}`); }} className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer">
+                    <Mail className="h-3 w-3" />
+                    <span className="truncate max-w-[200px]">{lead.email}</span>
+                  </span>
+                )}
+              </div>
             </div>
-            
-            <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-              {lead.phone && (
-                <a href={`tel:${lead.phone}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
-                  <Phone className="h-3 w-3" />
-                  <span>{lead.phone}</span>
-                </a>
-              )}
-              {lead.email && (
-                <a href={`mailto:${lead.email}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
-                  <Mail className="h-3 w-3" />
-                  <span className="truncate max-w-[200px]">{lead.email}</span>
-                </a>
-              )}
-            </div>
-          </div>
 
-          <div className="text-right shrink-0">
-            <div className={`flex items-center gap-1 ${getStaleSeverity(lead.daysSinceActivity)}`}>
-              <UserX className="h-4 w-4" />
-              <span className="font-semibold">{lead.daysSinceActivity} days</span>
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              since last contact
+            <div className="text-right shrink-0">
+              <div className={`flex items-center gap-1 ${getStaleSeverity(lead.daysSinceActivity)}`}>
+                <UserX className="h-4 w-4" />
+                <span className="font-semibold">{lead.daysSinceActivity} days</span>
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                since last contact
+              </div>
             </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </a>
   );
 }
 
