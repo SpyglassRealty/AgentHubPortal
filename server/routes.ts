@@ -2396,7 +2396,7 @@ Respond with valid JSON in this exact format:
       // Location filters
       if (city) params.append('city', city);
       if (zip) params.append('zip', zip);
-      if (subdivision) params.append('area', subdivision);
+      if (subdivision) params.append('neighborhood', subdivision);
 
       // School filters
       if (schoolDistrict) params.append('schoolDistrict', schoolDistrict);
