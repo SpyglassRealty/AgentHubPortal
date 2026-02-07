@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import MapboxDraw from "@mapbox/mapbox-gl-draw";
+import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import Layout from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +39,9 @@ import {
   ChevronUp,
   Map,
   FileText,
+  Pencil,
+  MousePointer2,
+  Trash2,
 } from "lucide-react";
 import {
   Select,
@@ -693,11 +698,15 @@ function SearchPropertiesSection({
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
+  const drawRef = useRef<MapboxDraw | null>(null);
   const [mapSearching, setMapSearching] = useState(false);
   const [mapResults, setMapResults] = useState<PropertyData[]>([]);
   const [mapTotalResults, setMapTotalResults] = useState(0);
   const [showSearchButton, setShowSearchButton] = useState(true);
   const [mapReady, setMapReady] = useState(false);
+  const [mapMode, setMapMode] = useState<'pan' | 'draw'>('pan');
+  const [drawnPolygon, setDrawnPolygon] = useState<number[][] | null>(null);
+  const [drawingInProgress, setDrawingInProgress] = useState(false);
 
   const updateFilter = (key: keyof SearchFilters, value: any) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -862,15 +871,10 @@ function SearchPropertiesSection({
     setTotalResults(0);
   };
 
-  // Map search by viewport bounds
+  // Map search by viewport bounds or drawn polygon
   const handleMapSearch = useCallback(async () => {
     const map = mapRef.current;
     if (!map) return;
-
-    const bounds = map.getBounds();
-    if (!bounds) return;
-    const sw = bounds.getSouthWest();
-    const ne = bounds.getNorthEast();
 
     setMapSearching(true);
     setShowSearchButton(false);
@@ -879,11 +883,22 @@ function SearchPropertiesSection({
         page: 1,
         limit: 50,
         statuses: ['Active', 'Active Under Contract'],
-        mapBounds: {
+      };
+
+      if (drawnPolygon && drawnPolygon.length >= 3) {
+        // Use drawn polygon coordinates (already [lng, lat] format)
+        body.polygon = drawnPolygon;
+      } else {
+        // Fall back to viewport bounds
+        const bounds = map.getBounds();
+        if (!bounds) return;
+        const sw = bounds.getSouthWest();
+        const ne = bounds.getNorthEast();
+        body.mapBounds = {
           sw: { lat: sw.lat, lng: sw.lng },
           ne: { lat: ne.lat, lng: ne.lng },
-        },
-      };
+        };
+      }
 
       const res = await apiRequest("POST", "/api/cma/search-properties", body);
       const data = await res.json();
@@ -993,7 +1008,39 @@ function SearchPropertiesSection({
     } finally {
       setMapSearching(false);
     }
-  }, [existingMlsNumbers, onAddComp]);
+  }, [existingMlsNumbers, onAddComp, drawnPolygon]);
+
+  // Handle mode switching for draw control
+  const handleModeSwitch = useCallback((mode: 'pan' | 'draw') => {
+    setMapMode(mode);
+    const draw = drawRef.current;
+    if (!draw) return;
+
+    if (mode === 'draw') {
+      // If no polygon exists, start drawing
+      if (!drawnPolygon) {
+        draw.changeMode('draw_polygon');
+        setDrawingInProgress(true);
+      }
+    } else {
+      // Switch to simple_select (pan mode)
+      draw.changeMode('simple_select');
+      setDrawingInProgress(false);
+    }
+  }, [drawnPolygon]);
+
+  // Clear drawn polygon
+  const handleClearDrawing = useCallback(() => {
+    const draw = drawRef.current;
+    if (draw) {
+      draw.deleteAll();
+      draw.changeMode('simple_select');
+    }
+    setDrawnPolygon(null);
+    setDrawingInProgress(false);
+    setMapMode('pan');
+    setShowSearchButton(true);
+  }, []);
 
   // Initialize map when tab switches to "map"
   useEffect(() => {
@@ -1020,12 +1067,149 @@ function SearchPropertiesSection({
 
       map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
+      // Initialize MapboxDraw
+      const draw = new MapboxDraw({
+        displayControlsDefault: false,
+        controls: {},
+        defaultMode: 'simple_select',
+        styles: [
+          // Polygon fill
+          {
+            id: 'gl-draw-polygon-fill',
+            type: 'fill',
+            filter: ['all', ['==', '$type', 'Polygon'], ['!=', 'mode', 'static']],
+            paint: {
+              'fill-color': '#EF4923',
+              'fill-outline-color': '#EF4923',
+              'fill-opacity': 0.15,
+            },
+          },
+          // Polygon outline
+          {
+            id: 'gl-draw-polygon-stroke-active',
+            type: 'line',
+            filter: ['all', ['==', '$type', 'Polygon'], ['!=', 'mode', 'static']],
+            layout: {
+              'line-cap': 'round',
+              'line-join': 'round',
+            },
+            paint: {
+              'line-color': '#EF4923',
+              'line-dasharray': [0.2, 2],
+              'line-width': 2,
+            },
+          },
+          // Vertex point halos
+          {
+            id: 'gl-draw-polygon-and-line-vertex-halo-active',
+            type: 'circle',
+            filter: ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']],
+            paint: {
+              'circle-radius': 7,
+              'circle-color': '#FFF',
+            },
+          },
+          // Vertex points
+          {
+            id: 'gl-draw-polygon-and-line-vertex-active',
+            type: 'circle',
+            filter: ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']],
+            paint: {
+              'circle-radius': 5,
+              'circle-color': '#EF4923',
+            },
+          },
+          // Midpoint
+          {
+            id: 'gl-draw-polygon-midpoint',
+            type: 'circle',
+            filter: ['all', ['==', '$type', 'Point'], ['==', 'meta', 'midpoint']],
+            paint: {
+              'circle-radius': 3,
+              'circle-color': '#EF4923',
+            },
+          },
+          // Line while drawing
+          {
+            id: 'gl-draw-line',
+            type: 'line',
+            filter: ['all', ['==', '$type', 'LineString'], ['!=', 'mode', 'static']],
+            layout: {
+              'line-cap': 'round',
+              'line-join': 'round',
+            },
+            paint: {
+              'line-color': '#EF4923',
+              'line-dasharray': [0.2, 2],
+              'line-width': 2,
+            },
+          },
+          // Static polygon fill
+          {
+            id: 'gl-draw-polygon-fill-static',
+            type: 'fill',
+            filter: ['all', ['==', '$type', 'Polygon'], ['==', 'mode', 'static']],
+            paint: {
+              'fill-color': '#EF4923',
+              'fill-outline-color': '#EF4923',
+              'fill-opacity': 0.15,
+            },
+          },
+          // Static polygon outline
+          {
+            id: 'gl-draw-polygon-stroke-static',
+            type: 'line',
+            filter: ['all', ['==', '$type', 'Polygon'], ['==', 'mode', 'static']],
+            layout: {
+              'line-cap': 'round',
+              'line-join': 'round',
+            },
+            paint: {
+              'line-color': '#EF4923',
+              'line-width': 2,
+            },
+          },
+        ],
+      });
+
+      map.addControl(draw as any);
+      drawRef.current = draw;
+
+      // Listen for draw events
+      map.on('draw.create', (e: any) => {
+        const features = e.features;
+        if (features.length > 0 && features[0].geometry.type === 'Polygon') {
+          const coords = features[0].geometry.coordinates[0]; // [lng, lat] pairs
+          setDrawnPolygon(coords);
+          setDrawingInProgress(false);
+          setShowSearchButton(true);
+        }
+      });
+
+      map.on('draw.update', (e: any) => {
+        const features = e.features;
+        if (features.length > 0 && features[0].geometry.type === 'Polygon') {
+          const coords = features[0].geometry.coordinates[0];
+          setDrawnPolygon(coords);
+          setShowSearchButton(true);
+        }
+      });
+
+      map.on('draw.delete', () => {
+        setDrawnPolygon(null);
+        setDrawingInProgress(false);
+        setShowSearchButton(true);
+      });
+
       map.on('load', () => {
         setMapReady(true);
       });
 
       map.on('moveend', () => {
-        setShowSearchButton(true);
+        // Only show search button in pan mode when no polygon exists
+        if (!drawRef.current?.getAll().features.length) {
+          setShowSearchButton(true);
+        }
       });
 
       mapRef.current = map;
@@ -1038,6 +1222,7 @@ function SearchPropertiesSection({
   useEffect(() => {
     return () => {
       markersRef.current.forEach((m) => m.remove());
+      drawRef.current = null;
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -1374,6 +1559,48 @@ function SearchPropertiesSection({
             </TabsContent>
 
             <TabsContent value="map">
+              {/* Mode toolbar */}
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center border rounded-lg overflow-hidden">
+                  <Button
+                    variant={mapMode === 'pan' ? 'default' : 'ghost'}
+                    size="sm"
+                    className={`rounded-none ${mapMode === 'pan' ? 'bg-[#EF4923] hover:bg-[#d4401f] text-white' : ''}`}
+                    onClick={() => handleModeSwitch('pan')}
+                  >
+                    <MousePointer2 className="h-4 w-4 mr-1.5" />
+                    Pan
+                  </Button>
+                  <Button
+                    variant={mapMode === 'draw' ? 'default' : 'ghost'}
+                    size="sm"
+                    className={`rounded-none ${mapMode === 'draw' ? 'bg-[#EF4923] hover:bg-[#d4401f] text-white' : ''}`}
+                    onClick={() => handleModeSwitch('draw')}
+                  >
+                    <Pencil className="h-4 w-4 mr-1.5" />
+                    Draw
+                  </Button>
+                </div>
+
+                {drawnPolygon && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClearDrawing}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1.5" />
+                    Clear Drawing
+                  </Button>
+                )}
+
+                {drawingInProgress && (
+                  <span className="text-xs text-muted-foreground ml-2 animate-pulse">
+                    Click to add points. Double-click to complete the shape.
+                  </span>
+                )}
+              </div>
+
               <div className="relative">
                 {/* Map container */}
                 <div
@@ -1382,7 +1609,7 @@ function SearchPropertiesSection({
                 />
 
                 {/* Search This Area button */}
-                {showSearchButton && !mapSearching && (
+                {showSearchButton && !mapSearching && !drawingInProgress && (
                   <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
                     <Button
                       size="sm"
@@ -1390,7 +1617,7 @@ function SearchPropertiesSection({
                       onClick={handleMapSearch}
                     >
                       <Search className="h-4 w-4 mr-2" />
-                      Search This Area
+                      {drawnPolygon ? 'Search This Polygon' : 'Search This Area'}
                     </Button>
                   </div>
                 )}
@@ -1416,7 +1643,11 @@ function SearchPropertiesSection({
               </div>
 
               <p className="text-xs text-muted-foreground mt-2 text-center">
-                Pan and zoom the map, then click "Search This Area" to find properties. Click a pin to view details and add as a comp.
+                {mapMode === 'draw'
+                  ? drawnPolygon
+                    ? 'Polygon drawn. Click "Search This Polygon" to find properties, or drag vertices to adjust.'
+                    : 'Click on the map to add polygon points. Double-click to complete the shape.'
+                  : 'Pan and zoom the map, then click "Search This Area" to find properties. Use Draw mode to search a custom area.'}
               </p>
             </TabsContent>
           </Tabs>
