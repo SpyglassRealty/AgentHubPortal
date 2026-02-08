@@ -42,7 +42,19 @@ import { getLayerById, formatLayerValue, LAYER_CATEGORIES } from "./data-layers"
 import type { TimeseriesData, TimeseriesPoint, DataLayer } from "./types";
 
 // ─── Mock timeseries data ─────────────────────────────────────
-function generateMockTimeseries(layerId: string, period: "yearly" | "monthly"): TimeseriesData {
+// Seeded random for deterministic mock data per zip+layer
+function seededRandom(seed: string): () => number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = ((h << 5) - h + seed.charCodeAt(i)) | 0;
+  }
+  return () => {
+    h = (h * 1103515245 + 12345) & 0x7fffffff;
+    return h / 0x7fffffff;
+  };
+}
+
+function generateMockTimeseries(layerId: string, period: "yearly" | "monthly", zip?: string | null): TimeseriesData {
   const layer = getLayerById(layerId);
   const points: TimeseriesPoint[] = [];
   const isPercent = layer?.unit === "percent";
@@ -52,13 +64,16 @@ function generateMockTimeseries(layerId: string, period: "yearly" | "monthly"): 
   const numPoints = period === "yearly" ? 10 : 24;
   const baseYear = period === "yearly" ? 2015 : 2023;
 
+  // Use seeded random so same zip+layer always gives same data
+  const rng = seededRandom(`ts-${layerId}-${zip || "metro"}-${period}`);
+
   let value = isCurrency
-    ? 350000 + Math.random() * 200000
+    ? 350000 + rng() * 200000
     : isPercent
-    ? -5 + Math.random() * 15
+    ? -5 + rng() * 15
     : isScore
-    ? 40 + Math.random() * 30
-    : 20 + Math.random() * 80;
+    ? 40 + rng() * 30
+    : 20 + rng() * 80;
 
   for (let i = 0; i < numPoints; i++) {
     const dateLabel =
@@ -67,10 +82,10 @@ function generateMockTimeseries(layerId: string, period: "yearly" | "monthly"): 
         : `${2023 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, "0")}`;
 
     const change = isCurrency
-      ? (Math.random() - 0.4) * 30000
+      ? (rng() - 0.4) * 30000
       : isPercent
-      ? (Math.random() - 0.45) * 3
-      : (Math.random() - 0.45) * 8;
+      ? (rng() - 0.45) * 3
+      : (rng() - 0.45) * 8;
 
     value = Math.max(isCurrency ? 100000 : isPercent ? -20 : 0, value + change);
     points.push({ date: dateLabel, value: Math.round(value * 100) / 100 });
@@ -80,7 +95,7 @@ function generateMockTimeseries(layerId: string, period: "yearly" | "monthly"): 
 
   return {
     layerId,
-    zip: "78704",
+    zip: zip || "metro",
     period,
     data: points,
     average: Math.round(avg * 100) / 100,
@@ -113,18 +128,33 @@ export default function HistoricalChart({
 
   // Fetch timeseries — falls back to mock
   const { data: timeseries, isLoading } = useQuery<TimeseriesData>({
-    queryKey: ["/api/pulse/layer", selectedLayerId, "timeseries", selectedZip, period],
+    queryKey: ["/api/pulse/v2/layer", selectedLayerId, "timeseries", selectedZip, period],
     queryFn: async () => {
-      if (!selectedZip) return generateMockTimeseries(selectedLayerId, period);
+      // Convert frontend layer ID (kebab-case) to backend (snake_case) 
+      const backendLayerId = selectedLayerId.replace(/-/g, "_");
+      const zip = selectedZip || "78704";
       try {
         const res = await fetch(
-          `/api/pulse/layer/${selectedLayerId}/timeseries?zip=${selectedZip}&period=${period}`,
+          `/api/pulse/v2/layer/${backendLayerId}/timeseries?zip=${zip}&period=${period}`,
           { credentials: "include" }
         );
         if (!res.ok) throw new Error("API not ready");
-        return res.json();
+        const raw = await res.json();
+        // Map V2 response to TimeseriesData shape
+        const data = raw.data || [];
+        const avg = data.length > 0
+          ? data.reduce((sum: number, p: any) => sum + p.value, 0) / data.length
+          : 0;
+        return {
+          layerId: selectedLayerId,
+          zip,
+          period,
+          data,
+          average: Math.round(avg * 100) / 100,
+          unit: raw.meta?.unit || layer?.unit || "number",
+        } as TimeseriesData;
       } catch {
-        return generateMockTimeseries(selectedLayerId, period);
+        return generateMockTimeseries(selectedLayerId, period, selectedZip);
       }
     },
     staleTime: 1000 * 60 * 5,
@@ -257,7 +287,7 @@ export default function HistoricalChart({
           <div className="h-full flex items-center justify-center text-sm text-muted-foreground min-h-[280px]">
             {!selectedZip
               ? "Click a zip code on the map to see historical data"
-              : "No historical data available for this metric"}
+              : `No historical data available for ZIP ${selectedZip}`}
           </div>
         ) : chartType === "line" ? (
           <ResponsiveContainer width="100%" height={320}>

@@ -108,11 +108,14 @@ export default function PulseMap({
       zipData.forEach((item) => {
         if (!item.lat || !item.lng) return;
 
-        // Use medianPrice as the default value for now; the real API would
-        // provide per-layer values
+        // Use medianPrice as the value; show listing count if no price data
         const value = item.medianPrice;
-        const color = getMarkerColor(value, layer);
-        const size = Math.max(20, Math.min(48, 20 + (value / 1_000_000) * 25));
+        const hasPrice = value > 0;
+        const displayValue = hasPrice ? value : item.count;
+        const color = hasPrice ? getMarkerColor(value, layer) : "#6b7280";
+        const size = hasPrice
+          ? Math.max(24, Math.min(48, 24 + (value / 1_000_000) * 25))
+          : Math.max(22, Math.min(36, 22 + item.count * 0.5));
         const isSelected = selectedZip === item.zip;
 
         const el = document.createElement("div");
@@ -135,8 +138,10 @@ export default function PulseMap({
           ${isSelected ? "transform: scale(1.25); box-shadow: 0 4px 16px rgba(239,73,35,0.5); z-index: 10;" : ""}
         `;
 
-        // Label: show the formatted layer value
-        el.textContent = layer ? formatLayerValue(value, layer) : "";
+        // Label: show formatted price or listing count if no price
+        el.textContent = hasPrice && layer
+          ? formatLayerValue(value, layer)
+          : hasPrice ? `$${Math.round(value / 1000)}K` : `${item.count}`;
 
         el.addEventListener("mouseenter", () => {
           if (selectedZip !== item.zip) {
