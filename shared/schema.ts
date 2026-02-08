@@ -1,10 +1,13 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  date,
   index,
   integer,
   jsonb,
+  numeric,
   pgTable,
+  serial,
   text,
   timestamp,
   uniqueIndex,
@@ -294,3 +297,101 @@ export const cmas = pgTable("cmas", {
 
 export type Cma = typeof cmas.$inferSelect;
 export type InsertCma = typeof cmas.$inferInsert;
+
+// ============================================================
+// Pulse V2 — Reventure-level data tables
+// ============================================================
+
+// Zillow home value data (ZHVI + ZORI)
+export const pulseZillowData = pgTable("pulse_zillow_data", {
+  id: serial("id").primaryKey(),
+  zip: varchar("zip", { length: 5 }).notNull(),
+  date: date("date").notNull(),
+  homeValue: numeric("home_value"),           // ZHVI all homes
+  homeValueSf: numeric("home_value_sf"),      // ZHVI single-family
+  homeValueCondo: numeric("home_value_condo"),// ZHVI condo
+  rentalValue: numeric("rental_value"),       // ZORI rent
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("idx_pulse_zillow_zip_date").on(table.zip, table.date),
+  index("idx_pulse_zillow_zip").on(table.zip),
+]);
+
+export type PulseZillowData = typeof pulseZillowData.$inferSelect;
+export type InsertPulseZillowData = typeof pulseZillowData.$inferInsert;
+
+// Census ACS demographic data
+export const pulseCensusData = pgTable("pulse_census_data", {
+  id: serial("id").primaryKey(),
+  zip: varchar("zip", { length: 5 }).notNull(),
+  year: integer("year").notNull(),
+  population: integer("population"),
+  medianIncome: numeric("median_income"),
+  medianAge: numeric("median_age"),
+  homeownershipRate: numeric("homeownership_rate"),
+  povertyRate: numeric("poverty_rate"),
+  collegeDegreeRate: numeric("college_degree_rate"),
+  remoteWorkPct: numeric("remote_work_pct"),
+  housingUnits: integer("housing_units"),
+  familyHouseholdsPct: numeric("family_households_pct"),
+  homeowners25to44Pct: numeric("homeowners_25_to_44_pct"),
+  homeowners75plusPct: numeric("homeowners_75_plus_pct"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("idx_pulse_census_zip_year").on(table.zip, table.year),
+  index("idx_pulse_census_zip").on(table.zip),
+]);
+
+export type PulseCensusData = typeof pulseCensusData.$inferSelect;
+export type InsertPulseCensusData = typeof pulseCensusData.$inferInsert;
+
+// Redfin market tracker data
+export const pulseRedfinData = pgTable("pulse_redfin_data", {
+  id: serial("id").primaryKey(),
+  zip: varchar("zip", { length: 5 }).notNull(),
+  periodStart: date("period_start").notNull(),
+  medianSalePrice: numeric("median_sale_price"),
+  homesSold: integer("homes_sold"),
+  medianDom: integer("median_dom"),
+  inventory: integer("inventory"),
+  priceDropsPct: numeric("price_drops_pct"),
+  saleToListRatio: numeric("sale_to_list_ratio"),
+  newListings: integer("new_listings"),
+  avgSaleToList: numeric("avg_sale_to_list"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("idx_pulse_redfin_zip_period").on(table.zip, table.periodStart),
+  index("idx_pulse_redfin_zip").on(table.zip),
+]);
+
+export type PulseRedfinData = typeof pulseRedfinData.$inferSelect;
+export type InsertPulseRedfinData = typeof pulseRedfinData.$inferInsert;
+
+// Calculated / derived pulse metrics
+export const pulseMetrics = pgTable("pulse_metrics", {
+  id: serial("id").primaryKey(),
+  zip: varchar("zip", { length: 5 }).notNull(),
+  date: date("date").notNull(),
+  overvaluedPct: numeric("overvalued_pct"),
+  valueIncomeRatio: numeric("value_income_ratio"),
+  mortgagePayment: numeric("mortgage_payment"),
+  mtgPctIncome: numeric("mtg_pct_income"),
+  salaryToAfford: numeric("salary_to_afford"),
+  buyVsRent: numeric("buy_vs_rent"),
+  capRate: numeric("cap_rate"),
+  priceForecast: numeric("price_forecast"),
+  investorScore: numeric("investor_score"),
+  growthScore: numeric("growth_score"),
+  marketHealthScore: numeric("market_health_score"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("idx_pulse_metrics_zip_date").on(table.zip, table.date),
+  index("idx_pulse_metrics_zip").on(table.zip),
+]);
+
+export type PulseMetrics = typeof pulseMetrics.$inferSelect;
+export type InsertPulseMetrics = typeof pulseMetrics.$inferInsert;
