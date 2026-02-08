@@ -96,7 +96,7 @@ export default function PulsePage() {
         {/* ─── Hero Stats ──────────────────────────────── */}
         <HeroStatsBar data={overview} isLoading={overviewLoading} />
 
-        {/* ─── 3-Panel Layout: Sidebar | Map+CenterPanel | RightChart ── */}
+        {/* ─── 3-Panel Layout: Sidebar | Center Content | RightChart ── */}
         <div ref={mapSectionRef} className="flex gap-0 rounded-xl border border-border overflow-hidden bg-card shadow-sm" style={{ minHeight: "600px" }}>
           
           {/* Left Sidebar — Data Layer Selector */}
@@ -128,38 +128,55 @@ export default function PulsePage() {
             </Button>
           </div>
 
-          {/* Center: Map + Zip Summary overlay */}
-          <div className="flex-1 relative min-w-0">
-            <PulseMap
-              zipData={zipData}
-              isLoading={heatmapLoading}
-              onZipSelect={handleZipSelect}
-              selectedZip={selectedZip}
-              selectedLayerId={selectedLayerId}
-            />
-
-            {/* Floating Zip Summary Panel — overlays on top of the map */}
-            {selectedZip && (
-              <div className="absolute top-3 left-3 bottom-3 w-[320px] pointer-events-auto" style={{ zIndex: 50 }}>
+          {/* Center: Map (no zip selected) OR Zip Summary + Chart (zip selected) */}
+          {selectedZip ? (
+            /* When a zip is selected: replace map area with summary + chart side by side */
+            <div className="flex-1 flex min-w-0">
+              {/* Zip Summary Panel — left half of center */}
+              <div className="w-[380px] flex-shrink-0 border-r border-border overflow-auto">
                 <ZipSummaryPanel
                   zipCode={selectedZip}
                   onClose={() => setSelectedZip(null)}
-                  className="h-full shadow-2xl ring-1 ring-black/5"
+                  className="h-full border-0 rounded-none"
                 />
               </div>
-            )}
-          </div>
 
-          {/* Right Panel — Historical Chart */}
-          <div className="w-[35%] min-w-[420px] max-w-[520px] flex-shrink-0 border-l border-border">
-            <HistoricalChart
-              selectedLayerId={selectedLayerId}
-              selectedZip={selectedZip}
-              period={period}
-              onPeriodChange={setPeriod}
-              className="h-full border-0 rounded-none"
-            />
-          </div>
+              {/* Historical Chart — right half of center */}
+              <div className="flex-1 min-w-[400px]">
+                <HistoricalChart
+                  selectedLayerId={selectedLayerId}
+                  selectedZip={selectedZip}
+                  period={period}
+                  onPeriodChange={setPeriod}
+                  className="h-full border-0 rounded-none"
+                />
+              </div>
+            </div>
+          ) : (
+            /* When no zip selected: show map + chart side by side */
+            <>
+              <div className="flex-1 relative min-w-0">
+                <PulseMap
+                  zipData={zipData}
+                  isLoading={heatmapLoading}
+                  onZipSelect={handleZipSelect}
+                  selectedZip={selectedZip}
+                  selectedLayerId={selectedLayerId}
+                />
+              </div>
+
+              {/* Right Panel — Historical Chart */}
+              <div className="w-[35%] min-w-[420px] max-w-[520px] flex-shrink-0 border-l border-border">
+                <HistoricalChart
+                  selectedLayerId={selectedLayerId}
+                  selectedZip={selectedZip}
+                  period={period}
+                  onPeriodChange={setPeriod}
+                  className="h-full border-0 rounded-none"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {/* ─── Market Trends (below the 3-panel) ───────── */}

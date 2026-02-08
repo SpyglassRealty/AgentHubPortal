@@ -54,41 +54,88 @@ function seededRandom(seed: string): () => number {
   };
 }
 
+// Realistic Austin ZHVI values for client-side fallback (matches server)
+const CLIENT_HOME_VALUES: Record<string, number> = {
+  "78701": 550000, "78702": 600000, "78703": 950000, "78704": 700000,
+  "78705": 500000, "78712": 480000, "78717": 520000, "78721": 400000,
+  "78722": 520000, "78723": 450000, "78724": 320000, "78725": 310000,
+  "78726": 580000, "78727": 470000, "78728": 420000, "78729": 480000,
+  "78730": 850000, "78731": 700000, "78732": 750000, "78733": 900000,
+  "78734": 650000, "78735": 620000, "78736": 500000, "78737": 520000,
+  "78738": 680000, "78739": 530000, "78741": 380000, "78742": 300000,
+  "78744": 340000, "78745": 450000, "78746": 1200000, "78747": 380000,
+  "78748": 430000, "78749": 520000, "78750": 550000, "78751": 530000,
+  "78752": 400000, "78753": 360000, "78754": 350000, "78756": 600000,
+  "78757": 520000, "78758": 370000, "78759": 560000,
+  "78610": 360000, "78613": 430000, "78617": 310000, "78620": 600000,
+  "78628": 400000, "78634": 330000, "78640": 300000, "78641": 380000,
+  "78653": 340000, "78660": 350000, "78664": 360000, "78665": 400000,
+  "78681": 420000, "78669": 600000, "78719": 340000,
+};
+
+// Austin growth trajectory multipliers
+const YEARLY_MULTS: Record<number, number> = {
+  2015: 0.50, 2016: 0.53, 2017: 0.57, 2018: 0.62, 2019: 0.65,
+  2020: 0.68, 2021: 0.85, 2022: 1.08, 2023: 0.97, 2024: 0.98, 2025: 1.00,
+};
+
 function generateMockTimeseries(layerId: string, period: "yearly" | "monthly", zip?: string | null): TimeseriesData {
   const layer = getLayerById(layerId);
   const points: TimeseriesPoint[] = [];
-  const isPercent = layer?.unit === "percent";
   const isCurrency = layer?.unit === "currency";
+  const isPercent = layer?.unit === "percent";
   const isScore = layer?.unit === "score";
+  const isHomeValue = isCurrency && (layerId.includes("home-value") || layerId === "home-value" || layerId.includes("sf-value") || layerId.includes("condo-value"));
 
-  const numPoints = period === "yearly" ? 10 : 24;
-  const baseYear = period === "yearly" ? 2015 : 2023;
-
-  // Use seeded random so same zip+layer always gives same data
   const rng = seededRandom(`ts-${layerId}-${zip || "metro"}-${period}`);
-
-  let value = isCurrency
-    ? 350000 + rng() * 200000
+  const baseValue = isHomeValue
+    ? (CLIENT_HOME_VALUES[zip || "78704"] || 450000)
+    : isCurrency
+    ? 80000 + rng() * 40000
     : isPercent
-    ? -5 + rng() * 15
+    ? -3 + rng() * 8
     : isScore
     ? 40 + rng() * 30
-    : 20 + rng() * 80;
+    : 30 + rng() * 60;
 
-  for (let i = 0; i < numPoints; i++) {
-    const dateLabel =
-      period === "yearly"
-        ? `${baseYear + i}`
-        : `${2023 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, "0")}`;
-
-    const change = isCurrency
-      ? (rng() - 0.4) * 30000
-      : isPercent
-      ? (rng() - 0.45) * 3
-      : (rng() - 0.45) * 8;
-
-    value = Math.max(isCurrency ? 100000 : isPercent ? -20 : 0, value + change);
-    points.push({ date: dateLabel, value: Math.round(value * 100) / 100 });
+  if (period === "yearly") {
+    for (let y = 2015; y <= 2025; y++) {
+      const noise = 1 + (rng() - 0.5) * 0.03;
+      let value: number;
+      if (isHomeValue) {
+        value = baseValue * (YEARLY_MULTS[y] || 1.0) * noise;
+      } else if (isCurrency) {
+        value = baseValue * (0.7 + (y - 2015) * 0.03) * noise;
+      } else {
+        const drift = 1 + (rng() - 0.45) * 0.06;
+        value = baseValue * drift * (1 + (y - 2020) * 0.015);
+      }
+      points.push({ date: `${y}`, value: Math.round(value * 100) / 100 });
+    }
+  } else {
+    for (let y = 2023; y <= 2025; y++) {
+      for (let m = 1; m <= (y === 2025 ? 6 : 12); m++) {
+        const yearMult = YEARLY_MULTS[y] || 1.0;
+        const nextMult = YEARLY_MULTS[y + 1] || yearMult;
+        const interp = yearMult + (nextMult - yearMult) * ((m - 1) / 12);
+        const seasonal = 1 + Math.sin(((m - 3) / 12) * Math.PI * 2) * 0.015;
+        const noise = 1 + (rng() - 0.5) * 0.01;
+        let value: number;
+        if (isHomeValue) {
+          value = baseValue * interp * seasonal * noise;
+        } else if (isCurrency) {
+          const trend = 0.9 + ((y - 2023) * 12 + m) / 36 * 0.1;
+          value = baseValue * trend * seasonal * noise;
+        } else {
+          const drift = 1 + (rng() - 0.45) * 0.03;
+          value = baseValue * drift * seasonal;
+        }
+        points.push({
+          date: `${y}-${String(m).padStart(2, "0")}`,
+          value: Math.round(value * 100) / 100,
+        });
+      }
+    }
   }
 
   const avg = points.reduce((sum, p) => sum + p.value, 0) / points.length;
