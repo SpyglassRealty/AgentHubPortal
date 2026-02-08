@@ -1425,7 +1425,7 @@ function SearchPropertiesSection({
                     <div>
                       <Label className="text-xs font-medium text-muted-foreground">Status</Label>
                       <div className="flex flex-wrap gap-2 mt-1">
-                        {["Active", "Active Under Contract", "Closed"].map((s) => (
+                        {["Active", "Active Under Contract", "Pending", "Closed"].map((s) => (
                           <label key={s} className="flex items-center gap-1.5 text-xs cursor-pointer">
                             <input
                               type="checkbox"

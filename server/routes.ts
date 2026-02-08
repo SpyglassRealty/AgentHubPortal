@@ -2397,23 +2397,59 @@ Respond with valid JSON in this exact format:
       if (city) params.append('city', city);
       if (zip) params.append('zip', zip);
       
-      // Subdivision handling: DON'T use Repliers neighborhood filter (it requires exact match).
-      // Instead, we omit neighborhood from the API query, fetch more results, and filter
-      // server-side by checking if the listing's neighborhood CONTAINS the subdivision text.
-      // This matches how the MLS works (substring match on subdivision).
-      // MLS stores subdivisions with section/phase suffixes like "Circle C Ranch Ph A Sec 04"
-      // so "Circle C" should match all of them.
+      // Subdivision handling: Repliers neighborhood requires EXACT match, but the MLS does
+      // CONTAINS matching. "Circle C" should match "Circle C Ranch Ph A Sec 04", etc.
+      // Strategy: probe for zip codes via neighborhood lookup, then search by those zips
+      // and post-filter by neighborhood text. This narrows results to the right area.
       const subdivisionFilter = subdivision ? subdivision.toLowerCase().trim() : null;
-      // Don't add neighborhood to params - we'll post-filter instead
       if (subdivision) {
-        console.log(`[CMA Search] Using post-filter approach for subdivision "${subdivision}"`);
-        // Request more results to ensure we find enough matches after filtering
-        params.set('resultsPerPage', '500');
-        // If no city or zip provided, default to Austin so we have a geographic scope
-        if (!city && !zip) {
-          params.append('city', 'Austin');
-          console.log(`[CMA Search] No city/zip provided with subdivision, defaulting to Austin`);
+        console.log(`[CMA Search] Subdivision search: "${subdivision}"`);
+        
+        // Step 1: Probe for zip codes by trying the subdivision as a neighborhood
+        const probeZips = new Set<string>();
+        const probeVariations = [
+          subdivision,
+          `${subdivision} Ranch`, `${subdivision} Estates`, `${subdivision} Phase`,
+          `${subdivision} Sec`, `${subdivision} Add`, `${subdivision} Sub`,
+        ];
+        
+        for (const variant of probeVariations) {
+          try {
+            const probeParams = new URLSearchParams({
+              neighborhood: variant, type: 'Sale', resultsPerPage: '10', listings: 'true'
+            });
+            const probeRes = await fetch(`${baseUrl}?${probeParams.toString()}`, {
+              headers: { 'Accept': 'application/json', 'REPLIERS-API-KEY': apiKey }
+            });
+            const probeData = await probeRes.json();
+            if ((probeData.count || 0) > 0) {
+              (probeData.listings || []).forEach((l: any) => {
+                const z = l.address?.zip;
+                if (z) probeZips.add(z);
+              });
+              console.log(`[CMA Search] Probe "${variant}": ${probeData.count} results, zips: ${[...probeZips].join(', ')}`);
+            }
+            // Stop probing once we have zip codes
+            if (probeZips.size >= 2) break;
+          } catch { /* try next */ }
         }
+
+        if (probeZips.size > 0) {
+          // Use discovered zip codes to narrow the search
+          for (const z of probeZips) {
+            params.append('zip', z);
+          }
+          // Remove city filter if we have zips (zip is more precise)
+          params.delete('city');
+          console.log(`[CMA Search] Using zip codes for subdivision: ${[...probeZips].join(', ')}`);
+        } else if (!city && !zip) {
+          // Fallback: default to Austin
+          params.append('city', 'Austin');
+          console.log(`[CMA Search] No zips found, defaulting to city=Austin`);
+        }
+        
+        // Request more results to ensure enough matches after post-filtering
+        params.set('resultsPerPage', '500');
       }
 
       // School filters
@@ -2555,11 +2591,13 @@ Respond with valid JSON in this exact format:
       // If includes Closed, we need a separate approach
       const hasActive = statusArray.includes('Active');
       const hasAUC = statusArray.includes('Active Under Contract');
+      const hasPending = statusArray.includes('Pending');
       const hasClosed = statusArray.includes('Closed');
+      const hasAnyActive = hasActive || hasAUC || hasPending;
 
       if (statusArray.length === 0) {
         // No status filter - search all listings (useful for address lookups)
-      } else if (hasClosed && !hasActive && !hasAUC) {
+      } else if (hasClosed && !hasAnyActive) {
         // Only closed - use dateSoldDays if provided, otherwise default to 365
         const soldDays = dateSoldDays ? parseInt(dateSoldDays.toString(), 10) : 365;
         const minDate = new Date();
@@ -2577,7 +2615,7 @@ Respond with valid JSON in this exact format:
       }
 
       // Flag for merged search (active + closed)
-      const needsMergedSearch = hasClosed && (hasActive || hasAUC);
+      const needsMergedSearch = hasClosed && hasAnyActive;
 
       const fullUrl = `${baseUrl}?${params.toString()}`;
       console.log(`[CMA Search] Searching properties: ${fullUrl}`);
