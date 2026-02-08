@@ -2298,7 +2298,8 @@ Respond with valid JSON in this exact format:
       res.json(cma);
     } catch (error) {
       console.error('[CMA] Error creating CMA:', error);
-      res.status(500).json({ message: "Failed to create CMA" });
+      const errMsg = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ message: "Failed to create CMA", error: errMsg });
     }
   });
 
