@@ -700,18 +700,81 @@ class FubClient {
 
 let fubClientInstance: FubClient | null = null;
 let lastFubApiKey: string | null = null;
+// Cache for DB-stored config to avoid async in synchronous getFubClient
+let cachedDbApiKey: string | null = null;
+let cachedDbAdditionalConfig: Record<string, any> | null = null;
+
+/**
+ * Update the cached DB config. Called on startup and when admin saves a new key.
+ */
+export async function refreshFubDbConfig(): Promise<void> {
+  try {
+    const { storage } = await import("./storage");
+    const config = await storage.getIntegrationConfig("fub");
+    if (config?.isActive && config.apiKey) {
+      cachedDbApiKey = config.apiKey;
+      cachedDbAdditionalConfig = config.additionalConfig as Record<string, any> | null;
+      console.log("[FUB] Loaded API key from database");
+    } else {
+      cachedDbApiKey = null;
+      cachedDbAdditionalConfig = null;
+    }
+  } catch (err) {
+    // DB not ready yet or table doesn't exist - that's fine on first run
+    console.log("[FUB] Could not load DB config (may not be initialized yet)");
+  }
+}
 
 export function getFubClient(): FubClient | null {
-  const apiKey = process.env.FUB_API_KEY;
+  // DB key takes priority over env var
+  const apiKey = cachedDbApiKey || process.env.FUB_API_KEY;
   if (!apiKey) {
     console.warn("FUB_API_KEY not configured");
     return null;
   }
+  
+  const systemName = cachedDbAdditionalConfig?.systemName || process.env.FUB_SYSTEM_NAME || "MissionControl";
+  const systemKey = cachedDbAdditionalConfig?.systemKey || process.env.FUB_SYSTEM_KEY;
+  
   if (!fubClientInstance || lastFubApiKey !== apiKey) {
     fubClientInstance = new FubClient({
       apiKey,
-      systemName: process.env.FUB_SYSTEM_NAME || "MissionControl",
-      systemKey: process.env.FUB_SYSTEM_KEY,
+      systemName,
+      systemKey,
+    });
+    lastFubApiKey = apiKey;
+  }
+  return fubClientInstance;
+}
+
+/**
+ * Get FUB client with DB-stored API key taking priority over env var.
+ * Falls back to env var if DB has no config.
+ */
+export async function getFubClientAsync(): Promise<FubClient | null> {
+  // Lazy-import storage to avoid circular dependency
+  const { storage } = await import("./storage");
+  
+  const dbConfig = await storage.getIntegrationConfig("fub");
+  const dbApiKey = dbConfig?.isActive ? dbConfig.apiKey : null;
+  const envApiKey = process.env.FUB_API_KEY;
+  const apiKey = dbApiKey || envApiKey;
+  
+  if (!apiKey) {
+    console.warn("FUB_API_KEY not configured (neither DB nor env)");
+    return null;
+  }
+  
+  // Get additional config from DB or env
+  const additionalConfig = dbConfig?.additionalConfig as Record<string, any> | null;
+  const systemName = additionalConfig?.systemName || process.env.FUB_SYSTEM_NAME || "MissionControl";
+  const systemKey = additionalConfig?.systemKey || process.env.FUB_SYSTEM_KEY;
+  
+  if (!fubClientInstance || lastFubApiKey !== apiKey) {
+    fubClientInstance = new FubClient({
+      apiKey,
+      systemName,
+      systemKey,
     });
     lastFubApiKey = apiKey;
   }
@@ -720,4 +783,5 @@ export function getFubClient(): FubClient | null {
 
 export function resetFubClient(): void {
   fubClientInstance = null;
+  lastFubApiKey = null;
 }

@@ -429,7 +429,7 @@ export const pulseMetrics = pgTable("pulse_metrics", {
 
 export type PulseMetrics = typeof pulseMetrics.$inferSelect;
 export type InsertPulseMetrics = typeof pulseMetrics.$inferInsert;
-=======
+
 // Integration Configs - store API keys for external services
 export const integrationConfigs = pgTable("integration_configs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

@@ -10,6 +10,7 @@ import {
   syncStatus,
   savedContentIdeas,
   cmas,
+  integrationConfigs,
   type User, 
   type UpsertUser,
   type AgentProfile,
@@ -29,7 +30,9 @@ import {
   type SavedContentIdea,
   type InsertSavedContentIdea,
   type Cma,
-  type InsertCma
+  type InsertCma,
+  type IntegrationConfig,
+  type InsertIntegrationConfig,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ne, desc, sql, gt, lt } from "drizzle-orm";
@@ -88,6 +91,14 @@ export interface IStorage {
   createCma(cma: InsertCma): Promise<Cma>;
   updateCma(id: string, userId: string, data: Partial<InsertCma>): Promise<Cma | undefined>;
   deleteCma(id: string, userId: string): Promise<boolean>;
+  
+  // Integration config methods
+  getIntegrationConfigs(): Promise<IntegrationConfig[]>;
+  getIntegrationConfig(name: string): Promise<IntegrationConfig | undefined>;
+  upsertIntegrationConfig(config: InsertIntegrationConfig): Promise<IntegrationConfig>;
+  updateIntegrationTestResult(name: string, result: string, message?: string): Promise<IntegrationConfig | undefined>;
+  deleteIntegrationConfig(name: string): Promise<boolean>;
+  getIntegrationApiKey(name: string): Promise<string | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -532,6 +543,68 @@ export class DatabaseStorage implements IStorage {
     if (!existing) return false;
     await db.delete(cmas).where(eq(cmas.id, id));
     return true;
+  }
+
+  // Integration config methods
+  async getIntegrationConfigs(): Promise<IntegrationConfig[]> {
+    return db.select().from(integrationConfigs).orderBy(integrationConfigs.displayName);
+  }
+
+  async getIntegrationConfig(name: string): Promise<IntegrationConfig | undefined> {
+    const [config] = await db.select().from(integrationConfigs).where(eq(integrationConfigs.name, name));
+    return config;
+  }
+
+  async upsertIntegrationConfig(config: InsertIntegrationConfig): Promise<IntegrationConfig> {
+    const existing = await this.getIntegrationConfig(config.name);
+    if (existing) {
+      const [updated] = await db
+        .update(integrationConfigs)
+        .set({
+          apiKey: config.apiKey,
+          displayName: config.displayName || existing.displayName,
+          additionalConfig: config.additionalConfig !== undefined ? config.additionalConfig : existing.additionalConfig,
+          isActive: config.isActive !== undefined ? config.isActive : existing.isActive,
+          createdBy: config.createdBy || existing.createdBy,
+          updatedAt: new Date(),
+        })
+        .where(eq(integrationConfigs.name, config.name))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(integrationConfigs).values(config).returning();
+      return created;
+    }
+  }
+
+  async updateIntegrationTestResult(name: string, result: string, message?: string): Promise<IntegrationConfig | undefined> {
+    const [updated] = await db
+      .update(integrationConfigs)
+      .set({
+        lastTestedAt: new Date(),
+        lastTestResult: result,
+        lastTestMessage: message || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(integrationConfigs.name, name))
+      .returning();
+    return updated;
+  }
+
+  async deleteIntegrationConfig(name: string): Promise<boolean> {
+    const [existing] = await db.select()
+      .from(integrationConfigs)
+      .where(eq(integrationConfigs.name, name))
+      .limit(1);
+    if (!existing) return false;
+    await db.delete(integrationConfigs).where(eq(integrationConfigs.name, name));
+    return true;
+  }
+
+  async getIntegrationApiKey(name: string): Promise<string | null> {
+    const config = await this.getIntegrationConfig(name);
+    if (!config || !config.isActive) return null;
+    return config.apiKey;
   }
 }
 

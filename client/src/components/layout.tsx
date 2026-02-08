@@ -354,6 +354,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <Sliders className="mr-2 h-4 w-4" />
                   Preferences
                 </DropdownMenuItem>
+                {user?.isSuperAdmin && (
+                  <DropdownMenuItem 
+                    className="cursor-pointer"
+                    onClick={() => setLocation("/admin/settings")}
+                  >
+                    <Settings className="mr-2 h-4 w-4" />
+                    Admin Settings
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild className="text-destructive cursor-pointer">
                   <a href="/api/logout">
