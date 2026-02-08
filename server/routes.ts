@@ -3162,9 +3162,20 @@ Respond with valid JSON in this exact format:
       const zipAggregates = data.aggregates?.address?.zip || data.aggregates?.zip || {};
 
       // Also get a batch of listings with prices to compute medians per zip
-      const priceUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=200&sortBy=createdOnDesc&${areaParams}&fields=listPrice,address,daysOnMarket,details`;
-      const priceRes = await fetch(priceUrl, { headers });
-      const priceData = priceRes.ok ? await priceRes.json() : { listings: [] };
+      // Fetch listings with random-ish sort to get representative DOM sample (not biased toward newest)
+      // Grab 3 pages of 200 for better coverage across zip codes
+      const priceUrl1 = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=200&pageNum=1&${areaParams}&fields=listPrice,address,daysOnMarket,details`;
+      const priceUrl2 = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=200&pageNum=2&${areaParams}&fields=listPrice,address,daysOnMarket,details`;
+      const priceUrl3 = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=200&pageNum=3&${areaParams}&fields=listPrice,address,daysOnMarket,details`;
+      const [priceRes1, priceRes2, priceRes3] = await Promise.all([
+        fetch(priceUrl1, { headers }),
+        fetch(priceUrl2, { headers }),
+        fetch(priceUrl3, { headers }),
+      ]);
+      const priceData1 = priceRes1.ok ? await priceRes1.json() : { listings: [] };
+      const priceData2 = priceRes2.ok ? await priceRes2.json() : { listings: [] };
+      const priceData3 = priceRes3.ok ? await priceRes3.json() : { listings: [] };
+      const priceData = { listings: [...(priceData1.listings || []), ...(priceData2.listings || []), ...(priceData3.listings || [])] };
 
       // Build price map by zip
       const zipPriceMap: Record<string, number[]> = {};
