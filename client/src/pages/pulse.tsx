@@ -140,18 +140,18 @@ export default function PulsePage() {
 
             {/* Floating Zip Summary Panel — overlays on top of the map */}
             {selectedZip && (
-              <div className="absolute top-3 left-3 bottom-3 w-[320px] z-20 pointer-events-auto">
+              <div className="absolute top-3 left-3 bottom-3 w-[320px] pointer-events-auto" style={{ zIndex: 50 }}>
                 <ZipSummaryPanel
                   zipCode={selectedZip}
                   onClose={() => setSelectedZip(null)}
-                  className="h-full shadow-xl"
+                  className="h-full shadow-2xl ring-1 ring-black/5"
                 />
               </div>
             )}
           </div>
 
           {/* Right Panel — Historical Chart */}
-          <div className="w-[380px] flex-shrink-0 border-l border-border">
+          <div className="w-[35%] min-w-[420px] max-w-[520px] flex-shrink-0 border-l border-border">
             <HistoricalChart
               selectedLayerId={selectedLayerId}
               selectedZip={selectedZip}

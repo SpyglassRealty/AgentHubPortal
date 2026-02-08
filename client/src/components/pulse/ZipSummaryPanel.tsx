@@ -55,16 +55,44 @@ export default function ZipSummaryPanel({
   const [period, setPeriod] = useState<"yearly" | "monthly">("yearly");
   const [activeTab, setActiveTab] = useState("forecast");
 
-  // Try the API, fall back to mock
+  // Try the V2 API, fall back to mock
   const { data: summary, isLoading } = useQuery<ZipSummary>({
-    queryKey: ["/api/pulse/zip", zipCode, "summary"],
+    queryKey: ["/api/pulse/v2/zip", zipCode, "summary"],
     queryFn: async () => {
       try {
-        const res = await fetch(`/api/pulse/zip/${zipCode}/summary`, {
+        const res = await fetch(`/api/pulse/v2/zip/${zipCode}/summary`, {
           credentials: "include",
         });
         if (!res.ok) throw new Error("API not ready");
-        return res.json();
+        const raw = await res.json();
+        // Map V2 response shape to ZipSummary type
+        return {
+          zipCode: raw.zip || zipCode,
+          county: raw.county ? `${raw.county} County` : "Travis County",
+          metro: raw.metro || "Austin-Round Rock-Georgetown",
+          state: raw.state || "TX",
+          source: raw.source || "Zillow, Census, Redfin",
+          dataDate: raw.dataDate || "2025-01",
+          forecast: {
+            value: raw.forecast?.value ?? -5.8,
+            label: "Home Price Forecast",
+            direction: raw.forecast?.direction || "down",
+          },
+          investorScore: raw.metrics?.investment_score ?? 62,
+          growthScore: raw.metrics?.growth_potential_score ?? 71,
+          bestMonthToBuy: raw.bestMonthBuy || "January",
+          bestMonthToSell: raw.bestMonthSell || "May",
+          scores: {
+            recentAppreciation: raw.scores?.appreciation ?? 35,
+            daysOnMarket: raw.scores?.daysOnMarket ?? 58,
+            mortgageRates: raw.scores?.mortgageRates ?? 42,
+            inventory: raw.scores?.inventory ?? 67,
+          },
+          homeValue: raw.metrics?.home_value ?? 585000,
+          homeValueGrowthYoY: raw.metrics?.home_value_growth_yoy ?? -2.3,
+          medianIncome: raw.metrics?.median_income ?? 78500,
+          population: raw.metrics?.population ?? 52340,
+        } as ZipSummary;
       } catch {
         // Return mock data with the selected zip
         return { ...MOCK_SUMMARY, zipCode };
