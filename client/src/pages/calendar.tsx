@@ -14,24 +14,61 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Calendar as CalendarIcon, Clock, User, ChevronLeft, ChevronRight, AlertCircle, ExternalLink, MapPin, FileText, X } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, User, ChevronLeft, ChevronRight, AlertCircle, ExternalLink, MapPin, FileText, X, Users } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, parseISO } from "date-fns";
 import { useState, type MouseEvent } from "react";
-import type { FubEvent } from "@shared/schema";
+import type { GoogleCalendarEvent } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 
 interface CalendarResponse {
-  events: FubEvent[];
-  tasks: FubEvent[];
+  events: GoogleCalendarEvent[];
   message?: string;
+}
+
+const EVENT_TYPE_COLORS: Record<GoogleCalendarEvent['type'], { bg: string; text: string; border: string }> = {
+  event: { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200' },
+  meeting: { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200' },
+  showing: { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-200' },
+  closing: { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200' },
+  open_house: { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-200' },
+  listing: { bg: 'bg-cyan-100', text: 'text-cyan-700', border: 'border-cyan-200' },
+  inspection: { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-200' },
+};
+
+const EVENT_TYPE_LABELS: Record<GoogleCalendarEvent['type'], string> = {
+  event: 'Event',
+  meeting: 'Meeting',
+  showing: 'Showing',
+  closing: 'Closing',
+  open_house: 'Open House',
+  listing: 'Listing',
+  inspection: 'Inspection',
+};
+
+function getEventTypeClasses(type: GoogleCalendarEvent['type']): string {
+  const c = EVENT_TYPE_COLORS[type] || EVENT_TYPE_COLORS.event;
+  return `${c.bg} ${c.text} ${c.border}`;
+}
+
+function getEventDotColor(type: GoogleCalendarEvent['type']): string {
+  const dotColors: Record<GoogleCalendarEvent['type'], string> = {
+    event: 'bg-blue-400',
+    meeting: 'bg-indigo-400',
+    showing: 'bg-emerald-400',
+    closing: 'bg-orange-400',
+    open_house: 'bg-purple-400',
+    listing: 'bg-cyan-400',
+    inspection: 'bg-amber-400',
+  };
+  return dotColors[type] || dotColors.event;
 }
 
 export default function CalendarPage() {
   const { user } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<FubEvent | null>(null);
-  const [selectedDayEvents, setSelectedDayEvents] = useState<FubEvent[] | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<GoogleCalendarEvent | null>(null);
+  const [selectedDayEvents, setSelectedDayEvents] = useState<GoogleCalendarEvent[] | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const { lastManualRefresh, lastAutoRefresh, isLoading: isSyncing, refresh: refreshSync } = useSyncStatus('calendar');
   
@@ -39,11 +76,11 @@ export default function CalendarPage() {
   const endDate = format(endOfMonth(currentMonth), "yyyy-MM-dd");
 
   const calendarUrl = selectedAgentId 
-    ? `/api/fub/calendar?startDate=${startDate}&endDate=${endDate}&agentId=${selectedAgentId}`
-    : `/api/fub/calendar?startDate=${startDate}&endDate=${endDate}`;
+    ? `/api/google/calendar?startDate=${startDate}&endDate=${endDate}&agentId=${selectedAgentId}`
+    : `/api/google/calendar?startDate=${startDate}&endDate=${endDate}`;
 
   const { data, isLoading, error, refetch } = useQuery<CalendarResponse>({
-    queryKey: ["/api/fub/calendar", { startDate, endDate, agentId: selectedAgentId }],
+    queryKey: ["/api/google/calendar", { startDate, endDate, agentId: selectedAgentId }],
     queryFn: async () => {
       const res = await fetch(calendarUrl, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch calendar");
@@ -57,7 +94,7 @@ export default function CalendarPage() {
     });
   };
 
-  const allItems = [...(data?.events || []), ...(data?.tasks || [])];
+  const allItems = (data?.events || []).filter(e => e.status !== 'cancelled');
   
   const days = eachDayOfInterval({
     start: startOfMonth(currentMonth),
@@ -66,36 +103,20 @@ export default function CalendarPage() {
 
   const getItemsForDay = (date: Date) => {
     return allItems.filter(item => {
-      const itemDate = parseISO(item.startDate);
+      const itemDate = item.allDay 
+        ? new Date(item.startDate + 'T00:00:00') 
+        : parseISO(item.startDate);
       return isSameDay(itemDate, date);
     });
   };
 
-  const getEventTypeColor = (type: FubEvent['type']) => {
-    switch (type) {
-      case 'appointment': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'task': return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'deal_closing': return 'bg-orange-100 text-orange-700 border-orange-200';
-      default: return 'bg-purple-100 text-purple-700 border-purple-200';
-    }
-  };
-
-  const getEventTypeLabel = (type: FubEvent['type']) => {
-    switch (type) {
-      case 'appointment': return 'Appointment';
-      case 'task': return 'Task';
-      case 'deal_closing': return 'Deal Closing';
-      default: return 'Event';
-    }
-  };
-
-  const handleEventClick = (event: FubEvent, e: MouseEvent) => {
+  const handleEventClick = (event: GoogleCalendarEvent, e: MouseEvent) => {
     e.stopPropagation();
     setSelectedEvent(event);
     setSelectedDayEvents(null);
   };
 
-  const handleDayClick = (date: Date, dayItems: FubEvent[]) => {
+  const handleDayClick = (date: Date, dayItems: GoogleCalendarEvent[]) => {
     if (dayItems.length === 0) return;
     if (dayItems.length === 1) {
       setSelectedEvent(dayItems[0]);
@@ -107,10 +128,36 @@ export default function CalendarPage() {
     }
   };
 
+  const formatEventTime = (event: GoogleCalendarEvent) => {
+    if (event.allDay) return 'All day';
+    try {
+      const start = parseISO(event.startDate);
+      const time = format(start, "h:mm a");
+      if (event.endDate) {
+        const end = parseISO(event.endDate);
+        return `${time} - ${format(end, "h:mm a")}`;
+      }
+      return time;
+    } catch {
+      return '';
+    }
+  };
+
   const upcomingItems = allItems
-    .filter(item => new Date(item.startDate) >= new Date())
+    .filter(item => {
+      const itemDate = item.allDay 
+        ? new Date(item.startDate + 'T23:59:59') 
+        : new Date(item.startDate);
+      return itemDate >= new Date();
+    })
     .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
     .slice(0, 5);
+
+  // Quick stats
+  const eventsByType = allItems.reduce<Record<string, number>>((acc, item) => {
+    acc[item.type] = (acc[item.type] || 0) + 1;
+    return acc;
+  }, {});
 
   if (error) {
     return (
@@ -119,11 +166,11 @@ export default function CalendarPage() {
           <AlertCircle className="h-12 w-12 text-destructive mb-4" />
           <h2 className="text-xl font-display font-semibold mb-2">Unable to Load Calendar</h2>
           <p className="text-muted-foreground mb-4">
-            {(error as Error).message || "Please check your Follow Up Boss connection."}
+            {(error as Error).message || "Please check your Google Calendar connection."}
           </p>
-          <a href="https://app.followupboss.com" target="_blank" rel="noopener noreferrer">
+          <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer">
             <Button variant="outline">
-              Open Follow Up Boss
+              Open Google Calendar
               <ExternalLink className="ml-2 h-4 w-4" />
             </Button>
           </a>
@@ -141,7 +188,7 @@ export default function CalendarPage() {
             <p className="text-sm sm:text-base text-muted-foreground mt-1">
               {selectedAgentId 
                 ? "Viewing agent's calendar" 
-                : "Your appointments & tasks"}
+                : "Your schedule & appointments"}
             </p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -157,10 +204,10 @@ export default function CalendarPage() {
               onRefresh={handleRefresh}
               isLoading={isLoading || isSyncing}
             />
-            <a href="https://app.followupboss.com/app/tasks" target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" className="border-[#EF4923]/30 hover:bg-[#EF4923]/10 h-8 sm:h-9 px-2 sm:px-4 text-xs sm:text-sm">
-                <span className="hidden sm:inline">Open in FUB</span>
-                <span className="sm:hidden">FUB</span>
+            <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" className="border-blue-500/30 hover:bg-blue-500/10 h-8 sm:h-9 px-2 sm:px-4 text-xs sm:text-sm">
+                <span className="hidden sm:inline">Open in Google Calendar</span>
+                <span className="sm:hidden">Calendar</span>
                 <ExternalLink className="ml-1 sm:ml-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </a>
@@ -241,14 +288,14 @@ export default function CalendarPage() {
                           <div 
                             key={day.toISOString()} 
                             className={`bg-background p-1.5 sm:p-2 min-h-[70px] sm:min-h-[80px] md:min-h-[100px] border-t ${
-                              isToday(day) ? 'bg-[#EF4923]/5' : ''
+                              isToday(day) ? 'bg-blue-500/5' : ''
                             } ${hasEvents ? 'cursor-pointer hover:bg-muted/50 transition-colors active:bg-muted/70' : ''}`}
                             onClick={() => handleDayClick(day, dayItems)}
                             data-testid={`day-${format(day, 'yyyy-MM-dd')}`}
                           >
                             <div className={`text-xs sm:text-sm font-medium mb-0.5 sm:mb-1 ${
                               isToday(day) 
-                                ? 'h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-[#EF4923] text-white flex items-center justify-center text-[10px] sm:text-sm' 
+                                ? 'h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] sm:text-sm' 
                                 : 'text-foreground'
                             }`}>
                               {format(day, 'd')}
@@ -257,7 +304,16 @@ export default function CalendarPage() {
                               {dayItems.slice(0, 2).map((item, idx) => (
                                 <div 
                                   key={item.id} 
-                                  className={`text-[9px] sm:text-xs p-1 sm:p-1.5 rounded truncate border cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity min-h-[24px] sm:min-h-[28px] ${getEventTypeColor(item.type)} ${idx > 0 ? 'hidden sm:block' : ''}`}
+                                  className={`text-[9px] sm:text-xs p-1 sm:p-1.5 rounded truncate border cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity min-h-[24px] sm:min-h-[28px] ${
+                                    item.colorHex 
+                                      ? '' 
+                                      : getEventTypeClasses(item.type)
+                                  } ${idx > 0 ? 'hidden sm:block' : ''}`}
+                                  style={item.colorHex ? { 
+                                    backgroundColor: `${item.colorHex}20`, 
+                                    color: item.colorHex,
+                                    borderColor: `${item.colorHex}40`
+                                  } : undefined}
                                   title={item.title}
                                   onClick={(e) => handleEventClick(item, e)}
                                   data-testid={`event-${item.id}`}
@@ -284,15 +340,19 @@ export default function CalendarPage() {
                     
                     <div className="flex flex-wrap gap-2 sm:gap-4 mt-3 sm:mt-4 text-[10px] sm:text-xs">
                       <div className="flex items-center gap-1 sm:gap-1.5">
-                        <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded bg-blue-200" />
-                        <span className="text-muted-foreground">Appointments</span>
+                        <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded bg-blue-300" />
+                        <span className="text-muted-foreground">Events</span>
                       </div>
                       <div className="flex items-center gap-1 sm:gap-1.5">
-                        <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded bg-amber-200" />
-                        <span className="text-muted-foreground">Tasks</span>
+                        <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded bg-indigo-300" />
+                        <span className="text-muted-foreground">Meetings</span>
                       </div>
                       <div className="flex items-center gap-1 sm:gap-1.5">
-                        <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded bg-orange-200" />
+                        <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded bg-emerald-300" />
+                        <span className="text-muted-foreground">Showings</span>
+                      </div>
+                      <div className="flex items-center gap-1 sm:gap-1.5">
+                        <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded bg-orange-300" />
                         <span className="text-muted-foreground">Closings</span>
                       </div>
                     </div>
@@ -310,7 +370,7 @@ export default function CalendarPage() {
                   Upcoming
                 </CardTitle>
                 <CardDescription>
-                  {selectedAgentId ? "Agent's next 5 items" : "Your next 5 items"}
+                  {selectedAgentId ? "Agent's next events" : "Your next events"}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -320,7 +380,7 @@ export default function CalendarPage() {
                   ))
                 ) : upcomingItems.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    No upcoming items
+                    No upcoming events
                   </p>
                 ) : (
                   upcomingItems.map(item => (
@@ -335,17 +395,20 @@ export default function CalendarPage() {
                           <p className="font-medium text-sm truncate">{item.title}</p>
                           <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                             <CalendarIcon className="h-3 w-3" />
-                            {format(parseISO(item.startDate), "MMM d, h:mm a")}
+                            {item.allDay 
+                              ? format(new Date(item.startDate + 'T00:00:00'), "MMM d") + ' · All day'
+                              : format(parseISO(item.startDate), "MMM d, h:mm a")
+                            }
                           </div>
-                          {item.personName && (
+                          {item.location && (
                             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                              <User className="h-3 w-3" />
-                              {item.personName}
+                              <MapPin className="h-3 w-3" />
+                              <span className="truncate">{item.location}</span>
                             </div>
                           )}
                         </div>
-                        <Badge variant="outline" className={`text-[10px] ${getEventTypeColor(item.type)}`}>
-                          {item.type.replace('_', ' ')}
+                        <Badge variant="outline" className={`text-[10px] shrink-0 ${getEventTypeClasses(item.type)}`}>
+                          {EVENT_TYPE_LABELS[item.type]}
                         </Badge>
                       </div>
                     </div>
@@ -361,46 +424,58 @@ export default function CalendarPage() {
               <CardContent className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">This Month</span>
-                  <Badge className="bg-[#EF4923]">
-                    {allItems.length} items
+                  <Badge className="bg-blue-600">
+                    {allItems.length} events
                   </Badge>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Appointments</span>
-                  <span className="font-medium">
-                    {allItems.filter(i => i.type === 'appointment').length}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Tasks</span>
-                  <span className="font-medium">
-                    {allItems.filter(i => i.type === 'task').length}
-                  </span>
-                </div>
+                {Object.entries(eventsByType)
+                  .sort(([, a], [, b]) => b - a)
+                  .slice(0, 4)
+                  .map(([type, count]) => (
+                    <div key={type} className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground capitalize">
+                        {EVENT_TYPE_LABELS[type as GoogleCalendarEvent['type']] || type}
+                      </span>
+                      <span className="font-medium">{count}</span>
+                    </div>
+                  ))
+                }
+                {Object.keys(eventsByType).length === 0 && !isLoading && (
+                  <p className="text-sm text-muted-foreground text-center">No events this month</p>
+                )}
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
 
+      {/* Event Detail Dialog */}
       <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
         <DialogContent className="sm:max-w-md" data-testid="dialog-event-details">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 font-display">
-              <CalendarIcon className="h-5 w-5 text-[#EF4923]" />
+              <CalendarIcon className="h-5 w-5 text-blue-600" />
               Event Details
             </DialogTitle>
             <DialogDescription>
-              {selectedEvent && getEventTypeLabel(selectedEvent.type)}
+              {selectedEvent && EVENT_TYPE_LABELS[selectedEvent.type]}
             </DialogDescription>
           </DialogHeader>
           {selectedEvent && (
             <div className="space-y-4">
               <div>
                 <h3 className="text-lg font-semibold">{selectedEvent.title}</h3>
-                <Badge className={`mt-2 ${getEventTypeColor(selectedEvent.type)}`}>
-                  {getEventTypeLabel(selectedEvent.type)}
-                </Badge>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge className={getEventTypeClasses(selectedEvent.type)}>
+                    {EVENT_TYPE_LABELS[selectedEvent.type]}
+                  </Badge>
+                  {selectedEvent.status === 'tentative' && (
+                    <Badge variant="outline" className="text-amber-600 border-amber-300">Tentative</Badge>
+                  )}
+                  {selectedEvent.status === 'cancelled' && (
+                    <Badge variant="outline" className="text-red-600 border-red-300">Cancelled</Badge>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-3 text-sm">
@@ -409,21 +484,23 @@ export default function CalendarPage() {
                   <div>
                     <p className="font-medium">Date & Time</p>
                     <p className="text-muted-foreground">
-                      {format(parseISO(selectedEvent.startDate), "EEEE, MMMM d, yyyy")}
+                      {selectedEvent.allDay
+                        ? format(new Date(selectedEvent.startDate + 'T00:00:00'), "EEEE, MMMM d, yyyy")
+                        : format(parseISO(selectedEvent.startDate), "EEEE, MMMM d, yyyy")
+                      }
                     </p>
                     <p className="text-muted-foreground">
-                      {format(parseISO(selectedEvent.startDate), "h:mm a")}
-                      {selectedEvent.endDate && ` - ${format(parseISO(selectedEvent.endDate), "h:mm a")}`}
+                      {formatEventTime(selectedEvent)}
                     </p>
                   </div>
                 </div>
 
-                {selectedEvent.personName && (
+                {selectedEvent.location && (
                   <div className="flex items-start gap-3">
-                    <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">Contact</p>
-                      <p className="text-muted-foreground">{selectedEvent.personName}</p>
+                      <p className="font-medium">Location</p>
+                      <p className="text-muted-foreground">{selectedEvent.location}</p>
                     </div>
                   </div>
                 )}
@@ -432,23 +509,62 @@ export default function CalendarPage() {
                   <div className="flex items-start gap-3">
                     <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">Notes</p>
-                      <p className="text-muted-foreground whitespace-pre-wrap">{selectedEvent.description}</p>
+                      <p className="font-medium">Description</p>
+                      <p className="text-muted-foreground whitespace-pre-wrap text-xs max-h-32 overflow-y-auto">
+                        {selectedEvent.description.replace(/<[^>]*>/g, '')}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedEvent.organizer && (
+                  <div className="flex items-start gap-3">
+                    <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Organizer</p>
+                      <p className="text-muted-foreground">{selectedEvent.organizer}</p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedEvent.attendees && selectedEvent.attendees.length > 0 && (
+                  <div className="flex items-start gap-3">
+                    <Users className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Attendees ({selectedEvent.attendees.length})</p>
+                      <div className="space-y-1 mt-1">
+                        {selectedEvent.attendees.slice(0, 5).map((a, i) => (
+                          <p key={i} className="text-muted-foreground text-xs flex items-center gap-1.5">
+                            <span className={`inline-block h-1.5 w-1.5 rounded-full ${
+                              a.responseStatus === 'accepted' ? 'bg-green-500' :
+                              a.responseStatus === 'declined' ? 'bg-red-500' :
+                              a.responseStatus === 'tentative' ? 'bg-amber-500' :
+                              'bg-gray-400'
+                            }`} />
+                            {a.displayName || a.email}
+                          </p>
+                        ))}
+                        {selectedEvent.attendees.length > 5 && (
+                          <p className="text-muted-foreground text-xs">
+                            +{selectedEvent.attendees.length - 5} more
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
 
               <div className="flex gap-3 pt-4 border-t">
-                {selectedEvent.personId && (
+                {selectedEvent.htmlLink && (
                   <a 
-                    href={`https://app.followupboss.com/people/${selectedEvent.personId}`} 
+                    href={selectedEvent.htmlLink} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="flex-1"
                   >
-                    <Button variant="outline" className="w-full" data-testid="button-view-in-fub">
-                      View in FUB
+                    <Button variant="outline" className="w-full" data-testid="button-view-in-gcal">
+                      Open in Google Calendar
                       <ExternalLink className="ml-2 h-4 w-4" />
                     </Button>
                   </a>
@@ -467,11 +583,12 @@ export default function CalendarPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Day Events List Dialog */}
       <Dialog open={!!selectedDayEvents} onOpenChange={() => setSelectedDayEvents(null)}>
         <DialogContent className="sm:max-w-md" data-testid="dialog-day-events">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 font-display">
-              <CalendarIcon className="h-5 w-5 text-[#EF4923]" />
+              <CalendarIcon className="h-5 w-5 text-blue-600" />
               {selectedDate && format(selectedDate, "EEEE, MMMM d")}
             </DialogTitle>
             <DialogDescription>
@@ -494,17 +611,17 @@ export default function CalendarPage() {
                     <p className="font-medium text-sm">{item.title}</p>
                     <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />
-                      {format(parseISO(item.startDate), "h:mm a")}
+                      {formatEventTime(item)}
                     </div>
-                    {item.personName && (
+                    {item.location && (
                       <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                        <User className="h-3 w-3" />
-                        {item.personName}
+                        <MapPin className="h-3 w-3" />
+                        <span className="truncate">{item.location}</span>
                       </div>
                     )}
                   </div>
-                  <Badge variant="outline" className={`text-[10px] ${getEventTypeColor(item.type)}`}>
-                    {item.type.replace('_', ' ')}
+                  <Badge variant="outline" className={`text-[10px] ${getEventTypeClasses(item.type)}`}>
+                    {EVENT_TYPE_LABELS[item.type]}
                   </Badge>
                 </div>
               </div>

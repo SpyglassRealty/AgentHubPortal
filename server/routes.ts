@@ -2,14 +2,20 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { getFubClient } from "./fubClient";
+import { getFubClient, getFubClientAsync } from "./fubClient";
 import { getRezenClient } from "./rezenClient";
 import { generateSuggestionsForUser } from "./contextEngine";
 import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema } from "@shared/schema";
+import { getGoogleCalendarEvents } from "./googleCalendarClient";
+import { db } from "./db";
+import { users as usersTable } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import OpenAI from "openai";
 import { getLatestTrainingVideo } from "./vimeoClient";
 import { SPYGLASS_OFFICES, DEFAULT_OFFICE, getOfficeConfig } from "./config/offices";
 import { registerPulseV2Routes } from "./pulseV2Routes";
+import { registerAdminRoutes } from "./adminRoutes";
+
 
 // Helper function to get the actual database user from request
 // Handles both regular auth (ID lookup) and Google OAuth (email lookup)
@@ -182,6 +188,72 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching FUB calendar:", error);
       res.status(500).json({ message: "Failed to fetch calendar data" });
+    }
+  });
+
+  // Google Calendar - uses domain-wide delegation to impersonate users
+  app.get('/api/google/calendar', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      let targetEmail = user.email;
+      const requestedAgentId = req.query.agentId as string;
+
+      // If super admin is viewing another agent's calendar, look up their email
+      if (requestedAgentId && user.isSuperAdmin) {
+        // agentId comes from FUB agent selector as a FUB user ID number
+        const fubAgentId = parseInt(requestedAgentId, 10);
+        // Look up the DB user that has this fubUserId to get their email
+        const agentUsers = await db.select().from(usersTable).where(eq(usersTable.fubUserId, fubAgentId));
+        if (agentUsers.length > 0 && agentUsers[0].email) {
+          targetEmail = agentUsers[0].email;
+        } else {
+          // Try to find by FUB API as fallback
+          const fubClient = getFubClient();
+          if (fubClient) {
+            try {
+              const agents = await fubClient.getAllAgents();
+              const agent = agents.find((a: any) => a.id === fubAgentId);
+              if (agent?.email) {
+                targetEmail = agent.email;
+              }
+            } catch (e) {
+              console.error('[Google Calendar] Failed to look up agent email from FUB:', e);
+            }
+          }
+        }
+      }
+
+      if (!targetEmail) {
+        return res.json({ events: [], message: "No email address found for this user" });
+      }
+
+      const startDate = req.query.startDate as string;
+      const endDate = req.query.endDate as string;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "startDate and endDate are required" });
+      }
+
+      const events = await getGoogleCalendarEvents(targetEmail, startDate, endDate);
+
+      res.json({ events });
+    } catch (error: any) {
+      console.error("Error fetching Google Calendar:", error);
+      
+      // Provide helpful error messages for common issues
+      if (error.message?.includes('Not Authorized') || error.code === 403) {
+        return res.status(403).json({ 
+          message: "Domain-wide delegation not yet configured for this user. Please check Google Admin console.",
+          error: "delegation_not_configured"
+        });
+      }
+      
+      res.status(500).json({ message: "Failed to fetch Google Calendar data" });
     }
   });
 
@@ -2932,8 +3004,7 @@ Respond with valid JSON in this exact format:
     }
   });
 
-  // =============================================================
-  // PULSE - Market Intelligence Endpoints
+  // ======================================================  // PULSE - Market Intelligence Endpoints
   // =============================================================
 
   const PULSE_MSA_AREAS = ['Travis', 'Williamson', 'Hays', 'Bastrop', 'Caldwell'];
@@ -3386,6 +3457,10 @@ Respond with valid JSON in this exact format:
 
   // ── Pulse V2 — Reventure-style data layers ──
   registerPulseV2Routes(app);
+=======
+  // Register admin routes (integration settings, etc.)
+  registerAdminRoutes(app);
+
 
   return httpServer;
 }
