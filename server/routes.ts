@@ -2396,7 +2396,52 @@ Respond with valid JSON in this exact format:
       // Location filters
       if (city) params.append('city', city);
       if (zip) params.append('zip', zip);
-      if (subdivision) params.append('neighborhood', subdivision);
+      
+      // Subdivision: try exact neighborhood match, then try common variations
+      if (subdivision) {
+        // First check if exact match returns results
+        const testParams = new URLSearchParams({ neighborhood: subdivision, type: 'Sale', resultsPerPage: '1', listings: 'true' });
+        let foundMatch = false;
+        try {
+          const testRes = await fetch(`${baseUrl}?${testParams.toString()}`, {
+            headers: { 'Accept': 'application/json', 'REPLIERS-API-KEY': apiKey }
+          });
+          const testData = await testRes.json();
+          if ((testData.count || 0) > 0) {
+            params.append('neighborhood', subdivision);
+            foundMatch = true;
+            console.log(`[CMA Search] Subdivision "${subdivision}" exact match: ${testData.count} results`);
+          }
+        } catch { /* continue to fuzzy */ }
+        
+        if (!foundMatch) {
+          // Try common MLS naming patterns: "X Ranch", "X Sec", "X Ph", etc.
+          const variations = [
+            `${subdivision} Ranch`, `${subdivision} Sec`, `${subdivision} Phase`,
+            `${subdivision} Add`, `${subdivision} Sub`, `${subdivision} Estates`,
+          ];
+          for (const variant of variations) {
+            try {
+              const varParams = new URLSearchParams({ neighborhood: variant, type: 'Sale', resultsPerPage: '1', listings: 'true' });
+              const varRes = await fetch(`${baseUrl}?${varParams.toString()}`, {
+                headers: { 'Accept': 'application/json', 'REPLIERS-API-KEY': apiKey }
+              });
+              const varData = await varRes.json();
+              if ((varData.count || 0) > 0) {
+                params.append('neighborhood', variant);
+                foundMatch = true;
+                console.log(`[CMA Search] Subdivision "${subdivision}" -> matched variation "${variant}": ${varData.count} results`);
+                break;
+              }
+            } catch { /* try next */ }
+          }
+          if (!foundMatch) {
+            // Last resort: use as-is
+            params.append('neighborhood', subdivision);
+            console.log(`[CMA Search] Subdivision "${subdivision}" no match found, using as-is`);
+          }
+        }
+      }
 
       // School filters
       if (schoolDistrict) params.append('schoolDistrict', schoolDistrict);
