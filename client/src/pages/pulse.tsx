@@ -1000,6 +1000,15 @@ function NeighborhoodExplorer({
 // ─── Main Pulse Page ─────────────────────────────────────────
 export default function PulsePage() {
   const [selectedZip, setSelectedZip] = useState<string | null>(null);
+  const mapSectionRef = useRef<HTMLDivElement>(null);
+
+  const handleZipSelect = useCallback((zip: string) => {
+    setSelectedZip(zip);
+    // Scroll to map/detail panel so user sees the result
+    setTimeout(() => {
+      mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  }, []);
 
   // Fetch overview
   const { data: overview, isLoading: overviewLoading } = useQuery<OverviewData>({
@@ -1065,12 +1074,12 @@ export default function PulsePage() {
         <HeroStatsBar data={overview} isLoading={overviewLoading} />
 
         {/* Map + Detail Panel */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div ref={mapSectionRef} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className={selectedZip ? "lg:col-span-2" : "lg:col-span-3"}>
             <PulseMap
               zipData={zipData}
               isLoading={heatmapLoading}
-              onZipSelect={setSelectedZip}
+              onZipSelect={handleZipSelect}
               selectedZip={selectedZip}
             />
           </div>
@@ -1094,7 +1103,7 @@ export default function PulsePage() {
         {/* Neighborhood Explorer */}
         <NeighborhoodExplorer
           zipData={zipData}
-          onZipSelect={setSelectedZip}
+          onZipSelect={handleZipSelect}
         />
       </div>
     </Layout>
