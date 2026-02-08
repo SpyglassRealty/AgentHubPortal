@@ -2931,5 +2931,439 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // =============================================================
+  // PULSE - Market Intelligence Endpoints
+  // =============================================================
+
+  const PULSE_MSA_COUNTIES = ['Travis', 'Williamson', 'Hays', 'Bastrop', 'Caldwell'];
+
+  const pulseHeaders = () => {
+    const apiKey = process.env.IDX_GRID_API_KEY;
+    if (!apiKey) throw new Error('IDX_GRID_API_KEY not configured');
+    return {
+      'Accept': 'application/json',
+      'REPLIERS-API-KEY': apiKey,
+    };
+  };
+
+  // GET /api/pulse/overview — Metro-wide stats
+  app.get('/api/pulse/overview', isAuthenticated, async (_req: any, res) => {
+    try {
+      const headers = pulseHeaders();
+      const baseUrl = 'https://api.repliers.io/listings';
+
+      // Build shared county params
+      const countyParams = PULSE_MSA_COUNTIES.map(c => `county=${encodeURIComponent(c)}`).join('&');
+
+      // Active listings count + aggregates for median price
+      const activeUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active&${countyParams}`;
+      // Pending
+      const pendingUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Pending&${countyParams}`;
+      // Active Under Contract
+      const aucUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active%20Under%20Contract&${countyParams}`;
+
+      // Closed last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const minSoldDate = thirtyDaysAgo.toISOString().split('T')[0];
+      const closedUrl = `${baseUrl}?listings=false&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate}&${countyParams}`;
+
+      // New last 7 days
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const minListDate7 = sevenDaysAgo.toISOString().split('T')[0];
+      const newUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active&minListDate=${minListDate7}&${countyParams}`;
+
+      // Get a sample of active listings for DOM + price stats
+      const sampleUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=100&sortBy=createdOnDesc&${countyParams}&fields=listPrice,daysOnMarket,livingArea`;
+
+      // Closed last 30d sample for sold stats
+      const closedSampleUrl = `${baseUrl}?listings=true&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate}&resultsPerPage=100&sortBy=lastStatusDesc&${countyParams}&fields=soldPrice,listPrice,daysOnMarket,livingArea`;
+
+      const [activeRes, pendingRes, aucRes, closedRes, newRes, sampleRes, closedSampleRes] = await Promise.all([
+        fetch(activeUrl, { headers }),
+        fetch(pendingUrl, { headers }),
+        fetch(aucUrl, { headers }),
+        fetch(closedUrl, { headers }),
+        fetch(newUrl, { headers }),
+        fetch(sampleUrl, { headers }),
+        fetch(closedSampleUrl, { headers }),
+      ]);
+
+      const activeData = activeRes.ok ? await activeRes.json() : { count: 0 };
+      const pendingData = pendingRes.ok ? await pendingRes.json() : { count: 0 };
+      const aucData = aucRes.ok ? await aucRes.json() : { count: 0 };
+      const closedData = closedRes.ok ? await closedRes.json() : { count: 0 };
+      const newData = newRes.ok ? await newRes.json() : { count: 0 };
+      const sampleData = sampleRes.ok ? await sampleRes.json() : { listings: [] };
+      const closedSampleData = closedSampleRes.ok ? await closedSampleRes.json() : { listings: [] };
+
+      // Calculate median from sample
+      const activePrices = (sampleData.listings || [])
+        .map((l: any) => l.listPrice)
+        .filter((p: any) => p && p > 0)
+        .sort((a: number, b: number) => a - b);
+      const medianPrice = activePrices.length > 0
+        ? activePrices[Math.floor(activePrices.length / 2)]
+        : 0;
+
+      const doms = (sampleData.listings || [])
+        .map((l: any) => l.daysOnMarket || l.dom || 0)
+        .filter((d: number) => d > 0);
+      const avgDom = doms.length > 0 ? Math.round(doms.reduce((a: number, b: number) => a + b, 0) / doms.length) : 0;
+
+      // Price per sqft from sample
+      const ppsfs = (sampleData.listings || [])
+        .filter((l: any) => l.listPrice > 0 && (l.livingArea || l.sqft || (l.details && l.details.sqft)) > 0)
+        .map((l: any) => l.listPrice / (l.livingArea || l.sqft || l.details?.sqft));
+      const avgPricePerSqft = ppsfs.length > 0 ? Math.round(ppsfs.reduce((a: number, b: number) => a + b, 0) / ppsfs.length) : 0;
+
+      // Months of supply = active / (closed30d) * 1 month
+      const activeCount = activeData.count || 0;
+      const closedCount = closedData.count || 0;
+      const monthsOfSupply = closedCount > 0 ? parseFloat((activeCount / closedCount).toFixed(1)) : 0;
+
+      // Closed sample stats
+      const closedPrices = (closedSampleData.listings || [])
+        .map((l: any) => l.soldPrice || l.closePrice || l.listPrice)
+        .filter((p: any) => p && p > 0)
+        .sort((a: number, b: number) => a - b);
+      const medianSoldPrice = closedPrices.length > 0 ? closedPrices[Math.floor(closedPrices.length / 2)] : 0;
+
+      console.log(`[Pulse Overview] Active: ${activeCount}, Pending: ${pendingData.count}, Closed(30d): ${closedCount}, New(7d): ${newData.count}, MedianPrice: ${medianPrice}, AvgDOM: ${avgDom}`);
+
+      res.json({
+        totalActive: activeCount,
+        activeUnderContract: aucData.count || 0,
+        pending: pendingData.count || 0,
+        closedLast30: closedCount,
+        newLast7: newData.count || 0,
+        medianListPrice: medianPrice,
+        medianSoldPrice,
+        avgDom,
+        avgPricePerSqft,
+        monthsOfSupply,
+        lastUpdated: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('[Pulse Overview] Error:', error);
+      res.status(500).json({ message: 'Failed to fetch pulse overview' });
+    }
+  });
+
+  // GET /api/pulse/heatmap — Zip-level data for choropleth
+  app.get('/api/pulse/heatmap', isAuthenticated, async (_req: any, res) => {
+    try {
+      const headers = pulseHeaders();
+      const baseUrl = 'https://api.repliers.io/listings';
+      const countyParams = PULSE_MSA_COUNTIES.map(c => `county=${encodeURIComponent(c)}`).join('&');
+
+      // Active listings aggregated by zip
+      const url = `${baseUrl}?aggregates=zip&listings=false&type=Sale&standardStatus=Active&${countyParams}`;
+      console.log(`[Pulse Heatmap] Fetching: ${url}`);
+
+      const response = await fetch(url, { headers });
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('[Pulse Heatmap] API error:', response.status, text.substring(0, 300));
+        return res.status(502).json({ message: 'Repliers API error' });
+      }
+
+      const data = await response.json();
+      const zipAggregates = data.aggregates?.zip || {};
+
+      // Also get a batch of listings with prices to compute medians per zip
+      const priceUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=200&sortBy=createdOnDesc&${countyParams}&fields=listPrice,address,daysOnMarket,livingArea`;
+      const priceRes = await fetch(priceUrl, { headers });
+      const priceData = priceRes.ok ? await priceRes.json() : { listings: [] };
+
+      // Build price map by zip
+      const zipPriceMap: Record<string, number[]> = {};
+      const zipDomMap: Record<string, number[]> = {};
+      (priceData.listings || []).forEach((l: any) => {
+        const zip = l.address?.zip || l.address?.postalCode || '';
+        if (!zip) return;
+        if (l.listPrice > 0) {
+          if (!zipPriceMap[zip]) zipPriceMap[zip] = [];
+          zipPriceMap[zip].push(l.listPrice);
+        }
+        const dom = l.daysOnMarket || l.dom || 0;
+        if (dom > 0) {
+          if (!zipDomMap[zip]) zipDomMap[zip] = [];
+          zipDomMap[zip].push(dom);
+        }
+      });
+
+      const median = (arr: number[]) => {
+        if (!arr.length) return 0;
+        const sorted = [...arr].sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+      };
+
+      // Zip code coordinates for Austin metro (approximate centroids)
+      const zipCoords: Record<string, [number, number]> = {
+        '78610': [-97.8561, 30.0863], '78613': [-97.8206, 30.5083], '78615': [-97.5261, 30.5447],
+        '78617': [-97.6108, 30.1652], '78620': [-98.0864, 30.2119], '78626': [-97.6781, 30.6339],
+        '78628': [-97.7906, 30.6228], '78630': [-97.7906, 30.6500], '78634': [-97.5431, 30.5602],
+        '78640': [-97.8267, 30.0094], '78641': [-97.8533, 30.5872], '78642': [-97.7128, 30.6753],
+        '78644': [-97.7489, 29.8822], '78645': [-97.9208, 30.4833], '78646': [-97.6800, 30.5600],
+        '78652': [-97.8564, 30.1083], '78653': [-97.5253, 30.3169], '78654': [-98.2333, 30.6083],
+        '78660': [-97.6186, 30.4519], '78664': [-97.6786, 30.5108], '78665': [-97.7536, 30.5583],
+        '78669': [-97.9933, 30.3833], '78681': [-97.7969, 30.5342], '78701': [-97.7403, 30.2700],
+        '78702': [-97.7153, 30.2622], '78703': [-97.7611, 30.2928], '78704': [-97.7639, 30.2417],
+        '78705': [-97.7400, 30.2922], '78712': [-97.7372, 30.2850], '78717': [-97.7622, 30.4897],
+        '78719': [-97.6756, 30.1431], '78721': [-97.6944, 30.2664], '78722': [-97.7167, 30.2861],
+        '78723': [-97.6914, 30.3014], '78724': [-97.6328, 30.2914], '78725': [-97.6339, 30.2472],
+        '78726': [-97.8325, 30.4308], '78727': [-97.7658, 30.4272], '78728': [-97.6969, 30.4467],
+        '78729': [-97.8006, 30.4572], '78730': [-97.8192, 30.3669], '78731': [-97.7694, 30.3447],
+        '78732': [-97.8889, 30.3775], '78733': [-97.8597, 30.3164], '78734': [-97.9175, 30.3875],
+        '78735': [-97.8325, 30.2639], '78736': [-97.8786, 30.2342], '78737': [-97.9028, 30.1694],
+        '78738': [-97.9139, 30.2767], '78739': [-97.8519, 30.1933], '78741': [-97.7297, 30.2222],
+        '78742': [-97.6944, 30.2256], '78744': [-97.7361, 30.1750], '78745': [-97.7897, 30.2025],
+        '78746': [-97.8028, 30.2989], '78747': [-97.7556, 30.1239], '78748': [-97.8181, 30.1592],
+        '78749': [-97.8422, 30.2117], '78750': [-97.7900, 30.4011], '78751': [-97.7264, 30.3111],
+        '78752': [-97.7058, 30.3294], '78753': [-97.6767, 30.3783], '78754': [-97.6503, 30.3653],
+        '78756': [-97.7386, 30.3189], '78757': [-97.7342, 30.3528], '78758': [-97.7100, 30.3897],
+        '78759': [-97.7631, 30.3986],
+      };
+
+      const zipData = Object.entries(zipAggregates).map(([zip, count]) => {
+        const prices = zipPriceMap[zip] || [];
+        const doms = zipDomMap[zip] || [];
+        const coords = zipCoords[zip];
+        return {
+          zip,
+          count: typeof count === 'number' ? count : parseInt(count as string, 10) || 0,
+          medianPrice: median(prices),
+          avgDom: doms.length > 0 ? Math.round(doms.reduce((a, b) => a + b, 0) / doms.length) : 0,
+          lat: coords ? coords[1] : null,
+          lng: coords ? coords[0] : null,
+        };
+      }).filter(z => z.lat !== null);
+
+      console.log(`[Pulse Heatmap] Returning ${zipData.length} zip codes`);
+      res.json({ zipData, total: data.count || 0 });
+    } catch (error) {
+      console.error('[Pulse Heatmap] Error:', error);
+      res.status(500).json({ message: 'Failed to fetch heatmap data' });
+    }
+  });
+
+  // GET /api/pulse/zip/:zipCode — Detailed zip stats
+  app.get('/api/pulse/zip/:zipCode', isAuthenticated, async (req: any, res) => {
+    try {
+      const { zipCode } = req.params;
+      const headers = pulseHeaders();
+      const baseUrl = 'https://api.repliers.io/listings';
+
+      // Active listings in this zip
+      const activeUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&zip=${zipCode}&resultsPerPage=50&sortBy=listPriceDesc&fields=listPrice,daysOnMarket,livingArea,address,details,subdivision`;
+      // Closed last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const minSoldDate = thirtyDaysAgo.toISOString().split('T')[0];
+      const closedUrl = `${baseUrl}?listings=true&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate}&zip=${zipCode}&resultsPerPage=50&sortBy=lastStatusDesc`;
+
+      const [activeRes, closedRes] = await Promise.all([
+        fetch(activeUrl, { headers }),
+        fetch(closedUrl, { headers }),
+      ]);
+
+      const activeData = activeRes.ok ? await activeRes.json() : { listings: [], count: 0 };
+      const closedData = closedRes.ok ? await closedRes.json() : { listings: [], count: 0 };
+
+      const activeListings = activeData.listings || [];
+      const closedListings = closedData.listings || [];
+
+      // Calculate stats
+      const activePrices = activeListings.map((l: any) => l.listPrice).filter((p: any) => p > 0).sort((a: number, b: number) => a - b);
+      const medianPrice = activePrices.length > 0 ? activePrices[Math.floor(activePrices.length / 2)] : 0;
+
+      const sqfts = activeListings.map((l: any) => l.livingArea || l.sqft || l.details?.sqft || 0).filter((s: number) => s > 0);
+      const avgSqft = sqfts.length > 0 ? Math.round(sqfts.reduce((a: number, b: number) => a + b, 0) / sqfts.length) : 0;
+
+      const doms = activeListings.map((l: any) => l.daysOnMarket || l.dom || 0).filter((d: number) => d > 0);
+      const avgDom = doms.length > 0 ? Math.round(doms.reduce((a: number, b: number) => a + b, 0) / doms.length) : 0;
+
+      // Top subdivisions
+      const subdivisionCounts: Record<string, number> = {};
+      activeListings.forEach((l: any) => {
+        const sub = l.subdivision || l.area || 'Unknown';
+        subdivisionCounts[sub] = (subdivisionCounts[sub] || 0) + 1;
+      });
+      const topSubdivisions = Object.entries(subdivisionCounts)
+        .sort(([, a], [, b]) => (b as number) - (a as number))
+        .slice(0, 8)
+        .map(([name, count]) => ({ name, count }));
+
+      // Recent sales
+      const recentSales = closedListings.slice(0, 10).map((l: any) => {
+        const streetNumber = l.address?.streetNumber || '';
+        const streetName = l.address?.streetName || '';
+        const streetSuffix = l.address?.streetSuffix || '';
+        return {
+          address: [streetNumber, streetName, streetSuffix].filter(Boolean).join(' '),
+          soldPrice: l.soldPrice || l.closePrice || l.listPrice,
+          listPrice: l.listPrice,
+          beds: l.details?.numBedrooms || l.bedroomsTotal || 0,
+          baths: l.details?.numBathrooms || l.bathroomsTotalInteger || 0,
+          sqft: l.livingArea || l.sqft || l.details?.sqft || 0,
+          daysOnMarket: l.daysOnMarket || l.dom || 0,
+          closeDate: l.closeDate || l.soldDate,
+          mlsNumber: l.mlsNumber,
+        };
+      });
+
+      // Price per sqft
+      const ppsfs = activeListings
+        .filter((l: any) => l.listPrice > 0 && (l.livingArea || l.sqft || l.details?.sqft) > 0)
+        .map((l: any) => l.listPrice / (l.livingArea || l.sqft || l.details?.sqft));
+      const avgPricePerSqft = ppsfs.length > 0 ? Math.round(ppsfs.reduce((a: number, b: number) => a + b, 0) / ppsfs.length) : 0;
+
+      console.log(`[Pulse Zip] ${zipCode}: Active=${activeData.count}, Closed30d=${closedData.count}, MedianPrice=${medianPrice}`);
+
+      res.json({
+        zipCode,
+        activeCount: activeData.count || activeListings.length,
+        closedCount: closedData.count || closedListings.length,
+        medianPrice,
+        avgSqft,
+        avgDom,
+        avgPricePerSqft,
+        topSubdivisions,
+        recentSales,
+      });
+    } catch (error) {
+      console.error('[Pulse Zip] Error:', error);
+      res.status(500).json({ message: 'Failed to fetch zip data' });
+    }
+  });
+
+  // GET /api/pulse/trends — Market trends for last 6 months
+  app.get('/api/pulse/trends', isAuthenticated, async (_req: any, res) => {
+    try {
+      const headers = pulseHeaders();
+      const baseUrl = 'https://api.repliers.io/listings';
+      const countyParams = PULSE_MSA_COUNTIES.map(c => `county=${encodeURIComponent(c)}`).join('&');
+
+      const now = new Date();
+      const months: { label: string; startDate: string; endDate: string }[] = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+        months.push({
+          label: d.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
+          startDate: d.toISOString().split('T')[0],
+          endDate: end.toISOString().split('T')[0],
+        });
+      }
+
+      // Fetch closed sales per month (parallel)
+      const closedPromises = months.map(m => {
+        const url = `${baseUrl}?listings=true&type=Sale&status=U&lastStatus=Sld&minSoldDate=${m.startDate}&maxSoldDate=${m.endDate}&${countyParams}&resultsPerPage=100&fields=soldPrice,listPrice,daysOnMarket,livingArea`;
+        return fetch(url, { headers }).then(r => r.ok ? r.json() : { listings: [], count: 0 });
+      });
+
+      // Fetch active inventory per month (current snapshot for each — approximate with current)
+      // For simplicity, we'll use current active count and the closed data to compute trends
+      const activeUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active&${countyParams}`;
+      const activePromise = fetch(activeUrl, { headers }).then(r => r.ok ? r.json() : { count: 0 });
+
+      const [closedResults, activeData] = await Promise.all([
+        Promise.all(closedPromises),
+        activePromise,
+      ]);
+
+      const median = (arr: number[]) => {
+        if (!arr.length) return 0;
+        const sorted = [...arr].sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+      };
+
+      const trends = months.map((m, i) => {
+        const data = closedResults[i];
+        const listings = data.listings || [];
+        const count = data.count || listings.length;
+
+        const prices = listings.map((l: any) => l.soldPrice || l.closePrice || l.listPrice).filter((p: any) => p > 0);
+        const doms = listings.map((l: any) => l.daysOnMarket || l.dom || 0).filter((d: number) => d > 0);
+
+        return {
+          month: m.label,
+          closedCount: count,
+          medianPrice: median(prices),
+          avgDom: doms.length > 0 ? Math.round(doms.reduce((a: number, b: number) => a + b, 0) / doms.length) : 0,
+          activeInventory: i === months.length - 1 ? (activeData.count || 0) : null,
+        };
+      });
+
+      console.log(`[Pulse Trends] Returning ${trends.length} months of data`);
+      res.json({ trends });
+    } catch (error) {
+      console.error('[Pulse Trends] Error:', error);
+      res.status(500).json({ message: 'Failed to fetch trends data' });
+    }
+  });
+
+  // GET /api/pulse/compare — Compare zip codes
+  app.get('/api/pulse/compare', isAuthenticated, async (req: any, res) => {
+    try {
+      const zipsParam = (req.query.zips as string) || '';
+      const zips = zipsParam.split(',').map((z: string) => z.trim()).filter(Boolean);
+
+      if (zips.length === 0) {
+        return res.status(400).json({ message: 'Please provide zip codes via ?zips=78704,78745' });
+      }
+      if (zips.length > 5) {
+        return res.status(400).json({ message: 'Maximum 5 zip codes for comparison' });
+      }
+
+      const headers = pulseHeaders();
+      const baseUrl = 'https://api.repliers.io/listings';
+
+      const results = await Promise.all(zips.map(async (zip: string) => {
+        const activeUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&zip=${zip}&resultsPerPage=50&fields=listPrice,daysOnMarket,livingArea`;
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const closedUrl = `${baseUrl}?listings=false&type=Sale&status=U&lastStatus=Sld&minSoldDate=${thirtyDaysAgo.toISOString().split('T')[0]}&zip=${zip}`;
+
+        const [activeRes, closedRes] = await Promise.all([
+          fetch(activeUrl, { headers }),
+          fetch(closedUrl, { headers }),
+        ]);
+
+        const activeData = activeRes.ok ? await activeRes.json() : { listings: [], count: 0 };
+        const closedData = closedRes.ok ? await closedRes.json() : { count: 0 };
+
+        const listings = activeData.listings || [];
+        const prices = listings.map((l: any) => l.listPrice).filter((p: any) => p > 0).sort((a: number, b: number) => a - b);
+        const medianPrice = prices.length > 0 ? prices[Math.floor(prices.length / 2)] : 0;
+        const doms = listings.map((l: any) => l.daysOnMarket || l.dom || 0).filter((d: number) => d > 0);
+        const avgDom = doms.length > 0 ? Math.round(doms.reduce((a: number, b: number) => a + b, 0) / doms.length) : 0;
+        const ppsfs = listings
+          .filter((l: any) => l.listPrice > 0 && (l.livingArea || l.sqft) > 0)
+          .map((l: any) => l.listPrice / (l.livingArea || l.sqft));
+        const avgPricePerSqft = ppsfs.length > 0 ? Math.round(ppsfs.reduce((a: number, b: number) => a + b, 0) / ppsfs.length) : 0;
+
+        return {
+          zip,
+          activeCount: activeData.count || listings.length,
+          closedLast30: closedData.count || 0,
+          medianPrice,
+          avgDom,
+          avgPricePerSqft,
+        };
+      }));
+
+      console.log(`[Pulse Compare] Compared ${zips.length} zip codes`);
+      res.json({ comparisons: results });
+    } catch (error) {
+      console.error('[Pulse Compare] Error:', error);
+      res.status(500).json({ message: 'Failed to compare zip codes' });
+    }
+  });
+
   return httpServer;
 }

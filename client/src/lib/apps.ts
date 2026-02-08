@@ -22,7 +22,8 @@ import {
   TrendingUp,
   Settings,
   GraduationCap,
-  FileBarChart
+  FileBarChart,
+  Activity
 } from "lucide-react";
 
 export type AppConnectionType = 
@@ -209,6 +210,7 @@ export const navItems = [
   { label: "Leads", icon: Users, href: "/leads" },
   { label: "Properties", icon: Building2, href: "/properties" },
   { label: "CMA", icon: FileBarChart, href: "/cma" },
+  { label: "Pulse", icon: Activity, href: "/pulse" },
   { label: "Marketing", icon: Megaphone, href: "/marketing" },
   { label: "Marketing Calendar", icon: CalendarDays, href: "/marketing-calendar" },
   { label: "Training", icon: GraduationCap, href: "/training" },
