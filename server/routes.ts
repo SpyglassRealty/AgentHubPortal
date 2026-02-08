@@ -2935,7 +2935,7 @@ Respond with valid JSON in this exact format:
   // PULSE - Market Intelligence Endpoints
   // =============================================================
 
-  const PULSE_MSA_COUNTIES = ['Travis', 'Williamson', 'Hays', 'Bastrop', 'Caldwell'];
+  const PULSE_MSA_AREAS = ['Travis', 'Williamson', 'Hays', 'Bastrop', 'Caldwell'];
 
   const pulseHeaders = () => {
     const apiKey = process.env.IDX_GRID_API_KEY;
@@ -2952,39 +2952,46 @@ Respond with valid JSON in this exact format:
       const headers = pulseHeaders();
       const baseUrl = 'https://api.repliers.io/listings';
 
-      // Build shared county params
-      const countyParams = PULSE_MSA_COUNTIES.map(c => `county=${encodeURIComponent(c)}`).join('&');
+      // Build shared area params (Repliers uses 'area' not 'county')
+      const areaParams = PULSE_MSA_AREAS.map(a => `area=${encodeURIComponent(a)}`).join('&');
 
       // Active listings count + aggregates for median price
-      const activeUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active&${countyParams}`;
+      const activeUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active&${areaParams}`;
       // Pending
-      const pendingUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Pending&${countyParams}`;
+      const pendingUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Pending&${areaParams}`;
       // Active Under Contract
-      const aucUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active%20Under%20Contract&${countyParams}`;
+      const aucUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active%20Under%20Contract&${areaParams}`;
 
       // Closed last 30 days
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const minSoldDate = thirtyDaysAgo.toISOString().split('T')[0];
-      const closedUrl = `${baseUrl}?listings=false&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate}&${countyParams}`;
+      const closedUrl = `${baseUrl}?listings=false&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate}&${areaParams}`;
+
+      // Closed last 90 days (for more accurate absorption rate)
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+      const minSoldDate90 = ninetyDaysAgo.toISOString().split('T')[0];
+      const closed90Url = `${baseUrl}?listings=false&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate90}&${areaParams}`;
 
       // New last 7 days
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const minListDate7 = sevenDaysAgo.toISOString().split('T')[0];
-      const newUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active&minListDate=${minListDate7}&${countyParams}`;
+      const newUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active&minListDate=${minListDate7}&${areaParams}`;
 
       // Get a sample of active listings for DOM + price stats
-      const sampleUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=100&sortBy=createdOnDesc&${countyParams}&fields=listPrice,daysOnMarket,livingArea`;
+      const sampleUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=100&sortBy=createdOnDesc&${areaParams}&fields=listPrice,daysOnMarket,details`;
 
       // Closed last 30d sample for sold stats
-      const closedSampleUrl = `${baseUrl}?listings=true&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate}&resultsPerPage=100&sortBy=lastStatusDesc&${countyParams}&fields=soldPrice,listPrice,daysOnMarket,livingArea`;
+      const closedSampleUrl = `${baseUrl}?listings=true&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate}&resultsPerPage=100&sortBy=lastStatusDesc&${areaParams}&fields=soldPrice,listPrice,daysOnMarket,details`;
 
-      const [activeRes, pendingRes, aucRes, closedRes, newRes, sampleRes, closedSampleRes] = await Promise.all([
+      const [activeRes, pendingRes, aucRes, closedRes, closed90Res, newRes, sampleRes, closedSampleRes] = await Promise.all([
         fetch(activeUrl, { headers }),
         fetch(pendingUrl, { headers }),
         fetch(aucUrl, { headers }),
         fetch(closedUrl, { headers }),
+        fetch(closed90Url, { headers }),
         fetch(newUrl, { headers }),
         fetch(sampleUrl, { headers }),
         fetch(closedSampleUrl, { headers }),
@@ -2994,6 +3001,7 @@ Respond with valid JSON in this exact format:
       const pendingData = pendingRes.ok ? await pendingRes.json() : { count: 0 };
       const aucData = aucRes.ok ? await aucRes.json() : { count: 0 };
       const closedData = closedRes.ok ? await closedRes.json() : { count: 0 };
+      const closed90Data = closed90Res.ok ? await closed90Res.json() : { count: 0 };
       const newData = newRes.ok ? await newRes.json() : { count: 0 };
       const sampleData = sampleRes.ok ? await sampleRes.json() : { listings: [] };
       const closedSampleData = closedSampleRes.ok ? await closedSampleRes.json() : { listings: [] };
@@ -3012,16 +3020,23 @@ Respond with valid JSON in this exact format:
         .filter((d: number) => d > 0);
       const avgDom = doms.length > 0 ? Math.round(doms.reduce((a: number, b: number) => a + b, 0) / doms.length) : 0;
 
-      // Price per sqft from sample
+      // Price per sqft from sample — Repliers uses details.sqft (string)
       const ppsfs = (sampleData.listings || [])
-        .filter((l: any) => l.listPrice > 0 && (l.livingArea || l.sqft || (l.details && l.details.sqft)) > 0)
-        .map((l: any) => l.listPrice / (l.livingArea || l.sqft || l.details?.sqft));
+        .map((l: any) => {
+          const sqft = parseFloat(l.details?.sqft) || 0;
+          return { price: l.listPrice, sqft };
+        })
+        .filter((l: any) => l.price > 0 && l.sqft > 0)
+        .map((l: any) => l.price / l.sqft);
       const avgPricePerSqft = ppsfs.length > 0 ? Math.round(ppsfs.reduce((a: number, b: number) => a + b, 0) / ppsfs.length) : 0;
 
-      // Months of supply = active / (closed30d) * 1 month
+      // Months of supply = active / monthly_absorption
+      // Use 90-day closed / 3 for more stable absorption rate (30d data can lag)
       const activeCount = activeData.count || 0;
       const closedCount = closedData.count || 0;
-      const monthsOfSupply = closedCount > 0 ? parseFloat((activeCount / closedCount).toFixed(1)) : 0;
+      const closed90Count = closed90Data.count || 0;
+      const monthlyAbsorption = closed90Count > 0 ? closed90Count / 3 : closedCount;
+      const monthsOfSupply = monthlyAbsorption > 0 ? parseFloat((activeCount / monthlyAbsorption).toFixed(1)) : 0;
 
       // Closed sample stats
       const closedPrices = (closedSampleData.listings || [])
@@ -3030,7 +3045,7 @@ Respond with valid JSON in this exact format:
         .sort((a: number, b: number) => a - b);
       const medianSoldPrice = closedPrices.length > 0 ? closedPrices[Math.floor(closedPrices.length / 2)] : 0;
 
-      console.log(`[Pulse Overview] Active: ${activeCount}, Pending: ${pendingData.count}, Closed(30d): ${closedCount}, New(7d): ${newData.count}, MedianPrice: ${medianPrice}, AvgDOM: ${avgDom}`);
+      console.log(`[Pulse Overview] Active: ${activeCount}, Pending: ${pendingData.count}, Closed(30d): ${closedCount}, Closed(90d): ${closed90Count}, MonthlyAbsorption: ${Math.round(monthlyAbsorption)}, MOS: ${monthsOfSupply}, New(7d): ${newData.count}, MedianPrice: ${medianPrice}, AvgDOM: ${avgDom}, AvgPPSF: ${avgPricePerSqft}`);
 
       res.json({
         totalActive: activeCount,
@@ -3056,10 +3071,10 @@ Respond with valid JSON in this exact format:
     try {
       const headers = pulseHeaders();
       const baseUrl = 'https://api.repliers.io/listings';
-      const countyParams = PULSE_MSA_COUNTIES.map(c => `county=${encodeURIComponent(c)}`).join('&');
+      const areaParams = PULSE_MSA_AREAS.map(a => `area=${encodeURIComponent(a)}`).join('&');
 
-      // Active listings aggregated by zip
-      const url = `${baseUrl}?aggregates=zip&listings=false&type=Sale&standardStatus=Active&${countyParams}`;
+      // Active listings aggregated by zip (Repliers uses address.zip path)
+      const url = `${baseUrl}?aggregates=address.zip&listings=false&type=Sale&standardStatus=Active&${areaParams}`;
       console.log(`[Pulse Heatmap] Fetching: ${url}`);
 
       const response = await fetch(url, { headers });
@@ -3070,10 +3085,11 @@ Respond with valid JSON in this exact format:
       }
 
       const data = await response.json();
-      const zipAggregates = data.aggregates?.zip || {};
+      // Repliers nests aggregates under address.zip path
+      const zipAggregates = data.aggregates?.address?.zip || data.aggregates?.zip || {};
 
       // Also get a batch of listings with prices to compute medians per zip
-      const priceUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=200&sortBy=createdOnDesc&${countyParams}&fields=listPrice,address,daysOnMarket,livingArea`;
+      const priceUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=200&sortBy=createdOnDesc&${areaParams}&fields=listPrice,address,daysOnMarket,details`;
       const priceRes = await fetch(priceUrl, { headers });
       const priceData = priceRes.ok ? await priceRes.json() : { listings: [] };
 
@@ -3180,7 +3196,7 @@ Respond with valid JSON in this exact format:
       const activePrices = activeListings.map((l: any) => l.listPrice).filter((p: any) => p > 0).sort((a: number, b: number) => a - b);
       const medianPrice = activePrices.length > 0 ? activePrices[Math.floor(activePrices.length / 2)] : 0;
 
-      const sqfts = activeListings.map((l: any) => l.livingArea || l.sqft || l.details?.sqft || 0).filter((s: number) => s > 0);
+      const sqfts = activeListings.map((l: any) => parseFloat(l.details?.sqft) || 0).filter((s: number) => s > 0);
       const avgSqft = sqfts.length > 0 ? Math.round(sqfts.reduce((a: number, b: number) => a + b, 0) / sqfts.length) : 0;
 
       const doms = activeListings.map((l: any) => l.daysOnMarket || l.dom || 0).filter((d: number) => d > 0);
@@ -3208,17 +3224,18 @@ Respond with valid JSON in this exact format:
           listPrice: l.listPrice,
           beds: l.details?.numBedrooms || l.bedroomsTotal || 0,
           baths: l.details?.numBathrooms || l.bathroomsTotalInteger || 0,
-          sqft: l.livingArea || l.sqft || l.details?.sqft || 0,
-          daysOnMarket: l.daysOnMarket || l.dom || 0,
-          closeDate: l.closeDate || l.soldDate,
+          sqft: parseFloat(l.details?.sqft) || 0,
+          daysOnMarket: l.daysOnMarket || 0,
+          closeDate: l.soldDate || l.closeDate,
           mlsNumber: l.mlsNumber,
         };
       });
 
       // Price per sqft
       const ppsfs = activeListings
-        .filter((l: any) => l.listPrice > 0 && (l.livingArea || l.sqft || l.details?.sqft) > 0)
-        .map((l: any) => l.listPrice / (l.livingArea || l.sqft || l.details?.sqft));
+        .map((l: any) => ({ price: l.listPrice, sqft: parseFloat(l.details?.sqft) || 0 }))
+        .filter((l: any) => l.price > 0 && l.sqft > 0)
+        .map((l: any) => l.price / l.sqft);
       const avgPricePerSqft = ppsfs.length > 0 ? Math.round(ppsfs.reduce((a: number, b: number) => a + b, 0) / ppsfs.length) : 0;
 
       console.log(`[Pulse Zip] ${zipCode}: Active=${activeData.count}, Closed30d=${closedData.count}, MedianPrice=${medianPrice}`);
@@ -3245,7 +3262,7 @@ Respond with valid JSON in this exact format:
     try {
       const headers = pulseHeaders();
       const baseUrl = 'https://api.repliers.io/listings';
-      const countyParams = PULSE_MSA_COUNTIES.map(c => `county=${encodeURIComponent(c)}`).join('&');
+      const areaParams = PULSE_MSA_AREAS.map(a => `area=${encodeURIComponent(a)}`).join('&');
 
       const now = new Date();
       const months: { label: string; startDate: string; endDate: string }[] = [];
@@ -3261,13 +3278,13 @@ Respond with valid JSON in this exact format:
 
       // Fetch closed sales per month (parallel)
       const closedPromises = months.map(m => {
-        const url = `${baseUrl}?listings=true&type=Sale&status=U&lastStatus=Sld&minSoldDate=${m.startDate}&maxSoldDate=${m.endDate}&${countyParams}&resultsPerPage=100&fields=soldPrice,listPrice,daysOnMarket,livingArea`;
+        const url = `${baseUrl}?listings=true&type=Sale&status=U&lastStatus=Sld&minSoldDate=${m.startDate}&maxSoldDate=${m.endDate}&${areaParams}&resultsPerPage=100&fields=soldPrice,listPrice,daysOnMarket`;
         return fetch(url, { headers }).then(r => r.ok ? r.json() : { listings: [], count: 0 });
       });
 
       // Fetch active inventory per month (current snapshot for each — approximate with current)
       // For simplicity, we'll use current active count and the closed data to compute trends
-      const activeUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active&${countyParams}`;
+      const activeUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active&${areaParams}`;
       const activePromise = fetch(activeUrl, { headers }).then(r => r.ok ? r.json() : { count: 0 });
 
       const [closedResults, activeData] = await Promise.all([
@@ -3324,7 +3341,7 @@ Respond with valid JSON in this exact format:
       const baseUrl = 'https://api.repliers.io/listings';
 
       const results = await Promise.all(zips.map(async (zip: string) => {
-        const activeUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&zip=${zip}&resultsPerPage=50&fields=listPrice,daysOnMarket,livingArea`;
+        const activeUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&zip=${zip}&resultsPerPage=50&fields=listPrice,daysOnMarket,details`;
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const closedUrl = `${baseUrl}?listings=false&type=Sale&status=U&lastStatus=Sld&minSoldDate=${thirtyDaysAgo.toISOString().split('T')[0]}&zip=${zip}`;
@@ -3343,8 +3360,9 @@ Respond with valid JSON in this exact format:
         const doms = listings.map((l: any) => l.daysOnMarket || l.dom || 0).filter((d: number) => d > 0);
         const avgDom = doms.length > 0 ? Math.round(doms.reduce((a: number, b: number) => a + b, 0) / doms.length) : 0;
         const ppsfs = listings
-          .filter((l: any) => l.listPrice > 0 && (l.livingArea || l.sqft) > 0)
-          .map((l: any) => l.listPrice / (l.livingArea || l.sqft));
+          .map((l: any) => ({ price: l.listPrice, sqft: parseFloat(l.details?.sqft) || 0 }))
+          .filter((l: any) => l.price > 0 && l.sqft > 0)
+          .map((l: any) => l.price / l.sqft);
         const avgPricePerSqft = ppsfs.length > 0 ? Math.round(ppsfs.reduce((a: number, b: number) => a + b, 0) / ppsfs.length) : 0;
 
         return {
