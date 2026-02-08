@@ -1298,18 +1298,28 @@ function SearchPropertiesSection({
             <TabsContent value="criteria">
               {filtersExpanded && (
                 <div className="space-y-4">
-                  {/* Address search */}
-                  <div>
-                    <Label className="text-xs font-medium text-muted-foreground">Address / MLS# Search</Label>
-                    <Input
-                      placeholder="Enter address or MLS number..."
-                      value={filters.search}
-                      onChange={(e) => updateFilter("search", e.target.value)}
-                    />
+                  {/* Address / Listing ID search */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">Address / MLS# Search</Label>
+                      <Input
+                        placeholder="Enter address or MLS number..."
+                        value={filters.search}
+                        onChange={(e) => updateFilter("search", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">Listing ID</Label>
+                      <Input
+                        placeholder="MLS Listing ID (e.g., ACT1234567)"
+                        value={filters.listingId}
+                        onChange={(e) => updateFilter("listingId", e.target.value)}
+                      />
+                    </div>
                   </div>
 
                   {/* Location filters */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     <div>
                       <Label className="text-xs font-medium text-muted-foreground">City</Label>
                       <Input
@@ -1318,6 +1328,24 @@ function SearchPropertiesSection({
                         onChange={(e) => updateFilter("city", e.target.value)}
                       />
                     </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">County</Label>
+                      <Input
+                        placeholder="e.g., Travis, Williamson"
+                        value={filters.county}
+                        onChange={(e) => updateFilter("county", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">Area</Label>
+                      <Input
+                        placeholder="MLS area (e.g., Travis)"
+                        value={filters.area}
+                        onChange={(e) => updateFilter("area", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div>
                       <Label className="text-xs font-medium text-muted-foreground">Subdivision</Label>
                       <Input
@@ -1372,7 +1400,7 @@ function SearchPropertiesSection({
                     </div>
                   </div>
 
-                  {/* Property details */}
+                  {/* Beds, Baths & Price */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div>
                       <Label className="text-xs font-medium text-muted-foreground">
@@ -1396,7 +1424,7 @@ function SearchPropertiesSection({
                     </div>
                     <div>
                       <Label className="text-xs font-medium text-muted-foreground">
-                        Min Baths
+                        Min Baths (Total)
                       </Label>
                       <Select
                         value={filters.minBaths || "any"}
@@ -1415,6 +1443,26 @@ function SearchPropertiesSection({
                       </Select>
                     </div>
                     <div>
+                      <Label className="text-xs font-medium text-muted-foreground"># Full Baths</Label>
+                      <Input
+                        type="number"
+                        placeholder="Min full baths"
+                        value={filters.fullBaths}
+                        onChange={(e) => updateFilter("fullBaths", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground"># Half Baths</Label>
+                      <Input
+                        type="number"
+                        placeholder="Min half baths"
+                        value={filters.halfBaths}
+                        onChange={(e) => updateFilter("halfBaths", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
                       <Label className="text-xs font-medium text-muted-foreground">Min Price</Label>
                       <Input
                         type="number"
@@ -1431,6 +1479,22 @@ function SearchPropertiesSection({
                         value={filters.maxPrice}
                         onChange={(e) => updateFilter("maxPrice", e.target.value)}
                       />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">Primary Bed on Main</Label>
+                      <Select
+                        value={filters.primaryBedOnMain || "any"}
+                        onValueChange={(v) => updateFilter("primaryBedOnMain", v === "any" ? "" : v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Any" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="any">Any</SelectItem>
+                          <SelectItem value="yes">Yes</SelectItem>
+                          <SelectItem value="no">No</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
@@ -1536,9 +1600,9 @@ function SearchPropertiesSection({
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Stories</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">Stories / Levels</Label>
                       <Input
                         type="number"
                         placeholder="Stories"
@@ -1563,6 +1627,78 @@ function SearchPropertiesSection({
                         value={filters.maxYearBuilt}
                         onChange={(e) => updateFilter("maxYearBuilt", e.target.value)}
                       />
+                    </div>
+                  </div>
+
+                  {/* Garage, Parking, Pool, Waterfront, HOA */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground"># Garage Spaces</Label>
+                      <Input
+                        type="number"
+                        placeholder="Min garage"
+                        value={filters.garageSpaces}
+                        onChange={(e) => updateFilter("garageSpaces", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">Total Parking Spaces</Label>
+                      <Input
+                        type="number"
+                        placeholder="Min parking"
+                        value={filters.parkingSpaces}
+                        onChange={(e) => updateFilter("parkingSpaces", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">Private Pool?</Label>
+                      <Select
+                        value={filters.privatePool || "any"}
+                        onValueChange={(v) => updateFilter("privatePool", v === "any" ? "" : v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Any" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="any">Any</SelectItem>
+                          <SelectItem value="yes">Yes</SelectItem>
+                          <SelectItem value="no">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">Waterfront?</Label>
+                      <Select
+                        value={filters.waterfront || "any"}
+                        onValueChange={(v) => updateFilter("waterfront", v === "any" ? "" : v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Any" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="any">Any</SelectItem>
+                          <SelectItem value="yes">Yes</SelectItem>
+                          <SelectItem value="no">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">HOA?</Label>
+                      <Select
+                        value={filters.hoa || "any"}
+                        onValueChange={(v) => updateFilter("hoa", v === "any" ? "" : v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Any" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="any">Any</SelectItem>
+                          <SelectItem value="yes">Yes</SelectItem>
+                          <SelectItem value="no">No</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
