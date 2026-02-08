@@ -156,18 +156,15 @@ export default function PulseMap({
           }
         });
 
-        el.addEventListener("click", (e) => {
+        // Use pointerup instead of click — Mapbox Marker can swallow click events
+        el.addEventListener("pointerup", (e) => {
           e.stopPropagation();
-          e.preventDefault();
           onZipSelect(item.zip);
         });
+        el.style.pointerEvents = "auto";
+        el.style.cursor = "pointer";
 
-        // Prevent drag/move on marker
-        el.addEventListener("mousedown", (e) => {
-          e.stopPropagation();
-        });
-
-        const marker = new mapboxgl.Marker({ element: el, draggable: false })
+        const marker = new mapboxgl.Marker({ element: el, draggable: false, anchor: "center" })
           .setLngLat([item.lng, item.lat])
           .addTo(map);
         markersRef.current.push(marker);
