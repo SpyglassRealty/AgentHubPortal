@@ -1868,6 +1868,9 @@ export default function CmaBuilderPage() {
     }
   }, [existingCma]);
 
+  // Track post-save navigation target
+  const [postSaveRedirect, setPostSaveRedirect] = useState<string | null>(null);
+
   // Save mutation
   const saveMutation = useMutation({
     mutationFn: async (data: CmaData) => {
@@ -1881,12 +1884,20 @@ export default function CmaBuilderPage() {
       const saved = await res.json();
       queryClient.invalidateQueries({ queryKey: ["/api/cma"] });
       setHasUnsavedChanges(false);
-      toast({ title: "CMA saved successfully" });
-      if (isNew && saved.id) {
-        setLocation(`/cma/${saved.id}`);
+      const savedId = saved.id || cmaId;
+      if (postSaveRedirect) {
+        const target = postSaveRedirect.replace(':id', savedId);
+        setPostSaveRedirect(null);
+        setLocation(target);
+      } else {
+        toast({ title: "CMA saved successfully" });
+        if (isNew && savedId) {
+          setLocation(`/cma/${savedId}`);
+        }
       }
     },
     onError: () => {
+      setPostSaveRedirect(null);
       toast({ title: "Failed to save CMA", variant: "destructive" });
     },
   });
@@ -1900,6 +1911,24 @@ export default function CmaBuilderPage() {
       toast({ title: "Subject Property is required", description: "Please set a subject property before saving.", variant: "destructive" });
       return;
     }
+    saveMutation.mutate(cma);
+  };
+
+  const handleGenerateReport = () => {
+    if (!cma.name.trim()) {
+      toast({ title: "CMA Name is required", description: "Please enter a name before generating a report.", variant: "destructive" });
+      return;
+    }
+    if (!cma.subjectProperty) {
+      toast({ title: "Subject Property is required", description: "Please set a subject property before generating a report.", variant: "destructive" });
+      return;
+    }
+    if (cma.comparableProperties.length === 0) {
+      toast({ title: "No comparables", description: "Add at least one comparable property before generating a report.", variant: "destructive" });
+      return;
+    }
+    // Save first, then navigate to presentation
+    setPostSaveRedirect('/cma/:id/presentation');
     saveMutation.mutate(cma);
   };
 
@@ -1967,21 +1996,24 @@ export default function CmaBuilderPage() {
                 Unsaved changes
               </Badge>
             )}
-            {!isNew && (
-              <Button
-                variant="outline"
-                onClick={() => setLocation(`/cma/${cmaId}/presentation`)}
-              >
+            <Button
+              variant="outline"
+              onClick={handleGenerateReport}
+              disabled={saveMutation.isPending || cma.comparableProperties.length === 0}
+            >
+              {saveMutation.isPending && postSaveRedirect ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
                 <FileText className="h-4 w-4 mr-2" />
-                Presentation
-              </Button>
-            )}
+              )}
+              Generate Report
+            </Button>
             <Button
               className="bg-[#EF4923] hover:bg-[#d4401f] text-white"
               onClick={handleSave}
               disabled={saveMutation.isPending}
             >
-              {saveMutation.isPending ? (
+              {saveMutation.isPending && !postSaveRedirect ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
                 <Save className="h-4 w-4 mr-2" />
