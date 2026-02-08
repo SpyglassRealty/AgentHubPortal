@@ -2397,25 +2397,66 @@ Respond with valid JSON in this exact format:
       if (city) params.append('city', city);
       if (zip) params.append('zip', zip);
       
-      // Subdivision: try exact neighborhood match, then try common variations
+      // Subdivision: discover all matching neighborhood names via a broad city search,
+      // then pass them all as multiple neighborhood params (OR logic).
+      // MLS stores subdivisions with section/phase suffixes like "Circle C Ranch Ph A Sec 04"
+      // so searching for just "Circle C" or even "Circle C Ranch" misses most listings.
       if (subdivision) {
-        // First check if exact match returns results
-        const testParams = new URLSearchParams({ neighborhood: subdivision, type: 'Sale', resultsPerPage: '1', listings: 'true' });
-        let foundMatch = false;
+        const subdivLower = subdivision.toLowerCase().trim();
+        let matchedNeighborhoods: string[] = [];
+
+        // Step 1: Check if exact match returns results
         try {
+          const testParams = new URLSearchParams({ neighborhood: subdivision, type: 'Sale', resultsPerPage: '1', listings: 'true' });
           const testRes = await fetch(`${baseUrl}?${testParams.toString()}`, {
             headers: { 'Accept': 'application/json', 'REPLIERS-API-KEY': apiKey }
           });
           const testData = await testRes.json();
           if ((testData.count || 0) > 0) {
-            params.append('neighborhood', subdivision);
-            foundMatch = true;
+            matchedNeighborhoods.push(subdivision);
             console.log(`[CMA Search] Subdivision "${subdivision}" exact match: ${testData.count} results`);
           }
-        } catch { /* continue to fuzzy */ }
-        
-        if (!foundMatch) {
-          // Try common MLS naming patterns: "X Ranch", "X Sec", "X Ph", etc.
+        } catch { /* continue */ }
+
+        // Step 2: Discovery - search the city (or broad area) to find ALL neighborhood names
+        // that contain the user's subdivision text, including section/phase variants
+        const discoveryCity = city || 'Austin'; // default to Austin if no city specified
+        try {
+          const discoverParams = new URLSearchParams({
+            city: discoveryCity,
+            type: 'Sale',
+            resultsPerPage: '200',
+            listings: 'true',
+          });
+          const discoverRes = await fetch(`${baseUrl}?${discoverParams.toString()}`, {
+            headers: { 'Accept': 'application/json', 'REPLIERS-API-KEY': apiKey }
+          });
+          const discoverData = await discoverRes.json();
+          const allNeighborhoods: string[] = (discoverData.listings || [])
+            .map((l: any) => l.address?.neighborhood)
+            .filter(Boolean);
+
+          // Find unique neighborhoods that contain the subdivision text (case-insensitive)
+          const uniqueNeighborhoods = [...new Set(allNeighborhoods)];
+          const matching = uniqueNeighborhoods.filter((n: string) =>
+            n.toLowerCase().includes(subdivLower)
+          );
+
+          if (matching.length > 0) {
+            // Add any we haven't already found
+            for (const m of matching) {
+              if (!matchedNeighborhoods.some(mn => mn.toLowerCase() === m.toLowerCase())) {
+                matchedNeighborhoods.push(m);
+              }
+            }
+            console.log(`[CMA Search] Discovery found ${matching.length} neighborhoods matching "${subdivision}": ${matching.join(', ')}`);
+          }
+        } catch (err) {
+          console.error(`[CMA Search] Discovery search failed:`, err);
+        }
+
+        // Step 3: If discovery didn't find enough, try common MLS naming patterns directly
+        if (matchedNeighborhoods.length === 0) {
           const variations = [
             `${subdivision} Ranch`, `${subdivision} Sec`, `${subdivision} Phase`,
             `${subdivision} Add`, `${subdivision} Sub`, `${subdivision} Estates`,
@@ -2428,18 +2469,24 @@ Respond with valid JSON in this exact format:
               });
               const varData = await varRes.json();
               if ((varData.count || 0) > 0) {
-                params.append('neighborhood', variant);
-                foundMatch = true;
-                console.log(`[CMA Search] Subdivision "${subdivision}" -> matched variation "${variant}": ${varData.count} results`);
-                break;
+                matchedNeighborhoods.push(variant);
+                console.log(`[CMA Search] Variation match: "${variant}" (${varData.count} results)`);
+                break; // just need one to get started
               }
             } catch { /* try next */ }
           }
-          if (!foundMatch) {
-            // Last resort: use as-is
-            params.append('neighborhood', subdivision);
-            console.log(`[CMA Search] Subdivision "${subdivision}" no match found, using as-is`);
+        }
+
+        // Apply neighborhoods to search params
+        if (matchedNeighborhoods.length > 0) {
+          for (const n of matchedNeighborhoods) {
+            params.append('neighborhood', n);
           }
+          console.log(`[CMA Search] Using ${matchedNeighborhoods.length} neighborhood(s) for "${subdivision}"`);
+        } else {
+          // Last resort: use as-is
+          params.append('neighborhood', subdivision);
+          console.log(`[CMA Search] No matches found for "${subdivision}", using as-is`);
         }
       }
 
@@ -2596,13 +2643,13 @@ Respond with valid JSON in this exact format:
         // Only active statuses
         statusArray.forEach(s => params.append('standardStatus', s));
       } else {
-        // Mix of active and closed - for now prioritize active statuses
-        // In a future iteration, we could make two API calls and merge results
+        // Mix of active and closed - search active statuses first, then merge closed results after
         const activeStatuses = statusArray.filter(s => s !== 'Closed');
-        if (activeStatuses.length > 0) {
-          activeStatuses.forEach(s => params.append('standardStatus', s));
-        }
+        activeStatuses.forEach(s => params.append('standardStatus', s));
       }
+
+      // Flag for merged search (active + closed)
+      const needsMergedSearch = hasClosed && (hasActive || hasAUC);
 
       const fullUrl = `${baseUrl}?${params.toString()}`;
       console.log(`[CMA Search] Searching properties: ${fullUrl}`);
@@ -2662,7 +2709,63 @@ Respond with valid JSON in this exact format:
         return res.status(502).json({ message: "Failed to search properties" });
       }
 
-      const data = await response.json();
+      let data = await response.json();
+
+      // If we need merged search (active + closed), make a second API call for closed listings
+      if (needsMergedSearch) {
+        try {
+          // Build closed-specific params from the same base (remove standardStatus, add closed filters)
+          const closedParams = new URLSearchParams(params.toString());
+          // Remove all standardStatus params
+          closedParams.delete('standardStatus');
+          closedParams.set('status', 'U');
+          closedParams.set('lastStatus', 'Sld');
+          const soldDays = dateSoldDays ? parseInt(dateSoldDays.toString(), 10) : 180;
+          const minDate = new Date();
+          minDate.setDate(minDate.getDate() - soldDays);
+          closedParams.set('minSoldDate', minDate.toISOString().split('T')[0]);
+
+          const closedUrl = `${baseUrl}?${closedParams.toString()}`;
+          console.log(`[CMA Search] Also fetching closed: ${closedUrl}`);
+
+          let closedResponse: Response;
+          if (polygon && Array.isArray(polygon) && polygon.length >= 3) {
+            const polyCoords = [...polygon];
+            const first = polyCoords[0];
+            const last = polyCoords[polyCoords.length - 1];
+            if (first[0] !== last[0] || first[1] !== last[1]) polyCoords.push(first);
+            closedResponse = await fetch(closedUrl, {
+              method: 'POST',
+              headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'REPLIERS-API-KEY': apiKey },
+              body: JSON.stringify({ map: [polyCoords] }),
+            });
+          } else if (mapBounds && mapBounds.sw && mapBounds.ne) {
+            const { sw, ne } = mapBounds;
+            const boundsPolygon = [[sw.lng, sw.lat], [ne.lng, sw.lat], [ne.lng, ne.lat], [sw.lng, ne.lat], [sw.lng, sw.lat]];
+            closedResponse = await fetch(closedUrl, {
+              method: 'POST',
+              headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'REPLIERS-API-KEY': apiKey },
+              body: JSON.stringify({ map: [boundsPolygon] }),
+            });
+          } else {
+            closedResponse = await fetch(closedUrl, {
+              headers: { 'Accept': 'application/json', 'REPLIERS-API-KEY': apiKey }
+            });
+          }
+
+          if (closedResponse.ok) {
+            const closedData = await closedResponse.json();
+            const closedListings = closedData.listings || [];
+            console.log(`[CMA Search] Closed results: ${closedListings.length} of ${closedData.count || 0}`);
+            // Merge closed listings into main data
+            data.listings = [...(data.listings || []), ...closedListings];
+            data.count = (data.count || 0) + (closedData.count || 0);
+          }
+        } catch (err) {
+          console.error('[CMA Search] Error fetching closed listings:', err);
+          // Continue with just active results
+        }
+      }
 
       // Transform listings
       const listings = (data.listings || []).map((listing: any) => {
