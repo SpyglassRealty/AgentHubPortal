@@ -903,7 +903,7 @@ export async function registerRoutes(
           thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
           params.append('status', 'U');
           params.append('lastStatus', 'Sld');
-          params.append('minSoldDate', thirtyDaysAgo.toISOString().split('T')[0]);
+          params.append('minClosedDate', thirtyDaysAgo.toISOString().split('T')[0]);
         } else {
           // Active, Active Under Contract, Pending use standardStatus
           params.append('standardStatus', status);
@@ -2626,7 +2626,7 @@ Respond with valid JSON in this exact format:
         minDate.setDate(minDate.getDate() - soldDays);
         params.append('status', 'U');
         params.append('lastStatus', 'Sld');
-        params.append('minSoldDate', minDate.toISOString().split('T')[0]);
+        params.append('minClosedDate', minDate.toISOString().split('T')[0]);
       } else if (!hasClosed) {
         // Only active statuses
         statusArray.forEach(s => params.append('standardStatus', s));
@@ -2711,7 +2711,7 @@ Respond with valid JSON in this exact format:
           const soldDays = dateSoldDays ? parseInt(dateSoldDays.toString(), 10) : 180;
           const minDate = new Date();
           minDate.setDate(minDate.getDate() - soldDays);
-          closedParams.set('minSoldDate', minDate.toISOString().split('T')[0]);
+          closedParams.set('minClosedDate', minDate.toISOString().split('T')[0]);
 
           const closedUrl = `${baseUrl}?${closedParams.toString()}`;
           console.log(`[CMA Search] Also fetching closed: ${closedUrl}`);
