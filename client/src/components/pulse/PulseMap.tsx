@@ -158,33 +158,16 @@ export default function PulseMap({
 
         el.addEventListener("click", (e) => {
           e.stopPropagation();
+          e.preventDefault();
           onZipSelect(item.zip);
-
-          if (popupRef.current) popupRef.current.remove();
-          const popup = new mapboxgl.Popup({
-            closeOnClick: true,
-            maxWidth: "240px",
-            offset: size / 2 + 5,
-          })
-            .setLngLat([item.lng, item.lat])
-            .setHTML(
-              `<div style="font-family: system-ui, sans-serif; padding: 4px 0;">
-                <div style="font-weight: 700; font-size: 15px; margin-bottom: 4px;">ZIP ${item.zip}</div>
-                <div style="font-size: 12px; color: #666; line-height: 1.6;">
-                  <div><strong>${item.count}</strong> active listings</div>
-                  <div>Median: <strong>$${item.medianPrice.toLocaleString()}</strong></div>
-                  <div>Avg DOM: <strong>${item.avgDom} days</strong></div>
-                </div>
-                <div style="margin-top: 6px; font-size: 11px; color: #EF4923; font-weight: 600;">
-                  View details →
-                </div>
-              </div>`
-            )
-            .addTo(map);
-          popupRef.current = popup;
         });
 
-        const marker = new mapboxgl.Marker({ element: el })
+        // Prevent drag/move on marker
+        el.addEventListener("mousedown", (e) => {
+          e.stopPropagation();
+        });
+
+        const marker = new mapboxgl.Marker({ element: el, draggable: false })
           .setLngLat([item.lng, item.lat])
           .addTo(map);
         markersRef.current.push(marker);

@@ -210,34 +210,235 @@ function seededRandom(seed: string): () => number {
   };
 }
 
+// ─── Realistic Austin ZHVI home values (approx Zillow mid-2025) ─────
+const REALISTIC_HOME_VALUES: Record<string, number> = {
+  "78701": 550000, // Downtown Austin
+  "78702": 600000, // East Austin
+  "78703": 950000, // Tarrytown / Old West Austin
+  "78704": 700000, // Travis Heights / South Congress
+  "78705": 500000, // UT Campus / North University
+  "78712": 480000, // UT Main Campus area
+  "78717": 520000, // Brushy Creek
+  "78719": 340000, // SE Austin near airport
+  "78721": 400000, // East Austin / MLK
+  "78722": 520000, // Cherrywood / French Place
+  "78723": 450000, // Windsor Park / Mueller
+  "78724": 320000, // East Austin outer
+  "78725": 310000, // SE Austin
+  "78726": 580000, // NW Austin / Canyon Creek
+  "78727": 470000, // NW Austin / Scofield
+  "78728": 420000, // Wells Branch / Pflugerville border
+  "78729": 480000, // NW Austin / Anderson Mill
+  "78730": 850000, // River Place
+  "78731": 700000, // NW Hills / Far West
+  "78732": 750000, // Steiner Ranch
+  "78733": 900000, // Bee Cave / West Lake Hills
+  "78734": 650000, // Lakeway
+  "78735": 620000, // Circle C / SW Austin
+  "78736": 500000, // Oak Hill
+  "78737": 520000, // Buda border / Shady Hollow
+  "78738": 680000, // Bee Cave / Lake Travis
+  "78739": 530000, // Circle C / Mopac South
+  "78741": 380000, // East Riverside
+  "78742": 300000, // Montopolis / SE
+  "78744": 340000, // South Austin / Slaughter
+  "78745": 450000, // South Austin / Stassney
+  "78746": 1200000, // Westlake Hills / Eanes
+  "78747": 380000, // SE Austin
+  "78748": 430000, // South Austin / Shady Hollow
+  "78749": 520000, // SW Austin / Great Hills
+  "78750": 550000, // NW Austin / Balcones
+  "78751": 530000, // Hyde Park / North Loop
+  "78752": 400000, // North Austin / Windsor Hills
+  "78753": 360000, // North Austin / Rundberg area
+  "78754": 350000, // NE Austin / Dessau
+  "78756": 600000, // Brentwood / Crestview
+  "78757": 520000, // Allandale
+  "78758": 370000, // North Austin / Metric
+  "78759": 560000, // Great Hills / Arboretum
+  // Suburbs
+  "78610": 360000, // Buda
+  "78613": 430000, // Cedar Park
+  "78617": 310000, // Del Valle
+  "78620": 600000, // Dripping Springs
+  "78628": 400000, // Georgetown
+  "78634": 330000, // Hutto
+  "78640": 300000, // Kyle
+  "78641": 380000, // Leander
+  "78642": 350000, // Liberty Hill
+  "78645": 520000, // Lago Vista
+  "78653": 340000, // Manor
+  "78654": 380000, // Marble Falls
+  "78660": 350000, // Pflugerville
+  "78664": 360000, // Round Rock
+  "78665": 400000, // Round Rock South
+  "78669": 600000, // Spicewood
+  "78681": 420000, // Round Rock West
+  "76574": 280000, // Taylor
+  "78621": 300000, // Elgin
+  "78626": 370000, // Georgetown
+  "78633": 430000, // Georgetown Sun City
+};
+
+// Realistic median incomes by zip
+const REALISTIC_INCOMES: Record<string, number> = {
+  "78701": 85000, "78702": 82000, "78703": 130000, "78704": 95000,
+  "78705": 42000, "78712": 35000, "78717": 105000, "78719": 55000,
+  "78721": 52000, "78722": 72000, "78723": 68000, "78724": 50000,
+  "78725": 48000, "78726": 110000, "78727": 85000, "78728": 78000,
+  "78729": 92000, "78730": 140000, "78731": 110000, "78732": 125000,
+  "78733": 145000, "78734": 100000, "78735": 105000, "78736": 90000,
+  "78737": 95000, "78738": 120000, "78739": 98000, "78741": 55000,
+  "78742": 42000, "78744": 52000, "78745": 72000, "78746": 180000,
+  "78747": 68000, "78748": 82000, "78749": 100000, "78750": 105000,
+  "78751": 75000, "78752": 60000, "78753": 55000, "78754": 52000,
+  "78756": 90000, "78757": 82000, "78758": 58000, "78759": 100000,
+  "78610": 75000, "78613": 95000, "78617": 50000, "78620": 110000,
+  "78628": 82000, "78634": 72000, "78640": 68000, "78641": 82000,
+  "78642": 78000, "78645": 80000, "78653": 62000, "78654": 65000,
+  "78660": 82000, "78664": 78000, "78665": 88000, "78669": 105000,
+  "78681": 92000, "76574": 58000, "78621": 55000, "78626": 72000,
+  "78633": 75000,
+};
+
+// Realistic populations by zip
+const REALISTIC_POPULATIONS: Record<string, number> = {
+  "78701": 12500, "78702": 28000, "78703": 18000, "78704": 35000,
+  "78705": 32000, "78712": 8000, "78717": 30000, "78719": 4500,
+  "78721": 15000, "78722": 12000, "78723": 35000, "78724": 25000,
+  "78725": 18000, "78726": 22000, "78727": 28000, "78728": 25000,
+  "78729": 30000, "78730": 10000, "78731": 25000, "78732": 15000,
+  "78733": 12000, "78734": 20000, "78735": 28000, "78736": 18000,
+  "78737": 20000, "78738": 25000, "78739": 22000, "78741": 42000,
+  "78742": 8000, "78744": 40000, "78745": 48000, "78746": 22000,
+  "78747": 30000, "78748": 35000, "78749": 30000, "78750": 28000,
+  "78751": 18000, "78752": 22000, "78753": 50000, "78754": 30000,
+  "78756": 12000, "78757": 20000, "78758": 42000, "78759": 32000,
+  "78610": 35000, "78613": 65000, "78617": 20000, "78620": 15000,
+  "78628": 55000, "78634": 35000, "78640": 55000, "78641": 70000,
+  "78642": 20000, "78645": 12000, "78653": 25000, "78654": 18000,
+  "78660": 70000, "78664": 55000, "78665": 45000, "78669": 8000,
+  "78681": 45000, "76574": 18000, "78621": 12000, "78626": 40000,
+  "78633": 25000,
+};
+
+function getRealisticHomeValue(zip: string): number {
+  if (REALISTIC_HOME_VALUES[zip]) return REALISTIC_HOME_VALUES[zip];
+  // Fallback: use seeded random but within realistic Austin range ($280K-$600K)
+  const rng = seededRandom(`hv-${zip}`);
+  return Math.round(280000 + rng() * 320000);
+}
+
 function mockValueForLayer(layer: LayerDef, zip: string): number {
   const rng = seededRandom(`${layer.id}-${zip}`);
+  const homeValue = getRealisticHomeValue(zip);
+  const income = REALISTIC_INCOMES[zip] || Math.round(55000 + rng() * 50000);
+  const population = REALISTIC_POPULATIONS[zip] || Math.round(15000 + rng() * 40000);
+
   switch (layer.unit) {
     case "currency": {
-      // home values: $180K-$900K; payments etc. lower
-      const isBigCurrency = ["home_value","home_value_detail","single_family_value","condo_value","median_sale_price","median_income"].some(id => layer.id.includes(id) || layer.id === id);
-      if (isBigCurrency) return Math.round(180_000 + rng() * 720_000);
-      if (layer.id.includes("salary")) return Math.round(50_000 + rng() * 100_000);
-      if (layer.id.includes("tax") || layer.id.includes("insurance")) return Math.round(2000 + rng() * 8000);
+      // Home value layers should use realistic ZHVI
+      const isHomeValue = ["home_value","home_value_detail","single_family_value","median_sale_price"].some(
+        id => layer.id === id || layer.id.includes(id)
+      );
+      if (isHomeValue) return homeValue;
+      if (layer.id === "condo_value" || layer.id.includes("condo_value")) return Math.round(homeValue * (0.7 + rng() * 0.15));
+      if (layer.id.includes("median_income") || layer.id === "median_income") return income;
+      if (layer.id.includes("salary")) {
+        // Salary to afford: ~3.5x mortgage payment annually
+        const monthlyMtg = (homeValue * 0.8 * 0.065) / 12;
+        return Math.round((monthlyMtg / 0.28) * 12);
+      }
+      if (layer.id.includes("mortgage_payment")) {
+        // 30yr fixed ~6.5%, 80% LTV
+        const principal = homeValue * 0.8;
+        const monthlyRate = 0.065 / 12;
+        const n = 360;
+        return Math.round(principal * (monthlyRate * Math.pow(1 + monthlyRate, n)) / (Math.pow(1 + monthlyRate, n) - 1));
+      }
+      if (layer.id.includes("property_tax_annual") || layer.id.includes("tax_annual")) {
+        // Texas avg effective rate ~1.8%
+        return Math.round(homeValue * (0.016 + rng() * 0.006));
+      }
+      if (layer.id.includes("insurance")) return Math.round(homeValue * (0.003 + rng() * 0.002));
+      if (layer.id.includes("buy_vs_rent")) {
+        const monthlyMtg = (homeValue * 0.8 * 0.065) / 12;
+        const estimatedRent = homeValue * 0.005; // ~0.5% of value monthly
+        return Math.round(monthlyMtg - estimatedRent);
+      }
       return Math.round(800 + rng() * 3000);
     }
-    case "percent":
-      if (layer.id.includes("growth") || layer.id.includes("forecast") || layer.id.includes("overvalued") || layer.id.includes("crash") || layer.id.includes("peak")) return parseFloat((-15 + rng() * 30).toFixed(1));
-      if (layer.id.includes("rate") || layer.id.includes("pct")) return parseFloat((5 + rng() * 60).toFixed(1));
-      return parseFloat((-10 + rng() * 20).toFixed(1));
+    case "percent": {
+      if (layer.id === "home_value_growth_yoy" || layer.id.includes("growth_yoy")) {
+        // Austin 2024-2025: most zips -3% to +4%
+        return parseFloat((-3 + rng() * 7).toFixed(1));
+      }
+      if (layer.id.includes("growth_5yr") || layer.id.includes("5yr")) {
+        // 5yr growth for Austin: most zips 25-65%
+        return parseFloat((25 + rng() * 40).toFixed(1));
+      }
+      if (layer.id.includes("growth_mom") || layer.id.includes("mom")) {
+        return parseFloat((-0.5 + rng() * 1.5).toFixed(1));
+      }
+      if (layer.id.includes("forecast") || layer.id.includes("price_forecast")) {
+        // Austin forecast: mostly flat to slight decline
+        return parseFloat((-6 + rng() * 8).toFixed(1));
+      }
+      if (layer.id.includes("overvalued")) {
+        // Austin: many areas 5-25% overvalued
+        return parseFloat((0 + rng() * 30).toFixed(1));
+      }
+      if (layer.id.includes("peak") || layer.id.includes("2022")) {
+        // % from 2022 peak: most Austin zips -5% to -15%
+        return parseFloat((-15 + rng() * 12).toFixed(1));
+      }
+      if (layer.id.includes("crash") || layer.id.includes("2007")) {
+        // Austin barely crashed 2007-2012: most zips -2% to +5%
+        return parseFloat((-5 + rng() * 10).toFixed(1));
+      }
+      if (layer.id.includes("cap_rate")) return parseFloat((3.5 + rng() * 3).toFixed(1));
+      if (layer.id.includes("mtg_pct_income")) {
+        const monthlyMtg = (homeValue * 0.8 * 0.065) / 12;
+        return parseFloat(((monthlyMtg / (income / 12)) * 100).toFixed(1));
+      }
+      if (layer.id.includes("property_tax_rate")) return parseFloat((1.6 + rng() * 0.6).toFixed(2));
+      if (layer.id.includes("sale_to_list")) return parseFloat((0.96 + rng() * 0.05).toFixed(3));
+      if (layer.id.includes("price_drops")) return parseFloat((15 + rng() * 25).toFixed(1));
+      if (layer.id.includes("remote_work")) return parseFloat((15 + rng() * 25).toFixed(1));
+      if (layer.id.includes("college_degree")) return parseFloat((25 + rng() * 45).toFixed(1));
+      if (layer.id.includes("homeownership")) return parseFloat((35 + rng() * 35).toFixed(1));
+      if (layer.id.includes("poverty")) return parseFloat((5 + rng() * 20).toFixed(1));
+      if (layer.id.includes("family_households")) return parseFloat((40 + rng() * 30).toFixed(1));
+      if (layer.id.includes("rent_growth")) return parseFloat((-2 + rng() * 6).toFixed(1));
+      if (layer.id.includes("vacancy")) return parseFloat((4 + rng() * 8).toFixed(1));
+      if (layer.id.includes("population_growth") || layer.id.includes("income_growth")) return parseFloat((0.5 + rng() * 4).toFixed(1));
+      if (layer.id.includes("housing_unit_growth")) return parseFloat((1 + rng() * 5).toFixed(1));
+      // Generic percent
+      return parseFloat((-5 + rng() * 15).toFixed(1));
+    }
     case "days":
-      return Math.round(10 + rng() * 90);
-    case "number":
-      if (layer.id.includes("population")) return Math.round(5_000 + rng() * 80_000);
-      if (layer.id.includes("housing_units")) return Math.round(2_000 + rng() * 40_000);
-      if (layer.id.includes("inventory")) return Math.round(20 + rng() * 400);
+      // Austin DOM: typically 30-75 days
+      return Math.round(25 + rng() * 55);
+    case "number": {
+      if (layer.id.includes("population")) return population;
+      if (layer.id.includes("housing_units")) return Math.round(population * (0.35 + rng() * 0.1));
+      if (layer.id.includes("inventory")) return Math.round(20 + rng() * 200);
+      if (layer.id.includes("homes_sold") || layer.id.includes("home_sales")) return Math.round(15 + rng() * 150);
+      if (layer.id.includes("population_density")) return Math.round(1500 + rng() * 5000);
       return Math.round(10 + rng() * 300);
+    }
     case "score":
-      return Math.round(15 + rng() * 70);
-    case "ratio":
-      return parseFloat((2.5 + rng() * 6).toFixed(2));
+      return Math.round(30 + rng() * 55);
+    case "ratio": {
+      if (layer.id.includes("value_income") || layer.id.includes("income_ratio")) {
+        return parseFloat((homeValue / income).toFixed(2));
+      }
+      if (layer.id.includes("sale_to_list")) return parseFloat((0.96 + rng() * 0.05).toFixed(3));
+      return parseFloat((3 + rng() * 5).toFixed(2));
+    }
     case "temperature":
-      return Math.round(55 + rng() * 30);
+      // Austin: ~68°F average
+      return Math.round(66 + rng() * 5);
     default:
       return parseFloat((rng() * 100).toFixed(1));
   }
@@ -352,24 +553,75 @@ async function queryTimeseries(layer: LayerDef, zip: string, period: "monthly" |
       client.release();
     }
   } catch {
-    // Mock time-series
+    // Mock time-series with realistic Austin growth curves
     const points: { date: string; value: number }[] = [];
-    const baseValue = mockValueForLayer(layer, zip);
+    const currentValue = mockValueForLayer(layer, zip);
     const rng = seededRandom(`ts-${layer.id}-${zip}`);
+    const isCurrency = layer.unit === "currency";
+    const isHomeValueLayer = isCurrency && (
+      layer.id.includes("home_value") || layer.id === "home_value" ||
+      layer.id.includes("single_family") || layer.id.includes("condo_value") ||
+      layer.id.includes("median_sale_price")
+    );
+
+    // Austin home value trajectory (multiplier vs current value):
+    // 2015: ~50%, 2016: ~53%, 2017: ~57%, 2018: ~62%, 2019: ~65%, 
+    // 2020: ~68%, 2021: ~85%, 2022 peak: ~108%, 2023: ~97%, 2024: ~98%, 2025: ~100%
+    const yearlyMultipliers: Record<number, number> = {
+      2015: 0.50, 2016: 0.53, 2017: 0.57, 2018: 0.62, 2019: 0.65,
+      2020: 0.68, 2021: 0.85, 2022: 1.08, 2023: 0.97, 2024: 0.98, 2025: 1.00,
+    };
+
     if (period === "yearly") {
       for (let y = 2015; y <= 2025; y++) {
-        const drift = 1 + (rng() - 0.4) * 0.08;
-        const val = baseValue * drift * (1 + (y - 2020) * 0.02);
-        points.push({ date: y.toString(), value: parseFloat(val.toFixed(2)) });
+        const noise = 1 + (rng() - 0.5) * 0.03; // ±1.5% noise
+        if (isHomeValueLayer) {
+          const mult = yearlyMultipliers[y] || 1.0;
+          const val = currentValue * mult * noise;
+          points.push({ date: y.toString(), value: parseFloat(val.toFixed(2)) });
+        } else if (isCurrency) {
+          // Other currency metrics: gentle upward trend
+          const trendMult = 0.7 + (y - 2015) * 0.03;
+          const val = currentValue * trendMult * noise;
+          points.push({ date: y.toString(), value: parseFloat(val.toFixed(2)) });
+        } else {
+          // Non-currency: drift around current with gentle noise
+          const drift = 1 + (rng() - 0.45) * 0.06;
+          const trendAdj = 1 + (y - 2020) * 0.015;
+          const val = currentValue * drift * trendAdj;
+          points.push({ date: y.toString(), value: parseFloat(val.toFixed(2)) });
+        }
       }
     } else {
+      // Monthly data 2020-2025
+      // Monthly multipliers interpolated from yearly curve
+      const monthlyBase: Record<string, number> = {};
       for (let y = 2020; y <= 2025; y++) {
         for (let m = 1; m <= (y === 2025 ? 6 : 12); m++) {
-          const drift = 1 + (rng() - 0.4) * 0.03;
-          const seasonal = 1 + Math.sin((m / 12) * Math.PI * 2) * 0.02;
-          const val = baseValue * drift * seasonal * (1 + (y - 2020) * 0.02);
-          points.push({ date: `${y}-${String(m).padStart(2, "0")}`, value: parseFloat(val.toFixed(2)) });
+          const yearMult = yearlyMultipliers[y] || 1.0;
+          const nextYearMult = yearlyMultipliers[y + 1] || yearMult;
+          // Interpolate within the year
+          const monthFrac = (m - 1) / 12;
+          const interpMult = yearMult + (nextYearMult - yearMult) * monthFrac;
+          // Add seasonal variation (spring bump, winter dip)
+          const seasonal = 1 + Math.sin(((m - 3) / 12) * Math.PI * 2) * 0.015;
+          const noise = 1 + (rng() - 0.5) * 0.01;
+          const key = `${y}-${String(m).padStart(2, "0")}`;
+
+          if (isHomeValueLayer) {
+            monthlyBase[key] = currentValue * interpMult * seasonal * noise;
+          } else if (isCurrency) {
+            const trendMult = 0.7 + ((y - 2020) * 12 + m) / (6 * 12) * 0.3;
+            monthlyBase[key] = currentValue * trendMult * seasonal * noise;
+          } else {
+            const drift = 1 + (rng() - 0.45) * 0.03;
+            const trendAdj = 1 + ((y - 2020) * 12 + m) / (6 * 12) * 0.08;
+            monthlyBase[key] = currentValue * drift * trendAdj * seasonal;
+          }
         }
+      }
+      for (const [date, value] of Object.entries(monthlyBase)) {
+        points.push({ date, value: parseFloat(value.toFixed(2)) });
       }
     }
     return points;
