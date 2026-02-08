@@ -2397,96 +2397,22 @@ Respond with valid JSON in this exact format:
       if (city) params.append('city', city);
       if (zip) params.append('zip', zip);
       
-      // Subdivision: discover all matching neighborhood names via a broad city search,
-      // then pass them all as multiple neighborhood params (OR logic).
+      // Subdivision handling: DON'T use Repliers neighborhood filter (it requires exact match).
+      // Instead, we omit neighborhood from the API query, fetch more results, and filter
+      // server-side by checking if the listing's neighborhood CONTAINS the subdivision text.
+      // This matches how the MLS works (substring match on subdivision).
       // MLS stores subdivisions with section/phase suffixes like "Circle C Ranch Ph A Sec 04"
-      // so searching for just "Circle C" or even "Circle C Ranch" misses most listings.
+      // so "Circle C" should match all of them.
+      const subdivisionFilter = subdivision ? subdivision.toLowerCase().trim() : null;
+      // Don't add neighborhood to params - we'll post-filter instead
       if (subdivision) {
-        const subdivLower = subdivision.toLowerCase().trim();
-        let matchedNeighborhoods: string[] = [];
-
-        // Step 1: Check if exact match returns results
-        try {
-          const testParams = new URLSearchParams({ neighborhood: subdivision, type: 'Sale', resultsPerPage: '1', listings: 'true' });
-          const testRes = await fetch(`${baseUrl}?${testParams.toString()}`, {
-            headers: { 'Accept': 'application/json', 'REPLIERS-API-KEY': apiKey }
-          });
-          const testData = await testRes.json();
-          if ((testData.count || 0) > 0) {
-            matchedNeighborhoods.push(subdivision);
-            console.log(`[CMA Search] Subdivision "${subdivision}" exact match: ${testData.count} results`);
-          }
-        } catch { /* continue */ }
-
-        // Step 2: Discovery - search the city (or broad area) to find ALL neighborhood names
-        // that contain the user's subdivision text, including section/phase variants
-        const discoveryCity = city || 'Austin'; // default to Austin if no city specified
-        try {
-          const discoverParams = new URLSearchParams({
-            city: discoveryCity,
-            type: 'Sale',
-            resultsPerPage: '200',
-            listings: 'true',
-          });
-          const discoverRes = await fetch(`${baseUrl}?${discoverParams.toString()}`, {
-            headers: { 'Accept': 'application/json', 'REPLIERS-API-KEY': apiKey }
-          });
-          const discoverData = await discoverRes.json();
-          const allNeighborhoods: string[] = (discoverData.listings || [])
-            .map((l: any) => l.address?.neighborhood)
-            .filter(Boolean);
-
-          // Find unique neighborhoods that contain the subdivision text (case-insensitive)
-          const uniqueNeighborhoods = [...new Set(allNeighborhoods)];
-          const matching = uniqueNeighborhoods.filter((n: string) =>
-            n.toLowerCase().includes(subdivLower)
-          );
-
-          if (matching.length > 0) {
-            // Add any we haven't already found
-            for (const m of matching) {
-              if (!matchedNeighborhoods.some(mn => mn.toLowerCase() === m.toLowerCase())) {
-                matchedNeighborhoods.push(m);
-              }
-            }
-            console.log(`[CMA Search] Discovery found ${matching.length} neighborhoods matching "${subdivision}": ${matching.join(', ')}`);
-          }
-        } catch (err) {
-          console.error(`[CMA Search] Discovery search failed:`, err);
-        }
-
-        // Step 3: If discovery didn't find enough, try common MLS naming patterns directly
-        if (matchedNeighborhoods.length === 0) {
-          const variations = [
-            `${subdivision} Ranch`, `${subdivision} Sec`, `${subdivision} Phase`,
-            `${subdivision} Add`, `${subdivision} Sub`, `${subdivision} Estates`,
-          ];
-          for (const variant of variations) {
-            try {
-              const varParams = new URLSearchParams({ neighborhood: variant, type: 'Sale', resultsPerPage: '1', listings: 'true' });
-              const varRes = await fetch(`${baseUrl}?${varParams.toString()}`, {
-                headers: { 'Accept': 'application/json', 'REPLIERS-API-KEY': apiKey }
-              });
-              const varData = await varRes.json();
-              if ((varData.count || 0) > 0) {
-                matchedNeighborhoods.push(variant);
-                console.log(`[CMA Search] Variation match: "${variant}" (${varData.count} results)`);
-                break; // just need one to get started
-              }
-            } catch { /* try next */ }
-          }
-        }
-
-        // Apply neighborhoods to search params
-        if (matchedNeighborhoods.length > 0) {
-          for (const n of matchedNeighborhoods) {
-            params.append('neighborhood', n);
-          }
-          console.log(`[CMA Search] Using ${matchedNeighborhoods.length} neighborhood(s) for "${subdivision}"`);
-        } else {
-          // Last resort: use as-is
-          params.append('neighborhood', subdivision);
-          console.log(`[CMA Search] No matches found for "${subdivision}", using as-is`);
+        console.log(`[CMA Search] Using post-filter approach for subdivision "${subdivision}"`);
+        // Request more results to ensure we find enough matches after filtering
+        params.set('resultsPerPage', '500');
+        // If no city or zip provided, default to Austin so we have a geographic scope
+        if (!city && !zip) {
+          params.append('city', 'Austin');
+          console.log(`[CMA Search] No city/zip provided with subdivision, defaulting to Austin`);
         }
       }
 
@@ -2612,7 +2538,9 @@ Respond with valid JSON in this exact format:
       if (maxPrice) params.append('maxPrice', maxPrice.toString());
       if (minSqft) params.append('minSqft', minSqft.toString());
       if (maxSqft) params.append('maxSqft', maxSqft.toString());
-      if (propertyType) params.append('propertyType', propertyType);
+      // Repliers uses "style" for sub-property types like "Single Family Residence", "Townhouse", etc.
+      // The "propertyType" field is always just "Residential" or "Land"
+      if (propertyType) params.append('style', propertyType);
       if (stories) params.append('stories', stories.toString());
       if (minYearBuilt) params.append('minYearBuilt', minYearBuilt.toString());
       if (maxYearBuilt) params.append('maxYearBuilt', maxYearBuilt.toString());
@@ -2801,30 +2729,40 @@ Respond with valid JSON in this exact format:
           sqft: listing.details?.sqft || listing.livingArea || 0,
           lotSizeAcres: listing.lot?.acres || (listing.lotSizeArea ? listing.lotSizeArea / 43560 : null),
           yearBuilt: listing.details?.yearBuilt || null,
-          propertyType: listing.details?.propertyType || listing.propertyType || '',
+          propertyType: listing.details?.style || listing.details?.propertyType || listing.propertyType || '',
           status: listing.standardStatus || listing.status || '',
           listDate: listing.listDate || '',
           soldDate: listing.soldDate || listing.closeDate || null,
           daysOnMarket: listing.daysOnMarket || 0,
           photo,
           stories: listing.details?.numStoreys || null,
-          subdivision: listing.address?.area || listing.address?.neighborhood || '',
+          subdivision: listing.address?.neighborhood || listing.address?.area || '',
           latitude: listing.map?.latitude || listing.address?.latitude || null,
           longitude: listing.map?.longitude || listing.address?.longitude || null,
         };
       });
 
-      const total = data.count || data.numResults || listings.length;
-      const totalPages = Math.ceil(total / resultsPerPage);
+      // Post-filter by subdivision if provided (substring match, like MLS)
+      let filteredListings = listings;
+      if (subdivisionFilter) {
+        filteredListings = listings.filter((l: any) => {
+          const hood = (l.subdivision || '').toLowerCase();
+          return hood.includes(subdivisionFilter);
+        });
+        console.log(`[CMA Search] Subdivision post-filter "${subdivision}": ${filteredListings.length} of ${listings.length} listings match`);
+      }
 
-      console.log(`[CMA Search] Returning ${listings.length} of ${total} results`);
+      const total = subdivisionFilter ? filteredListings.length : (data.count || data.numResults || listings.length);
+      const totalPages = subdivisionFilter ? 1 : Math.ceil(total / resultsPerPage);
+
+      console.log(`[CMA Search] Returning ${filteredListings.length} of ${total} results`);
 
       res.json({
-        listings,
+        listings: subdivisionFilter ? filteredListings : filteredListings.slice(0, resultsPerPage),
         total,
-        page: pageNum,
+        page: subdivisionFilter ? 1 : pageNum,
         totalPages,
-        resultsPerPage,
+        resultsPerPage: subdivisionFilter ? filteredListings.length : resultsPerPage,
       });
     } catch (error) {
       console.error('[CMA Search] Error:', error);
