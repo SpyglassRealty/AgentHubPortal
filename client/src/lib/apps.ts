@@ -206,6 +206,7 @@ export const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { label: "My Performance", icon: TrendingUp, href: "/my-performance" },
   { label: "Calendar", icon: Calendar, href: "/calendar" },
+  { label: "Email", icon: Mail, href: "/email" },
   { label: "Reports", icon: BarChart3, href: "/reports" },
   { label: "Leads", icon: Users, href: "/leads" },
   { label: "Properties", icon: Building2, href: "/properties" },

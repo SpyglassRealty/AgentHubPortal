@@ -10,6 +10,7 @@ import LandingPage from "@/pages/landing";
 import DashboardPage from "@/pages/dashboard";
 import AppView from "@/pages/app-view";
 import CalendarPage from "@/pages/calendar";
+import EmailPage from "@/pages/email";
 import ReportsPage from "@/pages/reports";
 import LeadsPage from "@/pages/leads";
 import MyPerformancePage from "@/pages/my-performance";
@@ -22,6 +23,8 @@ import CmaPage from "@/pages/cma";
 import CmaBuilderPage from "@/pages/cma-builder";
 import CmaPresentationPage from "@/pages/cma-presentation";
 import PulsePage from "@/pages/pulse";
+import AdminSettingsPage from "@/pages/admin-settings";
+
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -54,6 +57,7 @@ function Router() {
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/my-performance" component={MyPerformancePage} />
       <Route path="/calendar" component={CalendarPage} />
+      <Route path="/email" component={EmailPage} />
       <Route path="/reports" component={ReportsPage} />
       <Route path="/leads" component={LeadsPage} />
       <Route path="/properties" component={PropertiesPage} />
@@ -65,6 +69,7 @@ function Router() {
       <Route path="/marketing-calendar" component={MarketingCalendarPage} />
       <Route path="/training" component={TrainingPage} />
       <Route path="/settings" component={SettingsPage} />
+      <Route path="/admin/settings" component={AdminSettingsPage} />
       <Route path="/app/:id" component={AppView} />
       <Route component={NotFound} />
     </Switch>
