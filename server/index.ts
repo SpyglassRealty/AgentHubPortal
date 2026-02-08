@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { initializeScheduler, runStartupTasks } from "./scheduler";
+import { refreshFubDbConfig } from "./fubClient";
 
 const app = express();
 const httpServer = createServer(app);
@@ -94,6 +95,9 @@ app.use((req, res, next) => {
     },
     async () => {
       log(`serving on port ${port}`);
+      
+      // Load DB-stored integration keys into cache
+      await refreshFubDbConfig();
       
       initializeScheduler();
       

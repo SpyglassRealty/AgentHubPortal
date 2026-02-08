@@ -3458,7 +3458,7 @@ Respond with valid JSON in this exact format:
 
   // ── Pulse V2 — Reventure-style data layers ──
   registerPulseV2Routes(app);
-=======
+
   // Register admin routes (integration settings, etc.)
   registerAdminRoutes(app);
 
