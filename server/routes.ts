@@ -9,6 +9,7 @@ import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema } from 
 import OpenAI from "openai";
 import { getLatestTrainingVideo } from "./vimeoClient";
 import { SPYGLASS_OFFICES, DEFAULT_OFFICE, getOfficeConfig } from "./config/offices";
+import { registerPulseV2Routes } from "./pulseV2Routes";
 
 // Helper function to get the actual database user from request
 // Handles both regular auth (ID lookup) and Google OAuth (email lookup)
@@ -3382,6 +3383,9 @@ Respond with valid JSON in this exact format:
       res.status(500).json({ message: 'Failed to compare zip codes' });
     }
   });
+
+  // ── Pulse V2 — Reventure-style data layers ──
+  registerPulseV2Routes(app);
 
   return httpServer;
 }
