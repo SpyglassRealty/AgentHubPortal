@@ -15,6 +15,7 @@ import { getLatestTrainingVideo } from "./vimeoClient";
 import { SPYGLASS_OFFICES, DEFAULT_OFFICE, getOfficeConfig } from "./config/offices";
 import { registerPulseV2Routes } from "./pulseV2Routes";
 import { registerAdminRoutes } from "./adminRoutes";
+import { registerGmailRoutes } from "./gmailRoutes";
 
 
 // Helper function to get the actual database user from request
@@ -3460,6 +3461,9 @@ Respond with valid JSON in this exact format:
 =======
   // Register admin routes (integration settings, etc.)
   registerAdminRoutes(app);
+
+  // Register Gmail routes
+  registerGmailRoutes(app);
 
 
   return httpServer;
