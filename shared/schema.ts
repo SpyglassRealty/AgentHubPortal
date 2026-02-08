@@ -55,6 +55,41 @@ export interface FubEvent {
   dealId?: number;
 }
 
+export interface GmailMessage {
+  id: string;
+  threadId: string;
+  from: string;
+  to: string;
+  subject: string;
+  snippet: string;
+  date: string;
+  isRead: boolean;
+  labels: string[];
+  body?: string;
+}
+
+export interface GoogleCalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  startDate: string;
+  endDate?: string;
+  allDay?: boolean;
+  type: 'event' | 'meeting' | 'showing' | 'closing' | 'open_house' | 'listing' | 'inspection';
+  location?: string;
+  status: 'confirmed' | 'tentative' | 'cancelled';
+  htmlLink?: string;
+  colorId?: string;
+  colorHex?: string;
+  creator?: string;
+  organizer?: string;
+  attendees?: Array<{
+    email: string;
+    displayName?: string;
+    responseStatus?: string;
+  }>;
+}
+
 export interface FubDeal {
   id: number;
   name: string;
@@ -298,8 +333,7 @@ export const cmas = pgTable("cmas", {
 export type Cma = typeof cmas.$inferSelect;
 export type InsertCma = typeof cmas.$inferInsert;
 
-// ============================================================
-// Pulse V2 — Reventure-level data tables
+// =====================================================// Pulse V2 — Reventure-level data tables
 // ============================================================
 
 // Zillow home value data (ZHVI + ZORI)
@@ -395,3 +429,115 @@ export const pulseMetrics = pgTable("pulse_metrics", {
 
 export type PulseMetrics = typeof pulseMetrics.$inferSelect;
 export type InsertPulseMetrics = typeof pulseMetrics.$inferInsert;
+=======
+// Integration Configs - store API keys for external services
+export const integrationConfigs = pgTable("integration_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 100 }).notNull().unique(), // 'fub', 'ghl', 'sendblue', etc.
+  displayName: varchar("display_name", { length: 255 }).notNull(),
+  apiKey: text("api_key").notNull(),
+  additionalConfig: jsonb("additional_config"), // { systemName, systemKey, accountId, etc. }
+  isActive: boolean("is_active").default(true),
+  lastTestedAt: timestamp("last_tested_at"),
+  lastTestResult: varchar("last_test_result", { length: 50 }), // 'success', 'failed', 'unknown'
+  lastTestMessage: text("last_test_message"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type IntegrationConfig = typeof integrationConfigs.$inferSelect;
+export type InsertIntegrationConfig = typeof integrationConfigs.$inferInsert;
+
+export const upsertIntegrationConfigSchema = z.object({
+  apiKey: z.string().min(1, "API key is required"),
+  additionalConfig: z.record(z.any()).optional(),
+});
+
+export const INTEGRATION_DEFINITIONS = [
+  {
+    name: 'fub',
+    displayName: 'Follow Up Boss',
+    description: 'CRM for lead management, tasks, and deal tracking',
+    icon: 'FUB',
+    color: 'bg-blue-600',
+    fields: [
+      { key: 'apiKey', label: 'API Key', type: 'password' as const },
+    ],
+    additionalFields: [
+      { key: 'systemName', label: 'System Name', type: 'text' as const, default: 'MissionControl' },
+      { key: 'systemKey', label: 'System Key', type: 'password' as const, optional: true },
+    ],
+    testEndpoint: true,
+  },
+  {
+    name: 'ghl',
+    displayName: 'GoHighLevel',
+    description: 'Marketing automation and CRM platform',
+    icon: 'GHL',
+    color: 'bg-green-600',
+    fields: [
+      { key: 'apiKey', label: 'API Key', type: 'password' as const },
+    ],
+    additionalFields: [
+      { key: 'locationId', label: 'Location ID', type: 'text' as const, optional: true },
+    ],
+    testEndpoint: true,
+  },
+  {
+    name: 'sendblue',
+    displayName: 'SendBlue',
+    description: 'SMS and iMessage marketing platform',
+    icon: 'SB',
+    color: 'bg-sky-500',
+    fields: [
+      { key: 'apiKey', label: 'API Key', type: 'password' as const },
+    ],
+    additionalFields: [
+      { key: 'apiSecret', label: 'API Secret', type: 'password' as const, optional: true },
+    ],
+    testEndpoint: true,
+  },
+  {
+    name: 'idx_grid',
+    displayName: 'IDX / Repliers',
+    description: 'MLS listing data and property search',
+    icon: 'IDX',
+    color: 'bg-orange-500',
+    fields: [
+      { key: 'apiKey', label: 'API Key', type: 'password' as const },
+    ],
+    additionalFields: [],
+    testEndpoint: true,
+  },
+  {
+    name: 'vimeo',
+    displayName: 'Vimeo',
+    description: 'Training video hosting and playback',
+    icon: 'V',
+    color: 'bg-cyan-600',
+    fields: [
+      { key: 'apiKey', label: 'Access Token', type: 'password' as const },
+    ],
+    additionalFields: [
+      { key: 'userId', label: 'User ID', type: 'text' as const, optional: true },
+      { key: 'folderId', label: 'Folder ID', type: 'text' as const, optional: true },
+    ],
+    testEndpoint: true,
+  },
+  {
+    name: 'openai',
+    displayName: 'OpenAI',
+    description: 'AI-powered content generation and chat',
+    icon: 'AI',
+    color: 'bg-gray-800',
+    fields: [
+      { key: 'apiKey', label: 'API Key', type: 'password' as const },
+    ],
+    additionalFields: [
+      { key: 'baseURL', label: 'Base URL (optional)', type: 'text' as const, optional: true },
+    ],
+    testEndpoint: true,
+  },
+] as const;
+
