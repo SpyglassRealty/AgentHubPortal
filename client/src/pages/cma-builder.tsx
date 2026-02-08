@@ -684,6 +684,7 @@ function SearchPropertiesSection({
   const [filters, setFilters] = useState<SearchFilters>(defaultFilters);
   const [searchResults, setSearchResults] = useState<PropertyData[]>([]);
   const [searching, setSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -733,18 +734,11 @@ function SearchPropertiesSection({
   };
 
   const handleSearch = async (pageNum = 1) => {
-    // Validate required fields (only when not doing a free-text search)
+    // Validate: need at least one search criterion
     if (!filters.search) {
-      if (!filters.propertyType) {
-        toast({ title: "Property Type is required", description: "Please select a property type before searching.", variant: "destructive" });
-        return;
-      }
-      if (!filters.minBeds) {
-        toast({ title: "Min Beds is required", description: "Please select minimum bedrooms.", variant: "destructive" });
-        return;
-      }
-      if (!filters.minBaths) {
-        toast({ title: "Min Baths is required", description: "Please select minimum bathrooms.", variant: "destructive" });
+      const hasLocation = filters.city || filters.subdivision || filters.zip || filters.schoolDistrict || filters.elementarySchool || filters.middleSchool || filters.highSchool;
+      if (!hasLocation && !filters.propertyType && !filters.minBeds && !filters.minBaths && !filters.minPrice && !filters.maxPrice) {
+        toast({ title: "Enter search criteria", description: "Please enter at least one filter (location, property type, beds, etc.) before searching.", variant: "destructive" });
         return;
       }
     }
@@ -788,6 +782,7 @@ function SearchPropertiesSection({
       setTotalResults(data.total || 0);
       setPage(data.page || 1);
       setTotalPages(data.totalPages || 1);
+      setHasSearched(true);
     } catch (err: any) {
       console.error("Search failed:", err);
       toast({
@@ -796,6 +791,7 @@ function SearchPropertiesSection({
         variant: "destructive",
       });
       setSearchResults([]);
+      setHasSearched(true);
     } finally {
       setSearching(false);
     }
@@ -869,6 +865,7 @@ function SearchPropertiesSection({
     setFilters(defaultFilters);
     setSearchResults([]);
     setTotalResults(0);
+    setHasSearched(false);
   };
 
   // Map search by viewport bounds or drawn polygon
@@ -1346,7 +1343,7 @@ function SearchPropertiesSection({
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div>
                       <Label className="text-xs font-medium text-muted-foreground">
-                        Min Beds <span className="text-red-500">*</span>
+                        Min Beds
                       </Label>
                       <Select
                         value={filters.minBeds || "any"}
@@ -1366,7 +1363,7 @@ function SearchPropertiesSection({
                     </div>
                     <div>
                       <Label className="text-xs font-medium text-muted-foreground">
-                        Min Baths <span className="text-red-500">*</span>
+                        Min Baths
                       </Label>
                       <Select
                         value={filters.minBaths || "any"}
@@ -1408,7 +1405,7 @@ function SearchPropertiesSection({
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs font-medium text-muted-foreground">
-                        Property Type <span className="text-red-500">*</span>
+                        Property Type
                       </Label>
                       <Select
                         value={filters.propertyType || "all"}
@@ -1703,13 +1700,13 @@ function SearchPropertiesSection({
       </Card>
 
       {/* Search Results */}
-      {(searchResults.length > 0 || searching) && (
+      {(searchResults.length > 0 || searching || hasSearched) && (
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">
                 Search Results
-                {totalResults > 0 && (
+                {hasSearched && (
                   <span className="text-sm font-normal text-muted-foreground ml-2">
                     ({formatNumber(totalResults)} found)
                   </span>
@@ -1752,6 +1749,12 @@ function SearchPropertiesSection({
                     </div>
                   </div>
                 ))}
+              </div>
+            ) : searchResults.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Search className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm font-medium">No properties found</p>
+                <p className="text-xs mt-1">Try adjusting your search criteria or broadening your filters.</p>
               </div>
             ) : (
               <div className="space-y-2">
