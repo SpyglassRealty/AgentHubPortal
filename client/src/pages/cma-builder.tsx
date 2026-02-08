@@ -91,12 +91,17 @@ interface SearchFilters {
   city: string;
   subdivision: string;
   zip: string;
+  county: string;
+  area: string;
+  listingId: string;
   schoolDistrict: string;
   elementarySchool: string;
   middleSchool: string;
   highSchool: string;
   minBeds: string;
   minBaths: string;
+  fullBaths: string;
+  halfBaths: string;
   minPrice: string;
   maxPrice: string;
   propertyType: string;
@@ -110,18 +115,29 @@ interface SearchFilters {
   maxYearBuilt: string;
   search: string;
   dateSoldDays: string;
+  garageSpaces: string;
+  parkingSpaces: string;
+  privatePool: string;
+  waterfront: string;
+  hoa: string;
+  primaryBedOnMain: string;
 }
 
 const defaultFilters: SearchFilters = {
   city: "",
   subdivision: "",
   zip: "",
+  county: "",
+  area: "",
+  listingId: "",
   schoolDistrict: "",
   elementarySchool: "",
   middleSchool: "",
   highSchool: "",
   minBeds: "",
   minBaths: "",
+  fullBaths: "",
+  halfBaths: "",
   minPrice: "",
   maxPrice: "",
   propertyType: "",
@@ -135,6 +151,12 @@ const defaultFilters: SearchFilters = {
   maxYearBuilt: "",
   search: "",
   dateSoldDays: "180",
+  garageSpaces: "",
+  parkingSpaces: "",
+  privatePool: "",
+  waterfront: "",
+  hoa: "",
+  primaryBedOnMain: "",
 };
 
 // RESO Standard Property Types
@@ -735,8 +757,8 @@ function SearchPropertiesSection({
 
   const handleSearch = async (pageNum = 1) => {
     // Validate: need at least one search criterion
-    if (!filters.search) {
-      const hasLocation = filters.city || filters.subdivision || filters.zip || filters.schoolDistrict || filters.elementarySchool || filters.middleSchool || filters.highSchool;
+    if (!filters.search && !filters.listingId) {
+      const hasLocation = filters.city || filters.subdivision || filters.zip || filters.county || filters.area || filters.schoolDistrict || filters.elementarySchool || filters.middleSchool || filters.highSchool;
       if (!hasLocation && !filters.propertyType && !filters.minBeds && !filters.minBaths && !filters.minPrice && !filters.maxPrice) {
         toast({ title: "Enter search criteria", description: "Please enter at least one filter (location, property type, beds, etc.) before searching.", variant: "destructive" });
         return;
@@ -754,12 +776,17 @@ function SearchPropertiesSection({
       if (filters.city) body.city = filters.city;
       if (filters.subdivision) body.subdivision = filters.subdivision;
       if (filters.zip) body.zip = filters.zip;
+      if (filters.county) body.county = filters.county;
+      if (filters.area) body.area = filters.area;
+      if (filters.listingId) body.listingId = filters.listingId;
       if (filters.schoolDistrict) body.schoolDistrict = filters.schoolDistrict;
       if (filters.elementarySchool) body.elementarySchool = filters.elementarySchool;
       if (filters.middleSchool) body.middleSchool = filters.middleSchool;
       if (filters.highSchool) body.highSchool = filters.highSchool;
       if (filters.minBeds) body.minBeds = parseInt(filters.minBeds);
       if (filters.minBaths) body.minBaths = parseInt(filters.minBaths);
+      if (filters.fullBaths) body.fullBaths = parseInt(filters.fullBaths);
+      if (filters.halfBaths) body.halfBaths = parseInt(filters.halfBaths);
       if (filters.minPrice) body.minPrice = parseInt(filters.minPrice);
       if (filters.maxPrice) body.maxPrice = parseInt(filters.maxPrice);
       if (filters.propertyType) body.propertyType = filters.propertyType;
@@ -771,6 +798,12 @@ function SearchPropertiesSection({
       if (filters.minYearBuilt) body.minYearBuilt = parseInt(filters.minYearBuilt);
       if (filters.maxYearBuilt) body.maxYearBuilt = parseInt(filters.maxYearBuilt);
       if (filters.search) body.search = filters.search;
+      if (filters.garageSpaces) body.garageSpaces = parseInt(filters.garageSpaces);
+      if (filters.parkingSpaces) body.parkingSpaces = parseInt(filters.parkingSpaces);
+      if (filters.privatePool) body.privatePool = filters.privatePool;
+      if (filters.waterfront) body.waterfront = filters.waterfront;
+      if (filters.hoa) body.hoa = filters.hoa;
+      if (filters.primaryBedOnMain) body.primaryBedOnMain = filters.primaryBedOnMain;
       // Include dateSoldDays when Closed is selected
       if (filters.statuses.includes("Closed") && filters.dateSoldDays) {
         body.dateSoldDays = parseInt(filters.dateSoldDays);
@@ -1907,20 +1940,12 @@ export default function CmaBuilderPage() {
       toast({ title: "CMA Name is required", description: "Please enter a name for this CMA before saving.", variant: "destructive" });
       return;
     }
-    if (!cma.subjectProperty) {
-      toast({ title: "Subject Property is required", description: "Please set a subject property before saving.", variant: "destructive" });
-      return;
-    }
     saveMutation.mutate(cma);
   };
 
   const handleGenerateReport = () => {
     if (!cma.name.trim()) {
       toast({ title: "CMA Name is required", description: "Please enter a name before generating a report.", variant: "destructive" });
-      return;
-    }
-    if (!cma.subjectProperty) {
-      toast({ title: "Subject Property is required", description: "Please set a subject property before generating a report.", variant: "destructive" });
       return;
     }
     if (cma.comparableProperties.length === 0) {
