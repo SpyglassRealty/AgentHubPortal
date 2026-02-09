@@ -303,7 +303,7 @@ export default function DashboardPage() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6"
           >
             {apps
-              .filter(app => app.id !== 'contract-conduit-marketing')
+              .filter(app => app.id !== 'contract-conduit-marketing' && !app.hidden)
               .sort((a, b) => {
                 // Sort by: Integrated first, then Core, Sales, Marketing
                 const categoryPriority: Record<string, number> = { 'Core': 1, 'Sales': 2, 'Marketing': 3, 'Admin': 4 };

@@ -40,6 +40,8 @@ import { eq, and, ne, desc, sql, gt, lt } from "drizzle-orm";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
+  updateUser(id: string, data: Partial<{ isSuperAdmin: boolean }>): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserFubId(userId: string, fubUserId: number): Promise<User | undefined>;
   updateUserRezenYentaId(userId: string, rezenYentaId: string | null): Promise<User | undefined>;
@@ -109,6 +111,23 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async updateUser(id: string, data: Partial<{ isSuperAdmin: boolean }>): Promise<User | undefined> {
+    const updateFields: Record<string, any> = { updatedAt: new Date() };
+    if (typeof data.isSuperAdmin === "boolean") {
+      updateFields.isSuperAdmin = data.isSuperAdmin;
+    }
+    const [user] = await db
+      .update(users)
+      .set(updateFields)
+      .where(eq(users.id, id))
+      .returning();
     return user;
   }
 
