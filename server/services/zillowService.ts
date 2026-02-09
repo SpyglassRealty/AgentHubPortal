@@ -18,7 +18,7 @@ import { pulseZillowData } from '@shared/schema';
 import { sql } from 'drizzle-orm';
 import { AUSTIN_MSA_ZIP_SET } from '../config/austinMsaZips';
 
-const ZILLOW_BASE = 'https://files.zillowstatic.com/research/public_v2';
+const ZILLOW_BASE = 'https://files.zillowstatic.com/research/public_csvs';
 
 const ZILLOW_FILES = {
   allHomes: `${ZILLOW_BASE}/zhvi/Zip_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv`,

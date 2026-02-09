@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Layout from "@/components/layout";
 import { Activity, PanelLeftClose, PanelLeftOpen } from "lucide-react";
@@ -13,6 +13,12 @@ import {
   NeighborhoodExplorer,
 } from "@/components/pulse";
 import type { OverviewData, ZipHeatmapItem, TrendMonth } from "@/components/pulse";
+
+// Map the frontend layer IDs to V2 backend layer IDs
+// Frontend uses kebab-case (home-value), backend uses snake_case (home_value)
+function toBackendLayerId(frontendId: string): string {
+  return frontendId.replace(/-/g, "_");
+}
 
 // ─── Main Pulse V2 Page ──────────────────────────────────────
 export default function PulsePage() {
@@ -39,12 +45,31 @@ export default function PulsePage() {
     staleTime: 1000 * 60 * 10,
   });
 
-  // Fetch heatmap
+  // Fetch heatmap (V1 — MLS-powered baseline with zip coordinates)
   const { data: heatmapData, isLoading: heatmapLoading } = useQuery<{
     zipData: ZipHeatmapItem[];
     total: number;
   }>({
     queryKey: ["/api/pulse/heatmap"],
+    staleTime: 1000 * 60 * 10,
+  });
+
+  // Fetch V2 layer data for the currently selected data layer
+  // This provides the actual metric values (Zillow, Census, Redfin, Calculated)
+  const backendLayerId = toBackendLayerId(selectedLayerId);
+  const { data: v2LayerData, isLoading: v2LayerLoading } = useQuery<{
+    layerId: string;
+    data: Array<{ zip: string; value: number; label: string }>;
+    meta: { min: number; max: number; median: number; unit: string; source: string; description: string; count: number };
+  }>({
+    queryKey: ["/api/pulse/v2/layer", backendLayerId],
+    queryFn: async () => {
+      const res = await fetch(`/api/pulse/v2/layer/${backendLayerId}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch layer data");
+      return res.json();
+    },
     staleTime: 1000 * 60 * 10,
   });
 
@@ -56,7 +81,28 @@ export default function PulsePage() {
     staleTime: 1000 * 60 * 10,
   });
 
-  const zipData = heatmapData?.zipData || [];
+  // Merge V2 layer data into the heatmap items so the map can display
+  // the selected metric value instead of just MLS median price
+  const zipData = useMemo(() => {
+    const baseZips = heatmapData?.zipData || [];
+    if (!v2LayerData?.data?.length) return baseZips;
+
+    // Build lookup of V2 values by zip
+    const v2Lookup = new Map<string, { value: number; label: string }>();
+    for (const item of v2LayerData.data) {
+      v2Lookup.set(item.zip, { value: item.value, label: item.label });
+    }
+
+    // Merge: add layerValue + layerLabel to each heatmap item
+    return baseZips.map(item => {
+      const v2 = v2Lookup.get(item.zip);
+      return {
+        ...item,
+        layerValue: v2?.value ?? null,
+        layerLabel: v2?.label ?? null,
+      };
+    });
+  }, [heatmapData?.zipData, v2LayerData?.data]);
 
   return (
     <Layout>
@@ -158,7 +204,7 @@ export default function PulsePage() {
               <div className="flex-1 relative min-w-0">
                 <PulseMap
                   zipData={zipData}
-                  isLoading={heatmapLoading}
+                  isLoading={heatmapLoading || v2LayerLoading}
                   onZipSelect={handleZipSelect}
                   selectedZip={selectedZip}
                   selectedLayerId={selectedLayerId}

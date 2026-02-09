@@ -93,6 +93,10 @@ export interface ZipHeatmapItem {
   avgDom: number;
   lat: number;
   lng: number;
+  /** V2 layer metric value (when a data layer is selected) */
+  layerValue?: number | null;
+  /** V2 formatted label for the layer value */
+  layerLabel?: string | null;
 }
 
 export interface TrendMonth {
