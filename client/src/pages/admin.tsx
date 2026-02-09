@@ -22,18 +22,22 @@ import {
   EyeOff,
   Plug,
   Building2,
-  Palette,
   ExternalLink,
   Check,
   X,
-  AlertCircle,
   Loader2,
   Key,
   Lock,
+  Activity,
+  BarChart3,
+  FileBarChart,
+  LogIn,
+  Clock,
+  UserCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import type { User } from "@shared/schema";
+import type { User, AppVisibility } from "@shared/schema";
 
 // ── Types ──────────────────────────────────────────
 interface UsersResponse {
@@ -59,20 +63,42 @@ interface IntegrationsResponse {
   integrations: Integration[];
 }
 
+interface AppVisibilityResponse {
+  visibility: AppVisibility[];
+}
+
+interface AdminStats {
+  totalUsers: number;
+  activeLastWeek: number;
+  totalCmas: number;
+  loginsToday: number;
+}
+
+interface ActivityLog {
+  id: number;
+  admin_user_id: string;
+  action: string;
+  target_user_id: string | null;
+  previous_value: string | null;
+  new_value: string | null;
+  details: any;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
+  admin_email: string | null;
+  admin_first_name: string | null;
+  admin_last_name: string | null;
+}
+
+interface ActivityLogsResponse {
+  logs: ActivityLog[];
+}
+
 // ── Component ──────────────────────────────────────
 export default function AdminPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  // App visibility state (client-side)
-  const [appVisibility, setAppVisibility] = useState<Record<string, boolean>>(() => {
-    const map: Record<string, boolean> = {};
-    apps.forEach((app) => {
-      map[app.id] = !app.hidden;
-    });
-    return map;
-  });
 
   // ── Data queries ──
   const { data: usersData, isLoading: usersLoading } = useQuery<UsersResponse>({
@@ -91,6 +117,39 @@ export default function AdminPage() {
       if (!res.ok) throw new Error("Failed to fetch integrations");
       return res.json();
     },
+  });
+
+  const { data: visibilityData, isLoading: visibilityLoading } = useQuery<AppVisibilityResponse>({
+    queryKey: ["/api/admin/app-visibility"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/app-visibility", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch app visibility");
+      return res.json();
+    },
+  });
+
+  const { data: statsData, isLoading: statsLoading } = useQuery<AdminStats>({
+    queryKey: ["/api/admin/stats"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/stats", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch stats");
+      return res.json();
+    },
+  });
+
+  const { data: activityData, isLoading: activityLoading } = useQuery<ActivityLogsResponse>({
+    queryKey: ["/api/admin/activity-logs"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/activity-logs?limit=20", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch activity logs");
+      return res.json();
+    },
+  });
+
+  // Build a map of app_id -> hidden from the DB
+  const hiddenMap: Record<string, boolean> = {};
+  (visibilityData?.visibility || []).forEach((v) => {
+    hiddenMap[v.appId] = v.hidden ?? false;
   });
 
   // ── Mutations ──
@@ -117,6 +176,30 @@ export default function AdminPage() {
     },
   });
 
+  const updateVisibilityMutation = useMutation({
+    mutationFn: async ({ appId, hidden }: { appId: string; hidden: boolean }) => {
+      const res = await fetch(`/api/admin/app-visibility/${appId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ hidden }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to update visibility");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/app-visibility"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/app-visibility"] });
+      toast({ title: "App visibility updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   // ── Guard ──
   if (!user?.isSuperAdmin) {
     return (
@@ -130,11 +213,22 @@ export default function AdminPage() {
     );
   }
 
-  const hiddenApps = apps.filter((app) => app.hidden);
+  // Determine which apps are hidden based on DB data (with fallback to static definition)
+  const isAppHidden = (app: AppDefinition): boolean => {
+    if (hiddenMap[app.id] !== undefined) return hiddenMap[app.id];
+    return app.hidden ?? false;
+  };
+
+  const hiddenApps = apps.filter((app) => isAppHidden(app));
   const allUsers = usersData?.users || [];
   const integrations = integrationsData?.integrations || [];
   const configuredCount = integrations.filter((i) => i.configured).length;
   const connectedCount = integrations.filter((i) => i.lastTestResult === "success").length;
+  const activityLogs = activityData?.logs || [];
+
+  const formatActionLabel = (action: string) => {
+    return action.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+  };
 
   return (
     <Layout>
@@ -149,6 +243,74 @@ export default function AdminPage() {
             Manage agents, apps, integrations, and company settings.
           </p>
         </div>
+
+        {/* ── Usage Stats Cards ── */}
+        <section>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                    <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">
+                      {statsLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : statsData?.totalUsers ?? "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Total Users</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                    <UserCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">
+                      {statsLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : statsData?.activeLastWeek ?? "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Active (7d)</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                    <FileBarChart className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">
+                      {statsLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : statsData?.totalCmas ?? "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Total CMAs</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                    <LogIn className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">
+                      {statsLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : statsData?.loginsToday ?? "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Sessions Today</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
+        <Separator />
 
         {/* ── Section A: Hidden Apps ── */}
         <section>
@@ -189,6 +351,9 @@ export default function AdminPage() {
                 </Card>
               </Link>
             ))}
+            {hiddenApps.length === 0 && (
+              <p className="text-sm text-muted-foreground col-span-full">No hidden apps.</p>
+            )}
           </div>
         </section>
 
@@ -414,70 +579,149 @@ export default function AdminPage() {
 
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>App</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Categories</TableHead>
-                      <TableHead className="text-center">Visible to Agents</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {apps
-                      .filter((app) => app.id !== "contract-conduit-marketing")
-                      .map((app) => (
-                        <TableRow key={app.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-lg ${app.color} flex items-center justify-center`}>
-                                <app.icon className="h-4 w-4" />
-                              </div>
-                              <span className="font-medium text-sm">{app.name}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-xs capitalize">
-                              {app.connectionType}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1 flex-wrap">
-                              {app.categories.map((cat) => (
-                                <Badge key={cat} variant="secondary" className="text-[10px]">
-                                  {cat}
+              {visibilityLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>App</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Categories</TableHead>
+                        <TableHead className="text-center">Visible to Agents</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {apps
+                        .filter((app) => app.id !== "contract-conduit-marketing")
+                        .map((app) => {
+                          const appHidden = isAppHidden(app);
+                          return (
+                            <TableRow key={app.id}>
+                              <TableCell>
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-8 h-8 rounded-lg ${app.color} flex items-center justify-center`}>
+                                    <app.icon className="h-4 w-4" />
+                                  </div>
+                                  <span className="font-medium text-sm">{app.name}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="text-xs capitalize">
+                                  {app.connectionType}
                                 </Badge>
-                              ))}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Switch
-                              checked={appVisibility[app.id] ?? !app.hidden}
-                              onCheckedChange={(checked) => {
-                                setAppVisibility((prev) => ({
-                                  ...prev,
-                                  [app.id]: checked,
-                                }));
-                              }}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-1 flex-wrap">
+                                  {app.categories.map((cat) => (
+                                    <Badge key={cat} variant="secondary" className="text-[10px]">
+                                      {cat}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Switch
+                                  checked={!appHidden}
+                                  disabled={updateVisibilityMutation.isPending}
+                                  onCheckedChange={(checked) => {
+                                    updateVisibilityMutation.mutate({
+                                      appId: app.id,
+                                      hidden: !checked,
+                                    });
+                                  }}
+                                />
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
-
-          <p className="text-xs text-muted-foreground mt-2">
-            Note: Visibility toggles are currently client-side only. Persistent server-side control coming soon.
-          </p>
         </section>
 
         <Separator />
 
-        {/* ── Section E: Company Settings ── */}
+        {/* ── Section E: Activity Log ── */}
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <Activity className="h-5 w-5 text-[#EF4923]" />
+            <h2 className="text-xl font-display font-semibold">Recent Activity</h2>
+          </div>
+
+          <Card>
+            <CardContent className="p-0">
+              {activityLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : activityLogs.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">No activity logs found.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Action</TableHead>
+                        <TableHead>Admin</TableHead>
+                        <TableHead>Details</TableHead>
+                        <TableHead>Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {activityLogs.map((log) => {
+                        const adminName = log.admin_first_name && log.admin_last_name
+                          ? `${log.admin_first_name} ${log.admin_last_name}`
+                          : log.admin_email || "System";
+                        
+                        let details = "";
+                        if (log.previous_value && log.new_value) {
+                          details = `${log.previous_value} → ${log.new_value}`;
+                        } else if (log.new_value) {
+                          details = log.new_value;
+                        } else if (log.details) {
+                          const d = typeof log.details === "string" ? JSON.parse(log.details) : log.details;
+                          if (d.email) details = d.email;
+                          else details = JSON.stringify(d).slice(0, 80);
+                        }
+
+                        return (
+                          <TableRow key={log.id}>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs">
+                                {formatActionLabel(log.action)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm font-medium">{adminName}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground max-w-[250px] truncate">
+                              {details || "—"}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                              <div className="flex items-center gap-1.5">
+                                <Clock className="h-3 w-3" />
+                                {log.created_at ? new Date(log.created_at).toLocaleString() : "—"}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+        <Separator />
+
+        {/* ── Section F: Company Settings ── */}
         <section>
           <div className="flex items-center gap-2 mb-4">
             <Building2 className="h-5 w-5 text-[#EF4923]" />
