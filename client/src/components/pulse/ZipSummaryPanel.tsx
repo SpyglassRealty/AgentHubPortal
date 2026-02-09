@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ForecastGauge from "./ForecastGauge";
+import { generatePulseReport } from "./generateReport";
 import type { ZipSummary } from "./types";
 
 // ─── Mock data for when API isn't ready ──────────────────────
@@ -274,7 +275,10 @@ export default function ZipSummaryPanel({
           </div>
 
           {/* Download Report */}
-          <Button className="w-full bg-[#EF4923] hover:bg-[#d4411f] text-white text-sm">
+          <Button
+            className="w-full bg-[#EF4923] hover:bg-[#d4411f] text-white text-sm"
+            onClick={() => generatePulseReport(summary)}
+          >
             <Download className="h-4 w-4 mr-2" />
             Download Report
           </Button>
