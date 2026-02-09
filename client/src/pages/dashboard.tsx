@@ -17,7 +17,11 @@ import { GoogleDocModal } from "@/components/google-doc-modal";
 import { TrainingVideosModal } from "@/components/training-videos-modal";
 import { DOCUMENTS } from "@/lib/documents";
 import { useTheme } from "@/contexts/ThemeContext";
-import type { ContextSuggestion, AgentProfile } from "@shared/schema";
+import type { ContextSuggestion, AgentProfile, AppVisibility } from "@shared/schema";
+
+interface AppVisibilityResponse {
+  visibility: AppVisibility[];
+}
 
 interface ProfileResponse {
   profile: AgentProfile | null;
@@ -147,6 +151,26 @@ export default function DashboardPage() {
     },
     enabled: !profileData?.needsOnboarding || onboardingComplete,
   });
+
+  const { data: visibilityData } = useQuery<AppVisibilityResponse>({
+    queryKey: ["/api/app-visibility"],
+    queryFn: async () => {
+      const res = await fetch("/api/app-visibility", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch app visibility");
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // Build a set of hidden app IDs from API
+  const hiddenAppIds = new Set<string>();
+  (visibilityData?.visibility || []).forEach((v) => {
+    if (v.hidden) hiddenAppIds.add(v.appId);
+  });
+  // Fallback: if no API data yet, use static definitions
+  if (!visibilityData) {
+    apps.forEach((a) => { if (a.hidden) hiddenAppIds.add(a.id); });
+  }
 
   const { data: vimeoData } = useQuery<VimeoResponse>({
     queryKey: ["/api/vimeo/latest-video"],
@@ -303,7 +327,7 @@ export default function DashboardPage() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6"
           >
             {apps
-              .filter(app => app.id !== 'contract-conduit-marketing' && !app.hidden)
+              .filter(app => app.id !== 'contract-conduit-marketing' && !hiddenAppIds.has(app.id))
               .sort((a, b) => {
                 // Sort by: Integrated first, then Core, Sales, Marketing
                 const categoryPriority: Record<string, number> = { 'Core': 1, 'Sales': 2, 'Marketing': 3, 'Admin': 4 };

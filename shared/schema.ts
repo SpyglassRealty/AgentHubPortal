@@ -454,6 +454,17 @@ export const upsertIntegrationConfigSchema = z.object({
   additionalConfig: z.record(z.any()).optional(),
 });
 
+// App Visibility table — persists which apps are hidden from agent dashboard
+export const appVisibility = pgTable("app_visibility", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  appId: varchar("app_id").unique().notNull(),
+  hidden: boolean("hidden").default(false),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type AppVisibility = typeof appVisibility.$inferSelect;
+export type InsertAppVisibility = typeof appVisibility.$inferInsert;
+
 export const INTEGRATION_DEFINITIONS = [
   {
     name: 'fub',
