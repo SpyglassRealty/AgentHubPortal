@@ -141,6 +141,43 @@ async function testIntegration(name: string, apiKey: string, additionalConfig?: 
 }
 
 export function registerAdminRoutes(app: Express) {
+  // GET /api/admin/users - List all users
+  app.get("/api/admin/users", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      res.json({ users: allUsers });
+    } catch (error) {
+      console.error("[Admin] Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // PUT /api/admin/users/:id - Update user fields (is_active, is_super_admin)
+  app.put("/api/admin/users/:id", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { isSuperAdmin: newSuperAdmin } = req.body;
+
+      const updateData: Partial<{ isSuperAdmin: boolean }> = {};
+      if (typeof newSuperAdmin === "boolean") updateData.isSuperAdmin = newSuperAdmin;
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+
+      const user = await storage.updateUser(id, updateData);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      console.log(`[Admin] User ${id} updated by ${req.dbUser.id}:`, updateData);
+      res.json({ success: true, user });
+    } catch (error) {
+      console.error("[Admin] Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
   // GET /api/admin/integrations - List all integration configs (keys masked)
   app.get("/api/admin/integrations", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
     try {

@@ -24,6 +24,7 @@ import CmaBuilderPage from "@/pages/cma-builder";
 import CmaPresentationPage from "@/pages/cma-presentation";
 import PulsePage from "@/pages/pulse";
 import AdminSettingsPage from "@/pages/admin-settings";
+import AdminPage from "@/pages/admin";
 
 
 function Router() {
@@ -69,6 +70,7 @@ function Router() {
       <Route path="/marketing-calendar" component={MarketingCalendarPage} />
       <Route path="/training" component={TrainingPage} />
       <Route path="/settings" component={SettingsPage} />
+      <Route path="/admin" component={AdminPage} />
       <Route path="/admin/settings" component={AdminSettingsPage} />
       <Route path="/app/:id" component={AppView} />
       <Route component={NotFound} />

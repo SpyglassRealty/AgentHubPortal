@@ -23,7 +23,8 @@ import {
   Settings,
   GraduationCap,
   FileBarChart,
-  Activity
+  Activity,
+  Shield
 } from "lucide-react";
 
 export type AppConnectionType = 
@@ -43,6 +44,7 @@ export interface AppDefinition {
   url?: string;
   noIframe?: boolean;
   connectionType: AppConnectionType;
+  hidden?: boolean;
 }
 
 export const apps: AppDefinition[] = [
@@ -94,7 +96,8 @@ export const apps: AppDefinition[] = [
     categories: ["Core"],
     color: "bg-sky-100 text-sky-700",
     url: "https://home-review-ai-ryan1648.replit.app",
-    connectionType: "embedded"
+    connectionType: "embedded",
+    hidden: true
   },
   {
     id: "follow-up-boss",
@@ -178,7 +181,8 @@ export const apps: AppDefinition[] = [
     categories: ["Sales"],
     color: "bg-indigo-100 text-indigo-700",
     url: "https://idx-grid-data-ryan1648.replit.app",
-    connectionType: "embedded"
+    connectionType: "embedded",
+    hidden: true
   },
   {
     id: "cma-builder",
@@ -216,4 +220,5 @@ export const navItems = [
   { label: "Marketing Calendar", icon: CalendarDays, href: "/marketing-calendar" },
   { label: "Training", icon: GraduationCap, href: "/training" },
   { label: "Settings", icon: Settings, href: "/settings" },
+  { label: "Admin", icon: Shield, href: "/admin" },
 ];
