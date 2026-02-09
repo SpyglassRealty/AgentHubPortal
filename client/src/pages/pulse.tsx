@@ -235,6 +235,7 @@ export default function PulsePage() {
         <NeighborhoodExplorer
           zipData={zipData}
           onZipSelect={handleZipSelect}
+          selectedLayerId={selectedLayerId}
         />
       </div>
     </Layout>
