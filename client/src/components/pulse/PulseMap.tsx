@@ -46,6 +46,25 @@ function getMarkerColor(value: number, layer: DataLayer): string {
       if (value >= 40) return "#eab308";
       if (value >= 20) return "#f97316";
       return "#ef4444";
+    case "number":
+      // Population, inventory, housing units — wide range
+      if (value <= 10000) return "#22c55e";
+      if (value <= 25000) return "#84cc16";
+      if (value <= 40000) return "#eab308";
+      if (value <= 60000) return "#f97316";
+      return "#ef4444";
+    case "ratio":
+      // Value-to-income ratio, sale-to-list
+      if (value <= 3) return "#22c55e";
+      if (value <= 5) return "#84cc16";
+      if (value <= 7) return "#eab308";
+      if (value <= 10) return "#f97316";
+      return "#ef4444";
+    case "temperature":
+      if (value <= 60) return "#3b82f6";
+      if (value <= 68) return "#22c55e";
+      if (value <= 75) return "#eab308";
+      return "#ef4444";
     default:
       // Generic gradient
       if (value <= 20) return "#22c55e";
@@ -108,14 +127,22 @@ export default function PulseMap({
       zipData.forEach((item) => {
         if (!item.lat || !item.lng) return;
 
-        // Use medianPrice as the value; show listing count if no price data
-        const value = item.medianPrice;
-        const hasPrice = value > 0;
+        // Use V2 layerValue when available, fall back to medianPrice
+        const hasLayerValue = item.layerValue != null && item.layerValue !== 0;
+        const value = hasLayerValue ? item.layerValue! : item.medianPrice;
+        const hasPrice = value > 0 || hasLayerValue;
         const displayValue = hasPrice ? value : item.count;
         const color = hasPrice ? getMarkerColor(value, layer) : "#6b7280";
-        const size = hasPrice
-          ? Math.max(24, Math.min(48, 24 + (value / 1_000_000) * 25))
-          : Math.max(22, Math.min(36, 22 + item.count * 0.5));
+        // Size: adapt based on the unit type
+        let size: number;
+        if (!hasPrice) {
+          size = Math.max(22, Math.min(36, 22 + item.count * 0.5));
+        } else if (layer.unit === "currency") {
+          size = Math.max(24, Math.min(48, 24 + (value / 1_000_000) * 25));
+        } else {
+          // Non-currency layers: uniform bubble size
+          size = 32;
+        }
         const isSelected = selectedZip === item.zip;
 
         const el = document.createElement("div");
@@ -138,10 +165,16 @@ export default function PulseMap({
           ${isSelected ? "transform: scale(1.25); box-shadow: 0 4px 16px rgba(239,73,35,0.5); z-index: 10;" : ""}
         `;
 
-        // Label: show formatted price or listing count if no price
-        el.textContent = hasPrice && layer
-          ? formatLayerValue(value, layer)
-          : hasPrice ? `$${Math.round(value / 1000)}K` : `${item.count}`;
+        // Label: prefer V2 label (pre-formatted by backend), fall back to local formatting
+        if (hasLayerValue && item.layerLabel) {
+          el.textContent = item.layerLabel;
+        } else if (hasPrice && layer) {
+          el.textContent = formatLayerValue(value, layer);
+        } else if (hasPrice) {
+          el.textContent = `$${Math.round(value / 1000)}K`;
+        } else {
+          el.textContent = `${item.count}`;
+        }
 
         el.addEventListener("mouseenter", () => {
           if (selectedZip !== item.zip) {
@@ -237,6 +270,32 @@ function LegendDots({ layerUnit }: { layerUnit: string }) {
           <Dot color="#ef4444" label="0-20" />
           <Dot color="#eab308" label="40-60" />
           <Dot color="#22c55e" label="80-100" />
+        </>
+      );
+    case "number":
+      return (
+        <>
+          <Dot color="#22c55e" label="Low" />
+          <Dot color="#84cc16" label="" />
+          <Dot color="#eab308" label="Med" />
+          <Dot color="#f97316" label="" />
+          <Dot color="#ef4444" label="High" />
+        </>
+      );
+    case "ratio":
+      return (
+        <>
+          <Dot color="#22c55e" label="Low" />
+          <Dot color="#eab308" label="Mid" />
+          <Dot color="#ef4444" label="High" />
+        </>
+      );
+    case "temperature":
+      return (
+        <>
+          <Dot color="#3b82f6" label="Cold" />
+          <Dot color="#22c55e" label="Mild" />
+          <Dot color="#ef4444" label="Hot" />
         </>
       );
     default:
