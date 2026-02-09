@@ -18,8 +18,21 @@ import {
   ChevronDown,
   Inbox,
   MailOpen,
+  Tag,
+  Users,
+  MessageCircle,
 } from "lucide-react";
 import type { GmailMessage } from "@shared/schema";
+
+// ── Category Tabs ────────────────────────────────────────────────
+type CategoryId = 'primary' | 'promotions' | 'social' | 'forums';
+
+const categories: { id: CategoryId; label: string; icon: typeof Inbox }[] = [
+  { id: 'primary', label: 'Primary', icon: Inbox },
+  { id: 'promotions', label: 'Promotions', icon: Tag },
+  { id: 'social', label: 'Social', icon: Users },
+  { id: 'forums', label: 'Forums', icon: MessageCircle },
+];
 
 interface InboxResponse {
   messages: GmailMessage[];
@@ -336,24 +349,28 @@ export default function EmailPage() {
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [activeCategory, setActiveCategory] = useState<CategoryId>('primary');
   const [pageTokens, setPageTokens] = useState<string[]>([]);
   const { lastManualRefresh, lastAutoRefresh, isLoading: isSyncing, refresh: refreshSync } = useSyncStatus('calendar'); // reuse calendar sync section
 
-  // Build inbox URL
+  // Build inbox URL with category + search
   const buildInboxUrl = useCallback(() => {
     const params = new URLSearchParams();
     params.set('maxResults', '20');
     if (selectedAgentId) params.set('agentId', selectedAgentId);
-    if (searchQuery) params.set('q', searchQuery);
+    // Combine category filter with optional search query
+    const categoryQuery = `category:${activeCategory}`;
+    const q = searchQuery ? `${categoryQuery} ${searchQuery}` : categoryQuery;
+    params.set('q', q);
     const currentPageToken = pageTokens[pageTokens.length - 1];
     if (currentPageToken) params.set('pageToken', currentPageToken);
     return `/api/gmail/inbox?${params.toString()}`;
-  }, [selectedAgentId, searchQuery, pageTokens]);
+  }, [selectedAgentId, searchQuery, activeCategory, pageTokens]);
 
   const inboxUrl = buildInboxUrl();
 
   const { data: inboxData, isLoading, error, refetch } = useQuery<InboxResponse>({
-    queryKey: ['/api/gmail/inbox', { agentId: selectedAgentId, q: searchQuery, pageTokens }],
+    queryKey: ['/api/gmail/inbox', { agentId: selectedAgentId, q: searchQuery, category: activeCategory, pageTokens }],
     queryFn: async () => {
       const res = await fetch(inboxUrl, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch inbox');
@@ -370,6 +387,12 @@ export default function EmailPage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearchQuery(searchInput);
+    setPageTokens([]);
+    setSelectedMessageId(null);
+  };
+
+  const handleCategoryChange = (category: CategoryId) => {
+    setActiveCategory(category);
     setPageTokens([]);
     setSelectedMessageId(null);
   };
@@ -480,6 +503,32 @@ export default function EmailPage() {
               </Button>
             )}
           </form>
+        </div>
+
+        {/* Category Tabs */}
+        <div className="px-4 md:px-6 border-b bg-background shrink-0">
+          <div className="flex gap-0 -mb-px overflow-x-auto">
+            {categories.map(cat => {
+              const Icon = cat.icon;
+              const isActive = activeCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => handleCategoryChange(cat.id)}
+                  className={`
+                    flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap cursor-pointer
+                    ${isActive
+                      ? 'border-[#EF4923] text-[#EF4923]'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                    }
+                  `}
+                >
+                  <Icon className="h-4 w-4" />
+                  {cat.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Main content area: split view on desktop, single view on mobile */}
