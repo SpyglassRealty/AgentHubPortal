@@ -168,6 +168,43 @@ export async function registerRoutes(
     }
   });
 
+  // Debug endpoint to test Google Calendar setup
+  app.get('/api/test-google-calendar', async (req: any, res) => {
+    try {
+      const hasCredentials = !!(process.env.GOOGLE_CALENDAR_CREDENTIALS || process.env.GOOGLE_CALENDAR_CREDENTIALS_FILE);
+      console.log('[Test Google Calendar] Credentials exist:', hasCredentials);
+      console.log('[Test Google Calendar] GOOGLE_CALENDAR_CREDENTIALS env var set:', !!process.env.GOOGLE_CALENDAR_CREDENTIALS);
+      console.log('[Test Google Calendar] GOOGLE_CALENDAR_CREDENTIALS_FILE env var:', process.env.GOOGLE_CALENDAR_CREDENTIALS_FILE);
+      console.log('[Test Google Calendar] GOOGLE_SERVICE_ACCOUNT_JSON env var set:', !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+
+      if (!hasCredentials) {
+        return res.json({ 
+          success: false, 
+          error: 'Google Calendar credentials not configured',
+          details: {
+            hasCredentialsEnv: !!process.env.GOOGLE_CALENDAR_CREDENTIALS,
+            hasCredentialsFileEnv: !!process.env.GOOGLE_CALENDAR_CREDENTIALS_FILE,
+            hasServiceAccountEnv: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+            credentialsFileValue: process.env.GOOGLE_CALENDAR_CREDENTIALS_FILE
+          }
+        });
+      }
+
+      // Test getting calendar events (using a dummy email that won't work but will test auth)
+      const { getGoogleCalendarEvents } = await import('./googleCalendarClient');
+      const testResult = await getGoogleCalendarEvents('test@spyglassrealty.com', '2024-01-01', '2024-01-02');
+      
+      res.json({ success: true, message: 'Google Calendar client initialized successfully' });
+    } catch (error) {
+      console.error('[Test Google Calendar] Error:', error);
+      res.json({ 
+        success: false, 
+        error: error.message,
+        stack: error.stack?.split('\n').slice(0, 5) // First 5 lines of stack trace
+      });
+    }
+  });
+
   app.get('/api/fub/calendar', isAuthenticated, async (req: any, res) => {
     console.log('[Calendar Debug] Request received for /api/fub/calendar');
     try {
