@@ -92,7 +92,7 @@ export async function setupAuth(app: Express) {
 
   const ensureStrategy = (domain: string) => {
     const strategyName = `replitauth:${domain}`;
-    if (!registeredStrategies.has(strategyName)) {
+    if (!registeredStrategies.has(strategyName) && config) {
       const strategy = new Strategy(
         {
           name: strategyName,
@@ -212,10 +212,10 @@ export async function setupAuth(app: Express) {
         if (isGoogleUser || !isReplitEnvironment) {
           // Google users or non-Replit environments just redirect to home
           res.redirect("/");
-        } else {
+        } else if (config) {
           // Replit OIDC users need to call end session endpoint
           res.redirect(
-            client.buildEndSessionUrl(config!, {
+            client.buildEndSessionUrl(config, {
               client_id: process.env.REPL_ID!,
               post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
             }).href
@@ -262,6 +262,9 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 
   try {
     const config = await getOidcConfig();
+    if (!config) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
     const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
     updateUserSession(user, tokenResponse);
     return next();

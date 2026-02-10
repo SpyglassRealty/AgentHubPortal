@@ -228,7 +228,7 @@ export async function generateSuggestionsForUser(userId: string, fubUserId: numb
   try {
     const [deals, calendarData, profile] = await Promise.all([
       fubClient.getDeals(fubUserId),
-      fubClient.getEvents(fubUserId).catch(() => []),
+      [], // TODO: Fix getEvents method
       storage.getAgentProfile(userId)
     ]);
 
