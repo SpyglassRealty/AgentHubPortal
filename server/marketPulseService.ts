@@ -157,19 +157,25 @@ export async function refreshAndCacheMarketPulse(): Promise<MarketPulseData> {
   
   const data = await fetchMarketPulseFromAPI();
   
+  const cachedDataJson = JSON.stringify({
+    totalProperties: data.totalProperties,
+    active: data.active,
+    activeUnderContract: data.activeUnderContract,
+    pending: data.pending,
+    closed: data.closed,
+    lastUpdatedAt: data.lastUpdatedAt,
+    officeName: data.officeName,
+    fetchedAt: new Date().toISOString()
+  });
+  
+  console.log(`[Market Pulse DEBUG] Cached data JSON:`, cachedDataJson);
+  
   const snapshot: any = {
-    cached_data: JSON.stringify({
-      totalProperties: data.totalProperties,
-      active: data.active,
-      activeUnderContract: data.activeUnderContract,
-      pending: data.pending,
-      closed: data.closed,
-      lastUpdatedAt: data.lastUpdatedAt,
-      officeName: data.officeName,
-      fetchedAt: new Date().toISOString()
-    }),
+    cached_data: cachedDataJson,
     last_updated_at: new Date(data.lastUpdatedAt)
   };
+  
+  console.log(`[Market Pulse DEBUG] Full snapshot object:`, snapshot);
   
   await storage.saveMarketPulseSnapshot(snapshot);
   console.log(`[Market Pulse Service] Data cached successfully at ${data.lastUpdatedAt}`);

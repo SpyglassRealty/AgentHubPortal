@@ -283,9 +283,16 @@ export class DatabaseStorage implements IStorage {
 
   async saveMarketPulseSnapshot(snapshot: any): Promise<any> {
     console.log(`[Storage DEBUG] Saving market pulse snapshot:`, snapshot);
+    
+    // Ensure cached_data is never null
+    const cachedData = snapshot.cached_data || JSON.stringify({ error: "no data" });
+    const updatedAt = snapshot.last_updated_at || new Date();
+    
+    console.log(`[Storage DEBUG] Final values - cached_data:`, cachedData, `last_updated_at:`, updatedAt);
+    
     const result = await db.execute(sql`
       INSERT INTO market_pulse_snapshots (cached_data, last_updated_at)
-      VALUES (${snapshot.cached_data}, ${snapshot.last_updated_at})
+      VALUES (${cachedData}, ${updatedAt})
       RETURNING *
     `);
     const saved = result.rows?.[0] as any;
