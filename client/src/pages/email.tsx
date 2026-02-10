@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Layout from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,13 @@ interface InboxResponse {
 
 interface MessageResponse {
   message: GmailMessage;
+}
+
+interface CategoryUnreadCounts {
+  primary: number;
+  promotions: number;
+  social: number;
+  forums: number;
 }
 
 // ── Date formatting ──────────────────────────────────────────────
@@ -345,6 +352,7 @@ function EmptyState({ hasSearch }: { hasSearch: boolean }) {
 // ── Main Page ────────────────────────────────────────────────────
 export default function EmailPage() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -384,6 +392,20 @@ export default function EmailPage() {
     [messages]
   );
 
+  // Fetch unread counts for category tabs
+  const { data: unreadCounts } = useQuery<CategoryUnreadCounts>({
+    queryKey: ['/api/gmail/unread-counts', { agentId: selectedAgentId }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedAgentId) params.set('agentId', selectedAgentId);
+      const url = `/api/gmail/unread-counts${params.toString() ? `?${params.toString()}` : ''}`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch unread counts');
+      return res.json();
+    },
+    refetchInterval: 60000, // Refresh every minute
+  });
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearchQuery(searchInput);
@@ -400,6 +422,8 @@ export default function EmailPage() {
   const handleRefresh = async () => {
     await refreshSync(async () => {
       await refetch();
+      // Also refresh unread counts
+      await queryClient.invalidateQueries({ queryKey: ['/api/gmail/unread-counts'] });
     });
   };
 
@@ -511,12 +535,13 @@ export default function EmailPage() {
             {categories.map(cat => {
               const Icon = cat.icon;
               const isActive = activeCategory === cat.id;
+              const unreadCountForCategory = unreadCounts?.[cat.id] || 0;
               return (
                 <button
                   key={cat.id}
                   onClick={() => handleCategoryChange(cat.id)}
                   className={`
-                    flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap cursor-pointer
+                    flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap cursor-pointer relative
                     ${isActive
                       ? 'border-[#EF4923] text-[#EF4923]'
                       : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
@@ -525,6 +550,14 @@ export default function EmailPage() {
                 >
                   <Icon className="h-4 w-4" />
                   {cat.label}
+                  {unreadCountForCategory > 0 && (
+                    <Badge 
+                      variant="secondary"
+                      className="ml-1 bg-[#EF4923] text-white text-xs px-2 py-0 h-5 min-w-[20px] rounded-full"
+                    >
+                      {unreadCountForCategory > 99 ? '99+' : unreadCountForCategory}
+                    </Badge>
+                  )}
                 </button>
               );
             })}
