@@ -2512,7 +2512,7 @@ Respond with valid JSON in this exact format:
                 const z = l.address?.zip;
                 if (z) probeZips.add(z);
               });
-              console.log(`[CMA Search] Probe "${variant}": ${probeData.count} results, zips: ${[...probeZips].join(', ')}`);
+              console.log(`[CMA Search] Probe "${variant}": ${probeData.count} results, zips: ${Array.from(probeZips).join(', ')}`);
             }
             // Stop probing once we have zip codes
             if (probeZips.size >= 2) break;
@@ -2521,12 +2521,12 @@ Respond with valid JSON in this exact format:
 
         if (probeZips.size > 0) {
           // Use discovered zip codes to narrow the search
-          for (const z of probeZips) {
+          for (const z of Array.from(probeZips)) {
             params.append('zip', z);
           }
           // Remove city filter if we have zips (zip is more precise)
           params.delete('city');
-          console.log(`[CMA Search] Using zip codes for subdivision: ${[...probeZips].join(', ')}`);
+          console.log(`[CMA Search] Using zip codes for subdivision: ${Array.from(probeZips).join(', ')}`);
         } else if (!city && !zip) {
           // Fallback: default to Austin
           params.append('city', 'Austin');
