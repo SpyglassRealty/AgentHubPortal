@@ -269,7 +269,9 @@ export async function migrateMarketPulseSnapshots() {
       "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()",
       "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS office_id VARCHAR(50) DEFAULT 'ACT1518371'",
       "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'spyglass'",
-      "ALTER TABLE market_pulse_snapshots ALTER COLUMN cached_data DROP NOT NULL"
+      "ALTER TABLE market_pulse_snapshots ALTER COLUMN cached_data DROP NOT NULL",
+      // CMA table fix - add missing subject_property column  
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS subject_property JSONB"
     ];
 
     for (const stmt of alterStatements) {

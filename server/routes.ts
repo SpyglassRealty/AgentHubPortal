@@ -1025,15 +1025,17 @@ export async function registerRoutes(
           // Use minSoldDate from URL params, or default to 30 days
           if (minSoldDate) {
             params.append('minSoldDate', minSoldDate);
-            console.log(`[Company Listings] USING CUSTOM minSoldDate: ${minSoldDate}`);
+            console.log(`[Company Listings] CLOSED STATUS - USING CUSTOM minSoldDate: ${minSoldDate}`);
           } else {
             // Default to 30-day filter if no date specified
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
             const defaultDate = thirtyDaysAgo.toISOString().split('T')[0];
             params.append('minSoldDate', defaultDate);
-            console.log(`[Company Listings] USING DEFAULT 30-DAY FILTER: ${defaultDate}`);
+            console.log(`[Company Listings] CLOSED STATUS - USING DEFAULT 30-DAY FILTER: ${defaultDate}`);
           }
+          
+          console.log(`[Company Listings] CLOSED STATUS - Final Repliers params: status=U, lastStatus=Sld, minSoldDate=${params.get('minSoldDate')}`);
         } else {
           // Active, Active Under Contract, Pending use standardStatus
           params.append('standardStatus', status);
@@ -1045,6 +1047,11 @@ export async function registerRoutes(
 
       const fullUrl = `${baseUrl}?${params.toString()}`;
       console.log(`[Company Listings] Fetching page ${page} (limit ${limit}): ${status} listings...`);
+      console.log(`[Company Listings DEBUG] Received params:`, { 
+        status: req.query.status, 
+        minSoldDate: req.query.minSoldDate,
+        parsedMinSoldDate: minSoldDate 
+      });
       console.log(`[Company Listings] API URL: ${fullUrl}`);
 
       const response = await fetch(fullUrl, {
