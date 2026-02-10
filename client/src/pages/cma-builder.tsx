@@ -2090,23 +2090,6 @@ export default function CmaBuilderPage() {
     saveMutation.mutate(updatedCma);
   };
 
-  const handlePresentationBuilder = () => {
-    if (!cma.name.trim()) {
-      toast({ title: "CMA Name is required", description: "Please enter a name before accessing presentation builder.", variant: "destructive" });
-      return;
-    }
-    if (cma.comparableProperties.length === 0) {
-      toast({ title: "No comparables", description: "Add at least one comparable property before using presentation builder.", variant: "destructive" });
-      return;
-    }
-    // Save first, then navigate to presentation builder
-    setPostSaveRedirect('/cma/:id/presentation-builder');
-    saveMutation.mutate({
-      ...cma,
-      status: cma.subjectProperty && cma.comparableProperties.length > 0 ? "completed" : "in-progress"
-    });
-  };
-
   const handleCmaPresentation = () => {
     if (!cma.name.trim()) {
       toast({ title: "CMA Name is required", description: "Please enter a name before viewing presentation.", variant: "destructive" });
@@ -2256,18 +2239,6 @@ export default function CmaBuilderPage() {
                 <Save className="h-4 w-4 mr-2" />
               )}
               Save CMA
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handlePresentationBuilder}
-              disabled={saveMutation.isPending || cma.comparableProperties.length === 0}
-            >
-              {saveMutation.isPending && postSaveRedirect?.includes('presentation-builder') ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <FileText className="h-4 w-4 mr-2" />
-              )}
-              Presentation Builder
             </Button>
             <Button
               variant="outline"
