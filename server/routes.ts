@@ -268,7 +268,32 @@ export async function registerRoutes(
         ]);
 
         console.log('[Calendar Debug] FUB API response:', { appointmentsCount: appointments?.length || 0, tasksCount: tasks?.length || 0 });
-        res.json({ events: appointments, tasks });
+        
+        // Map FubEvent to GoogleCalendarEvent format for frontend compatibility
+        const mapFubToGoogleEvent = (fubEvent: any): any => ({
+          id: fubEvent.id.toString(), // Convert number to string
+          title: fubEvent.title,
+          description: fubEvent.description,
+          startDate: fubEvent.startDate,
+          endDate: fubEvent.endDate,
+          allDay: fubEvent.allDay || false,
+          // Map FUB types to Google Calendar types
+          type: fubEvent.type === 'appointment' ? 'meeting' : 
+                fubEvent.type === 'task' ? 'event' :
+                fubEvent.type === 'deal_closing' ? 'closing' : 'event',
+          location: fubEvent.location,
+          status: 'confirmed' as const, // FUB doesn't have status, default to confirmed
+          personName: fubEvent.personName,
+          personId: fubEvent.personId
+        });
+        
+        // Combine appointments and tasks into single events array
+        const allEvents = [
+          ...(appointments || []).map(mapFubToGoogleEvent),
+          ...(tasks || []).map(mapFubToGoogleEvent)
+        ];
+        
+        res.json({ events: allEvents });
       } catch (apiError) {
         console.error('[Calendar Debug] FUB API call failed:', apiError);
         throw apiError; // Re-throw to be caught by outer catch
@@ -281,7 +306,9 @@ export async function registerRoutes(
     }
   });
 
-  // Google Calendar - uses domain-wide delegation to impersonate users
+  // DEPRECATED: Google Calendar route - Calendar now uses Follow Up Boss
+  // Commented out to prevent confusion - Calendar page now calls /api/fub/calendar
+  /*
   app.get('/api/google/calendar', isAuthenticated, async (req: any, res) => {
     console.log('[Google Calendar Debug] Request received for /api/google/calendar');
     try {
@@ -362,6 +389,7 @@ export async function registerRoutes(
       res.status(500).json({ message: "Failed to fetch Google Calendar data" });
     }
   });
+  */
 
   app.get('/api/fub/deals', isAuthenticated, async (req: any, res) => {
     try {
