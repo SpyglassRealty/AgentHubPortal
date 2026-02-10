@@ -145,11 +145,11 @@ export default function CMAPresentation() {
   }, []);
 
   const presentationComparables = useMemo(() => {
-    const cmaPropertiesData = (cmaData?.comparables || []) as any[];
-    const transactionCmaData = (cmaData?.comparables || []) as any[];
+    const cmaPropertiesData = (cmaData?.comparableProperties || []) as any[];
+    const transactionCmaData = (cmaData?.comparableProperties || []) as any[];
     
-    // Create lookup maps from transaction.cmaData by mlsNumber for coordinates and status
-    // This ensures we always use the LATEST status from MLS sync, even if savedCma has stale data
+    // Create lookup maps from cmaData.comparableProperties by mlsNumber for coordinates and status
+    // This ensures we always use the LATEST status from MLS sync
     const coordinateLookup = new Map<string, { lat: number; lng: number }>();
     const statusLookup = new Map<string, { status: string; lastStatus: string }>();
     
@@ -164,14 +164,14 @@ export default function CMAPresentation() {
         coordinateLookup.set(comp.mlsNumber, { lat, lng });
       }
       
-      // Always store the latest status from transaction.cmaData
+      // Always store the latest status from cmaData.comparableProperties
       statusLookup.set(comp.mlsNumber, {
         status: comp.status || comp.standardStatus || '',
         lastStatus: comp.lastStatus || ''
       });
     });
     
-    // Prefer CMA propertiesData if available, otherwise use transaction.cmaData
+    // Prefer CMA propertiesData if available, otherwise use comparableProperties
     const rawComparables = cmaPropertiesData.length > 0 ? cmaPropertiesData : transactionCmaData;
     
     return (rawComparables as any[]).map((comp: any, index: number) => {
@@ -189,7 +189,7 @@ export default function CMAPresentation() {
       let lng = comp.longitude || comp.lng || comp.map?.longitude || comp.map?.lng || 
         comp.coordinates?.longitude || comp.coordinates?.lng || comp.geo?.lng;
       
-      // If no coordinates and we have mlsNumber, try to get from transaction.cmaData
+      // If no coordinates and we have mlsNumber, try to get from comparableProperties
       if ((!lat || !lng) && comp.mlsNumber) {
         const fallbackCoords = coordinateLookup.get(comp.mlsNumber);
         if (fallbackCoords) {
@@ -202,7 +202,7 @@ export default function CMAPresentation() {
         (comp.lotSizeSquareFeet ? comp.lotSizeSquareFeet / 43560 : null) ??
         (comp.lotSize && comp.lotSize > 100 ? comp.lotSize / 43560 : comp.lotSize) ?? null;
       
-      // Get status from the latest transaction.cmaData if available (via lookup), 
+      // Get status from the latest comparableProperties if available (via lookup), 
       // otherwise fall back to the comp's own status fields
       const freshStatus = comp.mlsNumber ? statusLookup.get(comp.mlsNumber) : null;
       const statusToUse = freshStatus?.status || comp.status || comp.standardStatus || '';
@@ -236,10 +236,10 @@ export default function CMAPresentation() {
         longitude: lng,
       };
     });
-  }, [cmaData?.comparables, normalizeStatusWithLastStatus]);
+  }, [cmaData?.comparableProperties, normalizeStatusWithLastStatus]);
 
   const subjectProperty = useMemo(() => {
-    const rawSubject = cmaData as any;
+    const rawSubject = cmaData?.subjectProperty as any;
     if (!rawSubject) return undefined;
     
     return {
@@ -259,7 +259,7 @@ export default function CMAPresentation() {
       map: rawSubject.map || (rawSubject.coordinates?.latitude && rawSubject.coordinates?.longitude ? 
         { latitude: rawSubject.coordinates.latitude, longitude: rawSubject.coordinates.longitude } : null),
     };
-  }, [cmaData, normalizeStatusWithLastStatus]);
+  }, [cmaData?.subjectProperty, normalizeStatusWithLastStatus]);
 
   const averageDaysOnMarket = useMemo(() => {
     if (!presentationComparables.length) return 30;
@@ -381,8 +381,8 @@ export default function CMAPresentation() {
       />
 
       <Header
-        propertyAddress={cmaData?.propertyAddress || cmaData?.address || 'Property Address'}
-        mlsNumber={cmaData?.mlsNumber || ''}
+        propertyAddress={cmaData?.subjectProperty?.address || cmaData?.name || 'Property Address'}
+        mlsNumber={cmaData?.subjectProperty?.mlsNumber || ''}
         agent={agentProfile}
         onMenuClick={() => setSidebarOpen(true)}
         onClose={handleClose}
