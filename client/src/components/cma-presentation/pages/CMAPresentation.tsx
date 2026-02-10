@@ -94,6 +94,7 @@ export default function CMAPresentation() {
   });
 
   const agentProfile = useMemo(() => {
+    console.log('[CMA Presentation] agentProfileData:', agentProfileData);
     if (!agentProfileData) return { name: '', company: 'Spyglass Realty', phone: '', email: '', photo: '', bio: '' };
     
     const { profile, user } = agentProfileData;
@@ -101,7 +102,7 @@ export default function CMAPresentation() {
       (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 
        user?.firstName || 'Agent');
     
-    return {
+    const result = {
       name: displayName,
       company: profile?.marketingCompany || 'Spyglass Realty',
       phone: user?.marketingPhone || '',
@@ -110,6 +111,9 @@ export default function CMAPresentation() {
       title: profile?.title || user?.marketingTitle || '',
       bio: profile?.bio || '',
     };
+    
+    console.log('[CMA Presentation] agentProfile result:', result);
+    return result;
   }, [agentProfileData]);
 
   // Normalize status checking both status and lastStatus fields
@@ -145,8 +149,10 @@ export default function CMAPresentation() {
   }, []);
 
   const presentationComparables = useMemo(() => {
+    console.log('[CMA Presentation] cmaData:', cmaData);
     const cmaPropertiesData = (cmaData?.comparableProperties || []) as any[];
     const transactionCmaData = (cmaData?.comparableProperties || []) as any[];
+    console.log('[CMA Presentation] comparableProperties array length:', cmaPropertiesData.length);
     
     // Create lookup maps from cmaData.comparableProperties by mlsNumber for coordinates and status
     // This ensures we always use the LATEST status from MLS sync
@@ -237,6 +243,8 @@ export default function CMAPresentation() {
       };
     });
   }, [cmaData?.comparableProperties, normalizeStatusWithLastStatus]);
+
+  console.log('[CMA Presentation] presentationComparables final:', presentationComparables);
 
   const subjectProperty = useMemo(() => {
     const rawSubject = cmaData?.subjectProperty as any;
