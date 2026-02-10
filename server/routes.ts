@@ -935,6 +935,7 @@ export async function registerRoutes(
       const propertyType = (req.query.propertyType as string) || '';
       const maxDom = req.query.maxDom ? parseInt(req.query.maxDom as string, 10) : undefined;
       const search = (req.query.search as string) || '';
+      const minSoldDate = (req.query.minSoldDate as string) || '';
 
       const baseUrl = 'https://api.repliers.io/listings';
       const msaCounties = ['Travis', 'Williamson', 'Hays', 'Bastrop', 'Caldwell'];
@@ -1018,11 +1019,20 @@ export async function registerRoutes(
       if (status && status !== 'all') {
         if (status === 'Closed') {
           // For closed/sold listings, use status=U with lastStatus=Sld
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
           params.append('status', 'U');
           params.append('lastStatus', 'Sld');
-          params.append('minClosedDate', thirtyDaysAgo.toISOString().split('T')[0]);
+          
+          // Use minSoldDate from URL params, or default to 30 days
+          if (minSoldDate) {
+            params.append('minSoldDate', minSoldDate);
+            console.log(`[Company Listings] Using custom minSoldDate: ${minSoldDate}`);
+          } else {
+            // Default to 30-day filter if no date specified
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            params.append('minSoldDate', thirtyDaysAgo.toISOString().split('T')[0]);
+            console.log(`[Company Listings] Using default 30-day filter`);
+          }
         } else {
           // Active, Active Under Contract, Pending use standardStatus
           params.append('standardStatus', status);
