@@ -21,7 +21,7 @@ import MarketingCalendarPage from "@/pages/marketing-calendar";
 import TrainingPage from "@/pages/training";
 import CmaPage from "@/pages/cma";
 import CmaBuilderPage from "@/pages/cma-builder";
-import CmaPresentationPage from "@/pages/cma-presentation";
+import CmaPresentationPage from "@/components/cma-presentation/pages/CMAPresentation";
 import CMAPresentationBuilder from "@/pages/CMAPresentationBuilder";
 import SharedCmaPage from "@/pages/shared-cma";
 import PulsePage from "@/pages/pulse";
