@@ -22,6 +22,8 @@ import TrainingPage from "@/pages/training";
 import CmaPage from "@/pages/cma";
 import CmaBuilderPage from "@/pages/cma-builder";
 import CmaPresentationPage from "@/pages/cma-presentation";
+import CMAPresentationBuilder from "@/pages/CMAPresentationBuilder";
+import SharedCmaPage from "@/pages/shared-cma";
 import PulsePage from "@/pages/pulse";
 import AdminSettingsPage from "@/pages/admin-settings";
 
@@ -44,6 +46,7 @@ function Router() {
     return (
       <Switch>
         <Route path="/" component={LandingPage} />
+        <Route path="/share/:token" component={SharedCmaPage} />
         <Route>
           <Redirect to="/" />
         </Route>
@@ -64,12 +67,14 @@ function Router() {
       <Route path="/pulse" component={PulsePage} />
       <Route path="/cma" component={CmaPage} />
       <Route path="/cma/:id/presentation" component={CmaPresentationPage} />
+      <Route path="/cma/:id/presentation-builder" component={CMAPresentationBuilder} />
       <Route path="/cma/:id" component={CmaBuilderPage} />
       <Route path="/marketing" component={MarketingPage} />
       <Route path="/marketing-calendar" component={MarketingCalendarPage} />
       <Route path="/training" component={TrainingPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/admin/settings" component={AdminSettingsPage} />
+      <Route path="/share/:token" component={SharedCmaPage} />
       <Route path="/app/:id" component={AppView} />
       <Route component={NotFound} />
     </Switch>
