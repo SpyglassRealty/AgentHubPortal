@@ -21,6 +21,7 @@ import MarketingCalendarPage from "@/pages/marketing-calendar";
 import TrainingPage from "@/pages/training";
 import CmaPage from "@/pages/cma";
 import CmaBuilderPage from "@/pages/cma-builder";
+import CmaPresentationBuilderPage from "@/pages/cma-presentation-builder";
 import CmaPresentationPage from "@/pages/cma-presentation";
 import PulsePage from "@/pages/pulse";
 import AdminSettingsPage from "@/pages/admin-settings";
@@ -66,7 +67,8 @@ function Router() {
       <Route path="/properties" component={PropertiesPage} />
       <Route path="/pulse" component={PulsePage} />
       <Route path="/cma" component={CmaPage} />
-      <Route path="/cma/:id/presentation" component={CmaPresentationPage} />
+      <Route path="/cma/:id/presentation-builder" component={CmaPresentationBuilderPage} />
+      <Route path="/cma/:id/cma-presentation" component={CmaPresentationPage} />
       <Route path="/cma/:id" component={CmaBuilderPage} />
       <Route path="/marketing" component={MarketingPage} />
       <Route path="/marketing-calendar" component={MarketingCalendarPage} />
