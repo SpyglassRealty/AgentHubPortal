@@ -1025,13 +1025,14 @@ export async function registerRoutes(
           // Use minSoldDate from URL params, or default to 30 days
           if (minSoldDate) {
             params.append('minSoldDate', minSoldDate);
-            console.log(`[Company Listings] Using custom minSoldDate: ${minSoldDate}`);
+            console.log(`[Company Listings] USING CUSTOM minSoldDate: ${minSoldDate}`);
           } else {
             // Default to 30-day filter if no date specified
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            params.append('minSoldDate', thirtyDaysAgo.toISOString().split('T')[0]);
-            console.log(`[Company Listings] Using default 30-day filter`);
+            const defaultDate = thirtyDaysAgo.toISOString().split('T')[0];
+            params.append('minSoldDate', defaultDate);
+            console.log(`[Company Listings] USING DEFAULT 30-DAY FILTER: ${defaultDate}`);
           }
         } else {
           // Active, Active Under Contract, Pending use standardStatus
@@ -2412,23 +2413,38 @@ Respond with valid JSON in this exact format:
   // Create a new CMA
   app.post('/api/cma', isAuthenticated, async (req: any, res) => {
     try {
+      console.log('[CMA DEBUG] CMA save request received:', req.body);
+      
       const user = await getDbUser(req);
+      console.log('[CMA DEBUG] User lookup result:', user ? { id: user.id, email: user.email } : 'null');
+      
       if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
       const { name, subjectProperty, comparableProperties, notes, status } = req.body;
+      console.log('[CMA DEBUG] Parsed request data:', { name, subjectProperty, comparableProperties, notes, status });
+      
       if (!name) return res.status(400).json({ message: "Name is required" });
-      const cma = await storage.createCma({
+      
+      const cmaData = {
         userId: user.id,
         name,
         subjectProperty: subjectProperty || null,
         comparableProperties: comparableProperties || [],
         notes: notes || null,
         status: status || 'draft',
-      });
+      };
+      
+      console.log('[CMA DEBUG] Creating CMA with data:', cmaData);
+      
+      const cma = await storage.createCma(cmaData);
+      console.log('[CMA DEBUG] CMA created successfully:', cma.id);
+      
       res.json(cma);
     } catch (error) {
-      console.error('[CMA] Error creating CMA:', error);
+      console.error('[CMA DEBUG] CRITICAL ERROR creating CMA:', error);
+      console.error('[CMA DEBUG] Error stack:', error.stack);
       const errMsg = error instanceof Error ? error.message : String(error);
-      res.status(500).json({ message: "Failed to create CMA", error: errMsg });
+      res.status(500).json({ message: "Failed to create CMA", error: errMsg, debug: true });
     }
   });
 
