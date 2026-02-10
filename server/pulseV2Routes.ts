@@ -989,5 +989,116 @@ export function registerPulseV2Routes(app: Express): void {
     }
   });
 
-  console.log("[Pulse V2] Registered 6 route groups under /api/pulse/v2/*");
+  // ═══════════════════════════════════════════════════════════════════
+  // 7. GET /api/pulse/demographics/:zipCode — Census demographics for a zip
+  // ═══════════════════════════════════════════════════════════════════
+  app.get("/api/pulse/demographics/:zipCode", isAuthenticated, async (req: Request, res: Response) => {
+    const { zipCode } = req.params;
+
+    if (!zipCode || !/^\d{5}$/.test(zipCode)) {
+      return res.status(400).json({ error: "Invalid zip code" });
+    }
+
+    try {
+      const client = await pool.connect();
+      try {
+        // Get the most recent Census data for this zip
+        const result = await client.query(
+          `SELECT * FROM pulse_census_data WHERE zip = $1 ORDER BY year DESC LIMIT 1`,
+          [zipCode]
+        );
+
+        if (result.rows.length === 0) {
+          // Return mock/fallback data if no Census data is available yet
+          const meta = ZIP_META[zipCode];
+          return res.json({
+            zip: zipCode,
+            year: null,
+            source: "mock",
+            county: meta?.county || null,
+            city: meta?.city || null,
+            demographics: {
+              population: REALISTIC_POPULATIONS[zipCode] || null,
+              medianIncome: REALISTIC_INCOMES[zipCode] || null,
+              medianAge: null,
+              homeownershipRate: null,
+              povertyRate: null,
+              collegeDegreeRate: null,
+              remoteWorkPct: null,
+              housingUnits: null,
+              familyHouseholdsPct: null,
+              homeowners25to44Pct: null,
+              homeowners75plusPct: null,
+            },
+          });
+        }
+
+        const row = result.rows[0];
+        res.json({
+          zip: zipCode,
+          year: row.year,
+          source: "census_acs",
+          county: ZIP_META[zipCode]?.county || null,
+          city: ZIP_META[zipCode]?.city || null,
+          demographics: {
+            population: row.population ? Number(row.population) : null,
+            medianIncome: row.median_income ? Number(row.median_income) : null,
+            medianAge: row.median_age ? Number(row.median_age) : null,
+            homeownershipRate: row.homeownership_rate ? Number(row.homeownership_rate) : null,
+            povertyRate: row.poverty_rate ? Number(row.poverty_rate) : null,
+            collegeDegreeRate: row.college_degree_rate ? Number(row.college_degree_rate) : null,
+            remoteWorkPct: row.remote_work_pct ? Number(row.remote_work_pct) : null,
+            housingUnits: row.housing_units ? Number(row.housing_units) : null,
+            familyHouseholdsPct: row.family_households_pct ? Number(row.family_households_pct) : null,
+            homeowners25to44Pct: row.homeowners_25_to_44_pct ? Number(row.homeowners_25_to_44_pct) : null,
+            homeowners75plusPct: row.homeowners_75_plus_pct ? Number(row.homeowners_75_plus_pct) : null,
+          },
+        });
+      } finally {
+        client.release();
+      }
+    } catch (err: any) {
+      console.error(`[Pulse V2] demographics/${zipCode} error:`, err);
+      res.status(500).json({ error: "Failed to fetch demographics data" });
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 8. GET /api/pulse/schools — Nearby schools from GreatSchools
+  // ═══════════════════════════════════════════════════════════════════
+  app.get("/api/pulse/schools", isAuthenticated, async (req: Request, res: Response) => {
+    const lat = parseFloat(req.query.lat as string);
+    const lng = parseFloat(req.query.lng as string);
+    const radius = parseInt(req.query.radius as string) || 5;
+    const limit = Math.min(parseInt(req.query.limit as string) || 25, 50);
+
+    if (isNaN(lat) || isNaN(lng)) {
+      return res.status(400).json({ error: "lat and lng query parameters are required" });
+    }
+
+    try {
+      const { getNearbySchools } = await import("./services/greatschools");
+      const schools = await getNearbySchools(lat, lng, radius, limit);
+
+      res.json({
+        schools,
+        meta: {
+          lat,
+          lng,
+          radius,
+          count: schools.length,
+          attribution: {
+            text: "Data provided by GreatSchools.org © 2025. All rights reserved.",
+            logoUrl: "https://www.greatschools.org/assets/shared/gs-logo.svg",
+            linkUrl: "https://www.greatschools.org",
+          },
+        },
+      });
+    } catch (err: any) {
+      console.error(`[Pulse V2] schools error:`, err);
+      res.status(500).json({ error: "Failed to fetch schools data" });
+    }
+  });
+
+  console.log("[Pulse V2] Registered 8 route groups under /api/pulse/v2/*");
 }

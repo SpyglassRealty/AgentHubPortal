@@ -32,26 +32,63 @@ const REDFIN_URL = 'https://redfin-public-data.s3.us-west-2.amazonaws.com/redfin
 // median_dom, avg_sale_to_list, sold_above_list, price_drops,
 // off_market_in_two_weeks, ...
 
+// Redfin CSV headers are UPPERCASE and quoted.
+// csv-parse strips quotes but preserves case.
+// We define both variants for safety.
 interface RedfinRow {
-  period_begin: string;
-  period_end: string;
-  period_duration: string;
-  region_type: string;
-  region_type_id: string;
-  region: string; // Zip code for zip-level data
-  city: string;
-  state: string;
-  state_code: string;
-  property_type: string;
-  property_type_id: string;
-  median_sale_price: string;
-  homes_sold: string;
-  median_dom: string;
-  inventory: string;
-  price_drops: string;
-  avg_sale_to_list: string;
-  new_listings: string;
-  [key: string]: string;
+  // Uppercase keys (actual format as of 2026)
+  PERIOD_BEGIN?: string;
+  PERIOD_END?: string;
+  PERIOD_DURATION?: string;
+  REGION_TYPE?: string;
+  REGION_TYPE_ID?: string;
+  REGION?: string;
+  CITY?: string;
+  STATE?: string;
+  STATE_CODE?: string;
+  PROPERTY_TYPE?: string;
+  PROPERTY_TYPE_ID?: string;
+  MEDIAN_SALE_PRICE?: string;
+  HOMES_SOLD?: string;
+  MEDIAN_DOM?: string;
+  INVENTORY?: string;
+  PRICE_DROPS?: string;
+  AVG_SALE_TO_LIST?: string;
+  NEW_LISTINGS?: string;
+  // Lowercase fallbacks (old format)
+  period_begin?: string;
+  period_end?: string;
+  period_duration?: string;
+  region_type?: string;
+  region_type_id?: string;
+  region?: string;
+  city?: string;
+  state?: string;
+  state_code?: string;
+  property_type?: string;
+  property_type_id?: string;
+  median_sale_price?: string;
+  homes_sold?: string;
+  median_dom?: string;
+  inventory?: string;
+  price_drops?: string;
+  avg_sale_to_list?: string;
+  new_listings?: string;
+  [key: string]: string | undefined;
+}
+
+/** Get a field value case-insensitively */
+function getField(row: RedfinRow, field: string): string {
+  return (row[field.toUpperCase()] || row[field.toLowerCase()] || row[field] || '') as string;
+}
+
+/** Extract bare zip code from Redfin's REGION field.
+ *  Redfin formats it as "Zip Code: 78704" — we need just "78704" */
+function extractZipFromRegion(region: string): string {
+  if (!region) return '';
+  // Remove "Zip Code: " prefix if present
+  const match = region.match(/(\d{5})/);
+  return match ? match[1] : region.replace(/\D/g, '').slice(0, 5);
 }
 
 /**
@@ -88,19 +125,18 @@ async function downloadAndParseRedfin(): Promise<RedfinRow[]> {
         while ((record = parser.read()) !== null) {
           totalProcessed++;
           
-          // Only zip-level data
-          if (record.region_type !== 'zip_code' && record.region_type_id !== '2') continue;
+          // Only zip-level data (case-insensitive)
+          const regionType = getField(record, 'region_type').toLowerCase();
+          const regionTypeId = getField(record, 'region_type_id');
+          if (regionType !== 'zip code' && regionType !== 'zip_code' && regionTypeId !== '2') continue;
           
-          // Only monthly periods
-          if (record.period_duration && record.period_duration !== '30' && record.period_duration !== 'monthly') {
-            // Skip non-monthly aggregations
-          }
-          
-          // Only "All Residential" property type (id=1 or property_type includes 'All')
-          if (record.property_type_id && record.property_type_id !== '1') continue;
+          // Only "All Residential" property type (id=1 or -1)
+          const propTypeId = getField(record, 'property_type_id');
+          if (propTypeId && propTypeId !== '1' && propTypeId !== '-1') continue;
           
           // Filter to Austin MSA
-          const zip = record.region?.padStart(5, '0');
+          const rawRegion = getField(record, 'region');
+          const zip = extractZipFromRegion(rawRegion);
           if (!zip || !AUSTIN_MSA_ZIP_SET.has(zip)) continue;
           
           rows.push(record);
@@ -177,20 +213,20 @@ export async function refreshRedfinData(): Promise<{ rowsProcessed: number; erro
   fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
   const cutoffDate = fiveYearsAgo.toISOString().split('T')[0];
   
-  const recentRows = rows.filter(r => r.period_begin >= cutoffDate);
+  const recentRows = rows.filter(r => getField(r, 'period_begin') >= cutoffDate);
   console.log(`[Redfin] ${recentRows.length} rows in last 5 years (of ${rows.length} total)`);
   
   const records = recentRows.map(r => ({
-    zip: r.region.padStart(5, '0'),
-    periodStart: r.period_begin,
-    medianSalePrice: parseNum(r.median_sale_price)?.toString() ?? null,
-    homesSold: parseInt2(r.homes_sold),
-    medianDom: parseInt2(r.median_dom),
-    inventory: parseInt2(r.inventory),
-    priceDropsPct: parseNum(r.price_drops)?.toString() ?? null,
-    saleToListRatio: parseNum(r.avg_sale_to_list)?.toString() ?? null,
-    newListings: parseInt2(r.new_listings),
-    avgSaleToList: parseNum(r.avg_sale_to_list)?.toString() ?? null,
+    zip: extractZipFromRegion(getField(r, 'region')),
+    periodStart: getField(r, 'period_begin'),
+    medianSalePrice: parseNum(getField(r, 'median_sale_price'))?.toString() ?? null,
+    homesSold: parseInt2(getField(r, 'homes_sold')),
+    medianDom: parseInt2(getField(r, 'median_dom')),
+    inventory: parseInt2(getField(r, 'inventory')),
+    priceDropsPct: parseNum(getField(r, 'price_drops'))?.toString() ?? null,
+    saleToListRatio: parseNum(getField(r, 'avg_sale_to_list'))?.toString() ?? null,
+    newListings: parseInt2(getField(r, 'new_listings')),
+    avgSaleToList: parseNum(getField(r, 'avg_sale_to_list'))?.toString() ?? null,
   }));
   
   console.log(`[Redfin] Upserting ${records.length} records...`);

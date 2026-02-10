@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Search, X, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { getLayerById } from "./data-layers";
 import type { ZipHeatmapItem } from "./types";
 
 function formatPrice(n: number): string {
@@ -14,22 +15,34 @@ function formatPrice(n: number): string {
 interface NeighborhoodExplorerProps {
   zipData: ZipHeatmapItem[];
   onZipSelect: (zip: string) => void;
+  selectedLayerId?: string;
 }
 
 export default function NeighborhoodExplorer({
   zipData,
   onZipSelect,
+  selectedLayerId,
 }: NeighborhoodExplorerProps) {
+  const activeLayer = selectedLayerId ? getLayerById(selectedLayerId) : null;
+  const showLayerValue = activeLayer && selectedLayerId !== "home-value";
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
     if (!search.trim()) {
       return [...zipData]
-        .sort((a, b) => b.count - a.count)
+        .sort((a, b) => {
+          // Sort by layer value if available, otherwise by listing count
+          if (showLayerValue) {
+            const aVal = a.layerValue ?? 0;
+            const bVal = b.layerValue ?? 0;
+            return bVal - aVal;
+          }
+          return b.count - a.count;
+        })
         .slice(0, 12);
     }
     return zipData.filter((z) => z.zip.includes(search.trim()));
-  }, [zipData, search]);
+  }, [zipData, search, showLayerValue]);
 
   return (
     <Card>
@@ -75,6 +88,12 @@ export default function NeighborhoodExplorer({
                   <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
                 <div className="space-y-1 text-xs text-muted-foreground">
+                  {showLayerValue && z.layerLabel && (
+                    <div className="flex justify-between">
+                      <span className="text-[#EF4923] font-medium truncate max-w-[120px]">{activeLayer?.label}</span>
+                      <span className="font-bold text-[#EF4923]">{z.layerLabel}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span>Active Listings</span>
                     <span className="font-semibold text-foreground">{z.count}</span>
