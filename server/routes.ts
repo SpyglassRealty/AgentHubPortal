@@ -2511,7 +2511,7 @@ Respond with valid JSON in this exact format:
                 const z = l.address?.zip;
                 if (z) probeZips.add(z);
               });
-              console.log(`[CMA Search] Probe "${variant}": ${probeData.count} results, zips: ${[...probeZips].join(', ')}`);
+              console.log(`[CMA Search] Probe "${variant}": ${probeData.count} results, zips: ${Array.from(probeZips).join(', ')}`);
             }
             // Stop probing once we have zip codes
             if (probeZips.size >= 2) break;
@@ -2520,12 +2520,12 @@ Respond with valid JSON in this exact format:
 
         if (probeZips.size > 0) {
           // Use discovered zip codes to narrow the search
-          for (const z of probeZips) {
+          for (const z of Array.from(probeZips)) {
             params.append('zip', z);
           }
           // Remove city filter if we have zips (zip is more precise)
           params.delete('city');
-          console.log(`[CMA Search] Using zip codes for subdivision: ${[...probeZips].join(', ')}`);
+          console.log(`[CMA Search] Using zip codes for subdivision: ${Array.from(probeZips).join(', ')}`);
         } else if (!city && !zip) {
           // Fallback: default to Austin
           params.append('city', 'Austin');
@@ -3002,6 +3002,461 @@ Respond with valid JSON in this exact format:
     } catch (error) {
       console.error('[CMA Search] Error:', error);
       res.status(500).json({ message: "Failed to search properties" });
+    }
+  });
+
+  // ==========================================
+  // CMA Report Config Routes (Presentation Builder)
+  // ==========================================
+
+  // Get report config for a CMA
+  app.get('/api/cmas/:id/report-config', isAuthenticated, async (req: any, res) => {
+    try {
+      const config = await storage.getCmaReportConfig(req.params.id);
+      res.json(config || {
+        cmaId: req.params.id,
+        includedSections: ['cover_page', 'cover_letter', 'map_all_listings', 'summary_comparables', 'property_details', 'price_per_sqft', 'comparable_stats'],
+        sectionOrder: null,
+        layout: 'two_photos',
+        template: 'default',
+        theme: 'spyglass',
+        photoLayout: 'first_dozen',
+        mapStyle: 'streets',
+        showMapPolygon: true,
+        includeAgentFooter: true,
+      });
+    } catch (error) {
+      console.error('[CMA Report Config] Error getting config:', error);
+      res.status(500).json({ message: "Failed to get CMA report config" });
+    }
+  });
+
+  // Create/update report config for a CMA
+  app.put('/api/cmas/:id/report-config', isAuthenticated, async (req: any, res) => {
+    try {
+      const config = await storage.upsertCmaReportConfig({
+        ...req.body,
+        cmaId: req.params.id,
+      });
+      res.json(config);
+    } catch (error) {
+      console.error('[CMA Report Config] Error updating config:', error);
+      res.status(500).json({ message: "Failed to update CMA report config" });
+    }
+  });
+
+  // Delete report config for a CMA
+  app.delete('/api/cmas/:id/report-config', isAuthenticated, async (req: any, res) => {
+    try {
+      const deleted = await storage.deleteCmaReportConfig(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Report config not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[CMA Report Config] Error deleting config:', error);
+      res.status(500).json({ message: "Failed to delete CMA report config" });
+    }
+  });
+
+  // ==========================================
+  // CMA Template Routes (Presentation Builder)
+  // ==========================================
+
+  // List user's templates
+  app.get('/api/cma-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const templates = await storage.getCmaReportTemplates(user.id);
+      res.json(templates);
+    } catch (error) {
+      console.error('[CMA Templates] Error listing:', error);
+      res.status(500).json({ message: "Failed to list templates" });
+    }
+  });
+
+  // Create template
+  app.post('/api/cma-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const template = await storage.createCmaReportTemplate({
+        ...req.body,
+        userId: user.id,
+      });
+      res.status(201).json(template);
+    } catch (error) {
+      console.error('[CMA Templates] Error creating:', error);
+      res.status(500).json({ message: "Failed to create template" });
+    }
+  });
+
+  // Update template
+  app.put('/api/cma-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      // Verify ownership
+      const existing = await storage.getCmaReportTemplate(req.params.id);
+      if (!existing || existing.userId !== user.id) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      
+      const updated = await storage.updateCmaReportTemplate(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error('[CMA Templates] Error updating:', error);
+      res.status(500).json({ message: "Failed to update template" });
+    }
+  });
+
+  // Delete template
+  app.delete('/api/cma-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const deleted = await storage.deleteCmaReportTemplate(req.params.id, user.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[CMA Templates] Error deleting:', error);
+      res.status(500).json({ message: "Failed to delete template" });
+    }
+  });
+
+  // Apply template to a CMA
+  app.post('/api/cma-templates/:id/apply/:cmaId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const template = await storage.getCmaReportTemplate(req.params.id);
+      if (!template || template.userId !== user.id) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      
+      // Apply template settings to the CMA's report config
+      const config = await storage.upsertCmaReportConfig({
+        cmaId: req.params.cmaId,
+        includedSections: template.includedSections,
+        sectionOrder: template.sectionOrder,
+        coverLetterOverride: template.coverLetterOverride,
+        layout: template.layout,
+        theme: template.theme,
+        photoLayout: template.photoLayout,
+        mapStyle: template.mapStyle,
+        showMapPolygon: template.showMapPolygon,
+        includeAgentFooter: template.includeAgentFooter,
+        coverPageConfig: template.coverPageConfig,
+      });
+      
+      res.json(config);
+    } catch (error) {
+      console.error('[CMA Templates] Error applying:', error);
+      res.status(500).json({ message: "Failed to apply template" });
+    }
+  });
+
+  // ==========================================
+  // Share Link Routes (Presentation Builder)
+  // ==========================================
+
+  // Generate share link for CMA
+  app.post('/api/cmas/:id/share', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const cma = await storage.getCma(req.params.id, user.id);
+      if (!cma) {
+        return res.status(404).json({ message: "CMA not found" });
+      }
+      
+      // Generate a unique share token
+      const token = `cma_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      
+      // Set expiration (default 30 days)
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + (req.body.expirationDays || 30));
+      
+      const updated = await storage.updateCma(req.params.id, user.id, {
+        shareToken: token,
+        shareCreatedAt: new Date(),
+        expiresAt,
+        status: 'shared',
+      } as any);
+      
+      res.json({ shareToken: token, expiresAt });
+    } catch (error) {
+      console.error('[CMA Share] Error generating share link:', error);
+      res.status(500).json({ message: "Failed to generate share link" });
+    }
+  });
+
+  // Remove share link from CMA
+  app.delete('/api/cmas/:id/share', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const cma = await storage.getCma(req.params.id, user.id);
+      if (!cma) {
+        return res.status(404).json({ message: "CMA not found" });
+      }
+      
+      await storage.updateCma(req.params.id, user.id, {
+        shareToken: null,
+        shareCreatedAt: null,
+        expiresAt: null,
+      } as any);
+      
+      res.json({ message: "Share link removed" });
+    } catch (error) {
+      console.error('[CMA Share] Error removing share link:', error);
+      res.status(500).json({ message: "Failed to remove share link" });
+    }
+  });
+
+  // Public: Get shared CMA data (NO AUTH)
+  app.get('/api/shared/cma/:token', async (req: any, res) => {
+    try {
+      const cma = await storage.getCmaByShareToken(req.params.token);
+      if (!cma) {
+        return res.status(404).json({ message: "CMA not found or link expired" });
+      }
+      // Check expiration
+      if (cma.expiresAt && new Date(cma.expiresAt) < new Date()) {
+        return res.status(410).json({ message: "This CMA link has expired" });
+      }
+      res.json(cma);
+    } catch (error) {
+      console.error('[CMA Share] Error fetching shared CMA:', error);
+      res.status(500).json({ message: "Failed to fetch shared CMA" });
+    }
+  });
+
+  // Public: Get agent resources for shared CMA (NO AUTH)
+  app.get('/api/shared/cma/:token/resources', async (req: any, res) => {
+    try {
+      const cma = await storage.getCmaByShareToken(req.params.token);
+      if (!cma) {
+        return res.status(404).json({ message: "CMA not found or link expired" });
+      }
+      if (cma.expiresAt && new Date(cma.expiresAt) < new Date()) {
+        return res.status(410).json({ message: "This CMA link has expired" });
+      }
+      if (!cma.userId) {
+        return res.json([]);
+      }
+      const resources = await storage.getAgentResources(cma.userId);
+      // Only return active resources
+      const activeResources = resources.filter(r => r.isActive !== false);
+      res.json(activeResources);
+    } catch (error) {
+      console.error('[CMA Share] Error fetching shared resources:', error);
+      res.status(500).json({ message: "Failed to fetch resources" });
+    }
+  });
+
+  // ==========================================
+  // Agent Profile Routes (Presentation Builder)
+  // ==========================================
+
+  // Get agent profile for CMA presentations
+  app.get('/api/agent-profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const profile = await storage.getAgentProfile(user.id);
+      res.json({
+        profile: profile || null,
+        user: user ? {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profileImageUrl: user.profileImageUrl,
+        } : null,
+      });
+    } catch (error) {
+      console.error('[Agent Profile] Error fetching:', error);
+      res.status(500).json({ message: "Failed to fetch agent profile" });
+    }
+  });
+
+  // Update agent profile (CMA presentation settings)
+  app.put('/api/agent-profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const { updateAgentProfileSchema } = await import("@shared/schema");
+      const profileData = updateAgentProfileSchema.partial().safeParse(req.body.profile || req.body);
+      
+      if (!profileData.success) {
+        return res.status(400).json({ message: "Invalid profile data", details: profileData.error.issues });
+      }
+      
+      const updatedProfile = await storage.updateAgentProfileCma(user.id, profileData.data);
+      res.json({ success: true, profile: updatedProfile });
+    } catch (error) {
+      console.error('[Agent Profile] Error updating:', error);
+      res.status(500).json({ message: "Failed to update agent profile" });
+    }
+  });
+
+  // ==========================================
+  // Agent Resources Routes (Presentation Builder)
+  // ==========================================
+
+  // List user's resources
+  app.get('/api/agent-resources', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const resources = await storage.getAgentResources(user.id);
+      res.json(resources);
+    } catch (error) {
+      console.error('[Agent Resources] Error listing:', error);
+      res.status(500).json({ message: "Failed to fetch resources" });
+    }
+  });
+
+  // Create resource
+  app.post('/api/agent-resources', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const { name, type, url, fileUrl, fileName, fileData, fileMimeType } = req.body;
+      
+      if (!name || !type) {
+        return res.status(400).json({ message: "Name and type are required" });
+      }
+      
+      if (!['link', 'file'].includes(type)) {
+        return res.status(400).json({ message: "Type must be 'link' or 'file'" });
+      }
+      
+      const resource = await storage.createAgentResource({
+        userId: user.id,
+        name,
+        type,
+        url: url || null,
+        fileUrl: fileUrl || null,
+        fileName: fileName || null,
+        fileData: fileData || null,
+        fileMimeType: fileMimeType || null,
+        isActive: true,
+      });
+      
+      res.status(201).json(resource);
+    } catch (error) {
+      console.error('[Agent Resources] Error creating:', error);
+      res.status(500).json({ message: "Failed to create resource" });
+    }
+  });
+
+  // Update resource
+  app.put('/api/agent-resources/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      // Verify ownership
+      const existing = await storage.getAgentResource(req.params.id);
+      if (!existing || existing.userId !== user.id) {
+        return res.status(404).json({ message: "Resource not found" });
+      }
+      
+      const { name, url, isActive, fileData, fileMimeType } = req.body;
+      const updateData: any = {};
+      if (name !== undefined) updateData.name = name;
+      if (url !== undefined) updateData.url = url;
+      if (isActive !== undefined) updateData.isActive = isActive;
+      if (fileData !== undefined) updateData.fileData = fileData;
+      if (fileMimeType !== undefined) updateData.fileMimeType = fileMimeType;
+      
+      const updated = await storage.updateAgentResource(req.params.id, updateData);
+      res.json(updated);
+    } catch (error) {
+      console.error('[Agent Resources] Error updating:', error);
+      res.status(500).json({ message: "Failed to update resource" });
+    }
+  });
+
+  // Delete resource
+  app.delete('/api/agent-resources/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      // Verify ownership
+      const existing = await storage.getAgentResource(req.params.id);
+      if (!existing || existing.userId !== user.id) {
+        return res.status(404).json({ message: "Resource not found" });
+      }
+      
+      await storage.deleteAgentResource(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Agent Resources] Error deleting:', error);
+      res.status(500).json({ message: "Failed to delete resource" });
+    }
+  });
+
+  // Reorder resources
+  app.put('/api/agent-resources/reorder', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const { orderedIds } = req.body;
+      if (!Array.isArray(orderedIds)) {
+        return res.status(400).json({ message: "orderedIds must be an array" });
+      }
+      
+      await storage.reorderAgentResources(user.id, orderedIds);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Agent Resources] Error reordering:', error);
+      res.status(500).json({ message: "Failed to reorder resources" });
+    }
+  });
+
+  // Serve file from database storage (public access for CMA viewers)
+  app.get('/api/agent-resources/:id/file', async (req: any, res) => {
+    try {
+      const resource = await storage.getAgentResource(req.params.id);
+      if (!resource || !resource.fileData) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      // Parse base64 data URI
+      const matches = resource.fileData.match(/^data:([^;]+);base64,(.+)$/);
+      if (!matches) {
+        return res.status(500).json({ message: "Invalid file data format" });
+      }
+      
+      const mimeType = matches[1];
+      const base64Data = matches[2];
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Content-Disposition', `inline; filename="${resource.fileName || 'document'}"`);
+      res.setHeader('Content-Length', buffer.length);
+      res.send(buffer);
+    } catch (error) {
+      console.error('[Agent Resources] Error serving file:', error);
+      res.status(500).json({ message: "Failed to serve file" });
     }
   });
 
