@@ -216,6 +216,58 @@ async function createPulseDataTables() {
             updated_at timestamp DEFAULT NOW()
           )
         `
+      },
+      // Notifications table
+      {
+        name: 'notifications',
+        sql: `
+          CREATE TABLE IF NOT EXISTS notifications (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            type varchar NOT NULL,
+            title varchar NOT NULL,
+            message text,
+            is_read boolean DEFAULT false,
+            payload jsonb,
+            created_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      // User video preferences table
+      {
+        name: 'user_video_preferences',
+        sql: `
+          CREATE TABLE IF NOT EXISTS user_video_preferences (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            video_id varchar(50) NOT NULL,
+            video_name varchar(255),
+            video_thumbnail varchar(500),
+            video_duration integer,
+            is_favorite boolean DEFAULT false,
+            is_watch_later boolean DEFAULT false,
+            watch_progress integer DEFAULT 0,
+            watch_percentage integer DEFAULT 0,
+            last_watched_at timestamp,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      // Sync status table
+      {
+        name: 'sync_status',
+        sql: `
+          CREATE TABLE IF NOT EXISTS sync_status (
+            id serial PRIMARY KEY,
+            user_id varchar NOT NULL,
+            section varchar(50) NOT NULL,
+            last_manual_refresh timestamp,
+            last_auto_refresh timestamp,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
       }
     ];
     
