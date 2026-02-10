@@ -42,13 +42,10 @@ async function fetchWithRetry(url: string, headers: Record<string, string>, retr
 }
 
 export async function fetchMarketPulseFromAPI(): Promise<MarketPulseData> {
-  console.log('🔥 [MARKET PULSE SERVICE] ========== API FETCH STARTED ==========');
-  
   const apiKey = process.env.IDX_GRID_API_KEY;
-  console.log('🔥 [MARKET PULSE SERVICE] API Key check - present:', !!apiKey, 'length:', apiKey?.length || 0);
+  console.log(`[Market Pulse DEBUG] API Key status: ${apiKey ? 'SET (length: ' + apiKey.length + ')' : 'NOT SET'}`);
   
   if (!apiKey) {
-    console.log('🔥 [MARKET PULSE SERVICE] ERROR: API key not configured');
     throw new Error("Market data API key not configured");
   }
 
@@ -95,6 +92,8 @@ export async function fetchMarketPulseFromAPI(): Promise<MarketPulseData> {
   const closedUrl = `${baseUrl}?${closedParams.toString()}`;
 
   console.log(`[Market Pulse Service] Fetching ${officeName} data from Repliers API...`);
+  console.log(`[Market Pulse DEBUG] Office ID: ${officeId}`);
+  console.log(`[Market Pulse DEBUG] Active URL: ${activeUrl}`);
 
   const headers = {
     'Accept': 'application/json',
@@ -113,8 +112,11 @@ export async function fetchMarketPulseFromAPI(): Promise<MarketPulseData> {
     fetchWithRetry(closedUrl, headers)
   ]);
   
+  console.log(`[Market Pulse DEBUG] API Response statuses: Active=${activeResponse.status}, UnderContract=${activeUnderContractResponse.status}, Pending=${pendingResponse.status}, Closed=${closedResponse.status}`);
+
   if (!activeResponse.ok) {
     const text = await activeResponse.text();
+    console.error(`[Market Pulse DEBUG] Active API error: ${activeResponse.status} - ${text}`);
     throw new Error(`Active listings API error: ${activeResponse.status} - ${text.substring(0, 200)}`);
   }
   
@@ -122,6 +124,13 @@ export async function fetchMarketPulseFromAPI(): Promise<MarketPulseData> {
   const activeUnderContractData = activeUnderContractResponse.ok ? await activeUnderContractResponse.json() : { count: 0 };
   const pendingData = pendingResponse.ok ? await pendingResponse.json() : { count: 0 };
   const closedData = closedResponse.ok ? await closedResponse.json() : { count: 0 };
+  
+  console.log(`[Market Pulse DEBUG] Raw API responses:`, {
+    active: activeData?.count || 'undefined',
+    activeUnderContract: activeUnderContractData?.count || 'undefined', 
+    pending: pendingData?.count || 'undefined',
+    closed: closedData?.count || 'undefined'
+  });
   
   const active = activeData.count || 0;
   const activeUnderContract = activeUnderContractData.count || 0;
@@ -164,37 +173,44 @@ export async function refreshAndCacheMarketPulse(): Promise<MarketPulseData> {
 }
 
 export async function getMarketPulseData(forceRefresh = false): Promise<MarketPulseData> {
-  console.log('🔥 [MARKET PULSE SERVICE] ========== GET DATA CALLED ==========');
-  console.log('🔥 [MARKET PULSE SERVICE] Force refresh:', forceRefresh);
+  console.log(`[Market Pulse Service] Getting market data (forceRefresh: ${forceRefresh})`);
   
   if (forceRefresh) {
-    console.log('🔥 [MARKET PULSE SERVICE] Force refresh - calling refreshAndCacheMarketPulse()');
+    console.log(`[Market Pulse Service] Force refresh requested, fetching fresh data from API`);
     return refreshAndCacheMarketPulse();
   }
   
-  console.log('🔥 [MARKET PULSE SERVICE] Checking for cached snapshot...');
   const cachedSnapshot = await storage.getLatestMarketPulseSnapshot();
+  console.log(`[Market Pulse DEBUG] Cached snapshot:`, cachedSnapshot ? {
+    totalProperties: cachedSnapshot.totalProperties,
+    active: cachedSnapshot.active,
+    activeUnderContract: cachedSnapshot.activeUnderContract,
+    pending: cachedSnapshot.pending,
+    closed: cachedSnapshot.closed,
+    lastUpdatedAt: cachedSnapshot.lastUpdatedAt.toISOString()
+  } : 'null');
   
   if (cachedSnapshot) {
-    console.log('🔥 [MARKET PULSE SERVICE] Cached snapshot found:', {
-      active: cachedSnapshot.active,
-      activeUnderContract: cachedSnapshot.activeUnderContract,
-      pending: cachedSnapshot.pending,
-      closed: cachedSnapshot.closed,
-      lastUpdatedAt: cachedSnapshot.lastUpdatedAt
-    });
+    const ageMs = Date.now() - cachedSnapshot.lastUpdatedAt.getTime();
+    const ageHours = ageMs / (1000 * 60 * 60);
     
-    return {
+    console.log(`[Market Pulse Service] Returning cached data (age: ${ageHours.toFixed(1)}h)`);
+    
+    const result = {
       totalProperties: cachedSnapshot.totalProperties,
       active: cachedSnapshot.active,
       activeUnderContract: cachedSnapshot.activeUnderContract,
       pending: cachedSnapshot.pending,
       closed: cachedSnapshot.closed,
-      lastUpdatedAt: cachedSnapshot.lastUpdatedAt.toISOString()
+      lastUpdatedAt: cachedSnapshot.lastUpdatedAt.toISOString(),
+      officeName: DEFAULT_OFFICE.name
     };
+    
+    console.log(`[Market Pulse DEBUG] Final result being returned:`, result);
+    return result;
   }
   
-  console.log('🔥 [MARKET PULSE SERVICE] No cached snapshot - calling refreshAndCacheMarketPulse()');
+  console.log(`[Market Pulse Service] No cached data found, fetching fresh data from API`);
   return refreshAndCacheMarketPulse();
 }
 

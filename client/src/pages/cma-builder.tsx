@@ -2076,41 +2076,86 @@ export default function CmaBuilderPage() {
       toast({ title: "CMA Name is required", description: "Please enter a name for this CMA before saving.", variant: "destructive" });
       return;
     }
-    saveMutation.mutate(cma);
+    
+    // Auto-update status based on CMA completeness
+    const updatedCma = { ...cma };
+    if (cma.subjectProperty && cma.comparableProperties.length > 0) {
+      updatedCma.status = "completed";
+    } else if (cma.subjectProperty || cma.comparableProperties.length > 0) {
+      updatedCma.status = "in-progress";
+    } else {
+      updatedCma.status = "draft";
+    }
+    
+    saveMutation.mutate(updatedCma);
   };
 
-  const handleGenerateReport = () => {
+  const handleCmaPresentation = () => {
     if (!cma.name.trim()) {
-      toast({ title: "CMA Name is required", description: "Please enter a name before generating a report.", variant: "destructive" });
+      toast({ title: "CMA Name is required", description: "Please enter a name before viewing presentation.", variant: "destructive" });
       return;
     }
     if (cma.comparableProperties.length === 0) {
-      toast({ title: "No comparables", description: "Add at least one comparable property before generating a report.", variant: "destructive" });
+      toast({ title: "No comparables", description: "Add at least one comparable property before viewing presentation.", variant: "destructive" });
       return;
     }
-    // Save first, then navigate to presentation
-    setPostSaveRedirect('/cma/:id/presentation');
-    saveMutation.mutate(cma);
+    // Save first, then navigate to CMA presentation
+    setPostSaveRedirect('/cma/:id/cma-presentation');
+    saveMutation.mutate({
+      ...cma,
+      status: cma.subjectProperty && cma.comparableProperties.length > 0 ? "completed" : "in-progress"
+    });
   };
 
   const updateCma = (updates: Partial<CmaData>) => {
-    setCma((prev) => ({ ...prev, ...updates }));
+    setCma((prev) => {
+      const updated = { ...prev, ...updates };
+      // Auto-update status based on completeness
+      if (updated.subjectProperty && updated.comparableProperties.length > 0) {
+        updated.status = "completed";
+      } else if (updated.subjectProperty || updated.comparableProperties.length > 0) {
+        updated.status = "in-progress";
+      } else {
+        updated.status = "draft";
+      }
+      return updated;
+    });
     setHasUnsavedChanges(true);
   };
 
   const addComp = (prop: PropertyData) => {
-    setCma((prev) => ({
-      ...prev,
-      comparableProperties: [...prev.comparableProperties, prop],
-    }));
+    setCma((prev) => {
+      const updated = {
+        ...prev,
+        comparableProperties: [...prev.comparableProperties, prop],
+      };
+      // Auto-update status
+      if (updated.subjectProperty && updated.comparableProperties.length > 0) {
+        updated.status = "completed";
+      } else if (updated.subjectProperty || updated.comparableProperties.length > 0) {
+        updated.status = "in-progress";
+      }
+      return updated;
+    });
     setHasUnsavedChanges(true);
   };
 
   const removeComp = (index: number) => {
-    setCma((prev) => ({
-      ...prev,
-      comparableProperties: prev.comparableProperties.filter((_, i) => i !== index),
-    }));
+    setCma((prev) => {
+      const updated = {
+        ...prev,
+        comparableProperties: prev.comparableProperties.filter((_, i) => i !== index),
+      };
+      // Auto-update status
+      if (updated.subjectProperty && updated.comparableProperties.length > 0) {
+        updated.status = "completed";
+      } else if (updated.subjectProperty || updated.comparableProperties.length > 0) {
+        updated.status = "in-progress";
+      } else {
+        updated.status = "draft";
+      }
+      return updated;
+    });
     setHasUnsavedChanges(true);
   };
 
@@ -2149,6 +2194,31 @@ export default function CmaBuilderPage() {
                 <FileBarChart className="h-7 w-7 text-[#EF4923]" />
                 {isNew ? "New CMA" : "Edit CMA"}
               </h1>
+              {!isNew && (
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge 
+                    variant={
+                      cma.status === "completed" ? "default" : 
+                      cma.status === "in-progress" ? "secondary" : 
+                      "outline"
+                    }
+                    className={
+                      cma.status === "completed" ? "bg-green-100 text-green-700 border-green-200" :
+                      cma.status === "in-progress" ? "bg-blue-100 text-blue-700 border-blue-200" :
+                      "bg-gray-100 text-gray-700 border-gray-200"
+                    }
+                  >
+                    {cma.status === "completed" ? "✓ Completed" : 
+                     cma.status === "in-progress" ? "⋯ In Progress" : 
+                     "○ Draft"}
+                  </Badge>
+                  {cma.subjectProperty && (
+                    <span className="text-xs text-muted-foreground">
+                      • {cma.comparableProperties.length} comparable{cma.comparableProperties.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -2157,20 +2227,9 @@ export default function CmaBuilderPage() {
                 Unsaved changes
               </Badge>
             )}
+            {/* Action buttons matching Contract Conduit */}
             <Button
               variant="outline"
-              onClick={handleGenerateReport}
-              disabled={saveMutation.isPending || cma.comparableProperties.length === 0}
-            >
-              {saveMutation.isPending && postSaveRedirect ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <FileText className="h-4 w-4 mr-2" />
-              )}
-              Generate Report
-            </Button>
-            <Button
-              className="bg-[#EF4923] hover:bg-[#d4401f] text-white"
               onClick={handleSave}
               disabled={saveMutation.isPending}
             >
@@ -2180,6 +2239,36 @@ export default function CmaBuilderPage() {
                 <Save className="h-4 w-4 mr-2" />
               )}
               Save CMA
+            </Button>
+            <Button
+              variant="outline"
+              disabled={!cma.subjectProperty || cma.comparableProperties.length === 0}
+              onClick={() => {
+                toast({ title: "Share feature", description: "Share functionality coming soon!", variant: "default" });
+              }}
+            >
+              Share
+            </Button>
+            <Button
+              variant="outline"
+              disabled={!cma.subjectProperty || cma.comparableProperties.length === 0}
+              onClick={() => {
+                toast({ title: "Export feature", description: "Export functionality coming soon!", variant: "default" });
+              }}
+            >
+              Export
+            </Button>
+            <Button
+              className="bg-[#EF4923] hover:bg-[#d4401f] text-white"
+              onClick={handleCmaPresentation}
+              disabled={saveMutation.isPending || cma.comparableProperties.length === 0}
+            >
+              {saveMutation.isPending && postSaveRedirect?.includes('cma-presentation') ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <FileBarChart className="h-4 w-4 mr-2" />
+              )}
+              CMA Presentation
             </Button>
           </div>
         </div>

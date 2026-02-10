@@ -454,6 +454,33 @@ export const upsertIntegrationConfigSchema = z.object({
   additionalConfig: z.record(z.any()).optional(),
 });
 
+// App Visibility table — persists which apps are hidden from agent dashboard
+export const appVisibility = pgTable("app_visibility", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  appId: varchar("app_id").unique().notNull(),
+  hidden: boolean("hidden").default(false),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type AppVisibility = typeof appVisibility.$inferSelect;
+export type InsertAppVisibility = typeof appVisibility.$inferInsert;
+
+// GreatSchools nearby schools cache
+export const pulseSchoolsCache = pgTable("pulse_schools_cache", {
+  id: serial("id").primaryKey(),
+  cacheKey: varchar("cache_key", { length: 50 }).notNull().unique(), // "lat,lon,radius"
+  lat: numeric("lat").notNull(),
+  lon: numeric("lon").notNull(),
+  radius: integer("radius").notNull().default(5),
+  data: jsonb("data").notNull(), // Array of school objects
+  fetchedAt: timestamp("fetched_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("idx_pulse_schools_cache_key").on(table.cacheKey),
+]);
+
+export type PulseSchoolsCache = typeof pulseSchoolsCache.$inferSelect;
+export type InsertPulseSchoolsCache = typeof pulseSchoolsCache.$inferInsert;
+
 export const INTEGRATION_DEFINITIONS = [
   {
     name: 'fub',

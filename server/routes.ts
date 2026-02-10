@@ -16,6 +16,7 @@ import { SPYGLASS_OFFICES, DEFAULT_OFFICE, getOfficeConfig } from "./config/offi
 import { registerPulseV2Routes } from "./pulseV2Routes";
 import { registerAdminRoutes } from "./adminRoutes";
 import { registerGmailRoutes } from "./gmailRoutes";
+import { registerXanoRoutes } from "./xanoProxy";
 
 
 // Helper function to get the actual database user from request
@@ -834,27 +835,17 @@ export async function registerRoutes(
   });
 
   app.get('/api/market-pulse', isAuthenticated, async (req: any, res) => {
-    console.log('🔥 [MARKET PULSE] ========== ENDPOINT HIT ==========');
-    console.log('🔥 [MARKET PULSE] Request query:', req.query);
-    console.log('🔥 [MARKET PULSE] Force refresh:', req.query.refresh === 'true');
-    
     try {
-      console.log('🔥 [MARKET PULSE] Importing market pulse service...');
+      console.log(`[Market Pulse DEBUG] API route called, refresh=${req.query.refresh}`);
       const { getMarketPulseData } = await import('./marketPulseService');
-      console.log('🔥 [MARKET PULSE] Service imported successfully');
-      
       const forceRefresh = req.query.refresh === 'true';
-      console.log('🔥 [MARKET PULSE] Calling getMarketPulseData...');
       
       const data = await getMarketPulseData(forceRefresh);
-      console.log('🔥 [MARKET PULSE] Data received:', JSON.stringify(data, null, 2));
-      console.log('🔥 [MARKET PULSE] Sending response to frontend');
-      
+      console.log(`[Market Pulse DEBUG] Returning data:`, data);
       res.json(data);
     } catch (error) {
-      console.error('🔥 [MARKET PULSE] ERROR:', error);
-      console.error('🔥 [MARKET PULSE] ERROR STACK:', error instanceof Error ? error.stack : 'No stack trace');
-      res.status(503).json({ message: "Market data service unavailable", error: error instanceof Error ? error.message : String(error) });
+      console.error("[Market Pulse DEBUG] API route error:", error);
+      res.status(503).json({ message: "Market data service unavailable", error: error.message });
     }
   });
 
@@ -2523,7 +2514,7 @@ Respond with valid JSON in this exact format:
                 const z = l.address?.zip;
                 if (z) probeZips.add(z);
               });
-              console.log(`[CMA Search] Probe "${variant}": ${probeData.count} results, zips: ${[...probeZips].join(', ')}`);
+              console.log(`[CMA Search] Probe "${variant}": ${probeData.count} results, zips: ${Array.from(probeZips).join(', ')}`);
             }
             // Stop probing once we have zip codes
             if (probeZips.size >= 2) break;
@@ -2532,12 +2523,12 @@ Respond with valid JSON in this exact format:
 
         if (probeZips.size > 0) {
           // Use discovered zip codes to narrow the search
-          for (const z of probeZips) {
+          for (const z of Array.from(probeZips)) {
             params.append('zip', z);
           }
           // Remove city filter if we have zips (zip is more precise)
           params.delete('city');
-          console.log(`[CMA Search] Using zip codes for subdivision: ${[...probeZips].join(', ')}`);
+          console.log(`[CMA Search] Using zip codes for subdivision: ${Array.from(probeZips).join(', ')}`);
         } else if (!city && !zip) {
           // Fallback: default to Austin
           params.append('city', 'Austin');
@@ -3173,21 +3164,19 @@ Respond with valid JSON in this exact format:
       // Repliers nests aggregates under address.zip path
       const zipAggregates = data.aggregates?.address?.zip || data.aggregates?.zip || {};
 
-      // Also get a batch of listings with prices to compute medians per zip
-      // Fetch listings with random-ish sort to get representative DOM sample (not biased toward newest)
-      // Grab 3 pages of 200 for better coverage across zip codes
-      const priceUrl1 = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=200&pageNum=1&${areaParams}&fields=listPrice,address,daysOnMarket,details`;
-      const priceUrl2 = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=200&pageNum=2&${areaParams}&fields=listPrice,address,daysOnMarket,details`;
-      const priceUrl3 = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=200&pageNum=3&${areaParams}&fields=listPrice,address,daysOnMarket,details`;
-      const [priceRes1, priceRes2, priceRes3] = await Promise.all([
-        fetch(priceUrl1, { headers }),
-        fetch(priceUrl2, { headers }),
-        fetch(priceUrl3, { headers }),
-      ]);
-      const priceData1 = priceRes1.ok ? await priceRes1.json() : { listings: [] };
-      const priceData2 = priceRes2.ok ? await priceRes2.json() : { listings: [] };
-      const priceData3 = priceRes3.ok ? await priceRes3.json() : { listings: [] };
-      const priceData = { listings: [...(priceData1.listings || []), ...(priceData2.listings || []), ...(priceData3.listings || [])] };
+      // Fetch listings across multiple pages spread through the dataset for better zip coverage
+      // With ~14K listings and 100/page, grab pages 1,5,10,20,30,50,70,90,110,130 for diverse sampling
+      const totalCount = data.count || 0;
+      const maxPage = Math.ceil(totalCount / 100);
+      const samplePages = [1, 5, 10, 20, 30, 50, 70, 90, 110, 130].filter(p => p <= maxPage);
+      
+      const pricePromises = samplePages.map(pageNum => {
+        const priceUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=100&pageNum=${pageNum}&${areaParams}&fields=listPrice,address,daysOnMarket,details`;
+        return fetch(priceUrl, { headers }).then(r => r.ok ? r.json() : { listings: [] });
+      });
+      const priceResults = await Promise.all(pricePromises);
+      const priceData = { listings: priceResults.flatMap(r => r.listings || []) };
+      console.log(`[Pulse Heatmap] Sampled ${priceData.listings.length} listings across ${samplePages.length} pages for price/DOM data`);
 
       // Build price map by zip
       const zipPriceMap: Record<string, number[]> = {};
@@ -3488,6 +3477,8 @@ Respond with valid JSON in this exact format:
   // Register Gmail routes
   registerGmailRoutes(app);
 
+  // Register Xano proxy routes for admin dashboards
+  registerXanoRoutes(app, isAuthenticated);
 
   return httpServer;
 }

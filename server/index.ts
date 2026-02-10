@@ -4,6 +4,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { initializeScheduler, runStartupTasks } from "./scheduler";
 import { refreshFubDbConfig } from "./fubClient";
+import { initializeDatabase } from "./db";
 
 const app = express();
 const httpServer = createServer(app);
@@ -95,6 +96,12 @@ app.use((req, res, next) => {
     },
     async () => {
       log(`serving on port ${port}`);
+      
+      // Environment variable debug logging
+      console.log(`[STARTUP DEBUG] IDX_GRID_API_KEY: ${process.env.IDX_GRID_API_KEY ? 'SET (length: ' + process.env.IDX_GRID_API_KEY.length + ')' : 'NOT SET'}`);
+      
+      // Initialize database schema first
+      await initializeDatabase();
       
       // Load DB-stored integration keys into cache
       await refreshFubDbConfig();

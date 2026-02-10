@@ -141,6 +141,43 @@ async function testIntegration(name: string, apiKey: string, additionalConfig?: 
 }
 
 export function registerAdminRoutes(app: Express) {
+  // GET /api/admin/users - List all users
+  app.get("/api/admin/users", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      res.json({ users: allUsers });
+    } catch (error) {
+      console.error("[Admin] Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // PUT /api/admin/users/:id - Update user fields (is_active, is_super_admin)
+  app.put("/api/admin/users/:id", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { isSuperAdmin: newSuperAdmin } = req.body;
+
+      const updateData: Partial<{ isSuperAdmin: boolean }> = {};
+      if (typeof newSuperAdmin === "boolean") updateData.isSuperAdmin = newSuperAdmin;
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+
+      const user = await storage.updateUser(id, updateData);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      console.log(`[Admin] User ${id} updated by ${req.dbUser.id}:`, updateData);
+      res.json({ success: true, user });
+    } catch (error) {
+      console.error("[Admin] Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
   // GET /api/admin/integrations - List all integration configs (keys masked)
   app.get("/api/admin/integrations", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
     try {
@@ -274,6 +311,68 @@ export function registerAdminRoutes(app: Express) {
     } catch (error: any) {
       console.error(`[Admin] Error testing integration:`, error);
       res.status(500).json({ message: `Test failed: ${error.message}` });
+    }
+  });
+
+  // GET /api/admin/app-visibility - Get all app visibility settings
+  app.get("/api/admin/app-visibility", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const visibility = await storage.getAppVisibility();
+      res.json({ visibility });
+    } catch (error) {
+      console.error("[Admin] Error fetching app visibility:", error);
+      res.status(500).json({ message: "Failed to fetch app visibility" });
+    }
+  });
+
+  // PUT /api/admin/app-visibility/:appId - Update app visibility
+  app.put("/api/admin/app-visibility/:appId", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { appId } = req.params;
+      const { hidden } = req.body;
+      if (typeof hidden !== "boolean") {
+        return res.status(400).json({ message: "hidden must be a boolean" });
+      }
+      const result = await storage.setAppVisibility(appId, hidden);
+      console.log(`[Admin] App ${appId} visibility set to hidden=${hidden} by ${req.dbUser.id}`);
+      res.json({ success: true, visibility: result });
+    } catch (error) {
+      console.error("[Admin] Error updating app visibility:", error);
+      res.status(500).json({ message: "Failed to update app visibility" });
+    }
+  });
+
+  // GET /api/admin/stats - Usage statistics
+  app.get("/api/admin/stats", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const stats = await storage.getAdminStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("[Admin] Error fetching stats:", error);
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  // GET /api/admin/activity-logs - Recent activity logs
+  app.get("/api/admin/activity-logs", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const limit = Math.min(Number(req.query.limit) || 50, 200);
+      const logs = await storage.getActivityLogs(limit);
+      res.json({ logs });
+    } catch (error) {
+      console.error("[Admin] Error fetching activity logs:", error);
+      res.status(500).json({ message: "Failed to fetch activity logs" });
+    }
+  });
+
+  // Also expose app-visibility for non-admin users (dashboard needs it)
+  app.get("/api/app-visibility", isAuthenticated, async (req: any, res) => {
+    try {
+      const visibility = await storage.getAppVisibility();
+      res.json({ visibility });
+    } catch (error) {
+      console.error("[API] Error fetching app visibility:", error);
+      res.status(500).json({ message: "Failed to fetch app visibility" });
     }
   });
 
