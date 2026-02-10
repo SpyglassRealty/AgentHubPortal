@@ -556,8 +556,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCma(cma: InsertCma): Promise<Cma> {
-    const [created] = await db.insert(cmas).values(cma).returning();
-    return created;
+    console.log('[Storage DEBUG] Creating CMA with data:', cma);
+    try {
+      const [created] = await db.insert(cmas).values(cma).returning();
+      console.log('[Storage DEBUG] CMA created successfully:', created.id);
+      return created;
+    } catch (error) {
+      console.error('[Storage DEBUG] CMA creation failed:', error);
+      throw error;
+    }
   }
 
   async updateCma(id: string, userId: string, data: Partial<InsertCma>): Promise<Cma | undefined> {
