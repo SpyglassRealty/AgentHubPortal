@@ -2,7 +2,7 @@ import { Document, Page, View, Text, Image } from '@react-pdf/renderer';
 import { styles, COLORS } from './styles';
 import type { AgentProfile, CmaProperty } from '../types';
 import { WIDGETS, MARKETING_TEXT, LISTING_ACTION_PLAN_TEXT, SAMPLE_REVIEWS, type Review } from '../constants/widgets';
-import lreSgrWhiteLogo from '@assets/LRE_SGR_White_1769702535327.png';
+import lreSgrWhiteLogo from '/logos/SpyglassRealty_Logo_White.png';
 import lreSgrBlackLogo from '@assets/LRE_SGR_Black.png';
 import {
   extractPrice,
