@@ -277,7 +277,8 @@ export async function migrateMarketPulseSnapshots() {
       "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'draft'",
       "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS presentation_config JSONB",
       "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()",
-      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()"
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS share_token TEXT"
     ];
 
     for (const stmt of alterStatements) {
