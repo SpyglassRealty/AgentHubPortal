@@ -269,16 +269,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLatestMarketPulseSnapshot(): Promise<MarketPulseSnapshot | undefined> {
+    console.log(`[Storage DEBUG] Querying latest market pulse snapshot...`);
     const [snapshot] = await db
       .select()
       .from(marketPulseSnapshots)
       .orderBy(desc(marketPulseSnapshots.lastUpdatedAt))
       .limit(1);
+    console.log(`[Storage DEBUG] Query result:`, snapshot ? 'Found snapshot' : 'No snapshot found');
     return snapshot;
   }
 
   async saveMarketPulseSnapshot(snapshot: InsertMarketPulseSnapshot): Promise<MarketPulseSnapshot> {
+    console.log(`[Storage DEBUG] Saving market pulse snapshot:`, snapshot);
     const [saved] = await db.insert(marketPulseSnapshots).values(snapshot).returning();
+    console.log(`[Storage DEBUG] Saved snapshot:`, saved);
     return saved;
   }
 

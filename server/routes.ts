@@ -836,14 +836,16 @@ export async function registerRoutes(
 
   app.get('/api/market-pulse', isAuthenticated, async (req: any, res) => {
     try {
+      console.log(`[Market Pulse DEBUG] API route called, refresh=${req.query.refresh}`);
       const { getMarketPulseData } = await import('./marketPulseService');
       const forceRefresh = req.query.refresh === 'true';
       
       const data = await getMarketPulseData(forceRefresh);
+      console.log(`[Market Pulse DEBUG] Returning data:`, data);
       res.json(data);
     } catch (error) {
-      console.error("Error fetching market pulse data:", error);
-      res.status(503).json({ message: "Market data service unavailable" });
+      console.error("[Market Pulse DEBUG] API route error:", error);
+      res.status(503).json({ message: "Market data service unavailable", error: error.message });
     }
   });
 
