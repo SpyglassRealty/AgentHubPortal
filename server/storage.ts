@@ -268,34 +268,20 @@ export class DatabaseStorage implements IStorage {
     await db.delete(contextSuggestions).where(eq(contextSuggestions.userId, userId));
   }
 
-  async getLatestMarketPulseSnapshot(): Promise<any> {
+  async getLatestMarketPulseSnapshot(): Promise<MarketPulseSnapshot | undefined> {
     console.log(`[Storage DEBUG] Querying latest market pulse snapshot...`);
-    const result = await db.execute(sql`
-      SELECT cached_data, last_updated_at 
-      FROM market_pulse_snapshots 
-      ORDER BY last_updated_at DESC 
-      LIMIT 1
-    `);
-    const snapshot = result.rows?.[0] as any;
+    const [snapshot] = await db
+      .select()
+      .from(marketPulseSnapshots)
+      .orderBy(desc(marketPulseSnapshots.lastUpdatedAt))
+      .limit(1);
     console.log(`[Storage DEBUG] Query result:`, snapshot ? 'Found snapshot' : 'No snapshot found');
     return snapshot;
   }
 
-  async saveMarketPulseSnapshot(snapshot: any): Promise<any> {
+  async saveMarketPulseSnapshot(snapshot: InsertMarketPulseSnapshot): Promise<MarketPulseSnapshot> {
     console.log(`[Storage DEBUG] Saving market pulse snapshot:`, snapshot);
-    
-    // Ensure cached_data is never null
-    const cachedData = snapshot.cached_data || JSON.stringify({ error: "no data" });
-    const updatedAt = snapshot.last_updated_at || new Date();
-    
-    console.log(`[Storage DEBUG] Final values - cached_data:`, cachedData, `last_updated_at:`, updatedAt);
-    
-    const result = await db.execute(sql`
-      INSERT INTO market_pulse_snapshots (cached_data, last_updated_at)
-      VALUES (${cachedData}, ${updatedAt})
-      RETURNING *
-    `);
-    const saved = result.rows?.[0] as any;
+    const [saved] = await db.insert(marketPulseSnapshots).values(snapshot).returning();
     console.log(`[Storage DEBUG] Saved snapshot:`, saved);
     return saved;
   }

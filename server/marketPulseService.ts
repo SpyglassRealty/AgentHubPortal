@@ -157,25 +157,16 @@ export async function refreshAndCacheMarketPulse(): Promise<MarketPulseData> {
   
   const data = await fetchMarketPulseFromAPI();
   
-  const cachedDataJson = JSON.stringify({
+  const snapshot: InsertMarketPulseSnapshot = {
     totalProperties: data.totalProperties,
     active: data.active,
     activeUnderContract: data.activeUnderContract,
     pending: data.pending,
     closed: data.closed,
-    lastUpdatedAt: data.lastUpdatedAt,
-    officeName: data.officeName,
-    fetchedAt: new Date().toISOString()
-  });
-  
-  console.log(`[Market Pulse DEBUG] Cached data JSON:`, cachedDataJson);
-  
-  const snapshot: any = {
-    cached_data: cachedDataJson,
-    last_updated_at: new Date(data.lastUpdatedAt)
+    lastUpdatedAt: new Date(data.lastUpdatedAt)
   };
   
-  console.log(`[Market Pulse DEBUG] Full snapshot object:`, snapshot);
+  console.log(`[Market Pulse DEBUG] Snapshot for insert:`, snapshot);
   
   await storage.saveMarketPulseSnapshot(snapshot);
   console.log(`[Market Pulse Service] Data cached successfully at ${data.lastUpdatedAt}`);
@@ -192,32 +183,33 @@ export async function getMarketPulseData(forceRefresh = false): Promise<MarketPu
   }
   
   const cachedSnapshot = await storage.getLatestMarketPulseSnapshot();
-  console.log(`[Market Pulse DEBUG] Raw cached snapshot:`, cachedSnapshot);
+  console.log(`[Market Pulse DEBUG] Cached snapshot:`, cachedSnapshot ? {
+    totalProperties: cachedSnapshot.totalProperties,
+    active: cachedSnapshot.active,
+    activeUnderContract: cachedSnapshot.activeUnderContract,
+    pending: cachedSnapshot.pending,
+    closed: cachedSnapshot.closed,
+    lastUpdatedAt: cachedSnapshot.lastUpdatedAt.toISOString()
+  } : 'null');
   
-  if (cachedSnapshot && cachedSnapshot.cached_data) {
-    try {
-      const parsedData = JSON.parse(cachedSnapshot.cached_data);
-      const ageMs = Date.now() - new Date(cachedSnapshot.last_updated_at).getTime();
-      const ageHours = ageMs / (1000 * 60 * 60);
-      
-      console.log(`[Market Pulse Service] Returning cached data (age: ${ageHours.toFixed(1)}h)`);
-      
-      const result = {
-        totalProperties: parsedData.totalProperties,
-        active: parsedData.active,
-        activeUnderContract: parsedData.activeUnderContract,
-        pending: parsedData.pending,
-        closed: parsedData.closed,
-        lastUpdatedAt: parsedData.lastUpdatedAt,
-        officeName: parsedData.officeName || DEFAULT_OFFICE.name
-      };
-      
-      console.log(`[Market Pulse DEBUG] Final result being returned:`, result);
-      return result;
-    } catch (error) {
-      console.error(`[Market Pulse Service] Error parsing cached data:`, error);
-      // Fall through to fetch fresh data
-    }
+  if (cachedSnapshot) {
+    const ageMs = Date.now() - cachedSnapshot.lastUpdatedAt.getTime();
+    const ageHours = ageMs / (1000 * 60 * 60);
+    
+    console.log(`[Market Pulse Service] Returning cached data (age: ${ageHours.toFixed(1)}h)`);
+    
+    const result = {
+      totalProperties: cachedSnapshot.totalProperties,
+      active: cachedSnapshot.active,
+      activeUnderContract: cachedSnapshot.activeUnderContract,
+      pending: cachedSnapshot.pending,
+      closed: cachedSnapshot.closed,
+      lastUpdatedAt: cachedSnapshot.lastUpdatedAt.toISOString(),
+      officeName: DEFAULT_OFFICE.name
+    };
+    
+    console.log(`[Market Pulse DEBUG] Final result being returned:`, result);
+    return result;
   }
   
   console.log(`[Market Pulse Service] No cached data found, fetching fresh data from API`);
