@@ -171,13 +171,17 @@ export async function getGmailInbox(
 
   // Build query based on category and search
   let q = 'in:inbox';
+  let isUsingCategories = false;
+  
   if (query) {
     // Handle category-specific queries
     if (query.startsWith('category:')) {
       const category = query.replace('category:', '');
+      isUsingCategories = true;
       switch (category) {
         case 'primary':
-          q = 'in:inbox category:primary';
+          // Try primary category approach first, fallback to all inbox if no results
+          q = 'in:inbox -category:promotions -category:social -category:forums';
           break;
         case 'promotions':
           q = 'in:inbox category:promotions';
@@ -190,11 +194,14 @@ export async function getGmailInbox(
           break;
         default:
           q = `in:inbox ${query}`;
+          isUsingCategories = false;
       }
     } else {
       q = `in:inbox ${query}`;
     }
   }
+
+  console.log(`[Gmail] Using query: "${q}"`);
 
   const listResponse = await gmail.users.messages.list({
     userId: 'me',
@@ -203,7 +210,21 @@ export async function getGmailInbox(
     q,
   });
 
-  const messageIds = listResponse.data.messages || [];
+  let messageIds = listResponse.data.messages || [];
+  
+  // Fallback for Primary category: if no results and we were filtering categories, try just inbox
+  if (messageIds.length === 0 && query === 'category:primary' && isUsingCategories) {
+    console.log(`[Gmail] No results for primary category filter, falling back to basic inbox`);
+    const fallbackResponse = await gmail.users.messages.list({
+      userId: 'me',
+      maxResults,
+      pageToken: pageToken || undefined,
+      q: 'in:inbox',
+    });
+    messageIds = fallbackResponse.data.messages || [];
+  }
+  
+  console.log(`[Gmail] Found ${messageIds.length} message IDs for ${userEmail}`);
   
   if (messageIds.length === 0) {
     return {
@@ -268,33 +289,53 @@ export async function getGmailCategoryUnreadCounts(
 
   // Fetch unread counts for each category in parallel
   const [primaryCount, promotionsCount, socialCount, forumsCount] = await Promise.all([
-    // Primary: inbox emails that are unread and in primary category (or no other category)
+    // Primary: try category filtering, fallback to total inbox unread count
     gmail.users.messages.list({
       userId: 'me',
       maxResults: 1,
-      q: 'in:inbox is:unread category:primary',
-    }).then(res => res.data.resultSizeEstimate || 0),
+      q: 'in:inbox is:unread -category:promotions -category:social -category:forums',
+    }).then(async (res) => {
+      const categoryCount = res.data.resultSizeEstimate || 0;
+      // If no results with category filtering, try just unread inbox
+      if (categoryCount === 0) {
+        try {
+          const fallbackRes = await gmail.users.messages.list({
+            userId: 'me',
+            maxResults: 1,
+            q: 'in:inbox is:unread',
+          });
+          return fallbackRes.data.resultSizeEstimate || 0;
+        } catch (e) {
+          console.warn(`[Gmail] Fallback unread count failed for ${userEmail}:`, e);
+          return 0;
+        }
+      }
+      return categoryCount;
+    }).catch((e) => {
+      console.warn(`[Gmail] Primary unread count failed for ${userEmail}:`, e);
+      return 0;
+    }),
     
     // Promotions
     gmail.users.messages.list({
       userId: 'me',
       maxResults: 1,
       q: 'in:inbox is:unread category:promotions',
-    }).then(res => res.data.resultSizeEstimate || 0),
+    }).then(res => res.data.resultSizeEstimate || 0).catch(() => 0),
     
     // Social
     gmail.users.messages.list({
       userId: 'me',
       maxResults: 1,
       q: 'in:inbox is:unread category:social',
-    }).then(res => res.data.resultSizeEstimate || 0),
+    }).then(res => res.data.resultSizeEstimate || 0).catch(() => 0),
     
     // Forums
     gmail.users.messages.list({
       userId: 'me',
       maxResults: 1,
       q: 'in:inbox is:unread category:forums',
-    }).then(res => res.data.resultSizeEstimate || 0),
+    }).then(res => res.data.resultSizeEstimate || 0).catch(() => 0),
   ]);
 
   return {
