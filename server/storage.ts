@@ -1,5 +1,6 @@
 import { 
   users, 
+  sessions,
   agentProfiles, 
   contextSuggestions,
   marketPulseSnapshots,
@@ -11,6 +12,7 @@ import {
   savedContentIdeas,
   cmas,
   integrationConfigs,
+  appVisibility,
   type User, 
   type UpsertUser,
   type AgentProfile,
@@ -33,6 +35,7 @@ import {
   type InsertCma,
   type IntegrationConfig,
   type InsertIntegrationConfig,
+  type AppVisibility,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ne, desc, sql, gt, lt } from "drizzle-orm";
@@ -40,6 +43,8 @@ import { eq, and, ne, desc, sql, gt, lt } from "drizzle-orm";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
+  updateUser(id: string, data: Partial<{ isSuperAdmin: boolean }>): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserFubId(userId: string, fubUserId: number): Promise<User | undefined>;
   updateUserRezenYentaId(userId: string, rezenYentaId: string | null): Promise<User | undefined>;
@@ -99,6 +104,14 @@ export interface IStorage {
   updateIntegrationTestResult(name: string, result: string, message?: string): Promise<IntegrationConfig | undefined>;
   deleteIntegrationConfig(name: string): Promise<boolean>;
   getIntegrationApiKey(name: string): Promise<string | null>;
+
+  // App visibility methods
+  getAppVisibility(): Promise<AppVisibility[]>;
+  setAppVisibility(appId: string, hidden: boolean): Promise<AppVisibility>;
+
+  // Admin stats & activity
+  getAdminStats(): Promise<{ totalUsers: number; activeLastWeek: number; totalCmas: number; loginsToday: number }>;
+  getActivityLogs(limit?: number): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -109,6 +122,23 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async updateUser(id: string, data: Partial<{ isSuperAdmin: boolean }>): Promise<User | undefined> {
+    const updateFields: Record<string, any> = { updatedAt: new Date() };
+    if (typeof data.isSuperAdmin === "boolean") {
+      updateFields.isSuperAdmin = data.isSuperAdmin;
+    }
+    const [user] = await db
+      .update(users)
+      .set(updateFields)
+      .where(eq(users.id, id))
+      .returning();
     return user;
   }
 
@@ -239,16 +269,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLatestMarketPulseSnapshot(): Promise<MarketPulseSnapshot | undefined> {
+    console.log(`[Storage DEBUG] Querying latest market pulse snapshot...`);
     const [snapshot] = await db
       .select()
       .from(marketPulseSnapshots)
       .orderBy(desc(marketPulseSnapshots.lastUpdatedAt))
       .limit(1);
+    console.log(`[Storage DEBUG] Query result:`, snapshot ? 'Found snapshot' : 'No snapshot found');
     return snapshot;
   }
 
   async saveMarketPulseSnapshot(snapshot: InsertMarketPulseSnapshot): Promise<MarketPulseSnapshot> {
+    console.log(`[Storage DEBUG] Saving market pulse snapshot:`, snapshot);
     const [saved] = await db.insert(marketPulseSnapshots).values(snapshot).returning();
+    console.log(`[Storage DEBUG] Saved snapshot:`, saved);
     return saved;
   }
 
@@ -605,6 +639,69 @@ export class DatabaseStorage implements IStorage {
     const config = await this.getIntegrationConfig(name);
     if (!config || !config.isActive) return null;
     return config.apiKey;
+  }
+
+  // App visibility methods
+  async getAppVisibility(): Promise<AppVisibility[]> {
+    return db.select().from(appVisibility);
+  }
+
+  async setAppVisibility(appId: string, hidden: boolean): Promise<AppVisibility> {
+    const [existing] = await db.select().from(appVisibility).where(eq(appVisibility.appId, appId));
+    if (existing) {
+      const [updated] = await db
+        .update(appVisibility)
+        .set({ hidden, updatedAt: new Date() })
+        .where(eq(appVisibility.appId, appId))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(appVisibility)
+        .values({ appId, hidden, updatedAt: new Date() })
+        .returning();
+      return created;
+    }
+  }
+
+  // Admin stats
+  async getAdminStats(): Promise<{ totalUsers: number; activeLastWeek: number; totalCmas: number; loginsToday: number }> {
+    const [userCount] = await db.select({ count: sql<number>`count(*)` }).from(users);
+    
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const [activeCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(users)
+      .where(gt(users.updatedAt, oneWeekAgo));
+    
+    const [cmaCount] = await db.select({ count: sql<number>`count(*)` }).from(cmas);
+    
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const [loginCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(sessions)
+      .where(gt(sessions.expire, todayStart));
+    
+    return {
+      totalUsers: Number(userCount.count),
+      activeLastWeek: Number(activeCount.count),
+      totalCmas: Number(cmaCount.count),
+      loginsToday: Number(loginCount.count),
+    };
+  }
+
+  // Activity logs
+  async getActivityLogs(limit: number = 50): Promise<any[]> {
+    const result = await db.execute(
+      sql`SELECT al.*, u.email as admin_email, u.first_name as admin_first_name, u.last_name as admin_last_name
+          FROM admin_activity_logs al
+          LEFT JOIN users u ON al.admin_user_id = u.id
+          ORDER BY al.created_at DESC
+          LIMIT ${limit}`
+    );
+    return result.rows as any[];
   }
 }
 
