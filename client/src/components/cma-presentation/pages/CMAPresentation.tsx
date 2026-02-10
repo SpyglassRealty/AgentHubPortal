@@ -13,9 +13,9 @@ import { useRef } from 'react';
 import type { Transaction, Cma, AgentProfile } from '@shared/schema';
 
 export default function CMAPresentation() {
-  const [, params] = useRoute('/transactions/:transactionId/cma-presentation');
+  const [, params] = useRoute('/cma/:id/cma-presentation');
   const [, navigate] = useLocation();
-  const transactionId = params?.transactionId;
+  const id = params?.id;
 
   const [currentSlide, setCurrentSlide] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -27,8 +27,8 @@ export default function CMAPresentation() {
   };
 
   const handleClose = useCallback(() => {
-    navigate(`/transactions/${transactionId}?tab=cma`);
-  }, [navigate, transactionId]);
+    navigate(`/cma/${id}`);
+  }, [navigate, id]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -55,15 +55,16 @@ export default function CMAPresentation() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSlide, sidebarOpen, drawingMode, handleClose]);
 
-  const { data: transaction, isLoading: transactionLoading } = useQuery<Transaction>({
-    queryKey: ['/api/transactions', transactionId],
-    enabled: !!transactionId,
+  const { data: cmaData } = useQuery({
+    queryKey: ['/api/cma', id],
+    queryFn: async () => {
+      const res = await fetch('/api/cma/' + id);
+      if (!res.ok) throw new Error('Failed to fetch CMA');
+      return res.json();
+    },
   });
 
-  const { data: savedCma, isLoading: cmaLoading } = useQuery<Cma>({
-    queryKey: ['/api/transactions', transactionId, 'cma'],
-    enabled: !!transactionId,
-  });
+  // REMOVED: savedCma query - using cmaData instead
 
   const { data: agentProfileData, isLoading: profileLoading } = useQuery<{
     profile: {
@@ -144,8 +145,8 @@ export default function CMAPresentation() {
   }, []);
 
   const presentationComparables = useMemo(() => {
-    const cmaPropertiesData = (savedCma?.propertiesData || []) as any[];
-    const transactionCmaData = (transaction?.cmaData || []) as any[];
+    const cmaPropertiesData = (cmaData?.comparables || []) as any[];
+    const transactionCmaData = (cmaData?.comparables || []) as any[];
     
     // Create lookup maps from transaction.cmaData by mlsNumber for coordinates and status
     // This ensures we always use the LATEST status from MLS sync, even if savedCma has stale data
@@ -235,10 +236,10 @@ export default function CMAPresentation() {
         longitude: lng,
       };
     });
-  }, [savedCma?.propertiesData, transaction?.cmaData, normalizeStatusWithLastStatus]);
+  }, [cmaData?.comparables, normalizeStatusWithLastStatus]);
 
   const subjectProperty = useMemo(() => {
-    const rawSubject = transaction?.mlsData as any;
+    const rawSubject = cmaData as any;
     if (!rawSubject) return undefined;
     
     return {
@@ -258,7 +259,7 @@ export default function CMAPresentation() {
       map: rawSubject.map || (rawSubject.coordinates?.latitude && rawSubject.coordinates?.longitude ? 
         { latitude: rawSubject.coordinates.latitude, longitude: rawSubject.coordinates.longitude } : null),
     };
-  }, [transaction?.mlsData, normalizeStatusWithLastStatus]);
+  }, [cmaData, normalizeStatusWithLastStatus]);
 
   const averageDaysOnMarket = useMemo(() => {
     if (!presentationComparables.length) return 30;
@@ -283,7 +284,7 @@ export default function CMAPresentation() {
     return Math.round(total / compsWithAcres.length);
   }, [presentationComparables]);
 
-  const isLoading = transactionLoading || cmaLoading || profileLoading;
+  const isLoading = profileLoading;
 
   if (isLoading) {
     return (
@@ -296,11 +297,11 @@ export default function CMAPresentation() {
     );
   }
 
-  if (!transaction) {
+  if (!cmaData) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
         <div className="text-center">
-          <p className="text-muted-foreground">Transaction not found</p>
+          <p className="text-muted-foreground">CMA not found</p>
         </div>
       </div>
     );
@@ -380,8 +381,8 @@ export default function CMAPresentation() {
       />
 
       <Header
-        propertyAddress={transaction.propertyAddress || 'Property Address'}
-        mlsNumber={transaction.mlsNumber || ''}
+        propertyAddress={cmaData?.propertyAddress || cmaData?.address || 'Property Address'}
+        mlsNumber={cmaData?.mlsNumber || ''}
         agent={agentProfile}
         onMenuClick={() => setSidebarOpen(true)}
         onClose={handleClose}
