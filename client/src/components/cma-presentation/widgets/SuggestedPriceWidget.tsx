@@ -115,7 +115,6 @@ export function SuggestedPriceWidget({
   imageInsights,
   mlsNumber
 }: SuggestedPriceWidgetProps) {
-  console.log('[SuggestedPriceWidget] Received props:', { subjectProperty, comparables, suggestedPrice, mlsNumber });
   const [activeFilter, setActiveFilter] = useState<'all' | 'sold' | 'active'>('all');
   const [isEditing, setIsEditing] = useState(false);
   const [displayPrice, setDisplayPrice] = useState<number>(0);
@@ -136,24 +135,37 @@ export function SuggestedPriceWidget({
   const activeComps = comparables.filter(c => c.status.toLowerCase() === 'active');
 
   const calculateSuggestedPrice = () => {
-    if (suggestedPrice) return suggestedPrice;
-    if (closedComps.length === 0 || !subjectProperty) return 0;
+    if (suggestedPrice && suggestedPrice > 0) return suggestedPrice;
     
-    // Filter to only closed comps with valid pricePerSqft
-    const validPricePerSqfts = closedComps
-      .map(c => {
-        if (c.pricePerSqft && !isNaN(c.pricePerSqft) && c.pricePerSqft > 0) return c.pricePerSqft;
-        // Calculate from price and sqft if pricePerSqft is invalid
-        const price = c.soldPrice ?? c.price ?? c.listPrice;
-        const sqft = c.sqft || (c as any).livingArea;
-        if (price && sqft && sqft > 0 && !isNaN(price) && !isNaN(sqft)) return price / sqft;
-        return null;
-      })
-      .filter((p): p is number => p !== null && p > 0);
+    // If no comparables, return 0
+    if (!comparables || comparables.length === 0) return 0;
     
-    if (validPricePerSqfts.length === 0) return 0;
-    const avgPricePerSqft = validPricePerSqfts.reduce((sum, p) => sum + p, 0) / validPricePerSqfts.length;
-    return Math.round(avgPricePerSqft * (subjectProperty.sqft || 0));
+    // If we have closed comps and subject property, calculate based on price per sqft
+    if (closedComps.length > 0 && subjectProperty && subjectProperty.sqft > 0) {
+      const validPricePerSqfts = closedComps
+        .map(c => {
+          if (c.pricePerSqft && !isNaN(c.pricePerSqft) && c.pricePerSqft > 0) return c.pricePerSqft;
+          // Calculate from price and sqft if pricePerSqft is invalid
+          const price = c.soldPrice ?? c.price ?? c.listPrice;
+          const sqft = c.sqft || (c as any).livingArea;
+          if (price && sqft && sqft > 0 && !isNaN(price) && !isNaN(sqft)) return price / sqft;
+          return null;
+        })
+        .filter((p): p is number => p !== null && p > 0);
+      
+      if (validPricePerSqfts.length > 0) {
+        const avgPricePerSqft = validPricePerSqfts.reduce((sum, p) => sum + p, 0) / validPricePerSqfts.length;
+        return Math.round(avgPricePerSqft * subjectProperty.sqft);
+      }
+    }
+    
+    // Fallback: use average price from all comparables
+    const validPrices = comparables
+      .map(comp => comp.soldPrice || comp.listPrice || comp.price || 0)
+      .filter(price => price > 0);
+    
+    if (validPrices.length === 0) return 0;
+    return Math.round(validPrices.reduce((sum, price) => sum + price, 0) / validPrices.length);
   };
 
   useEffect(() => {

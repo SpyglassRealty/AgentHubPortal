@@ -6,7 +6,6 @@ interface AgentResumeWidgetProps {
 }
 
 export function AgentResumeWidget({ agent }: AgentResumeWidgetProps) {
-  console.log('[AgentResumeWidget] Received agent prop:', agent);
   return (
     <div className="flex flex-col h-full bg-background" data-testid="agent-resume-widget">
       <div className="flex-1 overflow-auto p-6 md:p-8">
@@ -21,15 +20,17 @@ export function AgentResumeWidget({ agent }: AgentResumeWidgetProps) {
                   className="w-40 h-40 md:w-48 md:h-48 rounded-lg object-cover shadow-md"
                 />
               ) : (
-                <div className="w-40 h-40 md:w-48 md:h-48 rounded-lg bg-muted flex items-center justify-center">
-                  <span className="text-4xl font-semibold text-muted-foreground">
-                    {agent.name?.charAt(0) || 'A'}
+                <div className="w-40 h-40 md:w-48 md:h-48 rounded-lg bg-gradient-to-br from-[#EF4923] to-[#EF4923]/80 flex items-center justify-center">
+                  <span className="text-4xl font-semibold text-white">
+                    {agent.name?.split(' ').map(n => n?.[0]).slice(0, 2).join('') || 
+                     agent.email?.charAt(0)?.toUpperCase() || 'A'}
                   </span>
                 </div>
               )}
               
               <div className="text-center md:text-left">
-                <h2 className="text-xl md:text-2xl font-semibold">{agent.name}</h2>
+                <h2 className="text-xl md:text-2xl font-semibold">{agent.name || 'Agent Name'}</h2>
+                <p className="text-muted-foreground font-medium">{agent.title || 'Licensed Real Estate Agent'}</p>
                 <p className="text-muted-foreground">{agent.company}</p>
               </div>
 
@@ -62,11 +63,21 @@ export function AgentResumeWidget({ agent }: AgentResumeWidgetProps) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <p className="text-lg text-muted-foreground">
-                    Professional bio not available.
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Go to Settings → Bio & Default Cover Letter to add your professional bio.
+                  <div className="prose dark:prose-invert max-w-none">
+                    <p className="text-base leading-relaxed mb-4">
+                      As a licensed real estate professional with Spyglass Realty, I am dedicated to 
+                      providing exceptional service to buyers and sellers in the Austin area. My goal 
+                      is to make your real estate transaction as smooth and successful as possible.
+                    </p>
+                    <p className="text-base leading-relaxed mb-4">
+                      With extensive knowledge of the local market and a commitment to personalized service, 
+                      I work closely with each client to understand their unique needs and goals. Whether 
+                      you're buying your first home, selling a property, or investing in real estate, 
+                      I'm here to guide you through every step of the process.
+                    </p>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-6 pt-4 border-t">
+                    <strong>Complete your profile:</strong> Go to Settings → Bio & Default Cover Letter to add your personal bio and showcase your unique expertise.
                   </p>
                 </div>
               )}

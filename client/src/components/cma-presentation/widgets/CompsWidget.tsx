@@ -418,7 +418,25 @@ function CompsMapView({ comparables, subjectProperty }: { comparables: CmaProper
 }
 
 export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) {
-  console.log('[CompsWidget] Received props:', { comparables, subjectProperty });
+  // Handle empty comparables
+  if (!comparables || comparables.length === 0) {
+    return (
+      <div className="flex flex-col h-full bg-background" data-testid="comps-widget">
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+              <BarChart3 className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No Comparable Properties</h3>
+            <p className="text-muted-foreground">
+              No comparable properties were found for this CMA. Please check the CMA data or refresh the presentation.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
   const [mainView, setMainView] = useState<'compare' | 'map' | 'stats'>('compare');
   const [subView, setSubView] = useState<'grid' | 'list' | 'table'>('grid');
   const [statusFilter, setStatusFilter] = useState<string>('all');
