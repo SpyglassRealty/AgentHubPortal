@@ -834,7 +834,49 @@ export async function registerRoutes(
     }
   });
 
-  app.get('/api/market-pulse', isAuthenticated, async (req: any, res) => {
+  // DEBUG: Simple API test endpoint (remove auth temporarily)
+  app.get('/api/market-pulse/test', async (req: any, res) => {
+    console.log('🔥 [DEBUG] Market Pulse TEST endpoint hit');
+    const apiKey = process.env.IDX_GRID_API_KEY;
+    
+    if (!apiKey) {
+      return res.json({ 
+        status: 'error', 
+        message: 'API key not configured',
+        env_check: Object.keys(process.env).filter(k => k.includes('API')).map(k => `${k}: ${process.env[k] ? 'SET' : 'NOT SET'}`)
+      });
+    }
+    
+    try {
+      // Direct API test
+      const testUrl = 'https://api.repliers.io/listings?listings=false&type=Sale&standardStatus=Active&officeId=ACT1518371';
+      console.log('🔥 [DEBUG] Testing direct API call:', testUrl);
+      
+      const response = await fetch(testUrl, {
+        headers: { 'REPLIERS-API-KEY': apiKey }
+      });
+      
+      const data = await response.json();
+      console.log('🔥 [DEBUG] Direct API response:', data);
+      
+      res.json({
+        status: 'success',
+        api_key_length: apiKey.length,
+        direct_api_status: response.status,
+        direct_api_data: data,
+        active_count: data.count || 0
+      });
+    } catch (error) {
+      console.error('🔥 [DEBUG] Direct API test failed:', error);
+      res.json({
+        status: 'error',
+        message: error instanceof Error ? error.message : String(error),
+        api_key_length: apiKey.length
+      });
+    }
+  });
+
+  app.get('/api/market-pulse', async (req: any, res) => {
     try {
       console.log(`[Market Pulse DEBUG] API route called, refresh=${req.query.refresh}`);
       const { getMarketPulseData } = await import('./marketPulseService');
