@@ -159,23 +159,33 @@ export async function refreshAndCacheMarketPulse(): Promise<MarketPulseData> {
 }
 
 export async function getMarketPulseData(forceRefresh = false): Promise<MarketPulseData> {
+  console.log(`[Market Pulse Service] Getting market data (forceRefresh: ${forceRefresh})`);
+  
   if (forceRefresh) {
+    console.log(`[Market Pulse Service] Force refresh requested, fetching fresh data from API`);
     return refreshAndCacheMarketPulse();
   }
   
   const cachedSnapshot = await storage.getLatestMarketPulseSnapshot();
   
   if (cachedSnapshot) {
+    const ageMs = Date.now() - cachedSnapshot.lastUpdatedAt.getTime();
+    const ageHours = ageMs / (1000 * 60 * 60);
+    
+    console.log(`[Market Pulse Service] Returning cached data (age: ${ageHours.toFixed(1)}h)`);
+    
     return {
       totalProperties: cachedSnapshot.totalProperties,
       active: cachedSnapshot.active,
       activeUnderContract: cachedSnapshot.activeUnderContract,
       pending: cachedSnapshot.pending,
       closed: cachedSnapshot.closed,
-      lastUpdatedAt: cachedSnapshot.lastUpdatedAt.toISOString()
+      lastUpdatedAt: cachedSnapshot.lastUpdatedAt.toISOString(),
+      officeName: DEFAULT_OFFICE.name
     };
   }
   
+  console.log(`[Market Pulse Service] No cached data found, fetching fresh data from API`);
   return refreshAndCacheMarketPulse();
 }
 

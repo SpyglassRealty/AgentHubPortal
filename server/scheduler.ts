@@ -4,9 +4,9 @@ import { refreshAndCacheMarketPulse, ensureFreshMarketPulseData } from './market
 export function initializeScheduler(): void {
   console.log('[Scheduler] Initializing scheduled tasks...');
   
-  // Daily refresh at midnight Central Time
-  cron.schedule('0 0 * * *', async () => {
-    console.log('[Scheduler] Running daily Market Pulse refresh (12 AM Central)...');
+  // Daily refresh at 6:00 AM Central Time (as requested)
+  cron.schedule('0 6 * * *', async () => {
+    console.log('[Scheduler] Running daily Market Pulse refresh (6:00 AM Central)...');
     try {
       await refreshAndCacheMarketPulse();
       console.log('[Scheduler] Daily Market Pulse refresh completed successfully');
@@ -17,20 +17,20 @@ export function initializeScheduler(): void {
     timezone: 'America/Chicago'
   });
   
-  // Refresh every 15 minutes for near real-time data
-  cron.schedule('*/15 * * * *', async () => {
-    console.log('[Scheduler] Running 15-minute Market Pulse refresh...');
+  // Hourly refresh for reasonably fresh data (reduced from 15 min to avoid API limits)
+  cron.schedule('0 * * * *', async () => {
+    console.log('[Scheduler] Running hourly Market Pulse refresh...');
     try {
       await refreshAndCacheMarketPulse();
-      console.log('[Scheduler] 15-minute Market Pulse refresh completed successfully');
+      console.log('[Scheduler] Hourly Market Pulse refresh completed successfully');
     } catch (error) {
-      console.error('[Scheduler] 15-minute Market Pulse refresh failed:', error);
+      console.error('[Scheduler] Hourly Market Pulse refresh failed:', error);
     }
   }, {
     timezone: 'America/Chicago'
   });
   
-  console.log('[Scheduler] Market Pulse refresh scheduled: every 15 minutes + daily at 12:00 AM Central');
+  console.log('[Scheduler] Market Pulse refresh scheduled: hourly + daily at 6:00 AM Central');
 }
 
 export async function runStartupTasks(): Promise<void> {
