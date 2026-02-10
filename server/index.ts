@@ -97,6 +97,9 @@ app.use((req, res, next) => {
     async () => {
       log(`serving on port ${port}`);
       
+      // Environment variable debug logging
+      console.log(`[STARTUP DEBUG] IDX_GRID_API_KEY: ${process.env.IDX_GRID_API_KEY ? 'SET (length: ' + process.env.IDX_GRID_API_KEY.length + ')' : 'NOT SET'}`);
+      
       // Initialize database schema first
       await initializeDatabase();
       
