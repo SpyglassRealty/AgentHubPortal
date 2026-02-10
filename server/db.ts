@@ -17,19 +17,37 @@ export async function initializeDatabase() {
   try {
     console.log("[Database] Initializing database schema...");
     
-    // Run database schema synchronization
-    const { exec } = await import('child_process');
-    const { promisify } = await import('util');
-    const execAsync = promisify(exec);
-    
-    // Run drizzle-kit push to sync schema
-    await execAsync('npx drizzle-kit push', { 
-      env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL }
-    });
+    // Direct SQL migrations for missing columns
+    await runDirectMigrations();
     
     console.log("[Database] Schema synchronized successfully");
   } catch (error) {
     console.warn("[Database] Schema sync warning:", error);
     // Don't fail startup if schema sync fails - database might already be correct
+  }
+}
+
+async function runDirectMigrations() {
+  try {
+    // Check if rezen_yenta_id column exists, if not add it
+    const result = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'users' AND column_name = 'rezen_yenta_id'
+    `);
+    
+    if (result.rows.length === 0) {
+      console.log("[Database] Adding missing rezen_yenta_id column...");
+      await pool.query('ALTER TABLE users ADD COLUMN rezen_yenta_id varchar');
+      console.log("[Database] Added rezen_yenta_id column successfully");
+    } else {
+      console.log("[Database] rezen_yenta_id column already exists");
+    }
+    
+    // Add any other missing columns as needed
+    
+  } catch (error) {
+    console.error("[Database] Direct migration error:", error);
+    throw error;
   }
 }
