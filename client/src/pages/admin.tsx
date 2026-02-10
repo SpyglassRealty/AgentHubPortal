@@ -242,6 +242,20 @@ export default function AdminPage() {
           <p className="text-muted-foreground mt-2">
             Manage agents, apps, integrations, and company settings.
           </p>
+          <div className="flex flex-wrap gap-3 mt-3">
+            <Link href="/admin/dashboards">
+              <span className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 cursor-pointer transition-colors">
+                <BarChart3 className="h-4 w-4" />
+                Business Dashboards →
+              </span>
+            </Link>
+            <Link href="/admin/beacon">
+              <span className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-md text-sm font-medium hover:bg-orange-600 cursor-pointer transition-colors">
+                <Activity className="h-4 w-4" />
+                Beacon Recruiting →
+              </span>
+            </Link>
+          </div>
         </div>
 
         {/* ── Usage Stats Cards ── */}

@@ -6,5 +6,7 @@ export { default as PulseMap } from "./PulseMap";
 export { default as HeroStatsBar } from "./HeroStatsBar";
 export { default as MarketTrends } from "./MarketTrends";
 export { default as NeighborhoodExplorer } from "./NeighborhoodExplorer";
+export { default as SchoolsSection } from "./SchoolsSection";
+export { default as DemographicsSection } from "./DemographicsSection";
 export * from "./types";
 export * from "./data-layers";

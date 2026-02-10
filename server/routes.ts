@@ -16,6 +16,7 @@ import { SPYGLASS_OFFICES, DEFAULT_OFFICE, getOfficeConfig } from "./config/offi
 import { registerPulseV2Routes } from "./pulseV2Routes";
 import { registerAdminRoutes } from "./adminRoutes";
 import { registerGmailRoutes } from "./gmailRoutes";
+import { registerXanoRoutes } from "./xanoProxy";
 
 
 // Helper function to get the actual database user from request
@@ -3474,6 +3475,8 @@ Respond with valid JSON in this exact format:
   // Register Gmail routes
   registerGmailRoutes(app);
 
+  // Register Xano proxy routes for admin dashboards
+  registerXanoRoutes(app, isAuthenticated);
 
   return httpServer;
 }

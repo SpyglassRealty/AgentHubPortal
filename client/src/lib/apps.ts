@@ -174,6 +174,17 @@ export const apps: AppDefinition[] = [
     connectionType: "embedded"
   },
   {
+    id: "agent-dashboards",
+    name: "Agent Dashboards",
+    description: "Business intelligence dashboards with KPIs, transactions, revenue, network analytics, and leaderboards.",
+    icon: BarChart3,
+    categories: ["Admin"],
+    color: "bg-violet-100 text-violet-700",
+    url: "/admin/dashboards",
+    connectionType: "embedded",
+    hidden: true
+  },
+  {
     id: "client-data",
     name: "Client Data Portal",
     description: "Access and manage client property data and MLS listings.",
