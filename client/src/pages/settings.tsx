@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, Link2, Link2Off, Unlink, Check, AlertCircle, Bell, Users, Calendar, Home, CheckSquare, Megaphone, Moon, Mail, Loader2, User, ExternalLink } from "lucide-react";
+import { TrendingUp, Link2, Link2Off, Unlink, Check, AlertCircle, Bell, Users, Calendar, Home, CheckSquare, Megaphone, Moon, Mail, Loader2, User, ExternalLink, Lock } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import ChangePasswordModal from "@/components/change-password-modal";
 
 interface UserProfile {
   id: string;
@@ -71,6 +72,7 @@ const defaultNotificationSettings: Partial<NotificationSettings> = {
 export default function SettingsPage() {
   const [yentaIdInput, setYentaIdInput] = useState("");
   const [localNotifSettings, setLocalNotifSettings] = useState<Partial<NotificationSettings> | null>(null);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -225,6 +227,36 @@ export default function SettingsPage() {
                     <p className="text-muted-foreground mb-1">Email</p>
                     <p className="font-medium break-all">{userProfile?.email || "Not available"}</p>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-password-security">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="h-5 w-5 text-[#EF4923]" />
+                  Password & Security
+                </CardTitle>
+                <CardDescription>Manage your account password and security settings</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                  <div>
+                    <p className="font-medium">Account Password</p>
+                    <p className="text-sm text-muted-foreground">
+                      {userProfile?.id?.startsWith('google_') 
+                        ? 'You currently sign in with Google. Set a password to enable email/password login.'
+                        : 'Change your account password for enhanced security.'
+                      }
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => setShowChangePasswordModal(true)}
+                    variant="outline"
+                    className="ml-4"
+                  >
+                    {userProfile?.id?.startsWith('google_') ? 'Set Password' : 'Change Password'}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -701,6 +733,12 @@ export default function SettingsPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <ChangePasswordModal 
+        isOpen={showChangePasswordModal} 
+        onClose={() => setShowChangePasswordModal(false)}
+        userHasPassword={!userProfile?.id?.startsWith('google_')}
+      />
     </Layout>
   );
 }

@@ -1100,5 +1100,140 @@ export function registerPulseV2Routes(app: Express): void {
     }
   });
 
-  console.log("[Pulse V2] Registered 8 route groups under /api/pulse/v2/*");
+  // ═══════════════════════════════════════════════════════════════════
+  // 9. GET /api/pulse/v2/history/:zip — Market pulse history for trending
+  // ═══════════════════════════════════════════════════════════════════
+  app.get("/api/pulse/v2/history/:zip", isAuthenticated, async (req: Request, res: Response) => {
+    const { zip } = req.params;
+    const period = (req.query.period as string) || "30"; // days
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 365);
+
+    try {
+      const client = await pool.connect();
+      try {
+        const query = `
+          SELECT 
+            date,
+            median_home_value,
+            median_sale_price,
+            homes_sold,
+            active_listings,
+            new_listings,
+            median_dom,
+            months_of_supply,
+            sale_to_list_ratio,
+            price_drops_pct,
+            price_growth_mom,
+            price_growth_yoy,
+            inventory_growth_mom,
+            sales_growth_mom,
+            market_temperature,
+            market_score
+          FROM market_pulse_history
+          WHERE zip = $1
+          ORDER BY date DESC
+          LIMIT $2
+        `;
+        
+        const result = await client.query(query, [zip, limit]);
+        
+        const history = result.rows.map(row => ({
+          date: row.date,
+          medianHomeValue: row.median_home_value ? Number(row.median_home_value) : null,
+          medianSalePrice: row.median_sale_price ? Number(row.median_sale_price) : null,
+          homesSold: row.homes_sold,
+          activeListings: row.active_listings,
+          newListings: row.new_listings,
+          medianDom: row.median_dom,
+          monthsOfSupply: row.months_of_supply ? Number(row.months_of_supply) : null,
+          saleToListRatio: row.sale_to_list_ratio ? Number(row.sale_to_list_ratio) : null,
+          priceDropsPct: row.price_drops_pct ? Number(row.price_drops_pct) : null,
+          priceGrowthMom: row.price_growth_mom ? Number(row.price_growth_mom) : null,
+          priceGrowthYoy: row.price_growth_yoy ? Number(row.price_growth_yoy) : null,
+          inventoryGrowthMom: row.inventory_growth_mom ? Number(row.inventory_growth_mom) : null,
+          salesGrowthMom: row.sales_growth_mom ? Number(row.sales_growth_mom) : null,
+          marketTemperature: row.market_temperature,
+          marketScore: row.market_score
+        }));
+
+        res.json({
+          zip,
+          period: `${limit} days`,
+          history,
+          meta: {
+            count: history.length,
+            source: "market_pulse_history",
+            description: "Daily market pulse snapshots for historical trending analysis"
+          }
+        });
+      } finally {
+        client.release();
+      }
+    } catch (err: any) {
+      console.error(`[Pulse V2] history/${zip} error:`, err);
+      res.status(500).json({ error: "Failed to fetch history data" });
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 10. GET /api/pulse/v2/history/stats/:zip — Market pulse statistics
+  // ═══════════════════════════════════════════════════════════════════
+  app.get("/api/pulse/v2/history/stats/:zip", isAuthenticated, async (req: Request, res: Response) => {
+    const { zip } = req.params;
+
+    try {
+      const client = await pool.connect();
+      try {
+        const query = `
+          SELECT 
+            COUNT(*) as total_days,
+            AVG(median_home_value) as avg_home_value,
+            AVG(median_sale_price) as avg_sale_price,
+            AVG(homes_sold) as avg_homes_sold,
+            AVG(active_listings) as avg_active_listings,
+            AVG(median_dom) as avg_dom,
+            AVG(market_score) as avg_market_score,
+            MIN(date) as earliest_date,
+            MAX(date) as latest_date,
+            AVG(CASE WHEN market_temperature = 'Hot' THEN 1 ELSE 0 END) * 100 as hot_days_pct,
+            AVG(CASE WHEN market_temperature = 'Cold' THEN 1 ELSE 0 END) * 100 as cold_days_pct
+          FROM market_pulse_history
+          WHERE zip = $1
+        `;
+        
+        const result = await client.query(query, [zip]);
+        const stats = result.rows[0];
+
+        res.json({
+          zip,
+          statistics: {
+            totalDays: Number(stats.total_days),
+            avgHomeValue: stats.avg_home_value ? Number(stats.avg_home_value) : null,
+            avgSalePrice: stats.avg_sale_price ? Number(stats.avg_sale_price) : null,
+            avgHomesSold: stats.avg_homes_sold ? Number(stats.avg_homes_sold) : null,
+            avgActiveListings: stats.avg_active_listings ? Number(stats.avg_active_listings) : null,
+            avgDom: stats.avg_dom ? Number(stats.avg_dom) : null,
+            avgMarketScore: stats.avg_market_score ? Number(stats.avg_market_score) : null,
+            hotDaysPct: Number(stats.hot_days_pct || 0),
+            coldDaysPct: Number(stats.cold_days_pct || 0),
+            dataRange: {
+              earliest: stats.earliest_date,
+              latest: stats.latest_date
+            }
+          },
+          meta: {
+            source: "market_pulse_history",
+            description: "Statistical summary of market pulse history"
+          }
+        });
+      } finally {
+        client.release();
+      }
+    } catch (err: any) {
+      console.error(`[Pulse V2] history/stats/${zip} error:`, err);
+      res.status(500).json({ error: "Failed to fetch history statistics" });
+    }
+  });
+
+  console.log("[Pulse V2] Registered 10 route groups under /api/pulse/v2/*");
 }

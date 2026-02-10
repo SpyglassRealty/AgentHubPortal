@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
+import ResetPasswordPage from "@/pages/reset-password";
 import DashboardPage from "@/pages/dashboard";
 import AppView from "@/pages/app-view";
 import CalendarPage from "@/pages/calendar";
@@ -58,6 +59,7 @@ function Router() {
     return (
       <Switch>
         <Route path="/" component={LandingPage} />
+        <Route path="/reset-password" component={ResetPasswordPage} />
         <Route>
           <Redirect to="/" />
         </Route>

@@ -51,6 +51,7 @@ async function runDirectMigrations() {
       { name: 'fub_user_id', sql: 'ALTER TABLE users ADD COLUMN fub_user_id integer' },
       { name: 'created_at', sql: 'ALTER TABLE users ADD COLUMN created_at timestamp DEFAULT NOW()' },
       { name: 'updated_at', sql: 'ALTER TABLE users ADD COLUMN updated_at timestamp DEFAULT NOW()' },
+      { name: 'password', sql: 'ALTER TABLE users ADD COLUMN password varchar' },
     ];
     
     // Add missing columns
@@ -216,6 +217,20 @@ async function createPulseDataTables() {
             updated_at timestamp DEFAULT NOW()
           )
         `
+      },
+      // Password reset tokens table
+      {
+        name: 'password_reset_tokens',
+        sql: `
+          CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            token varchar NOT NULL UNIQUE,
+            expires_at timestamp NOT NULL,
+            used boolean DEFAULT FALSE,
+            created_at timestamp DEFAULT NOW()
+          )
+        `
       }
     ];
     
@@ -233,6 +248,8 @@ async function createPulseDataTables() {
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_metrics_zip_date ON pulse_metrics(zip, date)',
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_market_pulse_history_date_zip ON market_pulse_history(date, zip)',
       'CREATE INDEX IF NOT EXISTS idx_market_pulse_history_zip_date ON market_pulse_history(zip, date DESC)',
+      'CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token)',
+      'CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id)',
     ];
     
     for (const indexSql of indexes) {

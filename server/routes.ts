@@ -17,6 +17,17 @@ import { registerPulseV2Routes } from "./pulseV2Routes";
 import { registerAdminRoutes } from "./adminRoutes";
 import { registerGmailRoutes } from "./gmailRoutes";
 import { registerXanoRoutes } from "./xanoProxy";
+import { 
+  hashPassword, 
+  verifyPassword, 
+  validatePassword,
+  getUserByEmailForLogin,
+  createPasswordResetToken,
+  verifyResetToken,
+  markTokenAsUsed,
+  updateUserPassword,
+  sendPasswordResetEmail
+} from "./passwordAuth";
 
 
 // Helper function to get the actual database user from request
@@ -83,6 +94,157 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Email/Password Authentication Routes
+  app.post('/api/auth/login', async (req: any, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+      
+      // Find user by email
+      const user = await getUserByEmailForLogin(email);
+      if (!user || !user.password) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+      
+      // Verify password
+      const isValidPassword = await verifyPassword(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+      
+      // Create session (similar to Google OAuth)
+      const sessionUser = {
+        claims: {
+          sub: user.id,
+          email: user.email,
+          first_name: user.firstName,
+          last_name: user.lastName,
+          profile_image_url: user.profileImageUrl,
+        },
+        expires_at: Math.floor(Date.now() / 1000) + 86400, // 24 hour session
+        provider: 'password',
+      };
+      
+      req.login(sessionUser, (err: any) => {
+        if (err) {
+          console.error('[Password Auth] Session creation error:', err);
+          return res.status(500).json({ message: "Login failed" });
+        }
+        
+        console.log(`[Password Auth] User logged in: ${user.email}`);
+        res.json({ user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } });
+      });
+    } catch (error) {
+      console.error("Error during password login:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  app.post('/api/auth/change-password', isAuthenticated, async (req: any, res) => {
+    try {
+      const { currentPassword, newPassword, confirmPassword } = req.body;
+      
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+      
+      if (newPassword !== confirmPassword) {
+        return res.status(400).json({ message: "New passwords do not match" });
+      }
+      
+      const passwordValidation = validatePassword(newPassword);
+      if (!passwordValidation.valid) {
+        return res.status(400).json({ message: passwordValidation.message });
+      }
+      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // For Google OAuth users, they might not have a password set yet
+      if (user.password) {
+        const isCurrentPasswordValid = await verifyPassword(currentPassword, user.password);
+        if (!isCurrentPasswordValid) {
+          return res.status(400).json({ message: "Current password is incorrect" });
+        }
+      }
+      
+      // Update password
+      await updateUserPassword(userId, newPassword);
+      console.log(`[Password Change] Password updated for user ${user.email}`);
+      
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+
+  app.post('/api/auth/forgot-password', async (req: any, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      
+      const user = await getUserByEmailForLogin(email);
+      
+      // Always return success to avoid email enumeration
+      // but only send email if user exists
+      if (user) {
+        const token = await createPasswordResetToken(user.id);
+        await sendPasswordResetEmail(email, token);
+        console.log(`[Password Reset] Reset token created for user ${user.email}`);
+      }
+      
+      res.json({ message: "If an account with that email exists, a password reset link has been sent." });
+    } catch (error) {
+      console.error("Error processing forgot password:", error);
+      res.status(500).json({ message: "Failed to process password reset request" });
+    }
+  });
+
+  app.post('/api/auth/reset-password', async (req: any, res) => {
+    try {
+      const { token, newPassword, confirmPassword } = req.body;
+      
+      if (!token || !newPassword || !confirmPassword) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+      
+      if (newPassword !== confirmPassword) {
+        return res.status(400).json({ message: "Passwords do not match" });
+      }
+      
+      const passwordValidation = validatePassword(newPassword);
+      if (!passwordValidation.valid) {
+        return res.status(400).json({ message: passwordValidation.message });
+      }
+      
+      const tokenData = await verifyResetToken(token);
+      if (!tokenData) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+      
+      // Update password and mark token as used
+      await updateUserPassword(tokenData.userId, newPassword);
+      await markTokenAsUsed(token);
+      
+      console.log(`[Password Reset] Password reset completed for user ${tokenData.userId}`);
+      res.json({ message: "Password reset successful" });
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      res.status(500).json({ message: "Failed to reset password" });
     }
   });
 

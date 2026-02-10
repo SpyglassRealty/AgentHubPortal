@@ -233,13 +233,13 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  // Google OAuth users have a different token structure
-  if (user.provider === 'google') {
+  // Google OAuth and Password auth users have a different token structure
+  if (user.provider === 'google' || user.provider === 'password') {
     const now = Math.floor(Date.now() / 1000);
     if (now <= user.expires_at) {
       return next();
     }
-    // For Google users, just extend the session since we don't have refresh token handling
+    // For Google and password users, just extend the session since we don't have refresh token handling
     user.expires_at = Math.floor(Date.now() / 1000) + 3600;
     return next();
   }
