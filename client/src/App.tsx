@@ -80,7 +80,7 @@ function Router() {
       <Route path="/pulse" component={PulsePage} />
       <Route path="/cma" component={CmaPage} />
       <Route path="/cma/:id/presentation-builder" component={CmaPresentationBuilderPage} />
-      <Route path="/cma/:id/cma-presentation" component={CmaPresentationSimple} />
+      <Route path="/cma/:id/cma-presentation" component={CmaPresentationPage} />
       {/* Backward compatibility redirect */}
       <Route path="/cma/:id/presentation" component={CmaPresentationRedirect} />
       <Route path="/cma/:id" component={CmaBuilderPage} />
