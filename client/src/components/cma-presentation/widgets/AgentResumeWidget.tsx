@@ -6,6 +6,7 @@ interface AgentResumeWidgetProps {
 }
 
 export function AgentResumeWidget({ agent }: AgentResumeWidgetProps) {
+  console.log('[AgentResumeWidget] Received agent prop:', agent);
   return (
     <div className="flex flex-col h-full bg-background" data-testid="agent-resume-widget">
       <div className="flex-1 overflow-auto p-6 md:p-8">

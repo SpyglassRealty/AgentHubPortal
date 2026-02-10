@@ -115,6 +115,7 @@ export function SuggestedPriceWidget({
   imageInsights,
   mlsNumber
 }: SuggestedPriceWidgetProps) {
+  console.log('[SuggestedPriceWidget] Received props:', { subjectProperty, comparables, suggestedPrice, mlsNumber });
   const [activeFilter, setActiveFilter] = useState<'all' | 'sold' | 'active'>('all');
   const [isEditing, setIsEditing] = useState(false);
   const [displayPrice, setDisplayPrice] = useState<number>(0);
