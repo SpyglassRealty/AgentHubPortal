@@ -144,75 +144,134 @@ export async function registerRoutes(
     }
   });
 
-  app.get('/api/fub/calendar', isAuthenticated, async (req: any, res) => {
+  // Debug endpoint to test FUB API connectivity
+  app.get('/api/test-fub', async (req: any, res) => {
     try {
-      const user = await getDbUser(req);
+      const hasKey = !!process.env.FUB_API_KEY;
+      console.log('[Test FUB] API Key exists:', hasKey);
       
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+      if (!hasKey) {
+        return res.json({ success: false, error: 'FUB_API_KEY not set' });
       }
 
       const fubClient = getFubClient();
       if (!fubClient) {
+        return res.json({ success: false, error: 'FUB Client failed to initialize' });
+      }
+
+      // Test API call
+      const result = await fubClient.fetch('/me');
+      res.json({ success: true, fubResponse: result });
+    } catch (error) {
+      console.error('[Test FUB] Error:', error);
+      res.json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/fub/calendar', isAuthenticated, async (req: any, res) => {
+    console.log('[Calendar Debug] Request received for /api/fub/calendar');
+    try {
+      const user = await getDbUser(req);
+      console.log('[Calendar Debug] User found:', !!user, user ? { id: user.id, email: user.email, fubUserId: user.fubUserId } : 'null');
+      
+      if (!user) {
+        console.log('[Calendar Debug] User not found in database');
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const fubClient = getFubClient();
+      console.log('[Calendar Debug] FUB Client initialized:', !!fubClient);
+      if (!fubClient) {
+        console.log('[Calendar Debug] FUB Client is null - integration not configured');
         return res.status(503).json({ message: "Follow Up Boss integration not configured" });
       }
 
       let fubUserId: number | null = null;
       const requestedAgentId = req.query.agentId as string;
+      console.log('[Calendar Debug] Requested agent ID:', requestedAgentId, 'User is super admin:', user.isSuperAdmin);
 
       if (requestedAgentId && user.isSuperAdmin) {
         fubUserId = parseInt(requestedAgentId, 10);
+        console.log('[Calendar Debug] Using super admin requested fubUserId:', fubUserId);
       } else {
         fubUserId = user.fubUserId;
+        console.log('[Calendar Debug] User fubUserId from DB:', fubUserId);
         
         if (!fubUserId && user.email) {
-          const fubUser = await fubClient.getUserByEmail(user.email);
-          if (fubUser) {
-            fubUserId = fubUser.id;
-            await storage.updateUserFubId(user.id, fubUserId);
+          console.log('[Calendar Debug] No fubUserId found, looking up by email:', user.email);
+          try {
+            const fubUser = await fubClient.getUserByEmail(user.email);
+            console.log('[Calendar Debug] FUB user lookup result:', !!fubUser, fubUser ? { id: fubUser.id } : 'null');
+            if (fubUser) {
+              fubUserId = fubUser.id;
+              await storage.updateUserFubId(user.id, fubUserId);
+              console.log('[Calendar Debug] Updated user fubUserId in DB:', fubUserId);
+            }
+          } catch (emailLookupError) {
+            console.error('[Calendar Debug] Error looking up FUB user by email:', emailLookupError);
           }
         }
       }
 
+      console.log('[Calendar Debug] Final fubUserId:', fubUserId);
       if (!fubUserId) {
+        console.log('[Calendar Debug] No fubUserId available - returning empty response');
         return res.json({ events: [], tasks: [], message: "No Follow Up Boss account linked" });
       }
 
       const startDate = req.query.startDate as string;
       const endDate = req.query.endDate as string;
+      console.log('[Calendar Debug] Date range:', { startDate, endDate });
 
-      const [appointments, tasks] = await Promise.all([
-        fubClient.getAppointments(fubUserId, startDate, endDate),
-        fubClient.getTasks(fubUserId, startDate, endDate),
-      ]);
+      console.log('[Calendar Debug] Making FUB API calls for appointments and tasks...');
+      try {
+        const [appointments, tasks] = await Promise.all([
+          fubClient.getAppointments(fubUserId, startDate, endDate),
+          fubClient.getTasks(fubUserId, startDate, endDate),
+        ]);
 
-      res.json({ events: appointments, tasks });
+        console.log('[Calendar Debug] FUB API response:', { appointmentsCount: appointments?.length || 0, tasksCount: tasks?.length || 0 });
+        res.json({ events: appointments, tasks });
+      } catch (apiError) {
+        console.error('[Calendar Debug] FUB API call failed:', apiError);
+        throw apiError; // Re-throw to be caught by outer catch
+      }
     } catch (error) {
-      console.error("Error fetching FUB calendar:", error);
-      res.status(500).json({ message: "Failed to fetch calendar data" });
+      console.error("[Calendar Debug] Error in calendar route - Full stack trace:", error);
+      console.error("[Calendar Debug] Error message:", error?.message);
+      console.error("[Calendar Debug] Error stack:", error?.stack);
+      res.status(500).json({ message: "Failed to fetch calendar data", debug: error?.message });
     }
   });
 
   // Google Calendar - uses domain-wide delegation to impersonate users
   app.get('/api/google/calendar', isAuthenticated, async (req: any, res) => {
+    console.log('[Google Calendar Debug] Request received for /api/google/calendar');
     try {
       const user = await getDbUser(req);
+      console.log('[Google Calendar Debug] User found:', !!user, user ? { id: user.id, email: user.email } : 'null');
       
       if (!user) {
+        console.log('[Google Calendar Debug] User not found in database');
         return res.status(404).json({ message: "User not found" });
       }
 
       let targetEmail = user.email;
       const requestedAgentId = req.query.agentId as string;
+      console.log('[Google Calendar Debug] Target email (initial):', targetEmail, 'Requested agent ID:', requestedAgentId);
 
       // If super admin is viewing another agent's calendar, look up their email
       if (requestedAgentId && user.isSuperAdmin) {
+        console.log('[Google Calendar Debug] Super admin requesting specific agent calendar');
         // agentId comes from FUB agent selector as a FUB user ID number
         const fubAgentId = parseInt(requestedAgentId, 10);
+        console.log('[Google Calendar Debug] Looking up fubAgentId:', fubAgentId);
         // Look up the DB user that has this fubUserId to get their email
         const agentUsers = await db.select().from(usersTable).where(eq(usersTable.fubUserId, fubAgentId));
+        console.log('[Google Calendar Debug] Agent users found:', agentUsers.length);
         if (agentUsers.length > 0 && agentUsers[0].email) {
           targetEmail = agentUsers[0].email;
+          console.log('[Google Calendar Debug] Using agent email from DB:', targetEmail);
         } else {
           // Try to find by FUB API as fallback
           const fubClient = getFubClient();
@@ -230,22 +289,30 @@ export async function registerRoutes(
         }
       }
 
+      console.log('[Google Calendar Debug] Final target email:', targetEmail);
       if (!targetEmail) {
+        console.log('[Google Calendar Debug] No email address available - returning empty response');
         return res.json({ events: [], message: "No email address found for this user" });
       }
 
       const startDate = req.query.startDate as string;
       const endDate = req.query.endDate as string;
+      console.log('[Google Calendar Debug] Date parameters:', { startDate, endDate });
 
       if (!startDate || !endDate) {
+        console.log('[Google Calendar Debug] Missing date parameters');
         return res.status(400).json({ message: "startDate and endDate are required" });
       }
 
+      console.log('[Google Calendar Debug] Calling getGoogleCalendarEvents with:', { targetEmail, startDate, endDate });
       const events = await getGoogleCalendarEvents(targetEmail, startDate, endDate);
+      console.log('[Google Calendar Debug] Got events:', events?.length || 0);
 
       res.json({ events });
     } catch (error: any) {
-      console.error("Error fetching Google Calendar:", error);
+      console.error("[Google Calendar Debug] Error in Google Calendar route - Full stack trace:", error);
+      console.error("[Google Calendar Debug] Error message:", error?.message);
+      console.error("[Google Calendar Debug] Error code:", error?.code);
       
       // Provide helpful error messages for common issues
       if (error.message?.includes('Not Authorized') || error.code === 403) {
