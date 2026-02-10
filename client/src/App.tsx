@@ -25,6 +25,8 @@ import CmaPresentationPage from "@/pages/cma-presentation";
 import PulsePage from "@/pages/pulse";
 import AdminSettingsPage from "@/pages/admin-settings";
 import AdminPage from "@/pages/admin";
+import AdminDashboardsRouter from "@/pages/admin-dashboards";
+import AdminBeaconPage from "@/pages/admin-beacon";
 
 
 function Router() {
@@ -72,6 +74,9 @@ function Router() {
       <Route path="/settings" component={SettingsPage} />
       <Route path="/admin" component={AdminPage} />
       <Route path="/admin/settings" component={AdminSettingsPage} />
+      <Route path="/admin/beacon" component={AdminBeaconPage} />
+      <Route path="/admin/dashboards/:rest*" component={AdminDashboardsRouter} />
+      <Route path="/admin/dashboards" component={AdminDashboardsRouter} />
       <Route path="/app/:id" component={AppView} />
       <Route component={NotFound} />
     </Switch>

@@ -81,6 +81,13 @@ export default function PulsePage() {
     staleTime: 1000 * 60 * 10,
   });
 
+  // Look up lat/lng for the selected zip from heatmap data
+  const selectedZipCoords = useMemo(() => {
+    if (!selectedZip || !heatmapData?.zipData) return null;
+    const item = heatmapData.zipData.find(z => z.zip === selectedZip);
+    return item ? { lat: item.lat, lng: item.lng } : null;
+  }, [selectedZip, heatmapData?.zipData]);
+
   // Merge V2 layer data into the heatmap items so the map can display
   // the selected metric value instead of just MLS median price
   const zipData = useMemo(() => {
@@ -182,6 +189,8 @@ export default function PulsePage() {
               <div className="w-[380px] flex-shrink-0 border-r border-border overflow-auto">
                 <ZipSummaryPanel
                   zipCode={selectedZip}
+                  lat={selectedZipCoords?.lat}
+                  lng={selectedZipCoords?.lng}
                   onClose={() => setSelectedZip(null)}
                   className="h-full border-0 rounded-none"
                 />
