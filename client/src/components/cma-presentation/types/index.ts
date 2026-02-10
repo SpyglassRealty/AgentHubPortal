@@ -18,6 +18,7 @@ export interface AgentProfile {
   phone?: string;
   email?: string;
   bio?: string;
+  title?: string;
 }
 
 export interface CmaProperty {

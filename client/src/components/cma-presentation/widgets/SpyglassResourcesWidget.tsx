@@ -28,7 +28,6 @@ function getFileExtension(fileName?: string | null): string {
 }
 
 export function SpyglassResourcesWidget({ cmaToken }: SpyglassResourcesWidgetProps) {
-  console.log('[SpyglassResourcesWidget] Received cmaToken:', cmaToken);
   const [previewDocument, setPreviewDocument] = useState<AgentResource | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 

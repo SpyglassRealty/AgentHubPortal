@@ -94,26 +94,32 @@ export default function CMAPresentation() {
   });
 
   const agentProfile = useMemo(() => {
-    console.log('[CMA Presentation] agentProfileData:', agentProfileData);
-    if (!agentProfileData) return { name: '', company: 'Spyglass Realty', phone: '', email: '', photo: '', bio: '' };
+    if (!agentProfileData) {
+      return { 
+        name: 'Agent Name', 
+        company: 'Spyglass Realty', 
+        phone: '', 
+        email: '', 
+        photo: '', 
+        bio: 'Professional bio will be displayed here once you complete your agent profile.',
+        title: 'Licensed Real Estate Agent'
+      };
+    }
     
     const { profile, user } = agentProfileData;
     const displayName = user?.marketingDisplayName || 
       (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 
-       user?.firstName || 'Agent');
+       user?.firstName || user?.email?.split('@')[0] || 'Agent');
     
-    const result = {
+    return {
       name: displayName,
       company: profile?.marketingCompany || 'Spyglass Realty',
-      phone: user?.marketingPhone || '',
-      email: user?.marketingEmail || '',
+      phone: user?.marketingPhone || user?.phone || '',
+      email: user?.marketingEmail || user?.email || '',
       photo: user?.marketingHeadshotUrl || profile?.headshotUrl || user?.profileImageUrl || '',
-      title: profile?.title || user?.marketingTitle || '',
-      bio: profile?.bio || '',
+      title: profile?.title || user?.marketingTitle || 'Licensed Real Estate Agent',
+      bio: profile?.bio || profile?.defaultCoverLetter || 'Experienced real estate professional dedicated to helping clients buy and sell properties in the Austin area.',
     };
-    
-    console.log('[CMA Presentation] agentProfile result:', result);
-    return result;
   }, [agentProfileData]);
 
   // Normalize status checking both status and lastStatus fields
@@ -149,10 +155,8 @@ export default function CMAPresentation() {
   }, []);
 
   const presentationComparables = useMemo(() => {
-    console.log('[CMA Presentation] cmaData:', cmaData);
     const cmaPropertiesData = (cmaData?.comparableProperties || []) as any[];
     const transactionCmaData = (cmaData?.comparableProperties || []) as any[];
-    console.log('[CMA Presentation] comparableProperties array length:', cmaPropertiesData.length);
     
     // Create lookup maps from cmaData.comparableProperties by mlsNumber for coordinates and status
     // This ensures we always use the LATEST status from MLS sync
@@ -243,8 +247,6 @@ export default function CMAPresentation() {
       };
     });
   }, [cmaData?.comparableProperties, normalizeStatusWithLastStatus]);
-
-  console.log('[CMA Presentation] presentationComparables final:', presentationComparables);
 
   const subjectProperty = useMemo(() => {
     const rawSubject = cmaData?.subjectProperty as any;
