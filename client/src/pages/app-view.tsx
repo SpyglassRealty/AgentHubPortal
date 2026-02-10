@@ -39,6 +39,13 @@ export default function AppView() {
     return url.toString();
   }, [app?.url, resolvedTheme]);
 
+  // Redirect internal routes (starting with /) directly instead of iframing
+  useEffect(() => {
+    if (app?.url?.startsWith('/') && !app.url.startsWith('//')) {
+      setLocation(app.url);
+    }
+  }, [app, setLocation]);
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
