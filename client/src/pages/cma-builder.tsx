@@ -2090,18 +2090,38 @@ export default function CmaBuilderPage() {
     saveMutation.mutate(updatedCma);
   };
 
-  const handleGenerateReport = () => {
+  const handlePresentationBuilder = () => {
     if (!cma.name.trim()) {
-      toast({ title: "CMA Name is required", description: "Please enter a name before generating a report.", variant: "destructive" });
+      toast({ title: "CMA Name is required", description: "Please enter a name before accessing presentation builder.", variant: "destructive" });
       return;
     }
     if (cma.comparableProperties.length === 0) {
-      toast({ title: "No comparables", description: "Add at least one comparable property before generating a report.", variant: "destructive" });
+      toast({ title: "No comparables", description: "Add at least one comparable property before using presentation builder.", variant: "destructive" });
       return;
     }
-    // Save first, then navigate to presentation
-    setPostSaveRedirect('/cma/:id/presentation');
-    saveMutation.mutate(cma);
+    // Save first, then navigate to presentation builder
+    setPostSaveRedirect('/cma/:id/presentation-builder');
+    saveMutation.mutate({
+      ...cma,
+      status: cma.subjectProperty && cma.comparableProperties.length > 0 ? "completed" : "in-progress"
+    });
+  };
+
+  const handleCmaPresentation = () => {
+    if (!cma.name.trim()) {
+      toast({ title: "CMA Name is required", description: "Please enter a name before viewing presentation.", variant: "destructive" });
+      return;
+    }
+    if (cma.comparableProperties.length === 0) {
+      toast({ title: "No comparables", description: "Add at least one comparable property before viewing presentation.", variant: "destructive" });
+      return;
+    }
+    // Save first, then navigate to CMA presentation
+    setPostSaveRedirect('/cma/:id/cma-presentation');
+    saveMutation.mutate({
+      ...cma,
+      status: cma.subjectProperty && cma.comparableProperties.length > 0 ? "completed" : "in-progress"
+    });
   };
 
   const updateCma = (updates: Partial<CmaData>) => {
@@ -2239,10 +2259,10 @@ export default function CmaBuilderPage() {
             </Button>
             <Button
               variant="outline"
-              onClick={handleGenerateReport}
+              onClick={handlePresentationBuilder}
               disabled={saveMutation.isPending || cma.comparableProperties.length === 0}
             >
-              {saveMutation.isPending && postSaveRedirect ? (
+              {saveMutation.isPending && postSaveRedirect?.includes('presentation-builder') ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
                 <FileText className="h-4 w-4 mr-2" />
@@ -2269,24 +2289,10 @@ export default function CmaBuilderPage() {
             </Button>
             <Button
               className="bg-[#EF4923] hover:bg-[#d4401f] text-white"
-              onClick={() => {
-                if (!cma.name.trim()) {
-                  toast({ title: "CMA Name is required", description: "Please enter a name before creating presentation.", variant: "destructive" });
-                  return;
-                }
-                if (cma.comparableProperties.length === 0) {
-                  toast({ title: "No comparables", description: "Add at least one comparable property before creating presentation.", variant: "destructive" });
-                  return;
-                }
-                setPostSaveRedirect('/cma/:id/presentation');
-                saveMutation.mutate({
-                  ...cma,
-                  status: cma.subjectProperty && cma.comparableProperties.length > 0 ? "completed" : "in-progress"
-                });
-              }}
+              onClick={handleCmaPresentation}
               disabled={saveMutation.isPending || cma.comparableProperties.length === 0}
             >
-              {saveMutation.isPending && postSaveRedirect ? (
+              {saveMutation.isPending && postSaveRedirect?.includes('cma-presentation') ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
                 <FileBarChart className="h-4 w-4 mr-2" />
