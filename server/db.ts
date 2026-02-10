@@ -270,8 +270,14 @@ export async function migrateMarketPulseSnapshots() {
       "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS office_id VARCHAR(50) DEFAULT 'ACT1518371'",
       "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'spyglass'",
       "ALTER TABLE market_pulse_snapshots ALTER COLUMN cached_data DROP NOT NULL",
-      // CMA table fix - add missing subject_property column  
-      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS subject_property JSONB"
+      // CMA table fixes - add ALL missing columns to match schema.ts
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS subject_property JSONB",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS comparable_properties JSONB DEFAULT '[]'::jsonb",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS notes TEXT",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'draft'",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS presentation_config JSONB",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()"
     ];
 
     for (const stmt of alterStatements) {
