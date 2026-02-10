@@ -29,22 +29,42 @@ export async function initializeDatabase() {
 
 async function runDirectMigrations() {
   try {
-    // Check if rezen_yenta_id column exists, if not add it
-    const result = await pool.query(`
+    console.log("[Database] Running comprehensive user table migrations...");
+    
+    // Get existing columns
+    const existingColumns = await pool.query(`
       SELECT column_name 
       FROM information_schema.columns 
-      WHERE table_name = 'users' AND column_name = 'rezen_yenta_id'
+      WHERE table_name = 'users'
     `);
     
-    if (result.rows.length === 0) {
-      console.log("[Database] Adding missing rezen_yenta_id column...");
-      await pool.query('ALTER TABLE users ADD COLUMN rezen_yenta_id varchar');
-      console.log("[Database] Added rezen_yenta_id column successfully");
-    } else {
-      console.log("[Database] rezen_yenta_id column already exists");
+    const columnNames = new Set(existingColumns.rows.map(row => row.column_name));
+    
+    // Define all expected columns with their SQL types
+    const expectedColumns = [
+      { name: 'rezen_yenta_id', sql: 'ALTER TABLE users ADD COLUMN rezen_yenta_id varchar' },
+      { name: 'is_super_admin', sql: 'ALTER TABLE users ADD COLUMN is_super_admin boolean DEFAULT false' },
+      { name: 'theme', sql: 'ALTER TABLE users ADD COLUMN theme varchar DEFAULT \'light\'' },
+      { name: 'first_name', sql: 'ALTER TABLE users ADD COLUMN first_name varchar' },
+      { name: 'last_name', sql: 'ALTER TABLE users ADD COLUMN last_name varchar' },
+      { name: 'profile_image_url', sql: 'ALTER TABLE users ADD COLUMN profile_image_url varchar' },
+      { name: 'fub_user_id', sql: 'ALTER TABLE users ADD COLUMN fub_user_id integer' },
+      { name: 'created_at', sql: 'ALTER TABLE users ADD COLUMN created_at timestamp DEFAULT NOW()' },
+      { name: 'updated_at', sql: 'ALTER TABLE users ADD COLUMN updated_at timestamp DEFAULT NOW()' },
+    ];
+    
+    // Add missing columns
+    for (const column of expectedColumns) {
+      if (!columnNames.has(column.name)) {
+        console.log(`[Database] Adding missing ${column.name} column...`);
+        await pool.query(column.sql);
+        console.log(`[Database] Added ${column.name} column successfully`);
+      } else {
+        console.log(`[Database] ${column.name} column already exists`);
+      }
     }
     
-    // Add any other missing columns as needed
+    console.log("[Database] User table migration completed");
     
   } catch (error) {
     console.error("[Database] Direct migration error:", error);
