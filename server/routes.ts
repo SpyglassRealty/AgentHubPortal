@@ -834,15 +834,27 @@ export async function registerRoutes(
   });
 
   app.get('/api/market-pulse', isAuthenticated, async (req: any, res) => {
+    console.log('🔥 [MARKET PULSE] ========== ENDPOINT HIT ==========');
+    console.log('🔥 [MARKET PULSE] Request query:', req.query);
+    console.log('🔥 [MARKET PULSE] Force refresh:', req.query.refresh === 'true');
+    
     try {
+      console.log('🔥 [MARKET PULSE] Importing market pulse service...');
       const { getMarketPulseData } = await import('./marketPulseService');
+      console.log('🔥 [MARKET PULSE] Service imported successfully');
+      
       const forceRefresh = req.query.refresh === 'true';
+      console.log('🔥 [MARKET PULSE] Calling getMarketPulseData...');
       
       const data = await getMarketPulseData(forceRefresh);
+      console.log('🔥 [MARKET PULSE] Data received:', JSON.stringify(data, null, 2));
+      console.log('🔥 [MARKET PULSE] Sending response to frontend');
+      
       res.json(data);
     } catch (error) {
-      console.error("Error fetching market pulse data:", error);
-      res.status(503).json({ message: "Market data service unavailable" });
+      console.error('🔥 [MARKET PULSE] ERROR:', error);
+      console.error('🔥 [MARKET PULSE] ERROR STACK:', error instanceof Error ? error.stack : 'No stack trace');
+      res.status(503).json({ message: "Market data service unavailable", error: error instanceof Error ? error.message : String(error) });
     }
   });
 

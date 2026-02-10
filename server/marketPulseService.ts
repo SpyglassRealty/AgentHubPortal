@@ -42,8 +42,13 @@ async function fetchWithRetry(url: string, headers: Record<string, string>, retr
 }
 
 export async function fetchMarketPulseFromAPI(): Promise<MarketPulseData> {
+  console.log('🔥 [MARKET PULSE SERVICE] ========== API FETCH STARTED ==========');
+  
   const apiKey = process.env.IDX_GRID_API_KEY;
+  console.log('🔥 [MARKET PULSE SERVICE] API Key check - present:', !!apiKey, 'length:', apiKey?.length || 0);
+  
   if (!apiKey) {
+    console.log('🔥 [MARKET PULSE SERVICE] ERROR: API key not configured');
     throw new Error("Market data API key not configured");
   }
 
@@ -159,13 +164,26 @@ export async function refreshAndCacheMarketPulse(): Promise<MarketPulseData> {
 }
 
 export async function getMarketPulseData(forceRefresh = false): Promise<MarketPulseData> {
+  console.log('🔥 [MARKET PULSE SERVICE] ========== GET DATA CALLED ==========');
+  console.log('🔥 [MARKET PULSE SERVICE] Force refresh:', forceRefresh);
+  
   if (forceRefresh) {
+    console.log('🔥 [MARKET PULSE SERVICE] Force refresh - calling refreshAndCacheMarketPulse()');
     return refreshAndCacheMarketPulse();
   }
   
+  console.log('🔥 [MARKET PULSE SERVICE] Checking for cached snapshot...');
   const cachedSnapshot = await storage.getLatestMarketPulseSnapshot();
   
   if (cachedSnapshot) {
+    console.log('🔥 [MARKET PULSE SERVICE] Cached snapshot found:', {
+      active: cachedSnapshot.active,
+      activeUnderContract: cachedSnapshot.activeUnderContract,
+      pending: cachedSnapshot.pending,
+      closed: cachedSnapshot.closed,
+      lastUpdatedAt: cachedSnapshot.lastUpdatedAt
+    });
+    
     return {
       totalProperties: cachedSnapshot.totalProperties,
       active: cachedSnapshot.active,
@@ -176,6 +194,7 @@ export async function getMarketPulseData(forceRefresh = false): Promise<MarketPu
     };
   }
   
+  console.log('🔥 [MARKET PULSE SERVICE] No cached snapshot - calling refreshAndCacheMarketPulse()');
   return refreshAndCacheMarketPulse();
 }
 
