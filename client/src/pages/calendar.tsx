@@ -76,14 +76,14 @@ export default function CalendarPage() {
   const endDate = format(endOfMonth(currentMonth), "yyyy-MM-dd");
 
   const calendarUrl = selectedAgentId 
-    ? `/api/google/calendar?startDate=${startDate}&endDate=${endDate}&agentId=${selectedAgentId}`
-    : `/api/google/calendar?startDate=${startDate}&endDate=${endDate}`;
+    ? `/api/fub/calendar?startDate=${startDate}&endDate=${endDate}&agentId=${selectedAgentId}`
+    : `/api/fub/calendar?startDate=${startDate}&endDate=${endDate}`;
 
   const { data, isLoading, error, refetch } = useQuery<CalendarResponse>({
-    queryKey: ["/api/google/calendar", { startDate, endDate, agentId: selectedAgentId }],
+    queryKey: ["/api/fub/calendar", { startDate, endDate, agentId: selectedAgentId }],
     queryFn: async () => {
       const res = await fetch(calendarUrl, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch calendar");
+      if (!res.ok) throw new Error("Failed to fetch calendar events");
       return res.json();
     },
   });
