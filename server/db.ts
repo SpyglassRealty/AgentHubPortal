@@ -169,6 +169,53 @@ async function createPulseDataTables() {
             created_at timestamp DEFAULT NOW()
           )
         `
+      },
+      // Market Pulse History for daily snapshots and trending
+      {
+        name: 'market_pulse_history',
+        sql: `
+          CREATE TABLE IF NOT EXISTS market_pulse_history (
+            id serial PRIMARY KEY,
+            date date NOT NULL,
+            zip varchar(5) NOT NULL,
+            
+            -- Price metrics
+            median_home_value numeric,
+            median_sale_price numeric,
+            median_list_price numeric,
+            price_per_sqft numeric,
+            
+            -- Market activity
+            homes_sold integer,
+            active_listings integer,
+            new_listings integer,
+            pending_listings integer,
+            
+            -- Market timing
+            median_dom integer,
+            avg_dom integer,
+            
+            -- Market conditions  
+            months_of_supply numeric,
+            sale_to_list_ratio numeric,
+            price_drops_pct numeric,
+            
+            -- Calculated metrics
+            inventory_growth_mom numeric, -- month-over-month inventory change
+            sales_growth_mom numeric,     -- month-over-month sales change
+            price_growth_mom numeric,     -- month-over-month price change
+            price_growth_yoy numeric,     -- year-over-year price change
+            
+            -- Market temperature (calculated)
+            market_temperature varchar(20), -- 'Hot', 'Warm', 'Balanced', 'Cool', 'Cold'
+            market_score integer,           -- 0-100 composite score
+            
+            -- Metadata
+            data_source varchar(50) DEFAULT 'repliers_mls',
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
       }
     ];
     
@@ -184,6 +231,8 @@ async function createPulseDataTables() {
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_census_zip_year ON pulse_census_data(zip, year)',
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_redfin_zip_period ON pulse_redfin_data(zip, period_start)',
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_metrics_zip_date ON pulse_metrics(zip, date)',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_market_pulse_history_date_zip ON market_pulse_history(date, zip)',
+      'CREATE INDEX IF NOT EXISTS idx_market_pulse_history_zip_date ON market_pulse_history(zip, date DESC)',
     ];
     
     for (const indexSql of indexes) {
@@ -196,8 +245,46 @@ async function createPulseDataTables() {
     
     console.log("[Database] All required tables created successfully");
     
+    // Add market pulse snapshots schema migration
+    await migrateMarketPulseSnapshots();
+    
   } catch (error) {
     console.error("[Database] Tables creation error:", error);
     // Don't throw - some features can work without all tables
+  }
+}
+
+// Auto-migration for market_pulse_snapshots to match schema.ts expectations
+async function migrateMarketPulseSnapshots() {
+  try {
+    console.log('[Migration] Checking market_pulse_snapshots schema...');
+    
+    const alterStatements = [
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS total_properties INTEGER DEFAULT 0",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS active INTEGER DEFAULT 0", 
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS active_under_contract INTEGER DEFAULT 0",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS pending INTEGER DEFAULT 0",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS closed INTEGER DEFAULT 0",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS last_updated_at TIMESTAMP DEFAULT NOW()",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS office_id VARCHAR(50) DEFAULT 'ACT1518371'",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'spyglass'"
+    ];
+
+    for (const stmt of alterStatements) {
+      try {
+        await pool.query(stmt);
+        console.log(`[Migration] Executed: ${stmt.substring(0, 60)}...`);
+      } catch (e) {
+        // Ignore if column already exists
+        console.log(`[Migration] Column might already exist: ${e.message}`);
+      }
+    }
+    
+    console.log('[Migration] market_pulse_snapshots schema updated successfully');
+    
+  } catch (error) {
+    console.error('[Migration] market_pulse_snapshots migration error:', error);
+    // Don't throw - let the service try to work with existing schema
   }
 }
