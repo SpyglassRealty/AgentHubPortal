@@ -4,6 +4,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { initializeScheduler, runStartupTasks } from "./scheduler";
 import { refreshFubDbConfig } from "./fubClient";
+import { initializeDatabase, migrateMarketPulseSnapshots } from "./db";
 
 const app = express();
 const httpServer = createServer(app);
@@ -95,6 +96,22 @@ app.use((req, res, next) => {
     },
     async () => {
       log(`serving on port ${port}`);
+      
+      // Environment variable debug logging
+      console.log(`[STARTUP DEBUG] IDX_GRID_API_KEY: ${process.env.IDX_GRID_API_KEY ? 'SET (length: ' + process.env.IDX_GRID_API_KEY.length + ')' : 'NOT SET'}`);
+      
+      // Initialize database schema first
+      await initializeDatabase();
+      
+      // Force market pulse migration with explicit error handling
+      try {
+        console.log('[STARTUP] Running explicit market pulse migration...');
+        await migrateMarketPulseSnapshots();
+        console.log('[STARTUP] Market pulse migration completed successfully');
+      } catch (error) {
+        console.error('[STARTUP] CRITICAL: Market pulse migration failed:', error);
+        // Continue startup but log the error
+      }
       
       // Load DB-stored integration keys into cache
       await refreshFubDbConfig();

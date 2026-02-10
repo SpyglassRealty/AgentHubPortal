@@ -16,6 +16,7 @@ import { SPYGLASS_OFFICES, DEFAULT_OFFICE, getOfficeConfig } from "./config/offi
 import { registerPulseV2Routes } from "./pulseV2Routes";
 import { registerAdminRoutes } from "./adminRoutes";
 import { registerGmailRoutes } from "./gmailRoutes";
+import { registerXanoRoutes } from "./xanoProxy";
 
 
 // Helper function to get the actual database user from request
@@ -833,16 +834,60 @@ export async function registerRoutes(
     }
   });
 
-  app.get('/api/market-pulse', isAuthenticated, async (req: any, res) => {
+  // DEBUG: Simple API test endpoint (remove auth temporarily)
+  app.get('/api/market-pulse/test', async (req: any, res) => {
+    console.log('🔥 [DEBUG] Market Pulse TEST endpoint hit');
+    const apiKey = process.env.IDX_GRID_API_KEY;
+    
+    if (!apiKey) {
+      return res.json({ 
+        status: 'error', 
+        message: 'API key not configured',
+        env_check: Object.keys(process.env).filter(k => k.includes('API')).map(k => `${k}: ${process.env[k] ? 'SET' : 'NOT SET'}`)
+      });
+    }
+    
     try {
+      // Direct API test
+      const testUrl = 'https://api.repliers.io/listings?listings=false&type=Sale&standardStatus=Active&officeId=ACT1518371';
+      console.log('🔥 [DEBUG] Testing direct API call:', testUrl);
+      
+      const response = await fetch(testUrl, {
+        headers: { 'REPLIERS-API-KEY': apiKey }
+      });
+      
+      const data = await response.json();
+      console.log('🔥 [DEBUG] Direct API response:', data);
+      
+      res.json({
+        status: 'success',
+        api_key_length: apiKey.length,
+        direct_api_status: response.status,
+        direct_api_data: data,
+        active_count: data.count || 0
+      });
+    } catch (error) {
+      console.error('🔥 [DEBUG] Direct API test failed:', error);
+      res.json({
+        status: 'error',
+        message: error instanceof Error ? error.message : String(error),
+        api_key_length: apiKey.length
+      });
+    }
+  });
+
+  app.get('/api/market-pulse', async (req: any, res) => {
+    try {
+      console.log(`[Market Pulse DEBUG] API route called, refresh=${req.query.refresh}`);
       const { getMarketPulseData } = await import('./marketPulseService');
       const forceRefresh = req.query.refresh === 'true';
       
       const data = await getMarketPulseData(forceRefresh);
+      console.log(`[Market Pulse DEBUG] Returning data:`, data);
       res.json(data);
     } catch (error) {
-      console.error("Error fetching market pulse data:", error);
-      res.status(503).json({ message: "Market data service unavailable" });
+      console.error("[Market Pulse DEBUG] API route error:", error);
+      res.status(503).json({ message: "Market data service unavailable", error: error.message });
     }
   });
 
@@ -890,6 +935,7 @@ export async function registerRoutes(
       const propertyType = (req.query.propertyType as string) || '';
       const maxDom = req.query.maxDom ? parseInt(req.query.maxDom as string, 10) : undefined;
       const search = (req.query.search as string) || '';
+      const minSoldDate = (req.query.minSoldDate as string) || '';
 
       const baseUrl = 'https://api.repliers.io/listings';
       const msaCounties = ['Travis', 'Williamson', 'Hays', 'Bastrop', 'Caldwell'];
@@ -973,11 +1019,23 @@ export async function registerRoutes(
       if (status && status !== 'all') {
         if (status === 'Closed') {
           // For closed/sold listings, use status=U with lastStatus=Sld
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
           params.append('status', 'U');
           params.append('lastStatus', 'Sld');
-          params.append('minClosedDate', thirtyDaysAgo.toISOString().split('T')[0]);
+          
+          // Use minSoldDate from URL params, or default to 30 days
+          if (minSoldDate) {
+            params.append('minSoldDate', minSoldDate);
+            console.log(`[Company Listings] CLOSED STATUS - USING CUSTOM minSoldDate: ${minSoldDate}`);
+          } else {
+            // Default to 30-day filter if no date specified
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const defaultDate = thirtyDaysAgo.toISOString().split('T')[0];
+            params.append('minSoldDate', defaultDate);
+            console.log(`[Company Listings] CLOSED STATUS - USING DEFAULT 30-DAY FILTER: ${defaultDate}`);
+          }
+          
+          console.log(`[Company Listings] CLOSED STATUS - Final Repliers params: status=U, lastStatus=Sld, minSoldDate=${params.get('minSoldDate')}`);
         } else {
           // Active, Active Under Contract, Pending use standardStatus
           params.append('standardStatus', status);
@@ -989,6 +1047,11 @@ export async function registerRoutes(
 
       const fullUrl = `${baseUrl}?${params.toString()}`;
       console.log(`[Company Listings] Fetching page ${page} (limit ${limit}): ${status} listings...`);
+      console.log(`[Company Listings DEBUG] Received params:`, { 
+        status: req.query.status, 
+        minSoldDate: req.query.minSoldDate,
+        parsedMinSoldDate: minSoldDate 
+      });
       console.log(`[Company Listings] API URL: ${fullUrl}`);
 
       const response = await fetch(fullUrl, {
@@ -2357,23 +2420,38 @@ Respond with valid JSON in this exact format:
   // Create a new CMA
   app.post('/api/cma', isAuthenticated, async (req: any, res) => {
     try {
+      console.log('[CMA DEBUG] CMA save request received:', req.body);
+      
       const user = await getDbUser(req);
+      console.log('[CMA DEBUG] User lookup result:', user ? { id: user.id, email: user.email } : 'null');
+      
       if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
       const { name, subjectProperty, comparableProperties, notes, status } = req.body;
+      console.log('[CMA DEBUG] Parsed request data:', { name, subjectProperty, comparableProperties, notes, status });
+      
       if (!name) return res.status(400).json({ message: "Name is required" });
-      const cma = await storage.createCma({
+      
+      const cmaData = {
         userId: user.id,
         name,
         subjectProperty: subjectProperty || null,
         comparableProperties: comparableProperties || [],
         notes: notes || null,
         status: status || 'draft',
-      });
+      };
+      
+      console.log('[CMA DEBUG] Creating CMA with data:', cmaData);
+      
+      const cma = await storage.createCma(cmaData);
+      console.log('[CMA DEBUG] CMA created successfully:', cma.id);
+      
       res.json(cma);
     } catch (error) {
-      console.error('[CMA] Error creating CMA:', error);
+      console.error('[CMA DEBUG] CRITICAL ERROR creating CMA:', error);
+      console.error('[CMA DEBUG] Error stack:', error.stack);
       const errMsg = error instanceof Error ? error.message : String(error);
-      res.status(500).json({ message: "Failed to create CMA", error: errMsg });
+      res.status(500).json({ message: "Failed to create CMA", error: errMsg, debug: true });
     }
   });
 
@@ -3616,21 +3694,19 @@ Respond with valid JSON in this exact format:
       // Repliers nests aggregates under address.zip path
       const zipAggregates = data.aggregates?.address?.zip || data.aggregates?.zip || {};
 
-      // Also get a batch of listings with prices to compute medians per zip
-      // Fetch listings with random-ish sort to get representative DOM sample (not biased toward newest)
-      // Grab 3 pages of 200 for better coverage across zip codes
-      const priceUrl1 = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=200&pageNum=1&${areaParams}&fields=listPrice,address,daysOnMarket,details`;
-      const priceUrl2 = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=200&pageNum=2&${areaParams}&fields=listPrice,address,daysOnMarket,details`;
-      const priceUrl3 = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=200&pageNum=3&${areaParams}&fields=listPrice,address,daysOnMarket,details`;
-      const [priceRes1, priceRes2, priceRes3] = await Promise.all([
-        fetch(priceUrl1, { headers }),
-        fetch(priceUrl2, { headers }),
-        fetch(priceUrl3, { headers }),
-      ]);
-      const priceData1 = priceRes1.ok ? await priceRes1.json() : { listings: [] };
-      const priceData2 = priceRes2.ok ? await priceRes2.json() : { listings: [] };
-      const priceData3 = priceRes3.ok ? await priceRes3.json() : { listings: [] };
-      const priceData = { listings: [...(priceData1.listings || []), ...(priceData2.listings || []), ...(priceData3.listings || [])] };
+      // Fetch listings across multiple pages spread through the dataset for better zip coverage
+      // With ~14K listings and 100/page, grab pages 1,5,10,20,30,50,70,90,110,130 for diverse sampling
+      const totalCount = data.count || 0;
+      const maxPage = Math.ceil(totalCount / 100);
+      const samplePages = [1, 5, 10, 20, 30, 50, 70, 90, 110, 130].filter(p => p <= maxPage);
+      
+      const pricePromises = samplePages.map(pageNum => {
+        const priceUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=100&pageNum=${pageNum}&${areaParams}&fields=listPrice,address,daysOnMarket,details`;
+        return fetch(priceUrl, { headers }).then(r => r.ok ? r.json() : { listings: [] });
+      });
+      const priceResults = await Promise.all(pricePromises);
+      const priceData = { listings: priceResults.flatMap(r => r.listings || []) };
+      console.log(`[Pulse Heatmap] Sampled ${priceData.listings.length} listings across ${samplePages.length} pages for price/DOM data`);
 
       // Build price map by zip
       const zipPriceMap: Record<string, number[]> = {};
@@ -3931,6 +4007,8 @@ Respond with valid JSON in this exact format:
   // Register Gmail routes
   registerGmailRoutes(app);
 
+  // Register Xano proxy routes for admin dashboards
+  registerXanoRoutes(app, isAuthenticated);
 
   return httpServer;
 }

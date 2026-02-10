@@ -13,7 +13,11 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import ForecastGauge from "./ForecastGauge";
+import DemographicsSection from "./DemographicsSection";
+import SchoolsSection from "./SchoolsSection";
+import { generatePulseReport } from "./generateReport";
 import type { ZipSummary } from "./types";
 
 // ─── Mock data for when API isn't ready ──────────────────────
@@ -43,12 +47,16 @@ const MOCK_SUMMARY: ZipSummary = {
 
 interface ZipSummaryPanelProps {
   zipCode: string;
+  lat?: number;
+  lng?: number;
   onClose: () => void;
   className?: string;
 }
 
 export default function ZipSummaryPanel({
   zipCode,
+  lat,
+  lng,
   onClose,
   className = "",
 }: ZipSummaryPanelProps) {
@@ -274,10 +282,25 @@ export default function ZipSummaryPanel({
           </div>
 
           {/* Download Report */}
-          <Button className="w-full bg-[#EF4923] hover:bg-[#d4411f] text-white text-sm">
+          <Button
+            className="w-full bg-[#EF4923] hover:bg-[#d4411f] text-white text-sm"
+            onClick={() => generatePulseReport(summary)}
+          >
             <Download className="h-4 w-4 mr-2" />
             Download Report
           </Button>
+
+          {/* ─── Demographics ──────────────────────────── */}
+          <Separator />
+          <DemographicsSection zipCode={zipCode} />
+
+          {/* ─── Nearby Schools ────────────────────────── */}
+          {lat && lng && (
+            <>
+              <Separator />
+              <SchoolsSection lat={lat} lng={lng} />
+            </>
+          )}
         </div>
       </ScrollArea>
     </div>

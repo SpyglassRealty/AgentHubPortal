@@ -51,12 +51,14 @@ function MarketPulseWithListings() {
   const { isDark } = useTheme();
   const searchString = useSearch();
   
-  // Parse URL search params for initial status
+  // Parse URL search params for initial status and date filter
   const urlParams = new URLSearchParams(searchString);
   const urlStatus = urlParams.get('status') || 'Active';
+  const urlMinSoldDate = urlParams.get('minSoldDate') || '';
   
   // State for status filter (passed to AustinMetroListings)
   const [statusFilter, setStatusFilter] = useState<string>(urlStatus);
+  const [minSoldDateFilter, setMinSoldDateFilter] = useState<string>(urlMinSoldDate);
 
   const cardBg = isDark ? 'bg-[#2a2a2a]' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
@@ -67,8 +69,14 @@ function MarketPulseWithListings() {
   useEffect(() => {
     const params = new URLSearchParams(searchString);
     const newStatus = params.get('status');
+    const newMinSoldDate = params.get('minSoldDate');
+    
     if (newStatus && RESO_STATUSES.some(s => s.key === newStatus)) {
       setStatusFilter(newStatus);
+    }
+    
+    if (newMinSoldDate) {
+      setMinSoldDateFilter(newMinSoldDate);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -264,6 +272,7 @@ function MarketPulseWithListings() {
         <AustinMetroListings 
           controlledStatus={statusFilter} 
           onStatusChange={handleStatusChange} 
+          controlledMinSoldDate={minSoldDateFilter}
         />
       </div>
     </>

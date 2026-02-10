@@ -68,6 +68,8 @@
     "googleapis": "^171.4.0",
     "https-proxy-agent": "^7.0.6",
     "input-otp": "^1.4.2",
+    "jspdf": "^4.1.0",
+    "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.545.0",
     "mapbox-gl": "^3.18.1",
     "memoizee": "^0.4.17",
