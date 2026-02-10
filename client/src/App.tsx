@@ -1,4 +1,4 @@
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route, Redirect, useRoute, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -29,6 +29,17 @@ import AdminPage from "@/pages/admin";
 import AdminDashboardsRouter from "@/pages/admin-dashboards";
 import AdminBeaconPage from "@/pages/admin-beacon";
 
+// Backward compatibility redirect component
+function CmaPresentationRedirect() {
+  const [, routeParams] = useRoute("/cma/:id/presentation");
+  const [, setLocation] = useLocation();
+  
+  if (routeParams?.id) {
+    setLocation(`/cma/${routeParams.id}/cma-presentation`);
+  }
+  
+  return null;
+}
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -69,6 +80,8 @@ function Router() {
       <Route path="/cma" component={CmaPage} />
       <Route path="/cma/:id/presentation-builder" component={CmaPresentationBuilderPage} />
       <Route path="/cma/:id/cma-presentation" component={CmaPresentationPage} />
+      {/* Backward compatibility redirect */}
+      <Route path="/cma/:id/presentation" component={CmaPresentationRedirect} />
       <Route path="/cma/:id" component={CmaBuilderPage} />
       <Route path="/marketing" component={MarketingPage} />
       <Route path="/marketing-calendar" component={MarketingCalendarPage} />
