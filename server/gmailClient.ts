@@ -152,6 +152,13 @@ export interface GmailInboxResult {
   resultSizeEstimate?: number;
 }
 
+export interface CategoryUnreadCounts {
+  primary: number;
+  promotions: number;
+  social: number;
+  forums: number;
+}
+
 export async function getGmailInbox(
   userEmail: string,
   maxResults: number = 20,
@@ -162,10 +169,31 @@ export async function getGmailInbox(
 
   console.log(`[Gmail] Fetching inbox for ${userEmail} (maxResults: ${maxResults}, query: ${query || 'none'})`);
 
-  // Build query - default to inbox
+  // Build query based on category and search
   let q = 'in:inbox';
   if (query) {
-    q = `in:inbox ${query}`;
+    // Handle category-specific queries
+    if (query.startsWith('category:')) {
+      const category = query.replace('category:', '');
+      switch (category) {
+        case 'primary':
+          q = 'in:inbox category:primary';
+          break;
+        case 'promotions':
+          q = 'in:inbox category:promotions';
+          break;
+        case 'social':
+          q = 'in:inbox category:social';
+          break;
+        case 'forums':
+          q = 'in:inbox category:forums';
+          break;
+        default:
+          q = `in:inbox ${query}`;
+      }
+    } else {
+      q = `in:inbox ${query}`;
+    }
   }
 
   const listResponse = await gmail.users.messages.list({
@@ -229,4 +257,50 @@ export async function getGmailMessage(
   });
 
   return parseMessageToGmailMessage(response.data);
+}
+
+export async function getGmailCategoryUnreadCounts(
+  userEmail: string
+): Promise<CategoryUnreadCounts> {
+  const gmail = getGmailClient(userEmail);
+
+  console.log(`[Gmail] Fetching category unread counts for ${userEmail}`);
+
+  // Fetch unread counts for each category in parallel
+  const [primaryCount, promotionsCount, socialCount, forumsCount] = await Promise.all([
+    // Primary: inbox emails that are unread and in primary category (or no other category)
+    gmail.users.messages.list({
+      userId: 'me',
+      maxResults: 1,
+      q: 'in:inbox is:unread category:primary',
+    }).then(res => res.data.resultSizeEstimate || 0),
+    
+    // Promotions
+    gmail.users.messages.list({
+      userId: 'me',
+      maxResults: 1,
+      q: 'in:inbox is:unread category:promotions',
+    }).then(res => res.data.resultSizeEstimate || 0),
+    
+    // Social
+    gmail.users.messages.list({
+      userId: 'me',
+      maxResults: 1,
+      q: 'in:inbox is:unread category:social',
+    }).then(res => res.data.resultSizeEstimate || 0),
+    
+    // Forums
+    gmail.users.messages.list({
+      userId: 'me',
+      maxResults: 1,
+      q: 'in:inbox is:unread category:forums',
+    }).then(res => res.data.resultSizeEstimate || 0),
+  ]);
+
+  return {
+    primary: primaryCount,
+    promotions: promotionsCount,
+    social: socialCount,
+    forums: forumsCount,
+  };
 }
