@@ -255,7 +255,7 @@ async function createPulseDataTables() {
 }
 
 // Auto-migration for market_pulse_snapshots to match schema.ts expectations
-async function migrateMarketPulseSnapshots() {
+export async function migrateMarketPulseSnapshots() {
   try {
     console.log('[Migration] Checking market_pulse_snapshots schema...');
     
@@ -284,7 +284,9 @@ async function migrateMarketPulseSnapshots() {
     console.log('[Migration] market_pulse_snapshots schema updated successfully');
     
   } catch (error) {
-    console.error('[Migration] market_pulse_snapshots migration error:', error);
-    // Don't throw - let the service try to work with existing schema
+    console.error('[Migration] CRITICAL: market_pulse_snapshots migration failed:', error);
+    console.error('[Migration] Full error details:', JSON.stringify(error, null, 2));
+    // Re-throw to see the error in startup logs
+    throw error;
   }
 }
