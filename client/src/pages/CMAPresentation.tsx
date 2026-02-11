@@ -219,14 +219,23 @@ export default function CMAPresentation() {
       const parsedBaths = typeof comp.bathrooms === 'string' ? parseFloat(comp.bathrooms) : (comp.bathrooms || comp.baths || comp.bathroomsTotal || 0);
       const parsedPrice = comp.listPrice || comp.price || comp.closePrice || 0;
 
-      // Debug logging for photo fields
+      // Debug logging for photo fields (based on official Repliers reference)
       if (index === 0) {
-        console.log('[CMA Debug] First comp photo fields:', {
-          photos: comp.photos,
-          images: comp.images,
-          photo: comp.photo,
-          imageUrl: comp.imageUrl,
-          allFields: Object.keys(comp),
+        console.log('[CMA Debug] First comp photo fields analysis:', {
+          hasImages: !!comp.images,
+          imagesCount: Array.isArray(comp.images) ? comp.images.length : 0,
+          imagesPreview: Array.isArray(comp.images) ? comp.images.slice(0, 2) : null,
+          hasPhotos: !!comp.photos,
+          photosCount: Array.isArray(comp.photos) ? comp.photos.length : 0,
+          hasSinglePhoto: !!comp.photo,
+          hasImageUrl: !!comp.imageUrl,
+          mlsNumber: comp.mlsNumber,
+          status: comp.status || comp.standardStatus,
+          allPhotoFields: Object.keys(comp).filter(k => 
+            k.toLowerCase().includes('image') || 
+            k.toLowerCase().includes('photo')
+          ),
+          firstFewFields: Object.keys(comp).slice(0, 10)
         });
       }
       
@@ -278,41 +287,42 @@ export default function CMAPresentation() {
         lotSizeAcres: lotAcres,
         daysOnMarket: comp.daysOnMarket || comp.dom || 0,
         photos: (() => {
-          const REPLIERS_CDN_BASE = "https://cdn.repliers.io/";
+          // Based on official Repliers API reference:
+          // 1. Photos come from 'images' field as fully qualified URLs
+          // 2. Order matters (first = cover photo)  
+          // 3. Sold listings may have reduced photo count
+          // 4. Handle empty arrays gracefully (MLS compliance)
           
-          const normalizeImageUrl = (url: string): string => {
-            if (!url || typeof url !== 'string') return '';
-            // Already a full URL
-            if (url.startsWith('http://') || url.startsWith('https://')) return url;
-            // Relative path from Repliers - add CDN base
-            return `${REPLIERS_CDN_BASE}${url}`;
-          };
-
-          // Handle multiple Repliers photo field formats
-          if (comp.photos && Array.isArray(comp.photos) && comp.photos.length > 0) {
-            const result = comp.photos.map(normalizeImageUrl).filter(Boolean);
-            if (index === 0) console.log('[CMA Debug] Using comp.photos with normalization:', result);
-            return result;
-          }
-          // Handle Repliers images array with CDN prefix  
+          // PRIMARY: Repliers 'images' field (fully qualified URLs)
           if (comp.images && Array.isArray(comp.images) && comp.images.length > 0) {
-            const result = comp.images.map(normalizeImageUrl).filter(Boolean);
-            if (index === 0) console.log('[CMA Debug] Using comp.images with CDN normalization:', result);
-            return result;
+            const validImages = comp.images.filter((url: string) => 
+              url && typeof url === 'string' && url.trim().length > 0
+            );
+            if (index === 0) console.log('[CMA Debug] Using Repliers comp.images (official):', validImages);
+            return validImages;
           }
-          // Handle singular photo field from current API
-          if (comp.photo && typeof comp.photo === 'string') {
-            const result = [normalizeImageUrl(comp.photo)].filter(Boolean);
-            if (index === 0) console.log('[CMA Debug] Using comp.photo (singular) with normalization:', result);
-            return result;
+          
+          // FALLBACK: Legacy 'photos' field (if exists)
+          if (comp.photos && Array.isArray(comp.photos) && comp.photos.length > 0) {
+            const validPhotos = comp.photos.filter((url: string) => 
+              url && typeof url === 'string' && url.trim().length > 0
+            );
+            if (index === 0) console.log('[CMA Debug] Using legacy comp.photos:', validPhotos);
+            return validPhotos;
           }
-          // Handle imageUrl fallback
-          if (comp.imageUrl && typeof comp.imageUrl === 'string') {
-            const result = [normalizeImageUrl(comp.imageUrl)].filter(Boolean);
-            if (index === 0) console.log('[CMA Debug] Using comp.imageUrl with normalization:', result);
-            return result;
+          
+          // FALLBACK: Single photo fields (less common)
+          const singlePhotoFields = ['photo', 'imageUrl', 'primaryPhoto', 'coverPhoto'];
+          for (const field of singlePhotoFields) {
+            if (comp[field] && typeof comp[field] === 'string' && comp[field].trim().length > 0) {
+              const result = [comp[field]];
+              if (index === 0) console.log(`[CMA Debug] Using single ${field}:`, result);
+              return result;
+            }
           }
-          if (index === 0) console.log('[CMA Debug] No photos found, returning empty array');
+          
+          // No photos found - this is normal for some sold listings per Repliers reference
+          if (index === 0) console.log('[CMA Debug] No photos found (normal for some sold listings)');
           return [];
         })(),
         map: lat && lng ? { latitude: lat, longitude: lng } : null,
