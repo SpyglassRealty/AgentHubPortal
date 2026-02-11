@@ -210,9 +210,9 @@ export default function CMAPresentationBuilder() {
       marketingEmail?: string;
     } | null;
   }>({
-    queryKey: ['/api/agent/profile'],
+    queryKey: ['/api/agent-profile'],
     queryFn: async () => {
-      const response = await fetch('/api/agent/profile');
+      const response = await fetch('/api/agent-profile', { credentials: 'include' });
       if (!response.ok) return { profile: null, user: null };
       return response.json();
     },
