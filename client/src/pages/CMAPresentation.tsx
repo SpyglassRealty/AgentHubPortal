@@ -65,7 +65,7 @@ export default function CMAPresentation() {
     enabled: !!transactionId,
   });
 
-  const { data: agentProfileData, isLoading: profileLoading } = useQuery<{
+  const { data: agentProfileData, isLoading: profileLoading, error: profileError } = useQuery<{
     profile: {
       headshotUrl?: string;
       title?: string;
@@ -85,16 +85,32 @@ export default function CMAPresentation() {
     staleTime: 0,               // Always consider stale - refetch on mount
     refetchOnMount: true,       // Refetch when component mounts
     refetchOnWindowFocus: true, // Refetch when window gains focus
+    retry: 3,                   // Retry failed requests
+    retryDelay: 1000,           // Delay between retries
+  });
+
+  // Debug logging for agent profile data
+  console.log('[CMA Debug] Agent profile API response:', {
+    data: agentProfileData,
+    loading: profileLoading,
+    error: profileError,
+    hasProfile: !!agentProfileData?.profile,
+    hasUser: !!agentProfileData?.user,
   });
 
   const agentProfile = useMemo(() => {
-    if (!agentProfileData) return { name: '', company: 'Spyglass Realty', phone: '', email: '', photo: '', bio: '', title: '' };
+    console.log('[CMA Debug] Building agentProfile from data:', agentProfileData);
+    
+    if (!agentProfileData) {
+      console.log('[CMA Debug] No agentProfileData, returning defaults');
+      return { name: '', company: 'Spyglass Realty', phone: '', email: '', photo: '', bio: '', title: '' };
+    }
     
     const { profile, user } = agentProfileData;
     const displayName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 
        (user?.firstName || 'Agent');
     
-    return {
+    const result = {
       name: displayName,
       company: 'Spyglass Realty',
       phone: profile?.phone || '',
@@ -103,6 +119,9 @@ export default function CMAPresentation() {
       title: profile?.title || '',
       bio: profile?.bio || '',
     };
+    
+    console.log('[CMA Debug] Final agentProfile result:', result);
+    return result;
   }, [agentProfileData]);
 
   // Normalize status checking both status and lastStatus fields
@@ -175,6 +194,17 @@ export default function CMAPresentation() {
       const parsedBeds = typeof comp.bedrooms === 'string' ? parseInt(comp.bedrooms) : (comp.bedrooms || comp.beds || comp.bedroomsTotal || 0);
       const parsedBaths = typeof comp.bathrooms === 'string' ? parseFloat(comp.bathrooms) : (comp.bathrooms || comp.baths || comp.bathroomsTotal || 0);
       const parsedPrice = comp.listPrice || comp.price || comp.closePrice || 0;
+
+      // Debug logging for photo fields
+      if (index === 0) {
+        console.log('[CMA Debug] First comp photo fields:', {
+          photos: comp.photos,
+          images: comp.images,
+          photo: comp.photo,
+          imageUrl: comp.imageUrl,
+          allFields: Object.keys(comp),
+        });
+      }
       
       // First try to get coordinates from the comp itself
       let lat = comp.latitude || comp.lat || comp.map?.latitude || comp.map?.lat || 
@@ -226,22 +256,31 @@ export default function CMAPresentation() {
         photos: (() => {
           // Handle multiple Repliers photo field formats
           if (comp.photos && Array.isArray(comp.photos) && comp.photos.length > 0) {
-            return comp.photos;
+            const result = comp.photos;
+            if (index === 0) console.log('[CMA Debug] Using comp.photos:', result);
+            return result;
           }
           // Handle Repliers images array with CDN prefix
           if (comp.images && Array.isArray(comp.images) && comp.images.length > 0) {
-            return comp.images.map((img: string) => 
+            const result = comp.images.map((img: string) => 
               img.startsWith('http') ? img : `https://cdn.repliers.io/${img}`
             );
+            if (index === 0) console.log('[CMA Debug] Using comp.images with CDN:', result);
+            return result;
           }
           // Handle singular photo field from current API
           if (comp.photo && typeof comp.photo === 'string') {
-            return [comp.photo];
+            const result = [comp.photo];
+            if (index === 0) console.log('[CMA Debug] Using comp.photo (singular):', result);
+            return result;
           }
           // Handle imageUrl fallback
           if (comp.imageUrl && typeof comp.imageUrl === 'string') {
-            return [comp.imageUrl];
+            const result = [comp.imageUrl];
+            if (index === 0) console.log('[CMA Debug] Using comp.imageUrl:', result);
+            return result;
           }
+          if (index === 0) console.log('[CMA Debug] No photos found, returning empty array');
           return [];
         })(),
         map: lat && lng ? { latitude: lat, longitude: lng } : null,
