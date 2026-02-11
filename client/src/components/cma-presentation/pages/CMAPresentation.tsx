@@ -360,12 +360,20 @@ export default function CMAPresentation() {
             });
           }
           
-          // PRIMARY: Repliers 'images' field (fully qualified URLs)
+          // PRIMARY: API returns 'photo' field (singular string, full CDN URL)
+          // Based on Daryl's live API analysis: comp.photo = "https://cdn.repliers.io/..."
+          if (comp.photo && typeof comp.photo === 'string' && comp.photo.trim().length > 0) {
+            const result = [comp.photo];
+            if (index === 0) console.log('[CMA Debug] Using API comp.photo (actual field):', result);
+            return result;
+          }
+          
+          // FALLBACK: Repliers 'images' field (if exists)
           if (comp.images && Array.isArray(comp.images) && comp.images.length > 0) {
             const validImages = comp.images.filter((url: string) => 
               url && typeof url === 'string' && url.trim().length > 0
             );
-            if (index === 0) console.log('[CMA Debug] Using Repliers comp.images (official):', validImages);
+            if (index === 0) console.log('[CMA Debug] Using comp.images fallback:', validImages);
             return validImages;
           }
           
@@ -378,12 +386,12 @@ export default function CMAPresentation() {
             return validPhotos;
           }
           
-          // FALLBACK: Single photo fields (less common)
-          const singlePhotoFields = ['photo', 'imageUrl', 'primaryPhoto', 'coverPhoto'];
-          for (const field of singlePhotoFields) {
+          // FALLBACK: Other single photo fields
+          const otherPhotoFields = ['imageUrl', 'primaryPhoto', 'coverPhoto'];
+          for (const field of otherPhotoFields) {
             if (comp[field] && typeof comp[field] === 'string' && comp[field].trim().length > 0) {
               const result = [comp[field]];
-              if (index === 0) console.log(`[CMA Debug] Using single ${field}:`, result);
+              if (index === 0) console.log(`[CMA Debug] Using fallback ${field}:`, result);
               return result;
             }
           }
