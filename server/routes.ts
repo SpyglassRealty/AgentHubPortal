@@ -4557,11 +4557,18 @@ Respond with valid JSON in this exact format:
     try {
       const mapboxToken = process.env.MAPBOX_ACCESS_TOKEN;
       
+      console.log('[Mapbox] Token check:', {
+        hasToken: !!mapboxToken,
+        tokenLength: mapboxToken?.length || 0,
+        allEnvKeys: Object.keys(process.env).filter(k => k.toLowerCase().includes('mapbox')).length
+      });
+      
       if (!mapboxToken) {
-        console.log('[Mapbox] MAPBOX_ACCESS_TOKEN not configured');
+        console.log('[Mapbox] MAPBOX_ACCESS_TOKEN not configured in environment');
         return res.status(503).json({ 
           error: "Mapbox token not configured",
-          message: "MAPBOX_ACCESS_TOKEN environment variable not set"
+          message: "MAPBOX_ACCESS_TOKEN environment variable not set",
+          availableKeys: Object.keys(process.env).filter(k => k.toLowerCase().includes('map'))
         });
       }
       

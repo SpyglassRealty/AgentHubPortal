@@ -104,6 +104,10 @@ export default function CMAPresentation() {
     error: profileError,
     hasProfile: !!agentProfileData?.profile,
     hasUser: !!agentProfileData?.user,
+    profileFields: agentProfileData?.profile ? Object.keys(agentProfileData.profile) : [],
+    userFields: agentProfileData?.user ? Object.keys(agentProfileData.user) : [],
+    rawProfileData: agentProfileData?.profile,
+    rawUserData: agentProfileData?.user
   });
 
   const agentProfile = useMemo(() => {
@@ -111,12 +115,15 @@ export default function CMAPresentation() {
     
     if (!agentProfileData) {
       console.log('[CMA Debug] No agentProfileData, returning defaults');
-      return { name: '', company: 'Spyglass Realty', phone: '', email: '', photo: '', bio: '', title: '' };
+      return { name: 'Agent', company: 'Spyglass Realty', phone: '', email: '', photo: '', bio: '', title: 'Licensed Real Estate Agent' };
     }
     
     const { profile, user } = agentProfileData;
+    console.log('[CMA Debug] Extracted profile:', profile);
+    console.log('[CMA Debug] Extracted user:', user);
+    
     const displayName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 
-       (user?.firstName || 'Agent');
+       (user?.firstName || user?.email?.split('@')[0] || 'Agent');
     
     const result = {
       name: displayName,
@@ -124,11 +131,20 @@ export default function CMAPresentation() {
       phone: profile?.phone || '',
       email: user?.email || '',
       photo: profile?.headshotUrl || user?.profileImageUrl || '',
-      title: profile?.title || '',
+      title: profile?.title || 'Licensed Real Estate Agent',
       bio: profile?.bio || '',
     };
     
-    console.log('[CMA Debug] Final agentProfile result:', result);
+    console.log('[CMA Debug] Final agentProfile result:', {
+      name: result.name,
+      hasPhoto: !!result.photo,
+      photoLength: result.photo?.length || 0,
+      email: result.email,
+      title: result.title,
+      hasBio: !!result.bio,
+      bioLength: result.bio?.length || 0
+    });
+    
     return result;
   }, [agentProfileData]);
 
@@ -262,30 +278,38 @@ export default function CMAPresentation() {
         lotSizeAcres: lotAcres,
         daysOnMarket: comp.daysOnMarket || comp.dom || 0,
         photos: (() => {
+          const REPLIERS_CDN_BASE = "https://cdn.repliers.io/";
+          
+          const normalizeImageUrl = (url: string): string => {
+            if (!url || typeof url !== 'string') return '';
+            // Already a full URL
+            if (url.startsWith('http://') || url.startsWith('https://')) return url;
+            // Relative path from Repliers - add CDN base
+            return `${REPLIERS_CDN_BASE}${url}`;
+          };
+
           // Handle multiple Repliers photo field formats
           if (comp.photos && Array.isArray(comp.photos) && comp.photos.length > 0) {
-            const result = comp.photos;
-            if (index === 0) console.log('[CMA Debug] Using comp.photos:', result);
+            const result = comp.photos.map(normalizeImageUrl).filter(Boolean);
+            if (index === 0) console.log('[CMA Debug] Using comp.photos with normalization:', result);
             return result;
           }
-          // Handle Repliers images array with CDN prefix
+          // Handle Repliers images array with CDN prefix  
           if (comp.images && Array.isArray(comp.images) && comp.images.length > 0) {
-            const result = comp.images.map((img: string) => 
-              img.startsWith('http') ? img : `https://cdn.repliers.io/${img}`
-            );
-            if (index === 0) console.log('[CMA Debug] Using comp.images with CDN:', result);
+            const result = comp.images.map(normalizeImageUrl).filter(Boolean);
+            if (index === 0) console.log('[CMA Debug] Using comp.images with CDN normalization:', result);
             return result;
           }
           // Handle singular photo field from current API
           if (comp.photo && typeof comp.photo === 'string') {
-            const result = [comp.photo];
-            if (index === 0) console.log('[CMA Debug] Using comp.photo (singular):', result);
+            const result = [normalizeImageUrl(comp.photo)].filter(Boolean);
+            if (index === 0) console.log('[CMA Debug] Using comp.photo (singular) with normalization:', result);
             return result;
           }
           // Handle imageUrl fallback
           if (comp.imageUrl && typeof comp.imageUrl === 'string') {
-            const result = [comp.imageUrl];
-            if (index === 0) console.log('[CMA Debug] Using comp.imageUrl:', result);
+            const result = [normalizeImageUrl(comp.imageUrl)].filter(Boolean);
+            if (index === 0) console.log('[CMA Debug] Using comp.imageUrl with normalization:', result);
             return result;
           }
           if (index === 0) console.log('[CMA Debug] No photos found, returning empty array');
