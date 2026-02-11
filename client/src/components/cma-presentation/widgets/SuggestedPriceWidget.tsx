@@ -343,7 +343,34 @@ export function SuggestedPriceWidget({
         .slice(0, 3)
     : [];
   
-  const fallbackPhotos: ImageInsight[] = (subjectProperty?.photos || []).slice(0, 3).map(url => ({ url }));
+  // Handle both photos array and single photo field based on API structure
+  const fallbackPhotos: ImageInsight[] = (() => {
+    const photoUrls: string[] = [];
+    
+    console.log('[SuggestedPrice Debug] Subject property photo fields:', {
+      hasPhotos: !!subjectProperty?.photos,
+      photosLength: Array.isArray(subjectProperty?.photos) ? subjectProperty.photos.length : 0,
+      hasPhoto: !!subjectProperty?.photo,
+      photoValue: subjectProperty?.photo,
+      mlsNumber: subjectProperty?.mlsNumber,
+      allFields: subjectProperty ? Object.keys(subjectProperty).filter(k => 
+        k.toLowerCase().includes('photo') || k.toLowerCase().includes('image')
+      ) : []
+    });
+    
+    // Check for photos array (if available)
+    if (subjectProperty?.photos && Array.isArray(subjectProperty.photos)) {
+      photoUrls.push(...subjectProperty.photos);
+      console.log('[SuggestedPrice Debug] Using photos array:', photoUrls.length);
+    }
+    // Check for single photo field (main API field based on Daryl's analysis)
+    else if (subjectProperty?.photo && typeof subjectProperty.photo === 'string') {
+      photoUrls.push(subjectProperty.photo);
+      console.log('[SuggestedPrice Debug] Using single photo field:', subjectProperty.photo);
+    }
+    
+    return photoUrls.slice(0, 3).map(url => ({ url }));
+  })();
   
   const photosToShow: ImageInsight[] = aiPhotos.length > 0 ? aiPhotos : fallbackPhotos;
   const currentPhoto: ImageInsight | undefined = photosToShow[currentPhotoIndex];
