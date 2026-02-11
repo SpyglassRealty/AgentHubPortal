@@ -364,9 +364,6 @@ export async function migrateMarketPulseSnapshots() {
     console.log('[Migration] Checking market_pulse_snapshots schema...');
     
     const alterStatements = [
-      // Agent profiles - CRITICAL: Add phone column (from Daryl's request)
-      "ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS phone TEXT",
-      
       // Market pulse snapshots
       "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS total_properties INTEGER DEFAULT 0",
       "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS active INTEGER DEFAULT 0", 
@@ -406,6 +403,15 @@ export async function migrateMarketPulseSnapshots() {
         // Ignore if column already exists
         console.log(`[Migration] Column might already exist: ${e.message}`);
       }
+    }
+    
+    // Add phone column to agent_profiles
+    try {
+      console.log('[Migration] Adding phone column to agent_profiles...');
+      await pool.query('ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS phone TEXT');
+      console.log('[Migration] Added phone column to agent_profiles');
+    } catch (e) {
+      console.log(`[Migration] Phone column might already exist: ${e.message}`);
     }
     
     console.log('[Migration] market_pulse_snapshots schema updated successfully');

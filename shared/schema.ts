@@ -105,11 +105,10 @@ export interface FubDeal {
 }
 
 export const agentProfiles = pgTable("agent_profiles", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  // Fields that ACTUALLY exist in the database (based on Daryl's query)
+  id: varchar("id", { length: 255 }).primaryKey(),
+  userId: text("user_id").notNull(),
   title: text("title"),
-  headshotUrl: text("headshot_url"),  // Note: database column is headshot_url (snake_case)
+  headshotUrl: text("headshot_url"),
   bio: text("bio"),
   defaultCoverLetter: text("default_cover_letter"),
   facebookUrl: text("facebook_url"),
@@ -118,7 +117,6 @@ export const agentProfiles = pgTable("agent_profiles", {
   twitterUrl: text("twitter_url"),
   websiteUrl: text("website_url"),
   marketingCompany: text("marketing_company"),
-  // Adding phone column (new migration from startup)
   phone: text("phone"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
