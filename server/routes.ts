@@ -2812,13 +2812,14 @@ Respond with valid JSON in this exact format:
           const streetAddress = [streetNumber, streetName, streetSuffix].filter(Boolean).join(' ');
           const fullAddress = `${streetAddress}, ${cityName}, ${state} ${postalCode}`.trim();
 
-          let photo = null;
-          if (listing.images && listing.images.length > 0) {
-            const imagePath = listing.images[0];
-            if (typeof imagePath === 'string') {
-              photo = imagePath.startsWith('http') ? imagePath : `https://cdn.repliers.io/${imagePath}`;
+          // Get photos from images array with CDN URL (matching other endpoints)
+          const photos = (listing.images || listing.photos || []).map((img: any) => {
+            const imagePath = typeof img === 'string' ? img : img.url || img.src || img;
+            if (imagePath && !imagePath.startsWith('http')) {
+              return `https://cdn.repliers.io/${imagePath}`;
             }
-          }
+            return imagePath;
+          }).filter(Boolean);
 
           return {
             mlsNumber: listing.mlsNumber || listing.listingId || '',
@@ -2839,7 +2840,7 @@ Respond with valid JSON in this exact format:
             listDate: listing.listDate || '',
             soldDate: listing.soldDate || listing.closeDate || null,
             daysOnMarket: listing.daysOnMarket || 0,
-            photo,
+            photos,
             stories: listing.details?.numStoreys || null,
             subdivision: listing.address?.area || listing.address?.neighborhood || '',
             latitude: listing.map?.latitude || listing.address?.latitude || null,
@@ -3051,14 +3052,14 @@ Respond with valid JSON in this exact format:
         const streetAddress = [streetNumber, streetName, streetSuffix].filter(Boolean).join(' ');
         const fullAddress = `${streetAddress}, ${cityName}, ${state} ${postalCode}`.trim();
 
-        // Get photo
-        let photo = null;
-        if (listing.images && listing.images.length > 0) {
-          const imagePath = listing.images[0];
-          if (typeof imagePath === 'string') {
-            photo = imagePath.startsWith('http') ? imagePath : `https://cdn.repliers.io/${imagePath}`;
+        // Get photos from images array with CDN URL (matching other endpoints)
+        const photos = (listing.images || listing.photos || []).map((img: any) => {
+          const imagePath = typeof img === 'string' ? img : img.url || img.src || img;
+          if (imagePath && !imagePath.startsWith('http')) {
+            return `https://cdn.repliers.io/${imagePath}`;
           }
-        }
+          return imagePath;
+        }).filter(Boolean);
 
         return {
           mlsNumber: listing.mlsNumber || listing.listingId || '',
@@ -3079,7 +3080,7 @@ Respond with valid JSON in this exact format:
           listDate: listing.listDate || '',
           soldDate: listing.soldDate || listing.closeDate || null,
           daysOnMarket: listing.daysOnMarket || 0,
-          photo,
+          photos,
           stories: listing.details?.numStoreys || null,
           subdivision: listing.address?.neighborhood || listing.address?.area || '',
           latitude: listing.map?.latitude || listing.address?.latitude || null,
