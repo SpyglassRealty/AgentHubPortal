@@ -9,6 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import {
   Home,
@@ -49,6 +51,9 @@ import {
   ChevronRight,
   Pencil,
   Sparkles,
+  Mail,
+  Phone,
+  ExternalLink,
 } from "lucide-react";
 
 interface PropertyData {
@@ -87,8 +92,11 @@ interface CmaData {
 interface AgentProfile {
   firstName?: string;
   lastName?: string;
+  title?: string;
   marketingTitle?: string;
+  phone?: string;
   marketingPhone?: string;
+  email?: string;
   marketingEmail?: string;
   headshotUrl?: string;
   bio?: string;
@@ -135,6 +143,108 @@ const CMA_WIDGETS = [
 function formatPrice(price: number | null | undefined): string {
   if (!price) return "—";
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(price);
+}
+
+interface AgentHeaderProps {
+  agentProfile?: AgentProfile;
+}
+
+function AgentHeader({ agentProfile }: AgentHeaderProps) {
+  if (!agentProfile) {
+    return (
+      <div className="flex items-center gap-3">
+        <Avatar className="h-10 w-10">
+          <AvatarFallback className="bg-[#EF4923] text-white text-sm">
+            ?
+          </AvatarFallback>
+        </Avatar>
+        <div className="hidden sm:block">
+          <div className="text-sm font-medium">Loading...</div>
+          <div className="text-xs text-muted-foreground">Spyglass Realty</div>
+        </div>
+      </div>
+    );
+  }
+
+  const fullName = [agentProfile.firstName, agentProfile.lastName].filter(Boolean).join(' ') || 'Agent';
+  const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase();
+  const email = agentProfile.marketingEmail || agentProfile.email || '';
+  const phone = agentProfile.phone || '';
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className="flex items-center gap-3 hover:bg-muted/50 rounded-lg p-2 transition-colors">
+          <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
+            <AvatarImage src={agentProfile.headshotUrl} alt={fullName} />
+            <AvatarFallback className="bg-gradient-to-br from-[#EF4923] to-[#EF4923]/80 text-white text-sm font-semibold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="hidden sm:block text-left">
+            <div className="text-sm font-medium text-foreground">{fullName}</div>
+            <div className="text-xs text-muted-foreground">Spyglass Realty</div>
+          </div>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-0" align="end">
+        <div className="p-4 space-y-4">
+          {/* Agent Info Header */}
+          <div className="flex items-center gap-4">
+            <Avatar className="h-16 w-16 border-2 border-muted">
+              <AvatarImage src={agentProfile.headshotUrl} alt={fullName} />
+              <AvatarFallback className="bg-gradient-to-br from-[#EF4923] to-[#EF4923]/80 text-white text-lg font-semibold">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <h3 className="font-semibold text-lg">{fullName}</h3>
+              {agentProfile.marketingTitle && (
+                <p className="text-muted-foreground text-sm">{agentProfile.marketingTitle}</p>
+              )}
+              <p className="text-muted-foreground text-sm">Spyglass Realty</p>
+            </div>
+          </div>
+
+          {/* Contact Information */}
+          <div className="space-y-3">
+            {phone && (
+              <div className="flex items-center gap-3">
+                <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="text-sm">{phone}</span>
+              </div>
+            )}
+            {email && (
+              <div className="flex items-center gap-3">
+                <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="text-sm">{email}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Email Report Button */}
+          {email && (
+            <div className="pt-2">
+              <Button
+                asChild
+                className="w-full bg-[#EF4923] hover:bg-[#EF4923]/90"
+                size="sm"
+              >
+                <a
+                  href={`mailto:${email}?subject=CMA Report Request&body=Hi ${agentProfile.firstName || 'there'},%0D%0A%0D%0APlease send me the CMA report.%0D%0A%0D%0AThank you!`}
+                  className="flex items-center gap-2"
+                >
+                  <Mail className="h-4 w-4" />
+                  Email Report
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </Button>
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 interface BioEditModalProps {
@@ -323,81 +433,90 @@ function AgentResumeContent({ onEditBio }: AgentResumeContentProps) {
 
   const hasBasicInfo = agentProfile?.firstName || agentProfile?.lastName;
   const fullName = [agentProfile?.firstName, agentProfile?.lastName].filter(Boolean).join(' ') || 'Your Name';
+  const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase();
+  const email = agentProfile?.marketingEmail || agentProfile?.email || '';
+  const phone = agentProfile?.phone || '';
+  const title = agentProfile?.marketingTitle || agentProfile?.title || '';
 
   return (
-    <div className="space-y-6">
-      <h3 className="text-2xl font-semibold mb-6">Agent Resume</h3>
+    <div className="space-y-8">
+      <h3 className="text-3xl font-bold text-center mb-8">Agent Resume</h3>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Left column - Photo */}
-        <div className="flex flex-col items-center space-y-4">
-          <div className="w-32 h-32 rounded-full overflow-hidden bg-muted flex items-center justify-center">
-            {agentProfile?.headshotUrl ? (
-              <img 
-                src={agentProfile.headshotUrl} 
-                alt={fullName}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <Users className="h-16 w-16 text-muted-foreground" />
-            )}
-          </div>
-          <div className="text-center">
-            <h4 className="text-xl font-semibold">{fullName}</h4>
-            {agentProfile?.marketingTitle && (
-              <p className="text-muted-foreground">{agentProfile.marketingTitle}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Right columns - Contact Info & Bio */}
-        <div className="md:col-span-2 space-y-6">
-          {/* Contact Information */}
-          <div>
-            <h5 className="font-semibold text-lg mb-3">Contact Information</h5>
-            <div className="space-y-2">
-              {agentProfile?.marketingEmail && (
-                <p className="text-sm">
-                  <span className="font-medium">Email:</span> {agentProfile.marketingEmail}
-                </p>
-              )}
-              {agentProfile?.marketingPhone && (
-                <p className="text-sm">
-                  <span className="font-medium">Phone:</span> {agentProfile.marketingPhone}
-                </p>
-              )}
+      {/* Agent Profile Card */}
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden border">
+          {/* Header Section */}
+          <div className="bg-gradient-to-r from-[#EF4923] to-[#EF4923]/90 p-8 text-white">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+              {/* Profile Photo */}
+              <div className="flex-shrink-0">
+                <Avatar className="w-32 h-32 border-4 border-white shadow-lg">
+                  <AvatarImage src={agentProfile?.headshotUrl} alt={fullName} />
+                  <AvatarFallback className="bg-white/20 text-white text-2xl font-bold backdrop-blur">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+              
+              {/* Agent Info */}
+              <div className="text-center md:text-left flex-1">
+                <h2 className="text-3xl font-bold mb-2">{fullName}</h2>
+                {title && (
+                  <p className="text-xl text-white/90 mb-1">{title}</p>
+                )}
+                <p className="text-lg text-white/80 mb-4">Spyglass Realty</p>
+                
+                {/* Contact Info */}
+                <div className="flex flex-col sm:flex-row gap-4 text-white/90">
+                  {phone && (
+                    <div className="flex items-center justify-center md:justify-start gap-2">
+                      <Phone className="h-4 w-4" />
+                      <span className="text-sm">{phone}</span>
+                    </div>
+                  )}
+                  {email && (
+                    <div className="flex items-center justify-center md:justify-start gap-2">
+                      <Mail className="h-4 w-4" />
+                      <span className="text-sm">{email}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Bio Section */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h5 className="font-semibold text-lg">Professional Bio</h5>
+          <div className="p-8">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-xl font-semibold text-gray-800">About Me</h4>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onEditBio}
-                className="h-8 px-3 text-muted-foreground hover:text-foreground"
+                className="text-[#EF4923] hover:text-[#EF4923]/80 hover:bg-[#EF4923]/10"
               >
                 <Pencil className="h-4 w-4 mr-1" />
-                Edit
+                Edit Bio
               </Button>
             </div>
             
-            <div className="min-h-[80px] p-4 border rounded-lg bg-muted/20">
+            <div className="prose prose-gray max-w-none">
               {agentProfile?.bio ? (
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{agentProfile.bio}</p>
+                <p className="text-gray-700 leading-relaxed text-base whitespace-pre-wrap">
+                  {agentProfile.bio}
+                </p>
               ) : (
-                <div className="text-center py-4">
-                  <p className="text-muted-foreground text-sm mb-3">
-                    Professional bio will be displayed here once you complete your agent profile.
+                <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-600 mb-4">
+                    Your professional bio will appear here to help clients get to know you better.
                   </p>
                   <Button 
                     onClick={onEditBio}
-                    size="sm"
                     className="bg-[#EF4923] hover:bg-[#EF4923]/90"
                   >
-                    Edit Bio
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Add Your Bio
                   </Button>
                 </div>
               )}
@@ -670,10 +789,10 @@ export default function CmaPresentationPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b bg-white">
+      <div className="border-b bg-white shadow-sm">
         <div className="max-w-7xl mx-auto p-6">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl font-bold">COMPARATIVE MARKET ANALYSIS</h1>
               {cmaForDisplay.subjectProperty && (
                 <div className="mt-2">
@@ -686,13 +805,19 @@ export default function CmaPresentationPage() {
                 </div>
               )}
             </div>
-            <Button
-              variant="outline"
-              onClick={() => window.history.back()}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to CMA
-            </Button>
+            
+            <div className="flex items-center gap-4">
+              {/* Agent Header with Popover */}
+              <AgentHeader agentProfile={agentProfile} />
+              
+              <Button
+                variant="outline"
+                onClick={() => window.history.back()}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to CMA
+              </Button>
+            </div>
           </div>
         </div>
       </div>
