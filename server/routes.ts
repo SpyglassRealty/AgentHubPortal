@@ -4576,5 +4576,44 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // DEBUG: Environment variables check endpoint (REMOVE IN PRODUCTION)
+  app.get('/api/debug/env-check', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user?.isSuperAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const envCheck = {
+        MAPBOX_ACCESS_TOKEN: {
+          exists: !!process.env.MAPBOX_ACCESS_TOKEN,
+          format: process.env.MAPBOX_ACCESS_TOKEN?.startsWith('pk.') ? 'valid' : 'invalid',
+          length: process.env.MAPBOX_ACCESS_TOKEN?.length || 0
+        },
+        REPLIERS_API_KEY: {
+          exists: !!process.env.REPLIERS_API_KEY, 
+          length: process.env.REPLIERS_API_KEY?.length || 0
+        },
+        IDX_GRID_API_KEY: {
+          exists: !!process.env.IDX_GRID_API_KEY,
+          length: process.env.IDX_GRID_API_KEY?.length || 0
+        },
+        allMapboxKeys: Object.keys(process.env).filter(k => 
+          k.toLowerCase().includes('mapbox') || k.toLowerCase().includes('map')
+        ),
+        allReplierKeys: Object.keys(process.env).filter(k =>
+          k.toLowerCase().includes('replier') || k.toLowerCase().includes('idx')
+        ),
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log('[Env Check] Environment variables status:', envCheck);
+      res.json(envCheck);
+    } catch (error) {
+      console.error('[Env Check] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }
