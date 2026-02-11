@@ -742,7 +742,10 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-6">
                   <div className="relative group">
                     <Avatar className="h-20 w-20 cursor-pointer" onClick={triggerPhotoUpload}>
-                      <AvatarImage src={agentProfile?.headshotUrl || userProfile?.profileImageUrl} className="object-contain bg-gray-50 dark:bg-gray-800" />
+                      <AvatarImage 
+                        src={agentProfile?.headshotUrl || userProfile?.profileImageUrl} 
+                        className="w-full h-full object-cover" 
+                      />
                       <AvatarFallback className="text-xl bg-[#EF4923] text-white">
                         {userProfile?.firstName?.charAt(0) || userProfile?.email?.charAt(0)?.toUpperCase() || "U"}
                       </AvatarFallback>
