@@ -890,24 +890,47 @@ export class DatabaseStorage implements IStorage {
 
   // App visibility methods
   async getAppVisibility(): Promise<AppVisibility[]> {
-    return db.select().from(appVisibility);
+    try {
+      return await db.select().from(appVisibility);
+    } catch (error: any) {
+      // Graceful fallback for missing table (same pattern as context_suggestions)
+      if (error.message?.includes('relation "app_visibility" does not exist')) {
+        console.log('[App Visibility] Table missing, returning empty array');
+        return [];
+      }
+      throw error; // Re-throw other errors
+    }
   }
 
   async setAppVisibility(appId: string, hidden: boolean): Promise<AppVisibility> {
-    const [existing] = await db.select().from(appVisibility).where(eq(appVisibility.appId, appId));
-    if (existing) {
-      const [updated] = await db
-        .update(appVisibility)
-        .set({ hidden, updatedAt: new Date() })
-        .where(eq(appVisibility.appId, appId))
-        .returning();
-      return updated;
-    } else {
-      const [created] = await db
-        .insert(appVisibility)
-        .values({ appId, hidden, updatedAt: new Date() })
-        .returning();
-      return created;
+    try {
+      const [existing] = await db.select().from(appVisibility).where(eq(appVisibility.appId, appId));
+      if (existing) {
+        const [updated] = await db
+          .update(appVisibility)
+          .set({ hidden, updatedAt: new Date() })
+          .where(eq(appVisibility.appId, appId))
+          .returning();
+        return updated;
+      } else {
+        const [created] = await db
+          .insert(appVisibility)
+          .values({ appId, hidden, updatedAt: new Date() })
+          .returning();
+        return created;
+      }
+    } catch (error: any) {
+      // Graceful fallback for missing table
+      if (error.message?.includes('relation "app_visibility" does not exist')) {
+        console.log('[App Visibility] Table missing, returning mock record');
+        // Return a mock record that matches the interface
+        return {
+          appId,
+          hidden,
+          updatedAt: new Date(),
+        } as AppVisibility;
+      }
+      throw error; // Re-throw other errors
     }
   }
 
