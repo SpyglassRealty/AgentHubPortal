@@ -75,7 +75,7 @@ interface PropertyData {
   listDate?: string;
   soldDate?: string | null;
   daysOnMarket?: number;
-  photo?: string | null;
+  photos?: string[];
   latitude?: number | null;
   longitude?: number | null;
 }
