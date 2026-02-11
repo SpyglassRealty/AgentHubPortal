@@ -75,26 +75,35 @@ export default function CMAPresentation() {
       bio?: string;
       defaultCoverLetter?: string;
       marketingCompany?: string;
+      marketingTitle?: string;
+      marketingPhone?: string;
+      marketingEmail?: string;
+      phone?: string;
     } | null;
     user: { 
+      id: string;
       firstName?: string; 
       lastName?: string;
       profileImageUrl?: string;
-      marketingDisplayName?: string; 
-      marketingTitle?: string; 
-      marketingHeadshotUrl?: string; 
-      marketingPhone?: string; 
-      marketingEmail?: string;
+      email?: string;
     } | null;
   }>({
-    queryKey: ['/api/agent/profile'],
+    queryKey: ['/api/agent-profile'],
+    queryFn: async () => {
+      const res = await fetch('/api/agent-profile', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch agent profile');
+      return res.json();
+    },
     staleTime: 0,               // Always consider stale - refetch on mount
     refetchOnMount: true,       // Refetch when component mounts
     refetchOnWindowFocus: true, // Refetch when window gains focus
   });
 
   const agentProfile = useMemo(() => {
+    console.log('[CMA Presentation] Agent profile data:', agentProfileData);
+    
     if (!agentProfileData) {
+      console.log('[CMA Presentation] No agent profile data, using defaults');
       return { 
         name: 'Agent Name', 
         company: 'Spyglass Realty', 
@@ -107,19 +116,45 @@ export default function CMAPresentation() {
     }
     
     const { profile, user } = agentProfileData;
-    const displayName = user?.marketingDisplayName || 
-      (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 
-       user?.firstName || user?.email?.split('@')[0] || 'Agent');
+    console.log('[CMA Presentation] Profile object:', profile);
+    console.log('[CMA Presentation] User object:', user);
     
-    return {
+    // Build display name with multiple fallbacks
+    const displayName = (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 
+       user?.firstName || 
+       user?.email?.split('@')[0] || 
+       'Agent');
+    
+    // Build phone with fallbacks
+    const phone = profile?.marketingPhone || profile?.phone || '';
+    
+    // Build email with fallbacks  
+    const email = profile?.marketingEmail || user?.email || '';
+    
+    // Build photo URL with fallbacks
+    const photo = profile?.headshotUrl || user?.profileImageUrl || '';
+    
+    // Build title with fallbacks
+    const title = profile?.marketingTitle || profile?.title || 'Licensed Real Estate Agent';
+    
+    // Build company name
+    const company = profile?.marketingCompany || 'Spyglass Realty';
+    
+    // Build bio (placeholder for Stage 2)
+    const bio = profile?.bio || profile?.defaultCoverLetter || 'Experienced real estate professional dedicated to helping clients buy and sell properties in the Austin area.';
+    
+    const result = {
       name: displayName,
-      company: profile?.marketingCompany || 'Spyglass Realty',
-      phone: user?.marketingPhone || user?.phone || '',
-      email: user?.marketingEmail || user?.email || '',
-      photo: user?.marketingHeadshotUrl || profile?.headshotUrl || user?.profileImageUrl || '',
-      title: profile?.title || user?.marketingTitle || 'Licensed Real Estate Agent',
-      bio: profile?.bio || profile?.defaultCoverLetter || 'Experienced real estate professional dedicated to helping clients buy and sell properties in the Austin area.',
+      company,
+      phone,
+      email,
+      photo,
+      title,
+      bio,
     };
+    
+    console.log('[CMA Presentation] Final agent profile:', result);
+    return result;
   }, [agentProfileData]);
 
   // Normalize status checking both status and lastStatus fields

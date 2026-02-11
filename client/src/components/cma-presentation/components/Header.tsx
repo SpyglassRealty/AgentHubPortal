@@ -125,7 +125,7 @@ export function Header({
                   <Avatar className="w-10 h-10 border-2 border-white/30">
                     <AvatarImage src={agent.photo} alt={agent.name} />
                     <AvatarFallback className="bg-[#EF4923] text-white text-sm">
-                      {agent.name?.charAt(0) || 'A'}
+                      {agent.name?.split(' ').map(n => n?.[0]).slice(0, 2).join('').toUpperCase() || 'A'}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -136,7 +136,7 @@ export function Header({
                     <Avatar className="w-12 h-12">
                       <AvatarImage src={agent.photo} alt={agent.name} />
                       <AvatarFallback className="bg-[#EF4923] text-white">
-                        {agent.name?.charAt(0) || 'A'}
+                        {agent.name?.split(' ').map(n => n?.[0]).slice(0, 2).join('').toUpperCase() || 'A'}
                       </AvatarFallback>
                     </Avatar>
                     <div>
