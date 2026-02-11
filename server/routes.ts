@@ -4477,5 +4477,58 @@ Respond with valid JSON in this exact format:
   // Register Xano proxy routes for admin dashboards
   registerXanoRoutes(app, isAuthenticated);
 
+  // ==========================================
+  // DEBUG ENDPOINT FOR DATABASE DIAGNOSIS
+  // ==========================================
+  
+  app.get('/api/debug/db-check', async (req: any, res) => {
+    try {
+      // Get all agent_profiles columns from actual database
+      const cols = await db.execute(sql`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'agent_profiles' 
+        ORDER BY ordinal_position
+      `);
+      
+      // Get database connection info
+      const dbInfo = await db.execute(sql`
+        SELECT current_database(), current_user
+      `);
+      
+      // Check specifically for phone column
+      const phoneCheck = await db.execute(sql`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'agent_profiles' AND column_name = 'phone'
+      `);
+      
+      // Get sample data
+      const sampleData = await db.execute(sql`
+        SELECT user_id, title, phone, 
+               LENGTH(headshot_url) as headshot_len, 
+               LENGTH(bio) as bio_len 
+        FROM agent_profiles 
+        LIMIT 3
+      `);
+      
+      res.json({
+        database: dbInfo.rows[0],
+        columns: cols.rows.map((r: any) => r.column_name),
+        columnCount: cols.rows.length,
+        phoneColumnExists: phoneCheck.rows.length > 0,
+        phoneCheckResult: phoneCheck.rows,
+        sampleData: sampleData.rows,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Debug endpoint error:', error);
+      res.status(500).json({ 
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   return httpServer;
 }
