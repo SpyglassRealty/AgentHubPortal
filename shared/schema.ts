@@ -107,12 +107,6 @@ export interface FubDeal {
 export const agentProfiles = pgTable("agent_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
-  missionFocus: varchar("mission_focus"), // 'buyers', 'sellers', 'both', 'new_agent', 'team_lead'
-  experienceLevel: varchar("experience_level"), // 'new', 'experienced', 'veteran'
-  primaryGoal: varchar("primary_goal"), // 'grow_pipeline', 'close_deals', 'build_team', 'improve_systems'
-  onboardingAnswers: jsonb("onboarding_answers"),
-  dismissedSuggestions: text("dismissed_suggestions").array(),
-  lastSurveyedAt: timestamp("last_surveyed_at"),
   // CMA Presentation Builder fields (migrated from Contract Conduit)
   title: text("title"),
   headshotUrl: text("headshot_url"),
