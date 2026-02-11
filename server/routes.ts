@@ -4218,6 +4218,54 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // POST /api/agent-profile/generate-bio - Generate AI bio
+  app.post('/api/agent-profile/generate-bio', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { tone = 'professional' } = req.body;
+      
+      // Get agent profile for context
+      const profile = await storage.getAgentProfile(user.id);
+      
+      // Build agent context
+      const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'this agent';
+      const title = profile?.marketingTitle || profile?.title || 'Real Estate Professional';
+      const company = profile?.marketingCompany || 'Spyglass Realty';
+      const email = profile?.marketingEmail || user.email || '';
+      
+      // Generate bio based on tone
+      let generatedBio = '';
+      
+      switch (tone) {
+        case 'friendly':
+          generatedBio = `Hi there! I'm ${fullName}, a ${title} with ${company}. I love helping families find their perfect home in the Austin area. Whether you're buying your first home or selling to upgrade, I'm here to make the process smooth and stress-free. I pride myself on clear communication and going the extra mile for my clients. Let's find your dream home together!`;
+          break;
+          
+        case 'luxury':
+          generatedBio = `${fullName} is a distinguished ${title} with ${company}, specializing in Austin's premium real estate market. With an unwavering commitment to excellence and discretion, I provide sophisticated clients with unparalleled service and market expertise. My refined approach ensures seamless transactions for luxury properties and high-value investments throughout the Greater Austin area.`;
+          break;
+          
+        default: // professional
+          generatedBio = `${fullName} is a dedicated ${title} with ${company}, serving the Greater Austin real estate market. With a focus on client satisfaction and market expertise, I provide comprehensive guidance through every step of the buying and selling process. My commitment to professional excellence and deep knowledge of local market trends ensures my clients receive exceptional service and achieve their real estate goals.`;
+          break;
+      }
+
+      // Trim to 500 characters if needed
+      if (generatedBio.length > 500) {
+        generatedBio = generatedBio.substring(0, 497) + '...';
+      }
+
+      res.json({ bio: generatedBio });
+    } catch (error) {
+      console.error("Error generating bio:", error);
+      res.status(500).json({ message: "Failed to generate bio" });
+    }
+  });
+
   // ── Pulse V2 — Reventure-style data layers ──
   registerPulseV2Routes(app);
 
