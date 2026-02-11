@@ -870,21 +870,30 @@ export async function registerRoutes(
         return res.status(404).json({ message: "User not found" });
       }
 
-      const fubClient = getFubClient();
-      let fubUserId = user.fubUserId;
-      
-      if (!fubUserId && user.email && fubClient) {
-        const fubUser = await fubClient.getUserByEmail(user.email);
-        if (fubUser) {
-          fubUserId = fubUser.id;
-          await storage.updateUserFubId(user.id, fubUserId);
+      // Graceful fallback for missing context_suggestions table
+      try {
+        const fubClient = getFubClient();
+        let fubUserId = user.fubUserId;
+        
+        if (!fubUserId && user.email && fubClient) {
+          const fubUser = await fubClient.getUserByEmail(user.email);
+          if (fubUser) {
+            fubUserId = fubUser.id;
+            await storage.updateUserFubId(user.id, fubUserId);
+          }
         }
-      }
 
-      await generateSuggestionsForUser(user.id, fubUserId);
-      
-      const suggestions = await storage.getActiveSuggestions(user.id);
-      res.json({ suggestions });
+        await generateSuggestionsForUser(user.id, fubUserId);
+        const suggestions = await storage.getActiveSuggestions(user.id);
+        res.json({ suggestions });
+      } catch (dbError: any) {
+        // Handle missing table gracefully
+        if (dbError.message?.includes('relation "context_suggestions" does not exist')) {
+          console.log('[Context Suggestions] Table missing, returning empty suggestions');
+          return res.json({ suggestions: [], message: "Suggestions feature not yet initialized" });
+        }
+        throw dbError; // Re-throw other errors
+      }
     } catch (error) {
       console.error("Error fetching suggestions:", error);
       res.status(500).json({ message: "Failed to fetch suggestions" });
@@ -2167,13 +2176,31 @@ Respond with valid JSON in this exact format:
         return res.status(404).json({ message: "User not found" });
       }
 
-      let settings = await storage.getNotificationSettings(user.id);
-      
-      if (!settings) {
-        settings = await storage.upsertNotificationSettings({ userId: user.id });
+      // Graceful fallback for missing user_notification_settings table
+      try {
+        let settings = await storage.getNotificationSettings(user.id);
+        
+        if (!settings) {
+          settings = await storage.upsertNotificationSettings({ userId: user.id });
+        }
+        
+        res.json({ settings });
+      } catch (dbError: any) {
+        // Handle missing table gracefully
+        if (dbError.message?.includes('relation "user_notification_settings" does not exist')) {
+          console.log('[Notification Settings] Table missing, returning default settings');
+          return res.json({
+            settings: {
+              userId: user.id,
+              emailNotifications: true,
+              pushNotifications: true,
+              marketingEmails: false,
+              message: "Notification settings not yet initialized"
+            }
+          });
+        }
+        throw dbError; // Re-throw other errors
       }
-      
-      res.json({ settings });
     } catch (error) {
       console.error("Error fetching notification settings:", error);
       res.status(500).json({ message: "Failed to fetch notification settings" });
@@ -2199,12 +2226,30 @@ Respond with valid JSON in this exact format:
 
       const validatedData = parseResult.data;
 
-      const settings = await storage.upsertNotificationSettings({
-        userId: user.id,
-        ...validatedData,
-      });
+      // Graceful fallback for missing user_notification_settings table
+      try {
+        const settings = await storage.upsertNotificationSettings({
+          userId: user.id,
+          ...validatedData,
+        });
 
-      res.json({ success: true, settings });
+        res.json({ success: true, settings });
+      } catch (dbError: any) {
+        // Handle missing table gracefully
+        if (dbError.message?.includes('relation "user_notification_settings" does not exist')) {
+          console.log('[Notification Settings] Table missing, cannot save settings');
+          return res.json({
+            success: false,
+            message: "Notification settings feature not yet initialized",
+            settings: {
+              userId: user.id,
+              ...validatedData,
+              message: "Settings cannot be saved until table is created"
+            }
+          });
+        }
+        throw dbError; // Re-throw other errors
+      }
     } catch (error) {
       console.error("Error updating notification settings:", error);
       res.status(500).json({ message: "Failed to update notification settings" });
@@ -2812,13 +2857,14 @@ Respond with valid JSON in this exact format:
           const streetAddress = [streetNumber, streetName, streetSuffix].filter(Boolean).join(' ');
           const fullAddress = `${streetAddress}, ${cityName}, ${state} ${postalCode}`.trim();
 
-          let photo = null;
-          if (listing.images && listing.images.length > 0) {
-            const imagePath = listing.images[0];
-            if (typeof imagePath === 'string') {
-              photo = imagePath.startsWith('http') ? imagePath : `https://cdn.repliers.io/${imagePath}`;
+          // Get photos from images array with CDN URL (matching other endpoints)
+          const photos = (listing.images || listing.photos || []).map((img: any) => {
+            const imagePath = typeof img === 'string' ? img : img.url || img.src || img;
+            if (imagePath && !imagePath.startsWith('http')) {
+              return `https://cdn.repliers.io/${imagePath}`;
             }
-          }
+            return imagePath;
+          }).filter(Boolean);
 
           return {
             mlsNumber: listing.mlsNumber || listing.listingId || '',
@@ -2839,7 +2885,7 @@ Respond with valid JSON in this exact format:
             listDate: listing.listDate || '',
             soldDate: listing.soldDate || listing.closeDate || null,
             daysOnMarket: listing.daysOnMarket || 0,
-            photo,
+            photos,
             stories: listing.details?.numStoreys || null,
             subdivision: listing.address?.area || listing.address?.neighborhood || '',
             latitude: listing.map?.latitude || listing.address?.latitude || null,
@@ -3051,14 +3097,14 @@ Respond with valid JSON in this exact format:
         const streetAddress = [streetNumber, streetName, streetSuffix].filter(Boolean).join(' ');
         const fullAddress = `${streetAddress}, ${cityName}, ${state} ${postalCode}`.trim();
 
-        // Get photo
-        let photo = null;
-        if (listing.images && listing.images.length > 0) {
-          const imagePath = listing.images[0];
-          if (typeof imagePath === 'string') {
-            photo = imagePath.startsWith('http') ? imagePath : `https://cdn.repliers.io/${imagePath}`;
+        // Get photos from images array with CDN URL (matching other endpoints)
+        const photos = (listing.images || listing.photos || []).map((img: any) => {
+          const imagePath = typeof img === 'string' ? img : img.url || img.src || img;
+          if (imagePath && !imagePath.startsWith('http')) {
+            return `https://cdn.repliers.io/${imagePath}`;
           }
-        }
+          return imagePath;
+        }).filter(Boolean);
 
         return {
           mlsNumber: listing.mlsNumber || listing.listingId || '',
@@ -3079,7 +3125,7 @@ Respond with valid JSON in this exact format:
           listDate: listing.listDate || '',
           soldDate: listing.soldDate || listing.closeDate || null,
           daysOnMarket: listing.daysOnMarket || 0,
-          photo,
+          photos,
           stories: listing.details?.numStoreys || null,
           subdivision: listing.address?.neighborhood || listing.address?.area || '',
           latitude: listing.map?.latitude || listing.address?.latitude || null,
@@ -3478,28 +3524,7 @@ Respond with valid JSON in this exact format:
   // Agent Profile Routes (Presentation Builder)
   // ==========================================
 
-  // Get agent profile for CMA presentations
-  app.get('/api/agent-profile', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await getDbUser(req);
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-      
-      const profile = await storage.getAgentProfile(user.id);
-      res.json({
-        profile: profile || null,
-        user: user ? {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          profileImageUrl: user.profileImageUrl,
-        } : null,
-      });
-    } catch (error) {
-      console.error('[Agent Profile] Error fetching:', error);
-      res.status(500).json({ message: "Failed to fetch agent profile" });
-    }
-  });
+  // REMOVED: Duplicate endpoint - using the one below with proper structure
 
   // Update agent profile (CMA presentation settings)
   app.put('/api/agent-profile', isAuthenticated, async (req: any, res) => {
@@ -4134,7 +4159,7 @@ Respond with valid JSON in this exact format:
   // AGENT PROFILE ENDPOINTS (Stage 2: Editable Bio for CMA)
   // ============================================
 
-  // GET /api/agent-profile - Get complete agent profile for CMA presentation
+  // GET /api/agent-profile - Get complete agent profile for CMA presentation  
   app.get('/api/agent-profile', isAuthenticated, async (req: any, res) => {
     try {
       const user = await getDbUser(req);
@@ -4146,19 +4171,55 @@ Respond with valid JSON in this exact format:
       const profile = await storage.getAgentProfile(user.id);
       console.log(`[Get Profile] Found profile:`, !!profile, 'headshotUrl length:', profile?.headshotUrl?.length || 0);
       
-      // Build complete agent profile for CMA presentation
-      const agentProfile = {
+      // Debug user data
+      console.log(`[Get Profile] User data:`, {
         firstName: user.firstName,
         lastName: user.lastName,
-        title: profile?.title || '',
-        phone: profile?.phone || '',
-        email: user.email || '', // Use user email as primary
-        headshotUrl: profile?.headshotUrl || user.profileImageUrl || '',
-        bio: profile?.bio || '',
+        email: user.email,
+        profileImageUrl: user.profileImageUrl
+      });
+      
+      // Debug profile data
+      console.log(`[Get Profile] Profile data:`, {
+        title: profile?.title,
+        phone: profile?.phone,
+        headshotUrl: profile?.headshotUrl ? `${profile.headshotUrl.substring(0, 50)}...` : null,
+        bio: profile?.bio ? `${profile.bio.substring(0, 50)}...` : null
+      });
+      
+      // Return nested structure expected by CMA Presentation frontend
+      const response = {
+        profile: {
+          headshotUrl: profile?.headshotUrl || null,
+          title: profile?.title || null,
+          bio: profile?.bio || null,
+          phone: profile?.phone || null,
+          facebookUrl: null, // TODO: Add when social fields are implemented
+          instagramUrl: null // TODO: Add when social fields are implemented
+        },
+        user: {
+          firstName: user.firstName || null,
+          lastName: user.lastName || null,
+          email: user.email || null,
+          profileImageUrl: user.profileImageUrl || null
+        }
       };
 
-      console.log(`[Get Profile] Returning headshotUrl length:`, agentProfile.headshotUrl.length);
-      res.json(agentProfile);
+      console.log(`[Get Profile] Final response structure:`, {
+        profile: {
+          title: response.profile.title,
+          phone: response.profile.phone,
+          headshotUrl: response.profile.headshotUrl ? `${response.profile.headshotUrl.substring(0, 50)}...` : null,
+          bio: response.profile.bio ? `${response.profile.bio.substring(0, 50)}...` : null
+        },
+        user: {
+          firstName: response.user.firstName,
+          lastName: response.user.lastName,
+          email: response.user.email
+        }
+      });
+      
+      res.json(response);
     } catch (error) {
       console.error("Error fetching agent profile:", error);
       res.status(500).json({ message: "Failed to fetch agent profile" });
@@ -4269,7 +4330,7 @@ Respond with valid JSON in this exact format:
     }
   });
 
-  // PUT /api/agent-profile - Update agent profile fields (phone, title)  
+  // PUT /api/agent-profile - Update agent profile fields (phone, title, bio)  
   app.put('/api/agent-profile', isAuthenticated, async (req: any, res) => {
     try {
       const user = await getDbUser(req);
@@ -4277,7 +4338,7 @@ Respond with valid JSON in this exact format:
         return res.status(404).json({ message: "User not found" });
       }
 
-      const { phone, title } = req.body;
+      const { phone, title, bio } = req.body;
       
       // Get existing profile or create new one
       let profile = await storage.getAgentProfile(user.id);
@@ -4293,6 +4354,12 @@ Respond with valid JSON in this exact format:
       }
       if (title !== undefined) {
         updateData.title = title;
+      }
+      if (bio !== undefined) {
+        if (typeof bio !== 'string' || bio.length > 500) {
+          return res.status(400).json({ message: "Bio must be a string with max 500 characters" });
+        }
+        updateData.bio = bio;
       }
 
       if (profile) {
@@ -4476,6 +4543,150 @@ Respond with valid JSON in this exact format:
 
   // Register Xano proxy routes for admin dashboards
   registerXanoRoutes(app, isAuthenticated);
+
+  // ==========================================
+  // DEBUG ENDPOINT FOR DATABASE DIAGNOSIS
+  // ==========================================
+  
+  app.get('/api/debug/db-check', async (req: any, res) => {
+    try {
+      // Get all agent_profiles columns from actual database
+      const cols = await db.execute(sql`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'agent_profiles' 
+        ORDER BY ordinal_position
+      `);
+      
+      // Get database connection info
+      const dbInfo = await db.execute(sql`
+        SELECT current_database(), current_user
+      `);
+      
+      // Check specifically for phone column
+      const phoneCheck = await db.execute(sql`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'agent_profiles' AND column_name = 'phone'
+      `);
+      
+      // Get sample data
+      const sampleData = await db.execute(sql`
+        SELECT user_id, title, phone, 
+               LENGTH(headshot_url) as headshot_len, 
+               LENGTH(bio) as bio_len 
+        FROM agent_profiles 
+        LIMIT 3
+      `);
+      
+      res.json({
+        database: dbInfo.rows[0],
+        columns: cols.rows.map((r: any) => r.column_name),
+        columnCount: cols.rows.length,
+        phoneColumnExists: phoneCheck.rows.length > 0,
+        phoneCheckResult: phoneCheck.rows,
+        sampleData: sampleData.rows,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Debug endpoint error:', error);
+      res.status(500).json({ 
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // GET /api/mapbox-token - Get Mapbox access token for maps
+  app.get('/api/mapbox-token', isAuthenticated, async (req: any, res) => {
+    try {
+      const mapboxToken = process.env.MAPBOX_ACCESS_TOKEN;
+      
+      console.log('[Mapbox] Token check:', {
+        hasToken: !!mapboxToken,
+        tokenLength: mapboxToken?.length || 0,
+        allEnvKeys: Object.keys(process.env).filter(k => k.toLowerCase().includes('mapbox')).length
+      });
+      
+      if (!mapboxToken) {
+        console.log('[Mapbox] MAPBOX_ACCESS_TOKEN not configured in environment');
+        return res.status(503).json({ 
+          error: "Mapbox token not configured",
+          message: "MAPBOX_ACCESS_TOKEN environment variable not set",
+          availableKeys: Object.keys(process.env).filter(k => k.toLowerCase().includes('map'))
+        });
+      }
+      
+      console.log('[Mapbox] Returning access token (length:', mapboxToken.length, ')');
+      res.json({ token: mapboxToken });
+    } catch (error) {
+      console.error("Error fetching Mapbox token:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch Mapbox token",
+        message: error.message 
+      });
+    }
+  });
+
+  // DEBUG: Authentication status check (no auth required)
+  app.get('/api/debug/auth-status', async (req: any, res) => {
+    try {
+      const authStatus = {
+        isAuthenticated: req.isAuthenticated?.(),
+        hasUser: !!req.user,
+        sessionId: req.sessionID,
+        userProvider: req.user?.provider,
+        userEmail: req.user?.claims?.email || req.user?.email,
+        sessionCookies: !!req.headers.cookie,
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log('[Auth Debug] Authentication status:', authStatus);
+      res.json(authStatus);
+    } catch (error) {
+      console.error('[Auth Debug] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DEBUG: Environment variables check endpoint (REMOVE IN PRODUCTION)
+  app.get('/api/debug/env-check', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user?.isSuperAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const envCheck = {
+        MAPBOX_ACCESS_TOKEN: {
+          exists: !!process.env.MAPBOX_ACCESS_TOKEN,
+          format: process.env.MAPBOX_ACCESS_TOKEN?.startsWith('pk.') ? 'valid' : 'invalid',
+          length: process.env.MAPBOX_ACCESS_TOKEN?.length || 0
+        },
+        REPLIERS_API_KEY: {
+          exists: !!process.env.REPLIERS_API_KEY, 
+          length: process.env.REPLIERS_API_KEY?.length || 0
+        },
+        IDX_GRID_API_KEY: {
+          exists: !!process.env.IDX_GRID_API_KEY,
+          length: process.env.IDX_GRID_API_KEY?.length || 0
+        },
+        allMapboxKeys: Object.keys(process.env).filter(k => 
+          k.toLowerCase().includes('mapbox') || k.toLowerCase().includes('map')
+        ),
+        allReplierKeys: Object.keys(process.env).filter(k =>
+          k.toLowerCase().includes('replier') || k.toLowerCase().includes('idx')
+        ),
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log('[Env Check] Environment variables status:', envCheck);
+      res.json(envCheck);
+    } catch (error) {
+      console.error('[Env Check] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   return httpServer;
 }

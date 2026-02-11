@@ -242,6 +242,14 @@ function PropertyCard({ property, isSubject = false, onClick }: { property: CmaP
             {isSubject ? 'Subject' : property.status}
           </span>
         </div>
+        
+        {/* Photo count indicator for multiple photos */}
+        {property.photos && property.photos.length > 1 && (
+          <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+            <Camera className="w-3 h-3" />
+            <span>{property.photos.length}</span>
+          </div>
+        )}
       </div>
       
       <div className="p-4">

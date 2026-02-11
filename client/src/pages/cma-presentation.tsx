@@ -75,7 +75,7 @@ interface PropertyData {
   listDate?: string;
   soldDate?: string | null;
   daysOnMarket?: number;
-  photo?: string | null;
+  photos?: string[];
   latitude?: number | null;
   longitude?: number | null;
 }
@@ -393,33 +393,34 @@ function BioEditModal({ isOpen, onClose, currentBio, onSave, isSaving }: BioEdit
 }
 
 interface AgentResumeContentProps {
+  agentProfile: AgentProfile | undefined;
   onEditBio: () => void;
+  isLoading?: boolean;
 }
 
-function AgentResumeContent({ onEditBio }: AgentResumeContentProps) {
-  const { data: agentProfile, isLoading, error } = useQuery<AgentProfile>({
-    queryKey: ['/api/agent-profile'],
-    queryFn: async () => {
-      const res = await fetch('/api/agent-profile', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch agent profile');
-      return res.json();
-    },
-  });
+function AgentResumeContent({ agentProfile, onEditBio, isLoading }: AgentResumeContentProps) {
+  // Debug logging to see what data we're getting
+  console.log('[AgentResumeContent] agentProfile:', agentProfile);
+  console.log('[AgentResumeContent] firstName:', agentProfile?.firstName);
+  console.log('[AgentResumeContent] lastName:', agentProfile?.lastName);
+  console.log('[AgentResumeContent] headshotUrl:', agentProfile?.headshotUrl);
+  console.log('[AgentResumeContent] isLoading:', isLoading);
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h3 className="text-2xl font-semibold mb-4">Agent Resume</h3>
+        <h3 className="text-3xl font-bold text-center mb-8">Agent Resume</h3>
         <div className="space-y-4">
-          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-32 w-32 rounded-full mx-auto" />
+          <Skeleton className="h-8 w-48 mx-auto" />
           <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-4 w-3/4 mx-auto" />
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (!agentProfile) {
     return (
       <div className="space-y-6 text-center">
         <h3 className="text-2xl font-semibold mb-4">Agent Resume</h3>
@@ -528,14 +529,16 @@ function AgentResumeContent({ onEditBio }: AgentResumeContentProps) {
 interface SlideshowPlayerProps {
   widgets: typeof CMA_WIDGETS;
   cma: CmaData;
+  agentProfile: AgentProfile | undefined;
   activeWidgetId: string | null;
   onClose: () => void;
   onNext: () => void;
   onPrevious: () => void;
   onEditBio: () => void;
+  isAgentProfileLoading?: boolean;
 }
 
-function SlideshowPlayer({ widgets, cma, activeWidgetId, onClose, onNext, onPrevious, onEditBio }: SlideshowPlayerProps) {
+function SlideshowPlayer({ widgets, cma, agentProfile, activeWidgetId, onClose, onNext, onPrevious, onEditBio, isAgentProfileLoading }: SlideshowPlayerProps) {
   const activeWidget = widgets.find(w => w.id === activeWidgetId);
   const activeIndex = widgets.findIndex(w => w.id === activeWidgetId);
 
@@ -574,6 +577,33 @@ function SlideshowPlayer({ widgets, cma, activeWidgetId, onClose, onNext, onPrev
                     <p className="text-lg text-muted-foreground">MLS# {cma.subjectProperty.mlsNumber}</p>
                   </div>
                 )}
+                
+                {/* Agent Introduction */}
+                {agentProfile && (
+                  <div className="mt-8 p-6 bg-muted/50 rounded-lg">
+                    <div className="flex flex-col items-center gap-4">
+                      <Avatar className="w-16 h-16 border-2 border-[#EF4923]">
+                        <AvatarImage src={agentProfile.headshotUrl} alt={`${agentProfile.firstName} ${agentProfile.lastName}`} />
+                        <AvatarFallback className="bg-[#EF4923] text-white text-lg font-semibold">
+                          {`${agentProfile.firstName?.[0] || ''}${agentProfile.lastName?.[0] || ''}`.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h3 className="text-xl font-semibold">
+                          {[agentProfile.firstName, agentProfile.lastName].filter(Boolean).join(' ')}
+                        </h3>
+                        {agentProfile.title && (
+                          <p className="text-muted-foreground">{agentProfile.title}</p>
+                        )}
+                        <p className="text-muted-foreground">Spyglass Realty</p>
+                        {agentProfile.phone && (
+                          <p className="text-sm text-muted-foreground mt-1">{agentProfile.phone}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="text-lg">
                   <p>This comprehensive market analysis provides insights into property values and market conditions for your area.</p>
                 </div>
@@ -581,13 +611,44 @@ function SlideshowPlayer({ widgets, cma, activeWidgetId, onClose, onNext, onPrev
             )}
 
             {activeWidget.id === 'agent-resume' && (
-              <AgentResumeContent onEditBio={onEditBio} />
+              <AgentResumeContent agentProfile={agentProfile} onEditBio={onEditBio} isLoading={isAgentProfileLoading} />
             )}
             
             {activeWidget.id === 'property-overview' && cma.subjectProperty && (
               <div className="space-y-6">
                 <h3 className="text-2xl font-semibold mb-4">Property Overview</h3>
-                <div className="grid grid-cols-2 gap-8">
+                
+                {/* Property Image */}
+                <div className="w-full max-w-2xl mx-auto mb-8">
+                  <div className="relative aspect-[4/3] rounded-lg overflow-hidden">
+                    {cma.subjectProperty.photos?.[0] ? (
+                      <img 
+                        src={cma.subjectProperty.photos[0]} 
+                        alt={cma.subjectProperty.address}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-muted flex flex-col items-center justify-center text-muted-foreground">
+                        <Home className="w-16 w-16 mb-4" />
+                        <span className="text-lg font-medium text-yellow-600">No Photo Available</span>
+                      </div>
+                    )}
+                    {/* Subject Property Badge */}
+                    <div className="absolute top-4 left-4">
+                      <span className="px-3 py-2 text-sm font-bold text-white bg-[#EF4923] rounded">
+                        Subject Property
+                      </span>
+                    </div>
+                    {/* Price Badge */}
+                    <div className="absolute top-4 right-4">
+                      <span className="px-3 py-2 text-lg font-bold text-white bg-black/60 rounded backdrop-blur">
+                        {formatPrice(cma.subjectProperty.listPrice)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   <div className="space-y-4">
                     <div>
                       <h4 className="font-semibold text-lg">Address</h4>
@@ -597,6 +658,12 @@ function SlideshowPlayer({ widgets, cma, activeWidgetId, onClose, onNext, onPrev
                       <h4 className="font-semibold text-lg">List Price</h4>
                       <p className="text-2xl font-bold text-[#EF4923]">{formatPrice(cma.subjectProperty.listPrice)}</p>
                     </div>
+                    {cma.subjectProperty.mlsNumber && (
+                      <div>
+                        <h4 className="font-semibold text-lg">MLS Number</h4>
+                        <p className="text-lg">{cma.subjectProperty.mlsNumber}</p>
+                      </div>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 border rounded-lg text-center">
@@ -623,27 +690,163 @@ function SlideshowPlayer({ widgets, cma, activeWidgetId, onClose, onNext, onPrev
             {activeWidget.id === 'comparable-sales' && (
               <div className="space-y-6">
                 <h3 className="text-2xl font-semibold mb-4">Comparable Sales</h3>
-                <div className="space-y-4">
+                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                   {cma.comparableProperties.map((comp, index) => (
-                    <div key={index} className="border rounded-lg p-4 flex justify-between items-center">
-                      <div>
-                        <h4 className="font-semibold">{comp.address}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {comp.beds} bd • {comp.baths} ba • {comp.sqft.toLocaleString()} sqft
-                        </p>
+                    <div key={index} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                      {/* Property Image */}
+                      <div className="relative aspect-[4/3]">
+                        {comp.photos?.[0] ? (
+                          <img 
+                            src={comp.photos[0]} 
+                            alt={comp.address}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-muted flex flex-col items-center justify-center text-muted-foreground">
+                            <Home className="w-8 h-8" />
+                            <span className="text-xs text-yellow-600 font-medium flex items-center gap-1 mt-2">
+                              No Photo
+                            </span>
+                          </div>
+                        )}
+                        {/* Status Badge */}
+                        <div className="absolute top-3 left-3">
+                          <span className={`px-2 py-1 text-xs font-medium text-white rounded ${
+                            comp.status === 'Closed' || comp.status === 'Sold' ? 'bg-green-600' :
+                            comp.status === 'Active Under Contract' ? 'bg-orange-600' :
+                            comp.status === 'Pending' ? 'bg-blue-600' :
+                            comp.status === 'Active' ? 'bg-red-600' : 'bg-gray-600'
+                          }`}>
+                            {comp.status}
+                          </span>
+                        </div>
+                        {/* Price Badge */}
+                        <div className="absolute top-3 right-3">
+                          <span className="px-2 py-1 text-sm font-bold text-white bg-black/60 rounded backdrop-blur">
+                            {formatPrice(comp.soldPrice || comp.listPrice)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold">{formatPrice(comp.soldPrice || comp.listPrice)}</p>
-                        <p className="text-sm text-muted-foreground">{comp.status}</p>
+                      
+                      {/* Property Details */}
+                      <div className="p-4">
+                        <h4 className="font-semibold text-sm mb-2 leading-tight">{comp.address}</h4>
+                        
+                        {/* Property Stats */}
+                        <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                          <div className="bg-muted/50 rounded p-2">
+                            <div className="text-lg font-bold">{comp.beds}</div>
+                            <div className="text-xs text-muted-foreground">Beds</div>
+                          </div>
+                          <div className="bg-muted/50 rounded p-2">
+                            <div className="text-lg font-bold">{comp.baths}</div>
+                            <div className="text-xs text-muted-foreground">Baths</div>
+                          </div>
+                          <div className="bg-muted/50 rounded p-2">
+                            <div className="text-lg font-bold">{(comp.sqft || 0).toLocaleString()}</div>
+                            <div className="text-xs text-muted-foreground">SqFt</div>
+                          </div>
+                        </div>
+                        
+                        {/* Additional Info */}
+                        <div className="space-y-1 text-sm text-muted-foreground">
+                          {comp.mlsNumber && (
+                            <div>MLS# {comp.mlsNumber}</div>
+                          )}
+                          {comp.daysOnMarket && comp.daysOnMarket > 0 && (
+                            <div>{comp.daysOnMarket} days on market</div>
+                          )}
+                          {comp.soldDate && (
+                            <div>Sold: {new Date(comp.soldDate).toLocaleDateString()}</div>
+                          )}
+                          {comp.listDate && !comp.soldDate && (
+                            <div>Listed: {new Date(comp.listDate).toLocaleDateString()}</div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
+                </div>
+                
+                {/* Summary Stats */}
+                {cma.comparableProperties.length > 0 && (
+                  <div className="mt-8 p-4 bg-muted/30 rounded-lg">
+                    <h4 className="font-semibold mb-3">Comparable Sales Summary</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                      <div>
+                        <div className="text-2xl font-bold text-[#EF4923]">{cma.comparableProperties.length}</div>
+                        <div className="text-sm text-muted-foreground">Properties</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-[#EF4923]">
+                          {formatPrice(Math.round(cma.comparableProperties.reduce((sum, p) => sum + (p.soldPrice || p.listPrice), 0) / cma.comparableProperties.length))}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Avg Price</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-[#EF4923]">
+                          {Math.round(cma.comparableProperties.reduce((sum, p) => sum + (p.sqft || 0), 0) / cma.comparableProperties.length).toLocaleString()}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Avg SqFt</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-[#EF4923]">
+                          {Math.round(cma.comparableProperties.reduce((sum, p) => sum + ((p.soldPrice || p.listPrice) / (p.sqft || 1)), 0) / cma.comparableProperties.length)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">$/SqFt</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeWidget.id === 'property-photos' && cma.subjectProperty && (
+              <div className="space-y-6">
+                <h3 className="text-2xl font-semibold mb-4">Property Photos</h3>
+                
+                {cma.subjectProperty.photos && cma.subjectProperty.photos.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {cma.subjectProperty.photos.map((photo, index) => (
+                      <div key={index} className="relative aspect-[4/3] rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                        <img 
+                          src={photo} 
+                          alt={`${cma.subjectProperty.address} - Photo ${index + 1}`}
+                          className="w-full h-full object-cover cursor-pointer"
+                          onClick={() => {
+                            // Could add modal functionality here
+                            window.open(photo, '_blank');
+                          }}
+                        />
+                        <div className="absolute bottom-2 right-2">
+                          <span className="px-2 py-1 text-xs font-medium text-white bg-black/60 rounded backdrop-blur">
+                            {index + 1} / {cma.subjectProperty.photos.length}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-20">
+                    <Camera className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-xl font-semibold mb-2">No Photos Available</h3>
+                    <p className="text-muted-foreground">Property photos are not available for this listing.</p>
+                  </div>
+                )}
+                
+                {/* Property Info Footer */}
+                <div className="mt-8 p-4 bg-muted/30 rounded-lg">
+                  <h4 className="font-semibold mb-2">{cma.subjectProperty.address}</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {cma.subjectProperty.beds} beds • {cma.subjectProperty.baths} baths • {cma.subjectProperty.sqft.toLocaleString()} sqft
+                    {cma.subjectProperty.mlsNumber && ` • MLS# ${cma.subjectProperty.mlsNumber}`}
+                  </p>
                 </div>
               </div>
             )}
 
             {/* Default content for other widgets */}
-            {!['introduction', 'property-overview', 'comparable-sales'].includes(activeWidget.id) && (
+            {!['introduction', 'agent-resume', 'property-overview', 'property-photos', 'comparable-sales'].includes(activeWidget.id) && (
               <div className="text-center py-20">
                 <activeWidget.icon className="h-16 w-16 mx-auto mb-4 text-[#EF4923] opacity-50" />
                 <h3 className="text-xl font-semibold mb-2">{activeWidget.title}</h3>
@@ -696,13 +899,23 @@ export default function CmaPresentationPage() {
   });
 
   // Load agent profile for bio editing
-  const { data: agentProfile } = useQuery<AgentProfile>({
+  const { data: agentProfile, isLoading: isAgentProfileLoading, error: agentProfileError } = useQuery<AgentProfile>({
     queryKey: ['/api/agent-profile'],
     queryFn: async () => {
+      console.log('[CMAPresentation] Fetching agent profile...');
       const res = await fetch('/api/agent-profile', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch agent profile');
-      return res.json();
+      const data = await res.json();
+      console.log('[CMAPresentation] Agent profile response:', data);
+      return data;
     },
+  });
+
+  // Debug the agent profile state
+  console.log('[CMAPresentation] agentProfile state:', {
+    isLoading: isAgentProfileLoading,
+    error: agentProfileError,
+    data: agentProfile
   });
 
   // Mutation for updating bio
@@ -851,11 +1064,13 @@ export default function CmaPresentationPage() {
       <SlideshowPlayer
         widgets={CMA_WIDGETS}
         cma={cmaForDisplay}
+        agentProfile={agentProfile}
         activeWidgetId={activeWidgetId}
         onClose={handleCloseSlideshow}
         onNext={handleNextWidget}
         onPrevious={handlePreviousWidget}
         onEditBio={() => setIsBioModalOpen(true)}
+        isAgentProfileLoading={isAgentProfileLoading}
       />
 
       {/* Bio Edit Modal */}
