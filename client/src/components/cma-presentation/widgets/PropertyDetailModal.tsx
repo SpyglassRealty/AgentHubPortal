@@ -197,10 +197,21 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
               </>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <p className="text-lg font-medium mb-2">No photos available</p>
-                  <p className="text-sm">Photos: {JSON.stringify(photos)}</p>
-                  <p className="text-xs mt-1">Property.photos field: {JSON.stringify(property.photos)}</p>
+                <div className="text-center text-xs space-y-1">
+                  <p className="text-lg font-medium mb-3 text-red-600">❌ PHOTO DEBUG INFO</p>
+                  <p><strong>Photos Length:</strong> {photos.length}</p>
+                  <p><strong>Property.photos:</strong> {JSON.stringify(property.photos)}</p>
+                  <p><strong>Photos Array:</strong> {JSON.stringify(photos)}</p>
+                  <p><strong>Current Index:</strong> {currentPhotoIndex}</p>
+                  <p><strong>Current URL:</strong> {photos[currentPhotoIndex] || 'undefined'}</p>
+                  <p><strong>All Photo Fields:</strong> {JSON.stringify(
+                    Object.keys(property).filter(k => 
+                      k.toLowerCase().includes('photo') || k.toLowerCase().includes('image')
+                    ).reduce((obj: any, key) => {
+                      obj[key] = property[key as keyof typeof property];
+                      return obj;
+                    }, {})
+                  )}</p>
                 </div>
               </div>
             )}

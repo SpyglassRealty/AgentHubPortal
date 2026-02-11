@@ -4213,6 +4213,7 @@ Respond with valid JSON in this exact format:
           title: profile?.title || null,
           bio: profile?.bio || null,
           phone: profile?.phone || null,
+          marketingPhone: profile?.phone || null, // CMA presentation expects this field
           facebookUrl: null, // TODO: Add when social fields are implemented
           instagramUrl: null // TODO: Add when social fields are implemented
         },

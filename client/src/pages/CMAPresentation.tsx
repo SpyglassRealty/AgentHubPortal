@@ -146,6 +146,7 @@ export default function CMAPresentation() {
       name: result.name,
       phone: result.phone, // ← ADD PHONE DEBUG
       hasPhone: !!result.phone,
+      phoneLength: result.phone?.length || 0,
       hasPhoto: !!result.photo,
       photoLength: result.photo?.length || 0,
       email: result.email,
