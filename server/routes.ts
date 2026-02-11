@@ -4151,11 +4151,8 @@ Respond with valid JSON in this exact format:
         firstName: user.firstName,
         lastName: user.lastName,
         title: profile?.title || '',
-        marketingTitle: profile?.marketingTitle || profile?.title || '',
-        phone: profile?.marketingPhone || '',
-        marketingPhone: profile?.marketingPhone || '',
-        email: profile?.marketingEmail || user.email || '',
-        marketingEmail: profile?.marketingEmail || user.email || '',
+        phone: profile?.phone || '',
+        email: user.email || '', // Use user email as primary
         headshotUrl: profile?.headshotUrl || user.profileImageUrl || '',
         bio: profile?.bio || '',
       };
@@ -4290,9 +4287,9 @@ Respond with valid JSON in this exact format:
         updatedAt: new Date(),
       };
 
-      // Only update provided fields
+      // Only update provided fields using correct column names
       if (phone !== undefined) {
-        updateData.marketingPhone = phone;
+        updateData.phone = phone; // Use 'phone' column (not marketingPhone)
       }
       if (title !== undefined) {
         updateData.title = title;
@@ -4317,8 +4314,8 @@ Respond with valid JSON in this exact format:
         firstName: user.firstName,
         lastName: user.lastName,
         title: profile.title || '',
-        phone: profile.marketingPhone || '',
-        email: profile.marketingEmail || user.email || '',
+        phone: profile.phone || '',
+        email: user.email || '',
         headshotUrl: profile.headshotUrl || user.profileImageUrl || '',
         bio: profile.bio || '',
       };
@@ -4403,8 +4400,8 @@ Respond with valid JSON in this exact format:
         firstName: user.firstName,
         lastName: user.lastName,
         title: profile.title || '',
-        phone: profile.marketingPhone || '',
-        email: profile.marketingEmail || user.email || '',
+        phone: profile.phone || '',
+        email: user.email || '',
         headshotUrl: profile.headshotUrl || '',
         bio: profile.bio || '',
       };

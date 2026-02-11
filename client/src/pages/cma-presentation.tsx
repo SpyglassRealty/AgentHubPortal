@@ -93,11 +93,8 @@ interface AgentProfile {
   firstName?: string;
   lastName?: string;
   title?: string;
-  marketingTitle?: string;
   phone?: string;
-  marketingPhone?: string;
   email?: string;
-  marketingEmail?: string;
   headshotUrl?: string;
   bio?: string;
 }
@@ -168,7 +165,7 @@ function AgentHeader({ agentProfile }: AgentHeaderProps) {
 
   const fullName = [agentProfile.firstName, agentProfile.lastName].filter(Boolean).join(' ') || 'Agent';
   const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase();
-  const email = agentProfile.marketingEmail || agentProfile.email || '';
+  const email = agentProfile.email || '';
   const phone = agentProfile.phone || '';
 
   return (
@@ -199,8 +196,8 @@ function AgentHeader({ agentProfile }: AgentHeaderProps) {
             </Avatar>
             <div className="flex-1">
               <h3 className="font-semibold text-lg">{fullName}</h3>
-              {agentProfile.marketingTitle && (
-                <p className="text-muted-foreground text-sm">{agentProfile.marketingTitle}</p>
+              {agentProfile.title && (
+                <p className="text-muted-foreground text-sm">{agentProfile.title}</p>
               )}
               <p className="text-muted-foreground text-sm">Spyglass Realty</p>
             </div>
@@ -434,9 +431,9 @@ function AgentResumeContent({ onEditBio }: AgentResumeContentProps) {
   const hasBasicInfo = agentProfile?.firstName || agentProfile?.lastName;
   const fullName = [agentProfile?.firstName, agentProfile?.lastName].filter(Boolean).join(' ') || 'Your Name';
   const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase();
-  const email = agentProfile?.marketingEmail || agentProfile?.email || '';
+  const email = agentProfile?.email || '';
   const phone = agentProfile?.phone || '';
-  const title = agentProfile?.marketingTitle || agentProfile?.title || '';
+  const title = agentProfile?.title || '';
 
   return (
     <div className="space-y-8">
