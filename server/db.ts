@@ -1,4 +1,5 @@
 import { drizzle } from "drizzle-orm/node-postgres";
+import { sql } from "drizzle-orm";
 import pg from "pg";
 import * as schema from "@shared/schema";
 
@@ -405,13 +406,27 @@ export async function migrateMarketPulseSnapshots() {
       }
     }
     
-    // Add phone column to agent_profiles
+    // Add phone column to agent_profiles using same db connection
     try {
       console.log('[Migration] Adding phone column to agent_profiles...');
-      await pool.query('ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS phone TEXT');
+      await db.execute(sql`ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS phone TEXT`);
       console.log('[Migration] Added phone column to agent_profiles');
+      
+      // Verify the column was actually added
+      const verifyColumn = await db.execute(sql`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'agent_profiles' AND column_name = 'phone'
+      `);
+      
+      if (verifyColumn.rows.length > 0) {
+        console.log('[Migration] ✅ Phone column verification: FOUND');
+      } else {
+        console.error('[Migration] ❌ Phone column verification: NOT FOUND');
+      }
     } catch (e) {
-      console.log(`[Migration] Phone column might already exist: ${e.message}`);
+      console.error(`[Migration] Phone column migration failed: ${e.message}`);
+      console.error('[Migration] Full error:', e);
     }
     
     console.log('[Migration] market_pulse_snapshots schema updated successfully');
