@@ -494,7 +494,7 @@ export default function SettingsPage() {
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { phone?: string; title?: string }) => {
+    mutationFn: async (data: { phone?: string; title?: string; bio?: string }) => {
       const res = await fetch("/api/agent-profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -529,12 +529,20 @@ export default function SettingsPage() {
       return res.json();
     },
     onSuccess: (data) => {
-      // Invalidate all related queries
+      // Update the query cache immediately with the new photo
+      queryClient.setQueryData(["/api/agent-profile"], (oldData: any) => {
+        if (oldData) {
+          return {
+            ...oldData,
+            headshotUrl: data.headshotUrl || data.profile?.headshotUrl
+          };
+        }
+        return oldData;
+      });
+      
+      // Invalidate and refetch to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["/api/agent-profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      
-      // Also refetch immediately to ensure fresh data
-      queryClient.refetchQueries({ queryKey: ["/api/agent-profile"] });
       
       toast({ title: "Photo updated", description: "Your profile photo has been updated." });
       handleCloseCropModal();
@@ -627,12 +635,15 @@ export default function SettingsPage() {
   };
 
   const handleSaveProfile = () => {
-    const changes: { phone?: string; title?: string } = {};
+    const changes: { phone?: string; title?: string; bio?: string } = {};
     if (profileForm.phone !== (agentProfile?.phone || "")) {
       changes.phone = profileForm.phone;
     }
     if (profileForm.title !== (agentProfile?.title || "")) {
       changes.title = profileForm.title;
+    }
+    if (profileForm.bio !== (agentProfile?.bio || "")) {
+      changes.bio = profileForm.bio;
     }
     
     if (Object.keys(changes).length > 0) {

@@ -3478,28 +3478,7 @@ Respond with valid JSON in this exact format:
   // Agent Profile Routes (Presentation Builder)
   // ==========================================
 
-  // Get agent profile for CMA presentations
-  app.get('/api/agent-profile', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await getDbUser(req);
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-      
-      const profile = await storage.getAgentProfile(user.id);
-      res.json({
-        profile: profile || null,
-        user: user ? {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          profileImageUrl: user.profileImageUrl,
-        } : null,
-      });
-    } catch (error) {
-      console.error('[Agent Profile] Error fetching:', error);
-      res.status(500).json({ message: "Failed to fetch agent profile" });
-    }
-  });
+  // REMOVED: Duplicate endpoint - using the one below with proper structure
 
   // Update agent profile (CMA presentation settings)
   app.put('/api/agent-profile', isAuthenticated, async (req: any, res) => {
@@ -4269,7 +4248,7 @@ Respond with valid JSON in this exact format:
     }
   });
 
-  // PUT /api/agent-profile - Update agent profile fields (phone, title)  
+  // PUT /api/agent-profile - Update agent profile fields (phone, title, bio)  
   app.put('/api/agent-profile', isAuthenticated, async (req: any, res) => {
     try {
       const user = await getDbUser(req);
@@ -4277,7 +4256,7 @@ Respond with valid JSON in this exact format:
         return res.status(404).json({ message: "User not found" });
       }
 
-      const { phone, title } = req.body;
+      const { phone, title, bio } = req.body;
       
       // Get existing profile or create new one
       let profile = await storage.getAgentProfile(user.id);
@@ -4293,6 +4272,12 @@ Respond with valid JSON in this exact format:
       }
       if (title !== undefined) {
         updateData.title = title;
+      }
+      if (bio !== undefined) {
+        if (typeof bio !== 'string' || bio.length > 500) {
+          return res.status(400).json({ message: "Bio must be a string with max 500 characters" });
+        }
+        updateData.bio = bio;
       }
 
       if (profile) {
