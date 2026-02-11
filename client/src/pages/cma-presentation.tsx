@@ -393,33 +393,12 @@ function BioEditModal({ isOpen, onClose, currentBio, onSave, isSaving }: BioEdit
 }
 
 interface AgentResumeContentProps {
+  agentProfile: AgentProfile | undefined;
   onEditBio: () => void;
 }
 
-function AgentResumeContent({ onEditBio }: AgentResumeContentProps) {
-  const { data: agentProfile, isLoading, error } = useQuery<AgentProfile>({
-    queryKey: ['/api/agent-profile'],
-    queryFn: async () => {
-      const res = await fetch('/api/agent-profile', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch agent profile');
-      return res.json();
-    },
-  });
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <h3 className="text-2xl font-semibold mb-4">Agent Resume</h3>
-        <div className="space-y-4">
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-4 w-1/2" />
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
+function AgentResumeContent({ agentProfile, onEditBio }: AgentResumeContentProps) {
+  if (!agentProfile) {
     return (
       <div className="space-y-6 text-center">
         <h3 className="text-2xl font-semibold mb-4">Agent Resume</h3>
@@ -528,6 +507,7 @@ function AgentResumeContent({ onEditBio }: AgentResumeContentProps) {
 interface SlideshowPlayerProps {
   widgets: typeof CMA_WIDGETS;
   cma: CmaData;
+  agentProfile: AgentProfile | undefined;
   activeWidgetId: string | null;
   onClose: () => void;
   onNext: () => void;
@@ -535,7 +515,7 @@ interface SlideshowPlayerProps {
   onEditBio: () => void;
 }
 
-function SlideshowPlayer({ widgets, cma, activeWidgetId, onClose, onNext, onPrevious, onEditBio }: SlideshowPlayerProps) {
+function SlideshowPlayer({ widgets, cma, agentProfile, activeWidgetId, onClose, onNext, onPrevious, onEditBio }: SlideshowPlayerProps) {
   const activeWidget = widgets.find(w => w.id === activeWidgetId);
   const activeIndex = widgets.findIndex(w => w.id === activeWidgetId);
 
@@ -574,6 +554,33 @@ function SlideshowPlayer({ widgets, cma, activeWidgetId, onClose, onNext, onPrev
                     <p className="text-lg text-muted-foreground">MLS# {cma.subjectProperty.mlsNumber}</p>
                   </div>
                 )}
+                
+                {/* Agent Introduction */}
+                {agentProfile && (
+                  <div className="mt-8 p-6 bg-muted/50 rounded-lg">
+                    <div className="flex flex-col items-center gap-4">
+                      <Avatar className="w-16 h-16 border-2 border-[#EF4923]">
+                        <AvatarImage src={agentProfile.headshotUrl} alt={`${agentProfile.firstName} ${agentProfile.lastName}`} />
+                        <AvatarFallback className="bg-[#EF4923] text-white text-lg font-semibold">
+                          {`${agentProfile.firstName?.[0] || ''}${agentProfile.lastName?.[0] || ''}`.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h3 className="text-xl font-semibold">
+                          {[agentProfile.firstName, agentProfile.lastName].filter(Boolean).join(' ')}
+                        </h3>
+                        {agentProfile.title && (
+                          <p className="text-muted-foreground">{agentProfile.title}</p>
+                        )}
+                        <p className="text-muted-foreground">Spyglass Realty</p>
+                        {agentProfile.phone && (
+                          <p className="text-sm text-muted-foreground mt-1">{agentProfile.phone}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="text-lg">
                   <p>This comprehensive market analysis provides insights into property values and market conditions for your area.</p>
                 </div>
@@ -581,7 +588,7 @@ function SlideshowPlayer({ widgets, cma, activeWidgetId, onClose, onNext, onPrev
             )}
 
             {activeWidget.id === 'agent-resume' && (
-              <AgentResumeContent onEditBio={onEditBio} />
+              <AgentResumeContent agentProfile={agentProfile} onEditBio={onEditBio} />
             )}
             
             {activeWidget.id === 'property-overview' && cma.subjectProperty && (
@@ -643,7 +650,7 @@ function SlideshowPlayer({ widgets, cma, activeWidgetId, onClose, onNext, onPrev
             )}
 
             {/* Default content for other widgets */}
-            {!['introduction', 'property-overview', 'comparable-sales'].includes(activeWidget.id) && (
+            {!['introduction', 'agent-resume', 'property-overview', 'comparable-sales'].includes(activeWidget.id) && (
               <div className="text-center py-20">
                 <activeWidget.icon className="h-16 w-16 mx-auto mb-4 text-[#EF4923] opacity-50" />
                 <h3 className="text-xl font-semibold mb-2">{activeWidget.title}</h3>
@@ -851,6 +858,7 @@ export default function CmaPresentationPage() {
       <SlideshowPlayer
         widgets={CMA_WIDGETS}
         cma={cmaForDisplay}
+        agentProfile={agentProfile}
         activeWidgetId={activeWidgetId}
         onClose={handleCloseSlideshow}
         onNext={handleNextWidget}
