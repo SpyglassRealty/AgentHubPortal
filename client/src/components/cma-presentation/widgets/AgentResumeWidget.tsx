@@ -17,7 +17,7 @@ export function AgentResumeWidget({ agent }: AgentResumeWidgetProps) {
                 <img
                   src={agent.photo}
                   alt={agent.name}
-                  className="w-40 h-40 md:w-48 md:h-48 rounded-lg object-cover shadow-md"
+                  className="w-40 h-40 md:w-48 md:h-48 rounded-lg object-contain shadow-md bg-gray-50 dark:bg-gray-800"
                 />
               ) : (
                 <div className="w-40 h-40 md:w-48 md:h-48 rounded-lg bg-gradient-to-br from-[#EF4923] to-[#EF4923]/80 flex items-center justify-center">

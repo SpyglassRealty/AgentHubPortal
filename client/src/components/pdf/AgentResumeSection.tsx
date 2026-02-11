@@ -31,7 +31,8 @@ export function AgentResumeSection({ data, customBio }: AgentResumeSectionProps)
               width: 150, 
               height: 150, 
               borderRadius: 8, 
-              objectFit: 'cover',
+              objectFit: 'contain',
+              backgroundColor: '#f8f9fa',
             }} 
           />
         ) : (
