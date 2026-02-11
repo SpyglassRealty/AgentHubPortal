@@ -126,6 +126,8 @@ export default function CMAPresentation() {
     const { profile, user } = agentProfileData;
     console.log('[CMA Debug] Extracted profile:', profile);
     console.log('[CMA Debug] Extracted user:', user);
+    console.log('[CMA Debug] Raw phone field:', profile?.phone);
+    console.log('[CMA Debug] Phone field type:', typeof profile?.phone);
     
     const displayName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 
        (user?.firstName || user?.email?.split('@')[0] || 'Agent');
@@ -142,6 +144,8 @@ export default function CMAPresentation() {
     
     console.log('[CMA Debug] Final agentProfile result:', {
       name: result.name,
+      phone: result.phone, // ← ADD PHONE DEBUG
+      hasPhone: !!result.phone,
       hasPhoto: !!result.photo,
       photoLength: result.photo?.length || 0,
       email: result.email,
