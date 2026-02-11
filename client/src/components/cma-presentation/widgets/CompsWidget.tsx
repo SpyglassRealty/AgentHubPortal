@@ -3,9 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, Map as MapIcon, TrendingUp, List, LayoutGrid, Table2, Bed, Bath, Square, Clock, MapPin, Home, AlertTriangle, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { BarChart3, Map as MapIcon, TrendingUp, List, LayoutGrid, Table2, Bed, Bath, Square, Clock, MapPin, Home, AlertTriangle, ArrowUpRight, ArrowDownRight, Camera } from 'lucide-react';
 import { CMAMap } from '@/components/cma-map';
 import { PropertyDetailModal } from './PropertyDetailModal';
+import { PhotoGalleryModal } from '@/components/cma/PhotoGalleryModal';
 import { extractPrice, extractSqft, extractDOM, calculatePricePerSqft, getCityState } from '@/lib/cma-data-utils';
 import type { CmaProperty } from '../types';
 import type { Property } from '@shared/schema';
@@ -202,7 +203,7 @@ function StatItem({
   );
 }
 
-function PropertyCard({ property, isSubject = false, onClick }: { property: CmaProperty; isSubject?: boolean; onClick?: () => void }) {
+function PropertyCard({ property, isSubject = false, onClick, onPhotoClick }: { property: CmaProperty; isSubject?: boolean; onClick?: () => void; onPhotoClick?: () => void }) {
   return (
     <Card 
       className={`overflow-hidden cursor-pointer hover:shadow-lg transition-shadow ${isSubject ? 'border-[#EF4923] border-2' : ''}`}
@@ -217,7 +218,13 @@ function PropertyCard({ property, isSubject = false, onClick }: { property: CmaP
         }
       }}
     >
-      <div className="relative aspect-[4/3]">
+      <div 
+        className="relative aspect-[4/3] cursor-pointer group"
+        onClick={(e) => {
+          e.stopPropagation();
+          onPhotoClick?.();
+        }}
+      >
         {property.photos?.[0] ? (
           <img 
             src={property.photos[0]} 
@@ -248,6 +255,15 @@ function PropertyCard({ property, isSubject = false, onClick }: { property: CmaP
           <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded text-xs flex items-center gap-1">
             <Camera className="w-3 h-3" />
             <span>{property.photos.length}</span>
+          </div>
+        )}
+
+        {/* Hover overlay hint */}
+        {property.photos && property.photos.length > 0 && (
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+            <span className="opacity-0 group-hover:opacity-100 text-white text-sm font-medium">
+              {property.photos.length > 1 ? 'Click to view photos' : 'Click to view photo'}
+            </span>
           </div>
         )}
       </div>
@@ -449,6 +465,9 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
   const [subView, setSubView] = useState<'grid' | 'list' | 'table'>('grid');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedProperty, setSelectedProperty] = useState<CmaProperty | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryProperty, setGalleryProperty] = useState<CmaProperty | null>(null);
+  const [initialPhotoIndex, setInitialPhotoIndex] = useState(0);
 
   const filteredComparables = useMemo(() => {
     if (statusFilter === 'all') return comparables;
@@ -456,6 +475,12 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
   }, [comparables, statusFilter]);
 
   const statistics = useMemo(() => calculateStatistics(filteredComparables), [filteredComparables]);
+
+  const handlePhotoClick = (property: CmaProperty, photoIndex: number = 0) => {
+    setGalleryProperty(property);
+    setInitialPhotoIndex(photoIndex);
+    setGalleryOpen(true);
+  };
 
   return (
     <div className="flex flex-col h-full bg-background" data-testid="comps-widget">
@@ -598,6 +623,7 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
                     property={{...subjectProperty, isSubject: true}} 
                     isSubject 
                     onClick={() => setSelectedProperty({...subjectProperty, isSubject: true})}
+                    onPhotoClick={() => handlePhotoClick({...subjectProperty, isSubject: true})}
                   />
                 )}
                 {filteredComparables.map(comp => (
@@ -605,6 +631,7 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
                     key={comp.id} 
                     property={comp} 
                     onClick={() => setSelectedProperty(comp)}
+                    onPhotoClick={() => handlePhotoClick(comp)}
                   />
                 ))}
               </div>
@@ -714,6 +741,23 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
         <PropertyDetailModal
           property={selectedProperty}
           onClose={() => setSelectedProperty(null)}
+        />
+      )}
+
+      {galleryProperty && (
+        <PhotoGalleryModal
+          open={galleryOpen}
+          onOpenChange={setGalleryOpen}
+          photos={galleryProperty.photos || []}
+          initialIndex={initialPhotoIndex}
+          propertyAddress={galleryProperty.address}
+          propertyPrice={extractPrice(galleryProperty)}
+          propertyDetails={{
+            beds: galleryProperty.beds,
+            baths: galleryProperty.baths,
+            sqft: galleryProperty.sqft,
+            status: galleryProperty.status,
+          }}
         />
       )}
     </div>
