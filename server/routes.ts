@@ -9,7 +9,7 @@ import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema, agentP
 import { getGoogleCalendarEvents } from "./googleCalendarClient";
 import { db, pool } from "./db";
 import { users as usersTable } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import OpenAI from "openai";
 import { getLatestTrainingVideo } from "./vimeoClient";
 import { SPYGLASS_OFFICES, DEFAULT_OFFICE, getOfficeConfig } from "./config/offices";
@@ -4362,85 +4362,60 @@ Respond with valid JSON in this exact format:
       }
 
       console.log(`[Photo Upload] Image validation passed, size estimate: ${Math.round(sizeEstimate / 1024)}KB`);
+      console.log(`[Photo Upload] Updating headshot_url for userId:`, user.id);
 
-      // Get existing profile or create new one
-      let profile = await storage.getAgentProfile(user.id);
-      console.log(`[Photo Upload] Existing profile found:`, !!profile, profile ? `current headshotUrl length: ${profile.headshotUrl?.length || 0}` : '');
+      // Use raw SQL to bypass any Drizzle ORM issues
+      // First try UPDATE
+      const updateResult = await db.execute(sql`
+        UPDATE agent_profiles 
+        SET headshot_url = ${imageData}, updated_at = NOW() 
+        WHERE user_id = ${user.id}
+      `);
       
-      // Prepare data for upsert
-      const updateData = {
-        userId: user.id,
-        headshotUrl: imageData,
-        updatedAt: new Date(),
-      };
-
-      if (profile) {
-        // Update existing profile with new photo
-        console.log(`[Photo Upload] Updating existing profile...`);
-        profile = await storage.upsertAgentProfile({
-          ...profile,
-          ...updateData,
-        });
-      } else {
-        // Create new profile with photo
-        console.log(`[Photo Upload] Creating new profile...`);
-        profile = await storage.upsertAgentProfile({
-          ...updateData,
-          createdAt: new Date(),
-        });
-      }
-
-      console.log(`[Photo Upload] Profile upsert completed, headshotUrl length:`, profile.headshotUrl?.length || 0);
-
-      // Verify the data was actually saved by re-fetching
-      const verifyProfile = await storage.getAgentProfile(user.id);
-      console.log(`[Photo Upload] Verification: profile exists:`, !!verifyProfile, 'headshotUrl length:', verifyProfile?.headshotUrl?.length || 0);
+      console.log(`[Photo Upload] Raw SQL update result:`, updateResult.rowCount);
       
-      // Direct database verification using Drizzle ORM  
-      try {
-        const verify = await db.select({ headshotUrl: agentProfiles.headshotUrl })
-          .from(agentProfiles)
-          .where(eq(agentProfiles.userId, user.id));
-        console.log(`[Photo Upload] Verification - headshotUrl length:`, verify[0]?.headshotUrl?.length || 0);
-        console.log(`[Photo Upload] Verification - headshotUrl starts with:`, verify[0]?.headshotUrl?.substring(0, 30) || 'null');
-        
-        // Also do raw SQL verification as backup
-        const directQuery = await pool.query(
-          'SELECT id, user_id, headshot_url, LENGTH(headshot_url) as headshot_length FROM agent_profiles WHERE user_id = $1', 
-          [user.id]
-        );
-        console.log(`[Photo Upload] Raw SQL verification:`, {
-          found: directQuery.rows.length > 0,
-          headshotLength: directQuery.rows[0]?.headshot_length || 0,
-          headshotStartsWith: directQuery.rows[0]?.headshot_url?.substring(0, 30) || 'null'
-        });
-      } catch (dbError) {
-        console.error(`[Photo Upload] Database verification failed:`, dbError);
+      let profile;
+      if (updateResult.rowCount === 0) {
+        // No existing row, INSERT new profile
+        console.log(`[Photo Upload] No existing profile found, inserting new row`);
+        const insertResult = await db.execute(sql`
+          INSERT INTO agent_profiles (id, user_id, headshot_url, created_at, updated_at)
+          VALUES (gen_random_uuid(), ${user.id}, ${imageData}, NOW(), NOW())
+        `);
+        console.log(`[Photo Upload] Raw SQL insert result:`, insertResult.rowCount);
       }
+      
+      // Verify the update worked
+      const verification = await db.execute(sql`
+        SELECT headshot_url, LENGTH(headshot_url) as headshot_length 
+        FROM agent_profiles 
+        WHERE user_id = ${user.id}
+      `);
+      
+      console.log(`[Photo Upload] Verification: headshotUrl length = ${verification.rows[0]?.headshot_length || 0}`);
+      
+      // Get the updated profile to return
+      profile = await storage.getAgentProfile(user.id);
+      console.log(`[Photo Upload] Final profile headshotUrl length:`, profile?.headshotUrl?.length || 0);
 
-      // Return complete agent profile data to verify everything is working
+      // Build response object
       const agentProfile = {
         firstName: user.firstName,
         lastName: user.lastName,
-        title: profile.title || '',
-        phone: profile.phone || '',
+        title: profile?.title || '',
+        phone: profile?.phone || '',
         email: user.email || '',
-        headshotUrl: profile.headshotUrl || '',
-        bio: profile.bio || '',
+        headshotUrl: profile?.headshotUrl || '',
+        bio: profile?.bio || '',
       };
 
       console.log(`[Photo Upload] SUCCESS - Returning response with headshotUrl length:`, agentProfile.headshotUrl.length);
 
       res.json({ 
         success: true, 
-        headshotUrl: profile.headshotUrl,
+        headshotUrl: profile?.headshotUrl,
         message: "Profile photo updated successfully",
-        profile: agentProfile, // Return full profile for debugging
-        debug: {
-          userHasProfile: !!profile,
-          imageSizeKB: Math.round(sizeEstimate / 1024),
-          headshotUrlLength: profile.headshotUrl?.length || 0,
-        }
+        profile: agentProfile,
       });
     } catch (error) {
       console.error("[Photo Upload] CRITICAL ERROR:", error);
