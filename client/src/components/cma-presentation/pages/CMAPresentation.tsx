@@ -66,7 +66,7 @@ export default function CMAPresentation() {
 
   // REMOVED: savedCma query - using cmaData instead
 
-  const { data: agentProfileData, isLoading: profileLoading } = useQuery<{
+  const { data: agentProfileData, isLoading: profileLoading, error: profileError } = useQuery<{
     profile: {
       id?: string;
       userId?: string;
@@ -90,20 +90,37 @@ export default function CMAPresentation() {
   }>({
     queryKey: ['/api/agent-profile'],
     queryFn: async () => {
+      console.log('[CMA Debug] Fetching agent profile from /api/agent-profile...');
       const res = await fetch('/api/agent-profile', { credentials: 'include' });
+      console.log('[CMA Debug] Agent profile response:', res.status, res.statusText);
       if (!res.ok) throw new Error('Failed to fetch agent profile');
-      return res.json();
+      const data = await res.json();
+      console.log('[CMA Debug] Agent profile data received:', data);
+      return data;
     },
     staleTime: 0,               // Always consider stale - refetch on mount
     refetchOnMount: true,       // Refetch when component mounts
     refetchOnWindowFocus: true, // Refetch when window gains focus
+    retry: (failureCount, error: any) => {
+      console.log('[CMA Debug] Agent profile query failed:', error);
+      return failureCount < 3;
+    },
+  });
+
+  // Debug logging for agent profile data
+  console.log('[CMA Debug] Agent profile state:', {
+    data: agentProfileData,
+    loading: profileLoading,
+    error: profileError,
+    hasProfile: !!agentProfileData?.profile,
+    hasUser: !!agentProfileData?.user,
   });
 
   const agentProfile = useMemo(() => {
-    console.log('[CMA Presentation] Agent profile data:', agentProfileData);
+    console.log('[CMA Debug] Building agent profile from data:', agentProfileData);
     
     if (!agentProfileData) {
-      console.log('[CMA Presentation] No agent profile data, using defaults');
+      console.log('[CMA Debug] No agent profile data, using defaults');
       return { 
         name: 'Agent Name', 
         company: 'Spyglass Realty', 
@@ -116,8 +133,10 @@ export default function CMAPresentation() {
     }
     
     const { profile, user } = agentProfileData;
-    console.log('[CMA Presentation] Profile object:', profile);
-    console.log('[CMA Presentation] User object:', user);
+    console.log('[CMA Debug] Raw profile object:', profile);
+    console.log('[CMA Debug] Raw user object:', user);
+    console.log('[CMA Debug] Profile fields available:', profile ? Object.keys(profile) : []);
+    console.log('[CMA Debug] User fields available:', user ? Object.keys(user) : []);
     
     // Build display name with multiple fallbacks
     const displayName = (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 
@@ -153,9 +172,48 @@ export default function CMAPresentation() {
       bio,
     };
     
-    console.log('[CMA Presentation] Final agent profile:', result);
+    console.log('[CMA Debug] Final agent profile result:', {
+      name: result.name,
+      hasPhoto: !!result.photo,
+      photoLength: result.photo?.length || 0,
+      email: result.email,
+      title: result.title,
+      hasBio: !!result.bio,
+      bioLength: result.bio?.length || 0,
+      phone: result.phone,
+      company: result.company
+    });
     return result;
   }, [agentProfileData]);
+
+  // Debug: Direct API test on component mount
+  useEffect(() => {
+    const testAPI = async () => {
+      try {
+        console.log('[CMA Debug] Testing direct API calls...');
+        
+        // Test agent profile API
+        const agentResponse = await fetch('/api/agent-profile');
+        const agentData = await agentResponse.json();
+        console.log('[CMA Debug] Direct agent profile API test:', {
+          status: agentResponse.status,
+          statusText: agentResponse.statusText,
+          data: agentData
+        });
+        
+        // Test auth status
+        const authResponse = await fetch('/api/debug/auth-status');
+        if (authResponse.ok) {
+          const authData = await authResponse.json();
+          console.log('[CMA Debug] Auth status:', authData);
+        }
+      } catch (error) {
+        console.error('[CMA Debug] API tests failed:', error);
+      }
+    };
+    
+    testAPI();
+  }, []);
 
   // Normalize status checking both status and lastStatus fields
   // Per RESO Standard: Sale statuses (Active/Pending/Closed) vs Rental statuses (Leasing)
@@ -275,7 +333,65 @@ export default function CMAPresentation() {
         sqft: parsedSqft,
         lotSizeAcres: lotAcres,
         daysOnMarket: comp.daysOnMarket || comp.dom || 0,
-        photos: (comp.photos || (comp.imageUrl ? [comp.imageUrl] : [])),
+        photos: (() => {
+          // Based on official Repliers API reference:
+          // 1. Photos come from 'images' field as fully qualified URLs
+          // 2. Order matters (first = cover photo)  
+          // 3. Sold listings may have reduced photo count
+          // 4. Handle empty arrays gracefully (MLS compliance)
+          
+          // Debug first comp
+          if (index === 0) {
+            console.log('[CMA Debug] First comp photo fields analysis:', {
+              hasImages: !!comp.images,
+              imagesCount: Array.isArray(comp.images) ? comp.images.length : 0,
+              imagesPreview: Array.isArray(comp.images) ? comp.images.slice(0, 2) : null,
+              hasPhotos: !!comp.photos,
+              photosCount: Array.isArray(comp.photos) ? comp.photos.length : 0,
+              hasSinglePhoto: !!comp.photo,
+              hasImageUrl: !!comp.imageUrl,
+              mlsNumber: comp.mlsNumber,
+              status: comp.status || comp.standardStatus,
+              allPhotoFields: Object.keys(comp).filter(k => 
+                k.toLowerCase().includes('image') || 
+                k.toLowerCase().includes('photo')
+              ),
+              firstFewFields: Object.keys(comp).slice(0, 10)
+            });
+          }
+          
+          // PRIMARY: Repliers 'images' field (fully qualified URLs)
+          if (comp.images && Array.isArray(comp.images) && comp.images.length > 0) {
+            const validImages = comp.images.filter((url: string) => 
+              url && typeof url === 'string' && url.trim().length > 0
+            );
+            if (index === 0) console.log('[CMA Debug] Using Repliers comp.images (official):', validImages);
+            return validImages;
+          }
+          
+          // FALLBACK: Legacy 'photos' field (if exists)
+          if (comp.photos && Array.isArray(comp.photos) && comp.photos.length > 0) {
+            const validPhotos = comp.photos.filter((url: string) => 
+              url && typeof url === 'string' && url.trim().length > 0
+            );
+            if (index === 0) console.log('[CMA Debug] Using legacy comp.photos:', validPhotos);
+            return validPhotos;
+          }
+          
+          // FALLBACK: Single photo fields (less common)
+          const singlePhotoFields = ['photo', 'imageUrl', 'primaryPhoto', 'coverPhoto'];
+          for (const field of singlePhotoFields) {
+            if (comp[field] && typeof comp[field] === 'string' && comp[field].trim().length > 0) {
+              const result = [comp[field]];
+              if (index === 0) console.log(`[CMA Debug] Using single ${field}:`, result);
+              return result;
+            }
+          }
+          
+          // No photos found - this is normal for some sold listings per Repliers reference
+          if (index === 0) console.log('[CMA Debug] No photos found (normal for some sold listings)');
+          return [];
+        })(),
         map: lat && lng ? { latitude: lat, longitude: lng } : null,
         latitude: lat,
         longitude: lng,
