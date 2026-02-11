@@ -406,27 +406,85 @@ export async function migrateMarketPulseSnapshots() {
       }
     }
     
-    // Add phone column to agent_profiles using same db connection
+    // CRITICAL FIX: Add agent_profiles columns with REAL database verification
     try {
-      console.log('[Migration] Adding phone column to agent_profiles...');
-      await db.execute(sql`ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS phone TEXT`);
-      console.log('[Migration] Added phone column to agent_profiles');
+      console.log('[Migration] 🔧 CRITICAL FIX: Adding agent_profiles columns...');
       
-      // Verify the column was actually added
-      const verifyColumn = await db.execute(sql`
+      // First, get all existing columns from the ACTUAL database
+      const existingColumnsResult = await db.execute(sql`
         SELECT column_name 
         FROM information_schema.columns 
-        WHERE table_name = 'agent_profiles' AND column_name = 'phone'
+        WHERE table_name = 'agent_profiles'
+        ORDER BY column_name
       `);
       
-      if (verifyColumn.rows.length > 0) {
-        console.log('[Migration] ✅ Phone column verification: FOUND');
-      } else {
-        console.error('[Migration] ❌ Phone column verification: NOT FOUND');
+      const existingColumns = new Set(existingColumnsResult.rows.map((row: any) => row.column_name));
+      console.log('[Migration] 📋 Existing agent_profiles columns:', Array.from(existingColumns).sort());
+      
+      // Define all required columns
+      const requiredColumns = [
+        { name: 'phone', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS phone TEXT' },
+        { name: 'title', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS title TEXT' },
+        { name: 'headshot_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS headshot_url TEXT' },
+        { name: 'bio', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS bio TEXT' },
+        { name: 'facebook_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS facebook_url TEXT' },
+        { name: 'instagram_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS instagram_url TEXT' },
+        { name: 'linkedin_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS linkedin_url TEXT' },
+        { name: 'twitter_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS twitter_url TEXT' },
+        { name: 'website_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS website_url TEXT' },
+        { name: 'marketing_company', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS marketing_company TEXT' }
+      ];
+      
+      // Add missing columns
+      let addedColumns = [];
+      for (const column of requiredColumns) {
+        if (!existingColumns.has(column.name)) {
+          console.log(`[Migration] ➕ Adding missing column: ${column.name}`);
+          await db.execute(sql.raw(column.sql));
+          addedColumns.push(column.name);
+        } else {
+          console.log(`[Migration] ✅ Column already exists: ${column.name}`);
+        }
       }
+      
+      // REAL VERIFICATION: Query the database again to confirm columns were added
+      const finalColumnsResult = await db.execute(sql`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'agent_profiles'
+        ORDER BY column_name
+      `);
+      
+      const finalColumns = new Set(finalColumnsResult.rows.map((row: any) => row.column_name));
+      console.log('[Migration] 📋 Final agent_profiles columns:', Array.from(finalColumns).sort());
+      
+      // Verify critical columns exist
+      const criticalColumns = ['phone', 'title', 'headshot_url', 'bio'];
+      let allCriticalFound = true;
+      
+      for (const column of criticalColumns) {
+        if (finalColumns.has(column)) {
+          console.log(`[Migration] ✅ VERIFIED: ${column} column EXISTS in database`);
+        } else {
+          console.error(`[Migration] ❌ CRITICAL: ${column} column MISSING from database`);
+          allCriticalFound = false;
+        }
+      }
+      
+      if (allCriticalFound) {
+        console.log('[Migration] 🎉 SUCCESS: All critical agent_profiles columns verified in database');
+      } else {
+        throw new Error('❌ CRITICAL: Some required agent_profiles columns are missing from database');
+      }
+      
+      if (addedColumns.length > 0) {
+        console.log(`[Migration] ➕ Added ${addedColumns.length} new columns: ${addedColumns.join(', ')}`);
+      }
+      
     } catch (e) {
-      console.error(`[Migration] Phone column migration failed: ${e.message}`);
-      console.error('[Migration] Full error:', e);
+      console.error(`[Migration] ❌ CRITICAL: agent_profiles migration failed: ${e.message}`);
+      console.error('[Migration] Full error details:', e);
+      throw e; // Re-throw to fail startup if critical columns are missing
     }
     
     console.log('[Migration] market_pulse_snapshots schema updated successfully');
