@@ -7,7 +7,7 @@ import { getRezenClient } from "./rezenClient";
 import { generateSuggestionsForUser } from "./contextEngine";
 import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema } from "@shared/schema";
 import { getGoogleCalendarEvents } from "./googleCalendarClient";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { users as usersTable } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import OpenAI from "openai";
@@ -4345,11 +4345,13 @@ Respond with valid JSON in this exact format:
       const { imageData } = req.body;
       
       if (!imageData || typeof imageData !== 'string') {
+        console.log(`[Photo Upload] ERROR: Image data missing or invalid type`);
         return res.status(400).json({ message: "Image data is required" });
       }
 
       // Basic validation - check if it's a data URL
       if (!imageData.startsWith('data:image/')) {
+        console.log(`[Photo Upload] ERROR: Invalid image format, starts with:`, imageData.substring(0, 50));
         return res.status(400).json({ message: "Invalid image format" });
       }
 
@@ -4357,6 +4359,7 @@ Respond with valid JSON in this exact format:
       const sizeEstimate = (imageData.length * 3) / 4;
       const maxSize = 5 * 1024 * 1024; // 5MB
       if (sizeEstimate > maxSize) {
+        console.log(`[Photo Upload] ERROR: Image too large:`, Math.round(sizeEstimate / 1024), 'KB');
         return res.status(400).json({ message: "Image too large. Maximum size is 5MB." });
       }
 
@@ -4364,26 +4367,36 @@ Respond with valid JSON in this exact format:
 
       // Get existing profile or create new one
       let profile = await storage.getAgentProfile(user.id);
-      console.log(`[Photo Upload] Existing profile found:`, !!profile);
+      console.log(`[Photo Upload] Existing profile found:`, !!profile, profile ? `current headshotUrl length: ${profile.headshotUrl?.length || 0}` : '');
       
+      // Prepare data for upsert
+      const updateData = {
+        userId: user.id,
+        headshotUrl: imageData,
+        updatedAt: new Date(),
+      };
+
       if (profile) {
         // Update existing profile with new photo
+        console.log(`[Photo Upload] Updating existing profile...`);
         profile = await storage.upsertAgentProfile({
           ...profile,
-          headshotUrl: imageData,
-          updatedAt: new Date(),
+          ...updateData,
         });
       } else {
         // Create new profile with photo
+        console.log(`[Photo Upload] Creating new profile...`);
         profile = await storage.upsertAgentProfile({
-          userId: user.id,
-          headshotUrl: imageData,
+          ...updateData,
           createdAt: new Date(),
-          updatedAt: new Date(),
         });
       }
 
-      console.log(`[Photo Upload] Profile updated, headshotUrl length:`, profile.headshotUrl?.length || 0);
+      console.log(`[Photo Upload] Profile upsert completed, headshotUrl length:`, profile.headshotUrl?.length || 0);
+
+      // Verify the data was actually saved by re-fetching
+      const verifyProfile = await storage.getAgentProfile(user.id);
+      console.log(`[Photo Upload] Verification: profile exists:`, !!verifyProfile, 'headshotUrl length:', verifyProfile?.headshotUrl?.length || 0);
 
       // Return complete agent profile data to verify everything is working
       const agentProfile = {
@@ -4396,17 +4409,81 @@ Respond with valid JSON in this exact format:
         bio: profile.bio || '',
       };
 
-      console.log(`[Photo Upload] Returning response with headshotUrl length:`, agentProfile.headshotUrl.length);
+      console.log(`[Photo Upload] SUCCESS - Returning response with headshotUrl length:`, agentProfile.headshotUrl.length);
 
       res.json({ 
         success: true, 
         headshotUrl: profile.headshotUrl,
         message: "Profile photo updated successfully",
         profile: agentProfile, // Return full profile for debugging
+        debug: {
+          userHasProfile: !!profile,
+          imageSizeKB: Math.round(sizeEstimate / 1024),
+          headshotUrlLength: profile.headshotUrl?.length || 0,
+        }
       });
     } catch (error) {
-      console.error("Error uploading profile photo:", error);
-      res.status(500).json({ message: "Failed to upload photo" });
+      console.error("[Photo Upload] CRITICAL ERROR:", error);
+      console.error("[Photo Upload] Error stack:", error.stack);
+      res.status(500).json({ 
+        message: "Failed to upload photo",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  });
+
+  // ============================================
+  // DEBUG ENDPOINTS (remove in production)
+  // ============================================
+
+  // DEBUG: Check agent_profiles table schema
+  app.get('/api/debug/agent-profiles-schema', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user?.isSuperAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      // Query the database schema
+      const result = await pool.query(`
+        SELECT column_name, data_type, is_nullable, column_default
+        FROM information_schema.columns 
+        WHERE table_name = 'agent_profiles'
+        ORDER BY column_name
+      `);
+
+      // Also check if the table exists
+      const tableExists = await pool.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_name = 'agent_profiles'
+        )
+      `);
+
+      // Get a sample profile to see actual data
+      let sampleProfile = null;
+      try {
+        const sampleResult = await pool.query(`
+          SELECT id, user_id, headshot_url, 
+                 LENGTH(headshot_url) as headshot_url_length,
+                 bio, title, marketing_phone, marketing_email
+          FROM agent_profiles 
+          LIMIT 1
+        `);
+        sampleProfile = sampleResult.rows[0] || null;
+      } catch (e) {
+        console.log("No sample profile found or table doesn't exist");
+      }
+
+      res.json({
+        tableExists: tableExists.rows[0].exists,
+        columns: result.rows,
+        sampleProfile,
+        totalRows: sampleProfile ? (await pool.query('SELECT COUNT(*) FROM agent_profiles')).rows[0].count : 0
+      });
+    } catch (error) {
+      console.error("Debug schema check error:", error);
+      res.status(500).json({ message: "Schema check failed", error: error.message });
     }
   });
 

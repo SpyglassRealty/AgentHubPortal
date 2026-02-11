@@ -209,12 +209,20 @@ function PhotoCropModal({ isOpen, onClose, imageFile, onCrop, isUploading }: Pho
   };
 
   const handleApplyCrop = () => {
-    if (!canvasRef.current || !imageRef.current) return;
+    console.log('[Crop Modal] Apply crop clicked');
+    
+    if (!canvasRef.current || !imageRef.current) {
+      console.log('[Crop Modal] Missing canvas or image ref');
+      return;
+    }
 
     // Create a new canvas for the cropped result
     const cropCanvas = document.createElement('canvas');
     const cropCtx = cropCanvas.getContext('2d');
-    if (!cropCtx) return;
+    if (!cropCtx) {
+      console.log('[Crop Modal] Could not get canvas context');
+      return;
+    }
 
     const cropDiameter = 400; // High resolution output
     cropCanvas.width = cropDiameter;
@@ -222,6 +230,8 @@ function PhotoCropModal({ isOpen, onClose, imageFile, onCrop, isUploading }: Pho
 
     const currentZoom = zoom[0];
     const canvas = canvasRef.current;
+    
+    console.log('[Crop Modal] Crop settings:', { zoom: currentZoom, position, cropDiameter });
     
     // Calculate source crop area
     const centerX = canvas.width / 2;
@@ -253,6 +263,9 @@ function PhotoCropModal({ isOpen, onClose, imageFile, onCrop, isUploading }: Pho
 
     // Convert to base64
     const croppedImageData = cropCanvas.toDataURL('image/jpeg', 0.8);
+    console.log('[Crop Modal] Cropped image data length:', croppedImageData.length);
+    console.log('[Crop Modal] Cropped image data prefix:', croppedImageData.substring(0, 50));
+    
     onCrop(croppedImageData);
   };
 

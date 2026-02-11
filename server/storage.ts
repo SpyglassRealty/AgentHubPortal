@@ -252,22 +252,48 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAgentProfile(userId: string): Promise<AgentProfile | undefined> {
-    const [profile] = await db.select().from(agentProfiles).where(eq(agentProfiles.userId, userId));
-    return profile;
+    console.log(`[Storage] Getting agent profile for user: ${userId}`);
+    try {
+      const [profile] = await db.select().from(agentProfiles).where(eq(agentProfiles.userId, userId));
+      console.log(`[Storage] Found profile:`, !!profile, profile ? `headshotUrl length: ${profile.headshotUrl?.length || 0}` : '');
+      return profile;
+    } catch (error) {
+      console.error(`[Storage] Error getting agent profile:`, error);
+      throw error;
+    }
   }
 
   async upsertAgentProfile(profileData: InsertAgentProfile): Promise<AgentProfile> {
-    const existing = await this.getAgentProfile(profileData.userId);
-    if (existing) {
-      const [profile] = await db
-        .update(agentProfiles)
-        .set({ ...profileData, updatedAt: new Date() })
-        .where(eq(agentProfiles.userId, profileData.userId))
-        .returning();
-      return profile;
-    } else {
-      const [profile] = await db.insert(agentProfiles).values(profileData).returning();
-      return profile;
+    console.log(`[Storage] Upserting agent profile for user: ${profileData.userId}`);
+    console.log(`[Storage] Profile data keys:`, Object.keys(profileData));
+    console.log(`[Storage] HeadshotUrl length in data:`, profileData.headshotUrl?.length || 0);
+    
+    try {
+      const existing = await this.getAgentProfile(profileData.userId);
+      
+      if (existing) {
+        console.log(`[Storage] Updating existing profile...`);
+        const updateData = { ...profileData, updatedAt: new Date() };
+        console.log(`[Storage] Update data keys:`, Object.keys(updateData));
+        
+        const [profile] = await db
+          .update(agentProfiles)
+          .set(updateData)
+          .where(eq(agentProfiles.userId, profileData.userId))
+          .returning();
+          
+        console.log(`[Storage] Update successful, returned profile headshotUrl length:`, profile.headshotUrl?.length || 0);
+        return profile;
+      } else {
+        console.log(`[Storage] Creating new profile...`);
+        const [profile] = await db.insert(agentProfiles).values(profileData).returning();
+        console.log(`[Storage] Insert successful, returned profile headshotUrl length:`, profile.headshotUrl?.length || 0);
+        return profile;
+      }
+    } catch (error) {
+      console.error(`[Storage] Error upserting agent profile:`, error);
+      console.error(`[Storage] Error details:`, error.message);
+      throw error;
     }
   }
 
