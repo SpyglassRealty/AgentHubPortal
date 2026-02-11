@@ -67,46 +67,40 @@ export default function CMAPresentation() {
 
   const { data: agentProfileData, isLoading: profileLoading } = useQuery<{
     profile: {
-      id?: string;
-      userId?: string;
-      title?: string;
       headshotUrl?: string;
+      title?: string;
       bio?: string;
-      defaultCoverLetter?: string;
-      marketingCompany?: string;
+      phone?: string;
+      facebookUrl?: string | null;
+      instagramUrl?: string | null;
     } | null;
     user: { 
       firstName?: string; 
       lastName?: string;
+      email?: string;
       profileImageUrl?: string;
-      marketingDisplayName?: string; 
-      marketingTitle?: string; 
-      marketingHeadshotUrl?: string; 
-      marketingPhone?: string; 
-      marketingEmail?: string;
     } | null;
   }>({
-    queryKey: ['/api/agent/profile'],
+    queryKey: ['/api/agent-profile'],
     staleTime: 0,               // Always consider stale - refetch on mount
     refetchOnMount: true,       // Refetch when component mounts
     refetchOnWindowFocus: true, // Refetch when window gains focus
   });
 
   const agentProfile = useMemo(() => {
-    if (!agentProfileData) return { name: '', company: 'Spyglass Realty', phone: '', email: '', photo: '', bio: '' };
+    if (!agentProfileData) return { name: '', company: 'Spyglass Realty', phone: '', email: '', photo: '', bio: '', title: '' };
     
     const { profile, user } = agentProfileData;
-    const displayName = user?.marketingDisplayName || 
-      (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 
-       user?.firstName || 'Agent');
+    const displayName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 
+       (user?.firstName || 'Agent');
     
     return {
       name: displayName,
-      company: profile?.marketingCompany || 'Spyglass Realty',
-      phone: user?.marketingPhone || '',
-      email: user?.marketingEmail || '',
-      photo: user?.marketingHeadshotUrl || profile?.headshotUrl || user?.profileImageUrl || '',
-      title: profile?.title || user?.marketingTitle || '',
+      company: 'Spyglass Realty',
+      phone: profile?.phone || '',
+      email: user?.email || '',
+      photo: profile?.headshotUrl || user?.profileImageUrl || '',
+      title: profile?.title || '',
       bio: profile?.bio || '',
     };
   }, [agentProfileData]);
