@@ -80,17 +80,7 @@ async function runDirectMigrations() {
 
 async function addAgentProfileMarketingFields() {
   try {
-    console.log("[Database] Ensuring agent_profiles table exists with all required columns...");
-    
-    // First, ensure the agent_profiles table exists
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS agent_profiles (
-        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id varchar NOT NULL,
-        created_at timestamp DEFAULT NOW(),
-        updated_at timestamp DEFAULT NOW()
-      )
-    `);
+    console.log("[Database] Adding missing phone column to agent_profiles...");
     
     // Check existing agent_profiles table columns
     const existingColumns = await pool.query(`
@@ -102,49 +92,38 @@ async function addAgentProfileMarketingFields() {
     const columnNames = new Set(existingColumns.rows.map(row => row.column_name));
     console.log("[Database] Existing agent_profiles columns:", Array.from(columnNames).sort());
     
-    // Define ALL required columns for agent profiles
-    const requiredColumns = [
-      { name: 'title', sql: 'ALTER TABLE agent_profiles ADD COLUMN title text' },
-      { name: 'headshot_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN headshot_url text' },
-      { name: 'bio', sql: 'ALTER TABLE agent_profiles ADD COLUMN bio text' },
-      { name: 'default_cover_letter', sql: 'ALTER TABLE agent_profiles ADD COLUMN default_cover_letter text' },
-      { name: 'facebook_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN facebook_url text' },
-      { name: 'instagram_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN instagram_url text' },
-      { name: 'linkedin_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN linkedin_url text' },
-      { name: 'twitter_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN twitter_url text' },
-      { name: 'website_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN website_url text' },
-      { name: 'marketing_company', sql: 'ALTER TABLE agent_profiles ADD COLUMN marketing_company text' },
-      { name: 'marketing_title', sql: 'ALTER TABLE agent_profiles ADD COLUMN marketing_title varchar' },
-      { name: 'marketing_phone', sql: 'ALTER TABLE agent_profiles ADD COLUMN marketing_phone varchar' },
-      { name: 'marketing_email', sql: 'ALTER TABLE agent_profiles ADD COLUMN marketing_email varchar' },
-    ];
-    
-    // Add missing columns
-    for (const column of requiredColumns) {
-      if (!columnNames.has(column.name)) {
-        console.log(`[Database] Adding agent_profiles.${column.name} column...`);
-        await pool.query(column.sql);
-        console.log(`[Database] Added ${column.name} column successfully`);
-      } else {
-        console.log(`[Database] agent_profiles.${column.name} column already exists`);
-      }
+    // Add the missing phone column (the only one not in the actual database according to Daryl's query)
+    if (!columnNames.has('phone')) {
+      console.log(`[Database] Adding agent_profiles.phone column...`);
+      await pool.query('ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS phone TEXT');
+      console.log(`[Database] Added phone column successfully`);
+    } else {
+      console.log(`[Database] agent_profiles.phone column already exists`);
     }
     
-    // Add indexes if they don't exist
-    try {
-      await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_agent_profiles_user_id 
-        ON agent_profiles(user_id)
-      `);
-    } catch (e) {
-      console.log("[Database] Index creation skipped (may already exist)");
+    // Verify the column was added
+    const verifyColumns = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'agent_profiles' AND column_name = 'phone'
+    `);
+    
+    if (verifyColumns.rows.length > 0) {
+      console.log("[Database] ✅ Phone column verification: FOUND");
+    } else {
+      console.error("[Database] ❌ Phone column verification: MISSING");
+      // Retry the migration
+      console.log("[Database] Retrying phone column creation...");
+      await pool.query('ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS phone TEXT');
     }
     
-    console.log("[Database] Agent profile table setup completed");
+    console.log("[Database] Agent profile migration completed");
     
   } catch (error) {
-    console.error("[Database] Agent profile table setup error:", error);
-    // Don't throw - this is not critical for basic functionality
+    console.error("[Database] Agent profile migration error:", error);
+    console.error("[Database] Error details:", JSON.stringify(error, null, 2));
+    // Re-throw to make the error visible in startup logs
+    throw error;
   }
 }
 
@@ -385,6 +364,10 @@ export async function migrateMarketPulseSnapshots() {
     console.log('[Migration] Checking market_pulse_snapshots schema...');
     
     const alterStatements = [
+      // Agent profiles - CRITICAL: Add phone column (from Daryl's request)
+      "ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS phone TEXT",
+      
+      // Market pulse snapshots
       "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS total_properties INTEGER DEFAULT 0",
       "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS active INTEGER DEFAULT 0", 
       "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS active_under_contract INTEGER DEFAULT 0",
@@ -395,6 +378,7 @@ export async function migrateMarketPulseSnapshots() {
       "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS office_id VARCHAR(50) DEFAULT 'ACT1518371'",
       "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'spyglass'",
       "ALTER TABLE market_pulse_snapshots ALTER COLUMN cached_data DROP NOT NULL",
+      
       // CMA table fixes - add ALL missing columns to match schema.ts
       "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS subject_property JSONB",
       "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS comparable_properties JSONB DEFAULT '[]'::jsonb",

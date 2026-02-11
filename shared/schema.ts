@@ -107,9 +107,9 @@ export interface FubDeal {
 export const agentProfiles = pgTable("agent_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
-  // CMA Presentation Builder fields (migrated from Contract Conduit)
+  // Fields that ACTUALLY exist in the database (based on Daryl's query)
   title: text("title"),
-  headshotUrl: text("headshot_url"),
+  headshotUrl: text("headshot_url"),  // Note: database column is headshot_url (snake_case)
   bio: text("bio"),
   defaultCoverLetter: text("default_cover_letter"),
   facebookUrl: text("facebook_url"),
@@ -118,10 +118,8 @@ export const agentProfiles = pgTable("agent_profiles", {
   twitterUrl: text("twitter_url"),
   websiteUrl: text("website_url"),
   marketingCompany: text("marketing_company"),
-  // Additional marketing profile fields for CMA agent resume
-  marketingTitle: varchar("marketing_title"),
-  marketingPhone: varchar("marketing_phone"),
-  marketingEmail: varchar("marketing_email"),
+  // Adding phone column (new migration from startup)
+  phone: text("phone"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
