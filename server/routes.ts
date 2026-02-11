@@ -5,7 +5,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { getFubClient, getFubClientAsync } from "./fubClient";
 import { getRezenClient } from "./rezenClient";
 import { generateSuggestionsForUser } from "./contextEngine";
-import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema } from "@shared/schema";
+import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema, agentProfiles } from "@shared/schema";
 import { getGoogleCalendarEvents } from "./googleCalendarClient";
 import { db, pool } from "./db";
 import { users as usersTable } from "@shared/schema";
@@ -4396,20 +4396,26 @@ Respond with valid JSON in this exact format:
       const verifyProfile = await storage.getAgentProfile(user.id);
       console.log(`[Photo Upload] Verification: profile exists:`, !!verifyProfile, 'headshotUrl length:', verifyProfile?.headshotUrl?.length || 0);
       
-      // Direct database verification to bypass any caching issues
+      // Direct database verification using Drizzle ORM  
       try {
-        const { pool } = await import("./db");
+        const verify = await db.select({ headshotUrl: agentProfiles.headshotUrl })
+          .from(agentProfiles)
+          .where(eq(agentProfiles.userId, user.id));
+        console.log(`[Photo Upload] Verification - headshotUrl length:`, verify[0]?.headshotUrl?.length || 0);
+        console.log(`[Photo Upload] Verification - headshotUrl starts with:`, verify[0]?.headshotUrl?.substring(0, 30) || 'null');
+        
+        // Also do raw SQL verification as backup
         const directQuery = await pool.query(
           'SELECT id, user_id, headshot_url, LENGTH(headshot_url) as headshot_length FROM agent_profiles WHERE user_id = $1', 
           [user.id]
         );
-        console.log(`[Photo Upload] Direct DB verification:`, {
+        console.log(`[Photo Upload] Raw SQL verification:`, {
           found: directQuery.rows.length > 0,
           headshotLength: directQuery.rows[0]?.headshot_length || 0,
           headshotStartsWith: directQuery.rows[0]?.headshot_url?.substring(0, 30) || 'null'
         });
       } catch (dbError) {
-        console.error(`[Photo Upload] Direct DB query failed:`, dbError);
+        console.error(`[Photo Upload] Database verification failed:`, dbError);
       }
 
       // Return complete agent profile data to verify everything is working
