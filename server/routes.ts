@@ -7,6 +7,7 @@ import { getRezenClient } from "./rezenClient";
 import { generateSuggestionsForUser } from "./contextEngine";
 import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema, agentProfiles } from "@shared/schema";
 import { getGoogleCalendarEvents } from "./googleCalendarClient";
+import { extractPhotosFromRepliersList, debugPhotoFields } from "./lib/repliers-photo-utils";
 import { db, pool } from "./db";
 import { users as usersTable } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
@@ -1238,14 +1239,8 @@ export async function registerRoutes(
         const baths = listing.details?.numBathrooms || listing.numBathrooms || listing.bathroomsTotalInteger || 0;
         const sqft = listing.details?.sqft || listing.sqft || listing.livingArea || 0;
 
-        // Get photos from images array with CDN URL
-        const photos = (listing.images || listing.photos || []).map((img: any) => {
-          const imagePath = typeof img === 'string' ? img : img.url || img.src || img;
-          if (imagePath && !imagePath.startsWith('http')) {
-            return `https://cdn.repliers.io/${imagePath}`;
-          }
-          return imagePath;
-        });
+        // Extract photos using centralized Repliers photo utility (follows official API spec)
+        const photos = extractPhotosFromRepliersList(listing);
 
         return {
           id: listing.mlsNumber || listing.listingId,
@@ -1419,13 +1414,8 @@ export async function registerRoutes(
         const baths = listing.details?.numBathrooms || listing.numBathrooms || listing.bathroomsTotalInteger || 0;
         const sqft = listing.details?.sqft || listing.sqft || listing.livingArea || 0;
 
-        const photos = (listing.images || listing.photos || []).map((img: any) => {
-          const imagePath = typeof img === 'string' ? img : img.url || img.src || img;
-          if (imagePath && !imagePath.startsWith('http')) {
-            return `https://cdn.repliers.io/${imagePath}`;
-          }
-          return imagePath;
-        });
+        // Extract photos using centralized Repliers photo utility (follows official API spec)
+        const photos = extractPhotosFromRepliersList(listing);
 
         return {
           id: listing.mlsNumber || listing.listingId,
@@ -2857,14 +2847,13 @@ Respond with valid JSON in this exact format:
           const streetAddress = [streetNumber, streetName, streetSuffix].filter(Boolean).join(' ');
           const fullAddress = `${streetAddress}, ${cityName}, ${state} ${postalCode}`.trim();
 
-          // Get photos from images array with CDN URL (matching other endpoints)
-          const photos = (listing.images || listing.photos || []).map((img: any) => {
-            const imagePath = typeof img === 'string' ? img : img.url || img.src || img;
-            if (imagePath && !imagePath.startsWith('http')) {
-              return `https://cdn.repliers.io/${imagePath}`;
-            }
-            return imagePath;
-          }).filter(Boolean);
+          // Extract photos using centralized Repliers photo utility (follows official API spec)
+          const photos = extractPhotosFromRepliersList(listing);
+          
+          // Debug photo fields for first listing to help troubleshoot photo issues
+          if (listings.length === 0) {
+            debugPhotoFields(listing, listing.mlsNumber || listing.listingId);
+          }
 
           return {
             mlsNumber: listing.mlsNumber || listing.listingId || '',
@@ -3097,14 +3086,13 @@ Respond with valid JSON in this exact format:
         const streetAddress = [streetNumber, streetName, streetSuffix].filter(Boolean).join(' ');
         const fullAddress = `${streetAddress}, ${cityName}, ${state} ${postalCode}`.trim();
 
-        // Get photos from images array with CDN URL (matching other endpoints)
-        const photos = (listing.images || listing.photos || []).map((img: any) => {
-          const imagePath = typeof img === 'string' ? img : img.url || img.src || img;
-          if (imagePath && !imagePath.startsWith('http')) {
-            return `https://cdn.repliers.io/${imagePath}`;
-          }
-          return imagePath;
-        }).filter(Boolean);
+        // Extract photos using centralized Repliers photo utility (follows official API spec)
+        const photos = extractPhotosFromRepliersList(listing);
+        
+        // Debug photo fields for first listing to help troubleshoot photo issues
+        if (index === 0) {
+          debugPhotoFields(listing, listing.mlsNumber || listing.listingId);
+        }
 
         return {
           mlsNumber: listing.mlsNumber || listing.listingId || '',
