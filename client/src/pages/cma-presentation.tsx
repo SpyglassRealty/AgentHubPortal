@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import {
   Home,
   MapPin,
@@ -43,6 +46,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Pencil,
 } from "lucide-react";
 
 interface PropertyData {
@@ -78,9 +82,20 @@ interface CmaData {
   status: string;
 }
 
+interface AgentProfile {
+  firstName?: string;
+  lastName?: string;
+  marketingTitle?: string;
+  marketingPhone?: string;
+  marketingEmail?: string;
+  headshotUrl?: string;
+  bio?: string;
+}
+
 // Widget definitions - 33 total widgets as mentioned by Daryl
 const CMA_WIDGETS = [
   { id: 'introduction', title: 'Introduction', icon: Home, category: 'Overview' },
+  { id: 'agent-resume', title: 'Agent Resume', icon: Users, category: 'Overview' },
   { id: 'property-overview', title: 'Property Overview', icon: Building2, category: 'Property' },
   { id: 'location-map', title: 'Location Map', icon: MapPin, category: 'Location' },
   { id: 'property-photos', title: 'Property Photos', icon: Camera, category: 'Property' },
@@ -120,6 +135,204 @@ function formatPrice(price: number | null | undefined): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(price);
 }
 
+interface BioEditModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  currentBio: string;
+  onSave: (bio: string) => void;
+  isSaving: boolean;
+}
+
+function BioEditModal({ isOpen, onClose, currentBio, onSave, isSaving }: BioEditModalProps) {
+  const [bio, setBio] = useState(currentBio);
+  const [charCount, setCharCount] = useState(currentBio.length);
+
+  useEffect(() => {
+    setBio(currentBio);
+    setCharCount(currentBio.length);
+  }, [currentBio]);
+
+  const handleBioChange = (value: string) => {
+    if (value.length <= 500) {
+      setBio(value);
+      setCharCount(value.length);
+    }
+  };
+
+  const handleSave = () => {
+    onSave(bio);
+  };
+
+  const handleCancel = () => {
+    setBio(currentBio);
+    setCharCount(currentBio.length);
+    onClose();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit Bio</DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="bio">Professional Bio</Label>
+            <Textarea
+              id="bio"
+              value={bio}
+              onChange={(e) => handleBioChange(e.target.value)}
+              placeholder="Write a brief professional bio that will appear on your CMA presentations..."
+              className="mt-2 min-h-[120px] resize-none"
+              disabled={isSaving}
+            />
+            <div className="flex justify-between items-center mt-2 text-sm text-muted-foreground">
+              <span>Character limit: 500</span>
+              <span className={charCount > 450 ? 'text-yellow-600' : charCount === 500 ? 'text-red-600' : ''}>
+                {charCount}/500
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface AgentResumeContentProps {
+  onEditBio: () => void;
+}
+
+function AgentResumeContent({ onEditBio }: AgentResumeContentProps) {
+  const { data: agentProfile, isLoading, error } = useQuery<AgentProfile>({
+    queryKey: ['/api/agent-profile'],
+    queryFn: async () => {
+      const res = await fetch('/api/agent-profile', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch agent profile');
+      return res.json();
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <h3 className="text-2xl font-semibold mb-4">Agent Resume</h3>
+        <div className="space-y-4">
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6 text-center">
+        <h3 className="text-2xl font-semibold mb-4">Agent Resume</h3>
+        <p className="text-muted-foreground">Unable to load agent profile</p>
+      </div>
+    );
+  }
+
+  const hasBasicInfo = agentProfile?.firstName || agentProfile?.lastName;
+  const fullName = [agentProfile?.firstName, agentProfile?.lastName].filter(Boolean).join(' ') || 'Your Name';
+
+  return (
+    <div className="space-y-6">
+      <h3 className="text-2xl font-semibold mb-6">Agent Resume</h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Left column - Photo */}
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-32 h-32 rounded-full overflow-hidden bg-muted flex items-center justify-center">
+            {agentProfile?.headshotUrl ? (
+              <img 
+                src={agentProfile.headshotUrl} 
+                alt={fullName}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Users className="h-16 w-16 text-muted-foreground" />
+            )}
+          </div>
+          <div className="text-center">
+            <h4 className="text-xl font-semibold">{fullName}</h4>
+            {agentProfile?.marketingTitle && (
+              <p className="text-muted-foreground">{agentProfile.marketingTitle}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Right columns - Contact Info & Bio */}
+        <div className="md:col-span-2 space-y-6">
+          {/* Contact Information */}
+          <div>
+            <h5 className="font-semibold text-lg mb-3">Contact Information</h5>
+            <div className="space-y-2">
+              {agentProfile?.marketingEmail && (
+                <p className="text-sm">
+                  <span className="font-medium">Email:</span> {agentProfile.marketingEmail}
+                </p>
+              )}
+              {agentProfile?.marketingPhone && (
+                <p className="text-sm">
+                  <span className="font-medium">Phone:</span> {agentProfile.marketingPhone}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Bio Section */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h5 className="font-semibold text-lg">Professional Bio</h5>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onEditBio}
+                className="h-8 px-3 text-muted-foreground hover:text-foreground"
+              >
+                <Pencil className="h-4 w-4 mr-1" />
+                Edit
+              </Button>
+            </div>
+            
+            <div className="min-h-[80px] p-4 border rounded-lg bg-muted/20">
+              {agentProfile?.bio ? (
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{agentProfile.bio}</p>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground text-sm mb-3">
+                    Professional bio will be displayed here once you complete your agent profile.
+                  </p>
+                  <Button 
+                    onClick={onEditBio}
+                    size="sm"
+                    className="bg-[#EF4923] hover:bg-[#EF4923]/90"
+                  >
+                    Edit Bio
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface SlideshowPlayerProps {
   widgets: typeof CMA_WIDGETS;
   cma: CmaData;
@@ -127,9 +340,10 @@ interface SlideshowPlayerProps {
   onClose: () => void;
   onNext: () => void;
   onPrevious: () => void;
+  onEditBio: () => void;
 }
 
-function SlideshowPlayer({ widgets, cma, activeWidgetId, onClose, onNext, onPrevious }: SlideshowPlayerProps) {
+function SlideshowPlayer({ widgets, cma, activeWidgetId, onClose, onNext, onPrevious, onEditBio }: SlideshowPlayerProps) {
   const activeWidget = widgets.find(w => w.id === activeWidgetId);
   const activeIndex = widgets.findIndex(w => w.id === activeWidgetId);
 
@@ -172,6 +386,10 @@ function SlideshowPlayer({ widgets, cma, activeWidgetId, onClose, onNext, onPrev
                   <p>This comprehensive market analysis provides insights into property values and market conditions for your area.</p>
                 </div>
               </div>
+            )}
+
+            {activeWidget.id === 'agent-resume' && (
+              <AgentResumeContent onEditBio={onEditBio} />
             )}
             
             {activeWidget.id === 'property-overview' && cma.subjectProperty && (
@@ -271,6 +489,8 @@ export default function CmaPresentationPage() {
   const [, routeParams] = useRoute("/cma/:id/cma-presentation");
   const cmaId = routeParams?.id;
   const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
+  const [isBioModalOpen, setIsBioModalOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   // Load CMA data
   const { data: cma, isLoading } = useQuery<CmaData>({
@@ -281,6 +501,40 @@ export default function CmaPresentationPage() {
       return res.json();
     },
     enabled: !!cmaId,
+  });
+
+  // Load agent profile for bio editing
+  const { data: agentProfile } = useQuery<AgentProfile>({
+    queryKey: ['/api/agent-profile'],
+    queryFn: async () => {
+      const res = await fetch('/api/agent-profile', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch agent profile');
+      return res.json();
+    },
+  });
+
+  // Mutation for updating bio
+  const updateBioMutation = useMutation({
+    mutationFn: async (bio: string) => {
+      const res = await fetch('/api/agent-profile/bio', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bio }),
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to update bio');
+      return res.json();
+    },
+    onSuccess: () => {
+      // Invalidate both queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ['/api/agent-profile'] });
+      setIsBioModalOpen(false);
+      toast.success("Bio updated successfully!");
+    },
+    onError: (error) => {
+      console.error('Error updating bio:', error);
+      toast.error("Failed to update bio. Please try again.");
+    },
   });
 
   const handleWidgetClick = (widgetId: string) => {
@@ -403,6 +657,16 @@ export default function CmaPresentationPage() {
         onClose={handleCloseSlideshow}
         onNext={handleNextWidget}
         onPrevious={handlePreviousWidget}
+        onEditBio={() => setIsBioModalOpen(true)}
+      />
+
+      {/* Bio Edit Modal */}
+      <BioEditModal
+        isOpen={isBioModalOpen}
+        onClose={() => setIsBioModalOpen(false)}
+        currentBio={agentProfile?.bio || ''}
+        onSave={(bio) => updateBioMutation.mutate(bio)}
+        isSaving={updateBioMutation.isPending}
       />
     </div>
   );

@@ -66,12 +66,56 @@ async function runDirectMigrations() {
     
     console.log("[Database] User table migration completed");
     
+    // Add agent profile marketing fields (Stage 2: CMA Bio editing)
+    await addAgentProfileMarketingFields();
+    
     // Create pulse data tables for Market Pulse functionality
     await createPulseDataTables();
     
   } catch (error) {
     console.error("[Database] Direct migration error:", error);
     throw error;
+  }
+}
+
+async function addAgentProfileMarketingFields() {
+  try {
+    console.log("[Database] Adding agent profile marketing fields for CMA...");
+    
+    // Check existing agent_profiles table columns
+    const existingColumns = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'agent_profiles'
+    `);
+    
+    const columnNames = new Set(existingColumns.rows.map(row => row.column_name));
+    
+    // Define marketing profile columns for CMA presentation
+    const marketingColumns = [
+      { name: 'marketing_title', sql: 'ALTER TABLE agent_profiles ADD COLUMN marketing_title varchar' },
+      { name: 'marketing_phone', sql: 'ALTER TABLE agent_profiles ADD COLUMN marketing_phone varchar' },
+      { name: 'marketing_email', sql: 'ALTER TABLE agent_profiles ADD COLUMN marketing_email varchar' },
+      { name: 'headshot_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN headshot_url varchar' },
+      { name: 'bio', sql: 'ALTER TABLE agent_profiles ADD COLUMN bio text' },
+    ];
+    
+    // Add missing columns
+    for (const column of marketingColumns) {
+      if (!columnNames.has(column.name)) {
+        console.log(`[Database] Adding agent_profiles.${column.name} column...`);
+        await pool.query(column.sql);
+        console.log(`[Database] Added ${column.name} column successfully`);
+      } else {
+        console.log(`[Database] agent_profiles.${column.name} column already exists`);
+      }
+    }
+    
+    console.log("[Database] Agent profile marketing fields migration completed");
+    
+  } catch (error) {
+    console.error("[Database] Agent profile marketing fields migration error:", error);
+    // Don't throw - this is not critical for basic functionality
   }
 }
 

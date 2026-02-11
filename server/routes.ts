@@ -3510,6 +3510,94 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // ============================================
+  // AGENT PROFILE ENDPOINTS (Stage 2: Editable Bio for CMA)
+  // ============================================
+
+  // GET /api/agent-profile - Get complete agent profile for CMA presentation
+  app.get('/api/agent-profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const profile = await storage.getAgentProfile(user.id);
+      
+      // Build complete agent profile for CMA presentation
+      const agentProfile = {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        marketingTitle: profile?.marketingTitle || '',
+        marketingPhone: profile?.marketingPhone || '',
+        marketingEmail: profile?.marketingEmail || user.email || '',
+        headshotUrl: profile?.headshotUrl || user.profileImageUrl || '',
+        bio: profile?.bio || '',
+      };
+
+      res.json(agentProfile);
+    } catch (error) {
+      console.error("Error fetching agent profile:", error);
+      res.status(500).json({ message: "Failed to fetch agent profile" });
+    }
+  });
+
+  // PUT /api/agent-profile/bio - Update agent bio
+  app.put('/api/agent-profile/bio', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { bio } = req.body;
+      
+      if (typeof bio !== 'string') {
+        return res.status(400).json({ message: "Bio must be a string" });
+      }
+
+      if (bio.length > 500) {
+        return res.status(400).json({ message: "Bio cannot exceed 500 characters" });
+      }
+
+      // Get existing profile or create new one with bio
+      let profile = await storage.getAgentProfile(user.id);
+      
+      if (profile) {
+        // Update existing profile with new bio
+        profile = await storage.upsertAgentProfile({
+          ...profile,
+          bio,
+          updatedAt: new Date(),
+        });
+      } else {
+        // Create new profile with just the bio
+        profile = await storage.upsertAgentProfile({
+          userId: user.id,
+          bio,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+
+      // Return complete agent profile
+      const agentProfile = {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        marketingTitle: profile.marketingTitle || '',
+        marketingPhone: profile.marketingPhone || '',
+        marketingEmail: profile.marketingEmail || user.email || '',
+        headshotUrl: profile.headshotUrl || user.profileImageUrl || '',
+        bio: profile.bio || '',
+      };
+
+      res.json(agentProfile);
+    } catch (error) {
+      console.error("Error updating agent bio:", error);
+      res.status(500).json({ message: "Failed to update bio" });
+    }
+  });
+
   // ── Pulse V2 — Reventure-style data layers ──
   registerPulseV2Routes(app);
 
