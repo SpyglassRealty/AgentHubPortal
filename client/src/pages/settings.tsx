@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import Layout from "@/components/layout";
@@ -10,7 +10,9 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, Link2, Link2Off, Unlink, Check, AlertCircle, Bell, Users, Calendar, Home, CheckSquare, Megaphone, Moon, Mail, Loader2, User, ExternalLink, Camera, Upload } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Slider } from "@/components/ui/slider";
+import { TrendingUp, Link2, Link2Off, Unlink, Check, AlertCircle, Bell, Users, Calendar, Home, CheckSquare, Megaphone, Moon, Mail, Loader2, User, ExternalLink, Camera, Upload, ZoomIn, ZoomOut, Move } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -78,12 +80,288 @@ const defaultNotificationSettings: Partial<NotificationSettings> = {
   notificationEmail: null,
 };
 
+interface PhotoCropModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  imageFile: File | null;
+  onCrop: (croppedImageData: string) => void;
+  isUploading: boolean;
+}
+
+function PhotoCropModal({ isOpen, onClose, imageFile, onCrop, isUploading }: PhotoCropModalProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [zoom, setZoom] = useState([1.0]);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+
+  const cropSize = 200; // Size of the crop circle
+
+  useEffect(() => {
+    if (imageFile && isOpen) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (imageRef.current && e.target?.result) {
+          imageRef.current.src = e.target.result as string;
+        }
+      };
+      reader.readAsDataURL(imageFile);
+    }
+  }, [imageFile, isOpen]);
+
+  const handleImageLoad = () => {
+    if (imageRef.current) {
+      const img = imageRef.current;
+      const containerSize = cropSize * 1.5; // Make container slightly larger than crop
+      
+      // Calculate scale to fit image in container
+      const scale = Math.min(containerSize / img.naturalWidth, containerSize / img.naturalHeight);
+      const scaledWidth = img.naturalWidth * scale;
+      const scaledHeight = img.naturalHeight * scale;
+      
+      setImageDimensions({ width: scaledWidth, height: scaledHeight });
+      setPosition({ x: 0, y: 0 }); // Center the image
+      setZoom([1.0]);
+      setImageLoaded(true);
+      drawCanvas();
+    }
+  };
+
+  const drawCanvas = useCallback(() => {
+    if (!canvasRef.current || !imageRef.current || !imageLoaded) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const currentZoom = zoom[0];
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Calculate image dimensions
+    const imgWidth = imageDimensions.width * currentZoom;
+    const imgHeight = imageDimensions.height * currentZoom;
+    
+    // Calculate position (center crop circle)
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const imgX = centerX - imgWidth / 2 + position.x;
+    const imgY = centerY - imgHeight / 2 + position.y;
+    
+    // Draw image
+    ctx.drawImage(imageRef.current, imgX, imgY, imgWidth, imgHeight);
+    
+    // Draw crop overlay
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Clear circular crop area
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, cropSize / 2, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // Draw crop circle border
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = '#EF4923';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, cropSize / 2, 0, 2 * Math.PI);
+    ctx.stroke();
+    
+  }, [zoom, position, imageDimensions, imageLoaded]);
+
+  useEffect(() => {
+    drawCanvas();
+  }, [drawCanvas]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    
+    const newX = e.clientX - dragStart.x;
+    const newY = e.clientY - dragStart.y;
+    
+    // Limit drag to keep image visible in crop area
+    const maxDrag = 100;
+    setPosition({
+      x: Math.max(-maxDrag, Math.min(maxDrag, newX)),
+      y: Math.max(-maxDrag, Math.min(maxDrag, newY))
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleZoomChange = (newZoom: number[]) => {
+    setZoom(newZoom);
+  };
+
+  const handleApplyCrop = () => {
+    if (!canvasRef.current || !imageRef.current) return;
+
+    // Create a new canvas for the cropped result
+    const cropCanvas = document.createElement('canvas');
+    const cropCtx = cropCanvas.getContext('2d');
+    if (!cropCtx) return;
+
+    const cropDiameter = 400; // High resolution output
+    cropCanvas.width = cropDiameter;
+    cropCanvas.height = cropDiameter;
+
+    const currentZoom = zoom[0];
+    const canvas = canvasRef.current;
+    
+    // Calculate source crop area
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = cropSize / 2;
+    
+    // Calculate image position and size
+    const imgWidth = imageDimensions.width * currentZoom;
+    const imgHeight = imageDimensions.height * currentZoom;
+    const imgX = centerX - imgWidth / 2 + position.x;
+    const imgY = centerY - imgHeight / 2 + position.y;
+    
+    // Create clipping path for perfect circle
+    cropCtx.beginPath();
+    cropCtx.arc(cropDiameter / 2, cropDiameter / 2, cropDiameter / 2, 0, 2 * Math.PI);
+    cropCtx.clip();
+    
+    // Scale factor for high-res output
+    const scale = cropDiameter / (radius * 2);
+    
+    // Draw the cropped portion
+    cropCtx.drawImage(
+      imageRef.current,
+      (imgX - centerX + radius) / scale * -1,
+      (imgY - centerY + radius) / scale * -1,
+      imgWidth / scale,
+      imgHeight / scale
+    );
+
+    // Convert to base64
+    const croppedImageData = cropCanvas.toDataURL('image/jpeg', 0.8);
+    onCrop(croppedImageData);
+  };
+
+  const handleCancel = () => {
+    setImageLoaded(false);
+    setZoom([1.0]);
+    setPosition({ x: 0, y: 0 });
+    onClose();
+  };
+
+  if (!imageFile) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+        <DialogHeader>
+          <DialogTitle>Adjust Profile Photo</DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          {/* Image Canvas Container */}
+          <div className="flex justify-center">
+            <div 
+              ref={containerRef}
+              className="relative bg-gray-100 rounded-lg overflow-hidden"
+              style={{ width: cropSize * 1.5, height: cropSize * 1.5 }}
+            >
+              <canvas
+                ref={canvasRef}
+                width={cropSize * 1.5}
+                height={cropSize * 1.5}
+                className="cursor-move"
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+              />
+            </div>
+          </div>
+
+          {/* Hidden image for loading */}
+          <img
+            ref={imageRef}
+            style={{ display: 'none' }}
+            onLoad={handleImageLoad}
+            alt="Crop preview"
+          />
+
+          {/* Zoom Controls */}
+          {imageLoaded && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <ZoomOut className="h-4 w-4 text-muted-foreground" />
+                <div className="flex-1">
+                  <Slider
+                    value={zoom}
+                    onValueChange={handleZoomChange}
+                    min={0.5}
+                    max={3.0}
+                    step={0.1}
+                    className="w-full"
+                  />
+                </div>
+                <ZoomIn className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground w-12">
+                  {zoom[0].toFixed(1)}x
+                </span>
+              </div>
+              
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Move className="h-4 w-4" />
+                <span>Drag to reposition</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={handleCancel} disabled={isUploading}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleApplyCrop} 
+            disabled={!imageLoaded || isUploading}
+            className="bg-[#EF4923] hover:bg-[#EF4923]/90"
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              "Apply Crop"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function SettingsPage() {
   const [yentaIdInput, setYentaIdInput] = useState("");
   const [localNotifSettings, setLocalNotifSettings] = useState<Partial<NotificationSettings> | null>(null);
   const [profileForm, setProfileForm] = useState({ phone: "", title: "" });
   const [profileChanges, setProfileChanges] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -235,6 +513,7 @@ export default function SettingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/agent-profile"] });
       toast({ title: "Photo updated", description: "Your profile photo has been updated." });
+      handleCloseCropModal();
     },
     onError: (error) => {
       toast({ 
@@ -291,16 +570,27 @@ export default function SettingsPage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const imageData = e.target?.result as string;
-      uploadPhotoMutation.mutate(imageData);
-    };
-    reader.readAsDataURL(file);
+    // Show crop modal instead of directly uploading
+    setSelectedImageFile(file);
+    setIsCropModalOpen(true);
+    
+    // Clear the input so the same file can be selected again
+    if (event.target) {
+      event.target.value = '';
+    }
   };
 
   const triggerPhotoUpload = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleCropComplete = (croppedImageData: string) => {
+    uploadPhotoMutation.mutate(croppedImageData);
+  };
+
+  const handleCloseCropModal = () => {
+    setIsCropModalOpen(false);
+    setSelectedImageFile(null);
   };
 
   return (
@@ -947,6 +1237,15 @@ export default function SettingsPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Photo Crop Modal */}
+      <PhotoCropModal
+        isOpen={isCropModalOpen}
+        onClose={handleCloseCropModal}
+        imageFile={selectedImageFile}
+        onCrop={handleCropComplete}
+        isUploading={uploadPhotoMutation.isPending}
+      />
     </Layout>
   );
 }
