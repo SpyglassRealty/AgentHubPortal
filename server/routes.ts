@@ -870,21 +870,30 @@ export async function registerRoutes(
         return res.status(404).json({ message: "User not found" });
       }
 
-      const fubClient = getFubClient();
-      let fubUserId = user.fubUserId;
-      
-      if (!fubUserId && user.email && fubClient) {
-        const fubUser = await fubClient.getUserByEmail(user.email);
-        if (fubUser) {
-          fubUserId = fubUser.id;
-          await storage.updateUserFubId(user.id, fubUserId);
+      // Graceful fallback for missing context_suggestions table
+      try {
+        const fubClient = getFubClient();
+        let fubUserId = user.fubUserId;
+        
+        if (!fubUserId && user.email && fubClient) {
+          const fubUser = await fubClient.getUserByEmail(user.email);
+          if (fubUser) {
+            fubUserId = fubUser.id;
+            await storage.updateUserFubId(user.id, fubUserId);
+          }
         }
-      }
 
-      await generateSuggestionsForUser(user.id, fubUserId);
-      
-      const suggestions = await storage.getActiveSuggestions(user.id);
-      res.json({ suggestions });
+        await generateSuggestionsForUser(user.id, fubUserId);
+        const suggestions = await storage.getActiveSuggestions(user.id);
+        res.json({ suggestions });
+      } catch (dbError: any) {
+        // Handle missing table gracefully
+        if (dbError.message?.includes('relation "context_suggestions" does not exist')) {
+          console.log('[Context Suggestions] Table missing, returning empty suggestions');
+          return res.json({ suggestions: [], message: "Suggestions feature not yet initialized" });
+        }
+        throw dbError; // Re-throw other errors
+      }
     } catch (error) {
       console.error("Error fetching suggestions:", error);
       res.status(500).json({ message: "Failed to fetch suggestions" });
