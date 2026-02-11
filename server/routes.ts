@@ -895,7 +895,12 @@ export async function registerRoutes(
         }
         throw dbError; // Re-throw other errors
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Don't log missing table errors at ERROR level - they're handled gracefully
+      if (error.message?.includes('relation "context_suggestions" does not exist')) {
+        console.log('[Context Suggestions] Table missing error caught at outer level');
+        return res.json({ suggestions: [], message: "Suggestions feature not yet initialized" });
+      }
       console.error("Error fetching suggestions:", error);
       res.status(500).json({ message: "Failed to fetch suggestions" });
     }
