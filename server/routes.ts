@@ -4364,58 +4364,28 @@ Respond with valid JSON in this exact format:
       console.log(`[Photo Upload] Image validation passed, size estimate: ${Math.round(sizeEstimate / 1024)}KB`);
       console.log(`[Photo Upload] Updating headshot_url for userId:`, user.id);
 
-      // Use raw SQL to bypass any Drizzle ORM issues
-      // First try UPDATE
-      const updateResult = await db.execute(sql`
+      // Use ONLY raw SQL to avoid any Drizzle ORM issues
+      await db.execute(sql`
         UPDATE agent_profiles 
         SET headshot_url = ${imageData}, updated_at = NOW() 
         WHERE user_id = ${user.id}
       `);
       
-      console.log(`[Photo Upload] Raw SQL update result:`, updateResult.rowCount);
-      
-      let profile;
-      if (updateResult.rowCount === 0) {
-        // No existing row, INSERT new profile
-        console.log(`[Photo Upload] No existing profile found, inserting new row`);
-        const insertResult = await db.execute(sql`
-          INSERT INTO agent_profiles (id, user_id, headshot_url, created_at, updated_at)
-          VALUES (gen_random_uuid(), ${user.id}, ${imageData}, NOW(), NOW())
-        `);
-        console.log(`[Photo Upload] Raw SQL insert result:`, insertResult.rowCount);
-      }
-      
-      // Verify the update worked
-      const verification = await db.execute(sql`
-        SELECT headshot_url, LENGTH(headshot_url) as headshot_length 
-        FROM agent_profiles 
-        WHERE user_id = ${user.id}
+      // Verify with a SEPARATE raw SQL query after saving
+      const verify = await db.execute(sql`
+        SELECT LENGTH(headshot_url) as len FROM agent_profiles WHERE user_id = ${user.id}
       `);
+      console.log(`[Photo Upload] DB verification:`, verify.rows[0]);
       
-      console.log(`[Photo Upload] Verification: headshotUrl length = ${verification.rows[0]?.headshot_length || 0}`);
+      // Get the updated profile to return  
+      const profile = await storage.getAgentProfile(user.id);
       
-      // Get the updated profile to return
-      profile = await storage.getAgentProfile(user.id);
-      console.log(`[Photo Upload] Final profile headshotUrl length:`, profile?.headshotUrl?.length || 0);
-
-      // Build response object
-      const agentProfile = {
-        firstName: user.firstName,
-        lastName: user.lastName,
-        title: profile?.title || '',
-        phone: profile?.phone || '',
-        email: user.email || '',
-        headshotUrl: profile?.headshotUrl || '',
-        bio: profile?.bio || '',
-      };
-
-      console.log(`[Photo Upload] SUCCESS - Returning response with headshotUrl length:`, agentProfile.headshotUrl.length);
+      console.log(`[Photo Upload] SUCCESS - Profile headshotUrl length:`, profile?.headshotUrl?.length || 0);
 
       res.json({ 
         success: true, 
-        headshotUrl: profile?.headshotUrl,
-        message: "Profile photo updated successfully",
-        profile: agentProfile,
+        headshotUrl: profile?.headshotUrl || imageData,
+        message: "Profile photo updated successfully"
       });
     } catch (error) {
       console.error("[Photo Upload] CRITICAL ERROR:", error);

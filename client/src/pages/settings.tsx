@@ -434,28 +434,15 @@ export default function SettingsPage() {
   const { data: agentProfile, isLoading: isAgentProfileLoading } = useQuery<AgentProfile>({
     queryKey: ["/api/agent-profile"],
     queryFn: async () => {
-      console.log('[Frontend] Fetching agent profile...');
       const res = await fetch("/api/agent-profile", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch agent profile");
-      const data = await res.json();
-      console.log('[Frontend] Agent profile response:', {
-        hasHeadshotUrl: !!data.headshotUrl,
-        headshotUrlLength: data.headshotUrl?.length || 0,
-        headshotUrlStart: data.headshotUrl?.substring(0, 30) || 'null'
-      });
-      return data;
+      return res.json();
     },
   });
 
   // Set form values when agent profile loads
   useEffect(() => {
     if (agentProfile) {
-      console.log('[Frontend] Agent profile data updated:', {
-        hasHeadshotUrl: !!agentProfile.headshotUrl,
-        headshotUrlLength: agentProfile.headshotUrl?.length || 0,
-        phone: agentProfile.phone || 'null',
-        title: agentProfile.title || 'null'
-      });
       setProfileForm({
         phone: agentProfile.phone || "",
         title: agentProfile.title || "",
@@ -524,7 +511,6 @@ export default function SettingsPage() {
 
   const uploadPhotoMutation = useMutation({
     mutationFn: async (imageData: string) => {
-      console.log('[Frontend] Starting photo upload...');
       const res = await fetch("/api/agent-profile/photo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -535,12 +521,9 @@ export default function SettingsPage() {
         const data = await res.json();
         throw new Error(data.message || "Failed to upload photo");
       }
-      const result = await res.json();
-      console.log('[Frontend] Upload response:', result);
-      return result;
+      return res.json();
     },
     onSuccess: (data) => {
-      console.log('[Frontend] Upload successful, invalidating cache...');
       // Invalidate all related queries
       queryClient.invalidateQueries({ queryKey: ["/api/agent-profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
@@ -552,7 +535,6 @@ export default function SettingsPage() {
       handleCloseCropModal();
     },
     onError: (error) => {
-      console.error('[Frontend] Upload failed:', error);
       toast({ 
         title: "Upload failed", 
         description: error.message || "Failed to upload photo. Please try again.", 
