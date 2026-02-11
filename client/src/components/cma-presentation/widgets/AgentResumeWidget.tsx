@@ -6,6 +6,8 @@ interface AgentResumeWidgetProps {
 }
 
 export function AgentResumeWidget({ agent }: AgentResumeWidgetProps) {
+  console.log('[CMA Debug] AgentResumeWidget received agent data:', agent);
+  
   return (
     <div className="flex flex-col h-full bg-background" data-testid="agent-resume-widget">
       <div className="flex-1 overflow-auto p-6 md:p-8">
