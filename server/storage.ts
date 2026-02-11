@@ -267,6 +267,7 @@ export class DatabaseStorage implements IStorage {
     console.log(`[Storage] Upserting agent profile for user: ${profileData.userId}`);
     console.log(`[Storage] Profile data keys:`, Object.keys(profileData));
     console.log(`[Storage] HeadshotUrl length in data:`, profileData.headshotUrl?.length || 0);
+    console.log(`[Storage] HeadshotUrl starts with:`, profileData.headshotUrl?.substring(0, 30) || 'null');
     
     try {
       const existing = await this.getAgentProfile(profileData.userId);
@@ -275,6 +276,10 @@ export class DatabaseStorage implements IStorage {
         console.log(`[Storage] Updating existing profile...`);
         const updateData = { ...profileData, updatedAt: new Date() };
         console.log(`[Storage] Update data keys:`, Object.keys(updateData));
+        console.log(`[Storage] Update data headshotUrl length:`, updateData.headshotUrl?.length || 0);
+        
+        // Debug: Log the exact SQL that will be executed
+        console.log(`[Storage] Executing UPDATE on agent_profiles WHERE userId =`, profileData.userId);
         
         const [profile] = await db
           .update(agentProfiles)
@@ -282,17 +287,31 @@ export class DatabaseStorage implements IStorage {
           .where(eq(agentProfiles.userId, profileData.userId))
           .returning();
           
-        console.log(`[Storage] Update successful, returned profile headshotUrl length:`, profile.headshotUrl?.length || 0);
+        console.log(`[Storage] Update successful, returned profile:`, {
+          id: profile.id,
+          userId: profile.userId,
+          headshotUrlLength: profile.headshotUrl?.length || 0,
+          headshotUrlStartsWith: profile.headshotUrl?.substring(0, 30) || 'null'
+        });
         return profile;
       } else {
         console.log(`[Storage] Creating new profile...`);
+        console.log(`[Storage] Insert data headshotUrl length:`, profileData.headshotUrl?.length || 0);
+        
         const [profile] = await db.insert(agentProfiles).values(profileData).returning();
-        console.log(`[Storage] Insert successful, returned profile headshotUrl length:`, profile.headshotUrl?.length || 0);
+        console.log(`[Storage] Insert successful, returned profile:`, {
+          id: profile.id,
+          userId: profile.userId,
+          headshotUrlLength: profile.headshotUrl?.length || 0,
+          headshotUrlStartsWith: profile.headshotUrl?.substring(0, 30) || 'null'
+        });
         return profile;
       }
     } catch (error) {
       console.error(`[Storage] Error upserting agent profile:`, error);
       console.error(`[Storage] Error details:`, error.message);
+      console.error(`[Storage] Error code:`, error.code);
+      console.error(`[Storage] Error constraint:`, error.constraint);
       throw error;
     }
   }

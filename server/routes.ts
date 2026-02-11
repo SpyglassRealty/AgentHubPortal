@@ -4336,6 +4336,7 @@ Respond with valid JSON in this exact format:
       }
 
       console.log(`[Photo Upload] Starting upload for user ${user.id} (${user.email})`);
+      console.log(`[Photo Upload] Received data length:`, req.body?.imageData?.length || 0);
 
       // For now, we'll store images as base64 data URLs
       // In production, you'd want to use proper file storage (S3, etc.)
@@ -4394,6 +4395,22 @@ Respond with valid JSON in this exact format:
       // Verify the data was actually saved by re-fetching
       const verifyProfile = await storage.getAgentProfile(user.id);
       console.log(`[Photo Upload] Verification: profile exists:`, !!verifyProfile, 'headshotUrl length:', verifyProfile?.headshotUrl?.length || 0);
+      
+      // Direct database verification to bypass any caching issues
+      try {
+        const { pool } = await import("./db");
+        const directQuery = await pool.query(
+          'SELECT id, user_id, headshot_url, LENGTH(headshot_url) as headshot_length FROM agent_profiles WHERE user_id = $1', 
+          [user.id]
+        );
+        console.log(`[Photo Upload] Direct DB verification:`, {
+          found: directQuery.rows.length > 0,
+          headshotLength: directQuery.rows[0]?.headshot_length || 0,
+          headshotStartsWith: directQuery.rows[0]?.headshot_url?.substring(0, 30) || 'null'
+        });
+      } catch (dbError) {
+        console.error(`[Photo Upload] Direct DB query failed:`, dbError);
+      }
 
       // Return complete agent profile data to verify everything is working
       const agentProfile = {
