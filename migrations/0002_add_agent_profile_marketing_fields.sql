@@ -1,9 +1,8 @@
--- Migration: Add marketing fields to agent_profiles table for CMA presentation
--- Added fields: marketingTitle, marketingPhone, marketingEmail, headshotUrl, bio
+-- Migration: Add additional marketing fields to agent_profiles table for CMA presentation
+-- Note: bio, headshot_url, title already exist from Stage 1
+-- Added fields: marketingTitle, marketingPhone, marketingEmail (additional to existing fields)
 
 ALTER TABLE agent_profiles 
-ADD COLUMN marketing_title VARCHAR,
-ADD COLUMN marketing_phone VARCHAR,
-ADD COLUMN marketing_email VARCHAR,
-ADD COLUMN headshot_url VARCHAR,
-ADD COLUMN bio TEXT;
+ADD COLUMN IF NOT EXISTS marketing_title VARCHAR,
+ADD COLUMN IF NOT EXISTS marketing_phone VARCHAR,
+ADD COLUMN IF NOT EXISTS marketing_email VARCHAR;
