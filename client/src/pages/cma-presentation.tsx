@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   Home,
@@ -47,6 +48,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Pencil,
+  Sparkles,
 } from "lucide-react";
 
 interface PropertyData {
@@ -146,6 +148,8 @@ interface BioEditModalProps {
 function BioEditModal({ isOpen, onClose, currentBio, onSave, isSaving }: BioEditModalProps) {
   const [bio, setBio] = useState(currentBio);
   const [charCount, setCharCount] = useState(currentBio.length);
+  const [tone, setTone] = useState('professional');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     setBio(currentBio);
@@ -156,6 +160,32 @@ function BioEditModal({ isOpen, onClose, currentBio, onSave, isSaving }: BioEdit
     if (value.length <= 500) {
       setBio(value);
       setCharCount(value.length);
+    }
+  };
+
+  const handleGenerateBio = async () => {
+    setIsGenerating(true);
+    try {
+      const response = await fetch('/api/agent-profile/generate-bio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tone }),
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate bio');
+      }
+      
+      const data = await response.json();
+      setBio(data.bio);
+      setCharCount(data.bio.length);
+      toast.success("Bio generated successfully!");
+    } catch (error) {
+      console.error('Error generating bio:', error);
+      toast.error("Failed to generate bio. Please try again.");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -171,12 +201,58 @@ function BioEditModal({ isOpen, onClose, currentBio, onSave, isSaving }: BioEdit
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Edit Bio</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
+          {/* AI Bio Generation Section */}
+          <div className="p-4 bg-muted/30 rounded-lg border">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-4 w-4 text-[#EF4923]" />
+              <Label className="text-sm font-medium">Generate with AI</Label>
+            </div>
+            
+            <div className="flex gap-2 mb-3">
+              <div className="flex-1">
+                <Select value={tone} onValueChange={setTone} disabled={isGenerating || isSaving}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="professional">Professional</SelectItem>
+                    <SelectItem value="friendly">Friendly</SelectItem>
+                    <SelectItem value="luxury">Luxury</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                size="sm"
+                onClick={handleGenerateBio}
+                disabled={isGenerating || isSaving}
+                className="bg-[#EF4923] hover:bg-[#EF4923]/90 h-8 px-3 text-sm"
+              >
+                {isGenerating ? (
+                  <>
+                    <Sparkles className="h-3 w-3 mr-1 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    Generate
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            <p className="text-xs text-muted-foreground">
+              AI will create a professional bio using your profile information
+            </p>
+          </div>
+
+          {/* Bio Text Editor */}
           <div>
             <Label htmlFor="bio">Professional Bio</Label>
             <Textarea
@@ -185,7 +261,7 @@ function BioEditModal({ isOpen, onClose, currentBio, onSave, isSaving }: BioEdit
               onChange={(e) => handleBioChange(e.target.value)}
               placeholder="Write a brief professional bio that will appear on your CMA presentations..."
               className="mt-2 min-h-[120px] resize-none"
-              disabled={isSaving}
+              disabled={isSaving || isGenerating}
             />
             <div className="flex justify-between items-center mt-2 text-sm text-muted-foreground">
               <span>Character limit: 500</span>
@@ -197,10 +273,10 @@ function BioEditModal({ isOpen, onClose, currentBio, onSave, isSaving }: BioEdit
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
+          <Button variant="outline" onClick={handleCancel} disabled={isSaving || isGenerating}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button onClick={handleSave} disabled={isSaving || isGenerating || charCount === 0}>
             {isSaving ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>
