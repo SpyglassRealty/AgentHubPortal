@@ -498,6 +498,7 @@ export default function SettingsPage() {
 
   const uploadPhotoMutation = useMutation({
     mutationFn: async (imageData: string) => {
+      console.log('[Frontend] Starting photo upload...');
       const res = await fetch("/api/agent-profile/photo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -508,14 +509,24 @@ export default function SettingsPage() {
         const data = await res.json();
         throw new Error(data.message || "Failed to upload photo");
       }
-      return res.json();
+      const result = await res.json();
+      console.log('[Frontend] Upload response:', result);
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('[Frontend] Upload successful, invalidating cache...');
+      // Invalidate all related queries
       queryClient.invalidateQueries({ queryKey: ["/api/agent-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      
+      // Also refetch immediately to ensure fresh data
+      queryClient.refetchQueries({ queryKey: ["/api/agent-profile"] });
+      
       toast({ title: "Photo updated", description: "Your profile photo has been updated." });
       handleCloseCropModal();
     },
     onError: (error) => {
+      console.error('[Frontend] Upload failed:', error);
       toast({ 
         title: "Upload failed", 
         description: error.message || "Failed to upload photo. Please try again.", 
