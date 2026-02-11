@@ -113,6 +113,12 @@ export const agentProfiles = pgTable("agent_profiles", {
   onboardingAnswers: jsonb("onboarding_answers"),
   dismissedSuggestions: text("dismissed_suggestions").array(),
   lastSurveyedAt: timestamp("last_surveyed_at"),
+  // Marketing profile fields for CMA agent resume
+  marketingTitle: varchar("marketing_title"),
+  marketingPhone: varchar("marketing_phone"),
+  marketingEmail: varchar("marketing_email"),
+  headshotUrl: varchar("headshot_url"),
+  bio: text("bio"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
