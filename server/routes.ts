@@ -2597,6 +2597,24 @@ Respond with valid JSON in this exact format:
       const { name, subjectProperty, comparableProperties, notes, status } = req.body;
       console.log('[CMA DEBUG] Parsed request data:', { name, subjectProperty, comparableProperties, notes, status });
       
+      // DEBUG: Check photo data preservation before saving
+      if (comparableProperties && Array.isArray(comparableProperties) && comparableProperties.length > 0) {
+        console.log('[CMA Photo Debug] First 3 comps photo data before saving:', 
+          comparableProperties.slice(0, 3).map((comp, idx) => ({
+            compIndex: idx,
+            mlsNumber: comp.mlsNumber,
+            hasImages: !!comp.images,
+            imagesLength: Array.isArray(comp.images) ? comp.images.length : 0,
+            imagesPreview: Array.isArray(comp.images) ? comp.images.slice(0, 2) : null,
+            hasPhotos: !!comp.photos,
+            photosLength: Array.isArray(comp.photos) ? comp.photos.length : 0,
+            photoFields: Object.keys(comp).filter(k => 
+              k.toLowerCase().includes('photo') || k.toLowerCase().includes('image')
+            )
+          }))
+        );
+      }
+      
       if (!name) return res.status(400).json({ message: "Name is required" });
       
       const cmaData = {
@@ -2604,6 +2622,8 @@ Respond with valid JSON in this exact format:
         name,
         subjectProperty: subjectProperty || null,
         comparableProperties: comparableProperties || [],
+        // CRITICAL FIX: Also save to propertiesData field (what presentation expects)
+        propertiesData: comparableProperties || [],
         notes: notes || null,
         status: status || 'draft',
       };
@@ -2629,6 +2649,25 @@ Respond with valid JSON in this exact format:
       if (!user) return res.status(401).json({ message: "Not authenticated" });
       const cma = await storage.getCma(req.params.id, user.id);
       if (!cma) return res.status(404).json({ message: "CMA not found" });
+      
+      // DEBUG: Check photo data preservation after retrieving
+      if (cma.comparableProperties && Array.isArray(cma.comparableProperties) && cma.comparableProperties.length > 0) {
+        console.log('[CMA Photo Debug] First 3 comps photo data after retrieving:', 
+          cma.comparableProperties.slice(0, 3).map((comp: any, idx: number) => ({
+            compIndex: idx,
+            mlsNumber: comp.mlsNumber,
+            hasImages: !!comp.images,
+            imagesLength: Array.isArray(comp.images) ? comp.images.length : 0,
+            imagesPreview: Array.isArray(comp.images) ? comp.images.slice(0, 2) : null,
+            hasPhotos: !!comp.photos,
+            photosLength: Array.isArray(comp.photos) ? comp.photos.length : 0,
+            photoFields: Object.keys(comp).filter((k: string) => 
+              k.toLowerCase().includes('photo') || k.toLowerCase().includes('image')
+            )
+          }))
+        );
+      }
+      
       res.json(cma);
     } catch (error) {
       console.error('[CMA] Error getting CMA:', error);
@@ -2646,6 +2685,8 @@ Respond with valid JSON in this exact format:
         ...(name !== undefined && { name }),
         ...(subjectProperty !== undefined && { subjectProperty }),
         ...(comparableProperties !== undefined && { comparableProperties }),
+        // CRITICAL FIX: Also update propertiesData when comparables change
+        ...(comparableProperties !== undefined && { propertiesData: comparableProperties }),
         ...(notes !== undefined && { notes }),
         ...(status !== undefined && { status }),
         ...(presentationConfig !== undefined && { presentationConfig }),

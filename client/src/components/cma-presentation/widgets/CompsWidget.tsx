@@ -748,7 +748,20 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
 
       {selectedProperty && (
         <PropertyDetailModal
-          property={selectedProperty}
+          property={(() => {
+            // Debug logging for PhotoGalleryModal issue
+            console.log('[CompsWidget] Opening PropertyDetailModal with property:', {
+              mlsNumber: selectedProperty.mlsNumber,
+              address: selectedProperty.address,
+              hasPhotos: !!selectedProperty.photos,
+              photosLength: Array.isArray(selectedProperty.photos) ? selectedProperty.photos.length : 0,
+              photosPreview: Array.isArray(selectedProperty.photos) ? selectedProperty.photos.slice(0, 3) : null,
+              allPhotoFields: Object.keys(selectedProperty).filter(k => 
+                k.toLowerCase().includes('photo') || k.toLowerCase().includes('image')
+              )
+            });
+            return selectedProperty;
+          })()}
           onClose={() => setSelectedProperty(null)}
         />
       )}
