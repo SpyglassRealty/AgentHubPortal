@@ -191,6 +191,7 @@ export default function CMAPresentation() {
 
   const presentationComparables = useMemo(() => {
     const cmaPropertiesData = (savedCma?.propertiesData || []) as any[];
+    const cmaComparableProperties = (savedCma?.comparableProperties || []) as any[];
     const transactionCmaData = (transaction?.cmaData || []) as any[];
     
     // Create lookup maps from transaction.cmaData by mlsNumber for coordinates and status
@@ -216,8 +217,27 @@ export default function CMAPresentation() {
       });
     });
     
-    // Prefer CMA propertiesData if available, otherwise use transaction.cmaData
-    const rawComparables = cmaPropertiesData.length > 0 ? cmaPropertiesData : transactionCmaData;
+    // FIXED: Data source priority with fallback for existing CMAs
+    // 1. savedCma.propertiesData (new field with full photo arrays)
+    // 2. savedCma.comparableProperties (fallback for existing CMAs) 
+    // 3. transaction.cmaData (last resort)
+    const rawComparables = cmaPropertiesData.length > 0 ? cmaPropertiesData :
+                          cmaComparableProperties.length > 0 ? cmaComparableProperties :
+                          transactionCmaData;
+    
+    console.log('[CMA Photo Pipeline DEBUG]', {
+      propertiesDataCount: cmaPropertiesData.length,
+      comparablePropertiesCount: cmaComparableProperties.length, 
+      transactionCmaDataCount: transactionCmaData.length,
+      usingDataSource: cmaPropertiesData.length > 0 ? 'propertiesData' :
+                      cmaComparableProperties.length > 0 ? 'comparableProperties' : 'transactionCmaData',
+      firstCompPhotosPreview: rawComparables.length > 0 ? {
+        hasImages: !!rawComparables[0].images,
+        imagesLength: Array.isArray(rawComparables[0].images) ? rawComparables[0].images.length : 0,
+        hasPhotos: !!rawComparables[0].photos,
+        photosLength: Array.isArray(rawComparables[0].photos) ? rawComparables[0].photos.length : 0,
+      } : null
+    });
     
     return (rawComparables as any[]).map((comp: any, index: number) => {
       const resolvedAddress = comp.unparsedAddress || comp.streetAddress || comp.address || 
@@ -335,7 +355,7 @@ export default function CMAPresentation() {
             return validPhotos;
           }
           
-          // FALLBACK: Single photo fields (less common)
+          // FALLBACK: Single photo fields for existing CMAs with stripped data
           const singlePhotoFields = ['photo', 'imageUrl', 'primaryPhoto', 'coverPhoto'];
           for (const field of singlePhotoFields) {
             if (comp[field] && typeof comp[field] === 'string' && comp[field].trim().length > 0) {

@@ -56,6 +56,23 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
   const [fullscreenPhoto, setFullscreenPhoto] = useState(false);
   const photos = property.photos || [];
   
+  // CRITICAL DEBUG: This is the PhotoGalleryModal issue debugging
+  console.log('[PropertyDetailModal] PHOTO GALLERY DEBUG:', {
+    mlsNumber: property.mlsNumber,
+    address: property.address,
+    rawPhotosField: property.photos,
+    photosArray: photos,
+    photosLength: photos.length,
+    hasPhotos: photos.length > 0,
+    firstThreePhotos: photos.slice(0, 3),
+    currentPhotoIndex,
+    currentPhotoUrl: photos[currentPhotoIndex],
+    allPropertyFields: Object.keys(property),
+    photoFields: Object.keys(property).filter(k => 
+      k.toLowerCase().includes('photo') || k.toLowerCase().includes('image')
+    )
+  });
+  
   const handlePrevPhoto = () => {
     setCurrentPhotoIndex(prev => (prev > 0 ? prev - 1 : photos.length - 1));
   };
@@ -125,13 +142,20 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
         
         <div className="flex-1 overflow-y-auto">
           <div className="relative w-full aspect-video bg-muted overflow-hidden">
-            {photos.length > 0 ? (
+            {photos.length > 0 && photos[currentPhotoIndex] ? (
               <>
                 <img 
                   src={photos[currentPhotoIndex]} 
                   alt={`${property.address} - Photo ${currentPhotoIndex + 1}`}
                   className="w-full h-full object-contain cursor-pointer"
                   onClick={() => setFullscreenPhoto(true)}
+                  onError={(e) => {
+                    console.error('[PropertyDetailModal] Photo failed to load:', photos[currentPhotoIndex]);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                  onLoad={() => {
+                    console.log('[PropertyDetailModal] Photo loaded successfully:', photos[currentPhotoIndex]);
+                  }}
                   data-testid="modal-main-photo"
                 />
                 
@@ -173,7 +197,11 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
               </>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                No photos available
+                <div className="text-center">
+                  <p className="text-lg font-medium mb-2">No photos available</p>
+                  <p className="text-sm">Photos: {JSON.stringify(photos)}</p>
+                  <p className="text-xs mt-1">Property.photos field: {JSON.stringify(property.photos)}</p>
+                </div>
               </div>
             )}
           </div>
