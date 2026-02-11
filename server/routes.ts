@@ -4397,25 +4397,33 @@ Respond with valid JSON in this exact format:
         });
       }
 
-      // Return complete agent profile
-      const agentProfile = {
-        firstName: user.firstName,
-        lastName: user.lastName,
-        title: profile.title || '',
-        phone: profile.phone || '',
-        email: user.email || '',
-        headshotUrl: profile.headshotUrl || user.profileImageUrl || '',
-        bio: profile.bio || '',
+      // Return same structure as GET /api/agent-profile for cache consistency
+      const response = {
+        profile: {
+          headshotUrl: profile.headshotUrl || null,
+          title: profile.title || null,
+          bio: profile.bio || null,
+          phone: profile.phone || null,
+          marketingPhone: profile.phone || null,
+          facebookUrl: null,
+          instagramUrl: null
+        },
+        user: {
+          firstName: user.firstName || null,
+          lastName: user.lastName || null,
+          email: user.email || null,
+          profileImageUrl: user.profileImageUrl || null
+        }
       };
 
       console.log(`[Update Profile] Successfully updated profile for user ${user.id}:`, {
         savedPhone: profile.phone,
         savedTitle: profile.title,
         savedBio: profile.bio ? 'present' : 'null',
-        responsePhone: agentProfile.phone,
+        responsePhone: response.profile.phone,
       });
 
-      res.json(agentProfile);
+      res.json(response);
     } catch (error) {
       console.error("Error updating agent profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
