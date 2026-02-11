@@ -38,10 +38,18 @@ export function PhotoGalleryModal({
   // Reset index when modal opens or photos change
   useEffect(() => {
     if (open) {
+      console.log('[PhotoGallery Debug] Modal opened:', {
+        photosCount: photos.length,
+        photosPreview: photos.slice(0, 3),
+        initialIndex,
+        propertyAddress,
+        allPhotosValid: photos.every(p => p && p.startsWith('http'))
+      });
+      
       setCurrentIndex(Math.max(0, Math.min(initialIndex, photos.length - 1)));
       setImageError(false);
     }
-  }, [open, initialIndex, photos.length]);
+  }, [open, initialIndex, photos.length, photos, propertyAddress]);
 
   // Navigation functions
   const goToPrevious = useCallback(() => {
@@ -123,9 +131,9 @@ export function PhotoGalleryModal({
     }).format(value);
   };
 
-  if (!open || photos.length === 0) return null;
+  if (!open) return null;
 
-  const currentPhoto = photos[currentIndex];
+  const currentPhoto = photos.length > 0 ? photos[currentIndex] : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -201,13 +209,22 @@ export function PhotoGalleryModal({
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
-            {imageLoading && (
+            {imageLoading && photos.length > 0 && (
               <div className="absolute inset-0 flex items-center justify-center z-10">
                 <Loader2 className="w-8 h-8 text-white animate-spin" />
               </div>
             )}
             
-            {imageError ? (
+            {photos.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-white/60 max-w-sm mx-auto text-center">
+                <Home className="w-16 h-16 mb-4 opacity-50" />
+                <p className="text-lg font-medium mb-2">No Photos Available</p>
+                <p className="text-sm">This property doesn't have any photos available</p>
+                <p className="text-xs text-white/40 mt-2">
+                  This is normal for older sold listings
+                </p>
+              </div>
+            ) : imageError ? (
               <div className="flex flex-col items-center justify-center text-white/60 max-w-sm mx-auto text-center">
                 <Home className="w-16 h-16 mb-4 opacity-50" />
                 <p className="text-lg font-medium mb-2">Image unavailable</p>

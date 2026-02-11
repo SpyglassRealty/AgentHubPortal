@@ -2850,8 +2850,16 @@ Respond with valid JSON in this exact format:
           // Extract photos using centralized Repliers photo utility (follows official API spec)
           const photos = extractPhotosFromRepliersList(listing);
           
-          // Debug photo fields for first listing to help troubleshoot photo issues
-          if (listings.length === 0) {
+          // Debug photo fields for first few listings to help troubleshoot photo issues
+          if (listings.length < 3) {
+            console.log(`[CMA Search Debug] Property ${listing.mlsNumber || listing.listingId} photos:`, {
+              hasImages: !!listing.images,
+              imagesCount: Array.isArray(listing.images) ? listing.images.length : 0,
+              imagesPreview: Array.isArray(listing.images) ? listing.images.slice(0, 2) : listing.images,
+              extractedPhotosCount: photos.length,
+              extractedPhotosPreview: photos.slice(0, 2),
+              status: listing.standardStatus || listing.status,
+            });
             debugPhotoFields(listing, listing.mlsNumber || listing.listingId);
           }
 

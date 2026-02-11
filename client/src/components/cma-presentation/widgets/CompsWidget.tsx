@@ -477,6 +477,15 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
   const statistics = useMemo(() => calculateStatistics(filteredComparables), [filteredComparables]);
 
   const handlePhotoClick = (property: CmaProperty, photoIndex: number = 0) => {
+    console.log('[CompsWidget Debug] Photo click for property:', {
+      mlsNumber: property.mlsNumber || property.id,
+      address: property.address,
+      photosCount: property.photos?.length || 0,
+      photosPreview: property.photos?.slice(0, 3) || [],
+      hasPhotosArray: Array.isArray(property.photos),
+      photoIndex,
+    });
+    
     setGalleryProperty(property);
     setInitialPhotoIndex(photoIndex);
     setGalleryOpen(true);
