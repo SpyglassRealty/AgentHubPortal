@@ -4142,19 +4142,25 @@ Respond with valid JSON in this exact format:
         return res.status(404).json({ message: "User not found" });
       }
 
+      console.log(`[Get Profile] Fetching profile for user ${user.id} (${user.email})`);
       const profile = await storage.getAgentProfile(user.id);
+      console.log(`[Get Profile] Found profile:`, !!profile, 'headshotUrl length:', profile?.headshotUrl?.length || 0);
       
       // Build complete agent profile for CMA presentation
       const agentProfile = {
         firstName: user.firstName,
         lastName: user.lastName,
+        title: profile?.title || '',
         marketingTitle: profile?.marketingTitle || profile?.title || '',
+        phone: profile?.marketingPhone || '',
         marketingPhone: profile?.marketingPhone || '',
+        email: profile?.marketingEmail || user.email || '',
         marketingEmail: profile?.marketingEmail || user.email || '',
         headshotUrl: profile?.headshotUrl || user.profileImageUrl || '',
         bio: profile?.bio || '',
       };
 
+      console.log(`[Get Profile] Returning headshotUrl length:`, agentProfile.headshotUrl.length);
       res.json(agentProfile);
     } catch (error) {
       console.error("Error fetching agent profile:", error);
@@ -4332,6 +4338,8 @@ Respond with valid JSON in this exact format:
         return res.status(404).json({ message: "User not found" });
       }
 
+      console.log(`[Photo Upload] Starting upload for user ${user.id} (${user.email})`);
+
       // For now, we'll store images as base64 data URLs
       // In production, you'd want to use proper file storage (S3, etc.)
       const { imageData } = req.body;
@@ -4352,8 +4360,11 @@ Respond with valid JSON in this exact format:
         return res.status(400).json({ message: "Image too large. Maximum size is 5MB." });
       }
 
+      console.log(`[Photo Upload] Image validation passed, size estimate: ${Math.round(sizeEstimate / 1024)}KB`);
+
       // Get existing profile or create new one
       let profile = await storage.getAgentProfile(user.id);
+      console.log(`[Photo Upload] Existing profile found:`, !!profile);
       
       if (profile) {
         // Update existing profile with new photo
@@ -4372,10 +4383,26 @@ Respond with valid JSON in this exact format:
         });
       }
 
+      console.log(`[Photo Upload] Profile updated, headshotUrl length:`, profile.headshotUrl?.length || 0);
+
+      // Return complete agent profile data to verify everything is working
+      const agentProfile = {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        title: profile.title || '',
+        phone: profile.marketingPhone || '',
+        email: profile.marketingEmail || user.email || '',
+        headshotUrl: profile.headshotUrl || '',
+        bio: profile.bio || '',
+      };
+
+      console.log(`[Photo Upload] Returning response with headshotUrl length:`, agentProfile.headshotUrl.length);
+
       res.json({ 
         success: true, 
         headshotUrl: profile.headshotUrl,
-        message: "Profile photo updated successfully"
+        message: "Profile photo updated successfully",
+        profile: agentProfile, // Return full profile for debugging
       });
     } catch (error) {
       console.error("Error uploading profile photo:", error);
