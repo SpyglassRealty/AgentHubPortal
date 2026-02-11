@@ -4266,6 +4266,123 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // PUT /api/agent-profile - Update agent profile fields (phone, title)  
+  app.put('/api/agent-profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { phone, title } = req.body;
+      
+      // Get existing profile or create new one
+      let profile = await storage.getAgentProfile(user.id);
+      
+      const updateData: any = {
+        userId: user.id,
+        updatedAt: new Date(),
+      };
+
+      // Only update provided fields
+      if (phone !== undefined) {
+        updateData.marketingPhone = phone;
+      }
+      if (title !== undefined) {
+        updateData.title = title;
+      }
+
+      if (profile) {
+        // Update existing profile
+        profile = await storage.upsertAgentProfile({
+          ...profile,
+          ...updateData,
+        });
+      } else {
+        // Create new profile
+        profile = await storage.upsertAgentProfile({
+          ...updateData,
+          createdAt: new Date(),
+        });
+      }
+
+      // Return complete agent profile
+      const agentProfile = {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        title: profile.title || '',
+        phone: profile.marketingPhone || '',
+        email: profile.marketingEmail || user.email || '',
+        headshotUrl: profile.headshotUrl || user.profileImageUrl || '',
+        bio: profile.bio || '',
+      };
+
+      res.json(agentProfile);
+    } catch (error) {
+      console.error("Error updating agent profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // POST /api/agent-profile/photo - Upload profile photo
+  app.post('/api/agent-profile/photo', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // For now, we'll store images as base64 data URLs
+      // In production, you'd want to use proper file storage (S3, etc.)
+      const { imageData } = req.body;
+      
+      if (!imageData || typeof imageData !== 'string') {
+        return res.status(400).json({ message: "Image data is required" });
+      }
+
+      // Basic validation - check if it's a data URL
+      if (!imageData.startsWith('data:image/')) {
+        return res.status(400).json({ message: "Invalid image format" });
+      }
+
+      // Check file size (rough estimate: base64 is ~33% larger than binary)
+      const sizeEstimate = (imageData.length * 3) / 4;
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (sizeEstimate > maxSize) {
+        return res.status(400).json({ message: "Image too large. Maximum size is 5MB." });
+      }
+
+      // Get existing profile or create new one
+      let profile = await storage.getAgentProfile(user.id);
+      
+      if (profile) {
+        // Update existing profile with new photo
+        profile = await storage.upsertAgentProfile({
+          ...profile,
+          headshotUrl: imageData,
+          updatedAt: new Date(),
+        });
+      } else {
+        // Create new profile with photo
+        profile = await storage.upsertAgentProfile({
+          userId: user.id,
+          headshotUrl: imageData,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        headshotUrl: profile.headshotUrl,
+        message: "Profile photo updated successfully"
+      });
+    } catch (error) {
+      console.error("Error uploading profile photo:", error);
+      res.status(500).json({ message: "Failed to upload photo" });
+    }
+  });
+
   // ── Pulse V2 — Reventure-style data layers ──
   registerPulseV2Routes(app);
 

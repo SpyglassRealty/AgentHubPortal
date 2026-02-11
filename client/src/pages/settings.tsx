@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import Layout from "@/components/layout";
@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, Link2, Link2Off, Unlink, Check, AlertCircle, Bell, Users, Calendar, Home, CheckSquare, Megaphone, Moon, Mail, Loader2, User, ExternalLink } from "lucide-react";
+import { TrendingUp, Link2, Link2Off, Unlink, Check, AlertCircle, Bell, Users, Calendar, Home, CheckSquare, Megaphone, Moon, Mail, Loader2, User, ExternalLink, Camera, Upload } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -35,6 +35,16 @@ interface UserProfile {
   profileImageUrl?: string;
   rezenYentaId?: string | null;
   fubUserId?: number | null;
+}
+
+interface AgentProfile {
+  firstName?: string;
+  lastName?: string;
+  title?: string;
+  phone?: string;
+  email?: string;
+  headshotUrl?: string;
+  bio?: string;
 }
 
 interface NotificationSettings {
@@ -71,6 +81,9 @@ const defaultNotificationSettings: Partial<NotificationSettings> = {
 export default function SettingsPage() {
   const [yentaIdInput, setYentaIdInput] = useState("");
   const [localNotifSettings, setLocalNotifSettings] = useState<Partial<NotificationSettings> | null>(null);
+  const [profileForm, setProfileForm] = useState({ phone: "", title: "" });
+  const [profileChanges, setProfileChanges] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -127,6 +140,26 @@ export default function SettingsPage() {
     },
   });
 
+  const { data: agentProfile, isLoading: isAgentProfileLoading } = useQuery<AgentProfile>({
+    queryKey: ["/api/agent-profile"],
+    queryFn: async () => {
+      const res = await fetch("/api/agent-profile", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch agent profile");
+      return res.json();
+    },
+  });
+
+  // Set form values when agent profile loads
+  useEffect(() => {
+    if (agentProfile) {
+      setProfileForm({
+        phone: agentProfile.phone || "",
+        title: agentProfile.title || "",
+      });
+      setProfileChanges(false);
+    }
+  }, [agentProfile]);
+
   const linkMutation = useMutation({
     mutationFn: async (yentaId: string) => {
       const res = await fetch("/api/rezen/link", {
@@ -164,8 +197,111 @@ export default function SettingsPage() {
     },
   });
 
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: { phone?: string; title?: string }) => {
+      const res = await fetch("/api/agent-profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to update profile");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/agent-profile"] });
+      toast({ title: "Profile updated", description: "Your profile information has been saved." });
+      setProfileChanges(false);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update profile. Please try again.", variant: "destructive" });
+    },
+  });
+
+  const uploadPhotoMutation = useMutation({
+    mutationFn: async (imageData: string) => {
+      const res = await fetch("/api/agent-profile/photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ imageData }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to upload photo");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/agent-profile"] });
+      toast({ title: "Photo updated", description: "Your profile photo has been updated." });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Upload failed", 
+        description: error.message || "Failed to upload photo. Please try again.", 
+        variant: "destructive" 
+      });
+    },
+  });
+
   const isRezenLinked = !!userProfile?.rezenYentaId;
   const isFubLinked = !!userProfile?.fubUserId;
+
+  const handleProfileFormChange = (field: keyof typeof profileForm, value: string) => {
+    setProfileForm(prev => ({ ...prev, [field]: value }));
+    setProfileChanges(true);
+  };
+
+  const handleSaveProfile = () => {
+    const changes: { phone?: string; title?: string } = {};
+    if (profileForm.phone !== (agentProfile?.phone || "")) {
+      changes.phone = profileForm.phone;
+    }
+    if (profileForm.title !== (agentProfile?.title || "")) {
+      changes.title = profileForm.title;
+    }
+    
+    if (Object.keys(changes).length > 0) {
+      updateProfileMutation.mutate(changes);
+    }
+  };
+
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      toast({ 
+        title: "Invalid file type", 
+        description: "Please select an image file (JPG, PNG, WEBP).", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Check file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ 
+        title: "File too large", 
+        description: "Please select an image under 5MB.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageData = e.target?.result as string;
+      uploadPhotoMutation.mutate(imageData);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const triggerPhotoUpload = () => {
+    fileInputRef.current?.click();
+  };
 
   return (
     <Layout>
@@ -194,37 +330,147 @@ export default function SettingsPage() {
                   <User className="h-5 w-5 text-[#EF4923]" />
                   Account Information
                 </CardTitle>
-                <CardDescription>Your profile details from your login provider</CardDescription>
+                <CardDescription>Manage your profile information and photo</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-16 w-16">
-                    <AvatarImage src={userProfile?.profileImageUrl} />
-                    <AvatarFallback className="text-lg bg-[#EF4923] text-white">
-                      {userProfile?.firstName?.charAt(0) || userProfile?.email?.charAt(0)?.toUpperCase() || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
+                {/* Profile Photo Section */}
+                <div className="flex items-center gap-6">
+                  <div className="relative group">
+                    <Avatar className="h-20 w-20 cursor-pointer" onClick={triggerPhotoUpload}>
+                      <AvatarImage src={agentProfile?.headshotUrl || userProfile?.profileImageUrl} />
+                      <AvatarFallback className="text-xl bg-[#EF4923] text-white">
+                        {userProfile?.firstName?.charAt(0) || userProfile?.email?.charAt(0)?.toUpperCase() || "U"}
+                      </AvatarFallback>
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center">
+                        <Camera className="h-6 w-6 text-white" />
+                      </div>
+                    </Avatar>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      className="hidden"
+                    />
+                  </div>
+                  <div className="flex-1">
                     <h3 className="text-lg font-semibold">
                       {userProfile?.firstName} {userProfile?.lastName}
                     </h3>
-                    <p className="text-muted-foreground">{userProfile?.email}</p>
+                    <p className="text-muted-foreground mb-2">{userProfile?.email}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={triggerPhotoUpload}
+                      disabled={uploadPhotoMutation.isPending}
+                      className="flex items-center gap-2"
+                    >
+                      {uploadPhotoMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4" />
+                          Upload Photo
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      JPG, PNG, or WEBP. Max 5MB.
+                    </p>
                   </div>
                 </div>
+
                 <Separator />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+
+                {/* Profile Form Fields */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input
+                        id="firstName"
+                        value={userProfile?.firstName || ""}
+                        disabled
+                        className="bg-muted"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Managed by your login provider
+                      </p>
+                    </div>
+                    <div>
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        value={userProfile?.lastName || ""}
+                        disabled
+                        className="bg-muted"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Managed by your login provider
+                      </p>
+                    </div>
+                  </div>
+
                   <div>
-                    <p className="text-muted-foreground mb-1">First Name</p>
-                    <p className="font-medium">{userProfile?.firstName || "Not set"}</p>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={userProfile?.email || ""}
+                      disabled
+                      className="bg-muted"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Managed by your login provider
+                    </p>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground mb-1">Last Name</p>
-                    <p className="font-medium">{userProfile?.lastName || "Not set"}</p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        placeholder="(512) 555-1234"
+                        value={profileForm.phone}
+                        onChange={(e) => handleProfileFormChange('phone', e.target.value)}
+                        disabled={isAgentProfileLoading || updateProfileMutation.isPending}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="title">Position / Title</Label>
+                      <Input
+                        id="title"
+                        placeholder="Licensed Real Estate Agent"
+                        value={profileForm.title}
+                        onChange={(e) => handleProfileFormChange('title', e.target.value)}
+                        disabled={isAgentProfileLoading || updateProfileMutation.isPending}
+                      />
+                    </div>
                   </div>
-                  <div className="sm:col-span-2">
-                    <p className="text-muted-foreground mb-1">Email</p>
-                    <p className="font-medium break-all">{userProfile?.email || "Not available"}</p>
-                  </div>
+
+                  {/* Save Button */}
+                  {profileChanges && (
+                    <div className="flex justify-end pt-4">
+                      <Button
+                        onClick={handleSaveProfile}
+                        disabled={updateProfileMutation.isPending}
+                        className="bg-[#EF4923] hover:bg-[#EF4923]/90"
+                      >
+                        {updateProfileMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          "Save Changes"
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
