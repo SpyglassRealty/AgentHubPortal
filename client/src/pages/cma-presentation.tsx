@@ -395,9 +395,31 @@ function BioEditModal({ isOpen, onClose, currentBio, onSave, isSaving }: BioEdit
 interface AgentResumeContentProps {
   agentProfile: AgentProfile | undefined;
   onEditBio: () => void;
+  isLoading?: boolean;
 }
 
-function AgentResumeContent({ agentProfile, onEditBio }: AgentResumeContentProps) {
+function AgentResumeContent({ agentProfile, onEditBio, isLoading }: AgentResumeContentProps) {
+  // Debug logging to see what data we're getting
+  console.log('[AgentResumeContent] agentProfile:', agentProfile);
+  console.log('[AgentResumeContent] firstName:', agentProfile?.firstName);
+  console.log('[AgentResumeContent] lastName:', agentProfile?.lastName);
+  console.log('[AgentResumeContent] headshotUrl:', agentProfile?.headshotUrl);
+  console.log('[AgentResumeContent] isLoading:', isLoading);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <h3 className="text-3xl font-bold text-center mb-8">Agent Resume</h3>
+        <div className="space-y-4">
+          <Skeleton className="h-32 w-32 rounded-full mx-auto" />
+          <Skeleton className="h-8 w-48 mx-auto" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-4 w-3/4 mx-auto" />
+        </div>
+      </div>
+    );
+  }
+
   if (!agentProfile) {
     return (
       <div className="space-y-6 text-center">
@@ -513,9 +535,10 @@ interface SlideshowPlayerProps {
   onNext: () => void;
   onPrevious: () => void;
   onEditBio: () => void;
+  isAgentProfileLoading?: boolean;
 }
 
-function SlideshowPlayer({ widgets, cma, agentProfile, activeWidgetId, onClose, onNext, onPrevious, onEditBio }: SlideshowPlayerProps) {
+function SlideshowPlayer({ widgets, cma, agentProfile, activeWidgetId, onClose, onNext, onPrevious, onEditBio, isAgentProfileLoading }: SlideshowPlayerProps) {
   const activeWidget = widgets.find(w => w.id === activeWidgetId);
   const activeIndex = widgets.findIndex(w => w.id === activeWidgetId);
 
@@ -588,7 +611,7 @@ function SlideshowPlayer({ widgets, cma, agentProfile, activeWidgetId, onClose, 
             )}
 
             {activeWidget.id === 'agent-resume' && (
-              <AgentResumeContent agentProfile={agentProfile} onEditBio={onEditBio} />
+              <AgentResumeContent agentProfile={agentProfile} onEditBio={onEditBio} isLoading={isAgentProfileLoading} />
             )}
             
             {activeWidget.id === 'property-overview' && cma.subjectProperty && (
@@ -876,13 +899,23 @@ export default function CmaPresentationPage() {
   });
 
   // Load agent profile for bio editing
-  const { data: agentProfile } = useQuery<AgentProfile>({
+  const { data: agentProfile, isLoading: isAgentProfileLoading, error: agentProfileError } = useQuery<AgentProfile>({
     queryKey: ['/api/agent-profile'],
     queryFn: async () => {
+      console.log('[CMAPresentation] Fetching agent profile...');
       const res = await fetch('/api/agent-profile', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch agent profile');
-      return res.json();
+      const data = await res.json();
+      console.log('[CMAPresentation] Agent profile response:', data);
+      return data;
     },
+  });
+
+  // Debug the agent profile state
+  console.log('[CMAPresentation] agentProfile state:', {
+    isLoading: isAgentProfileLoading,
+    error: agentProfileError,
+    data: agentProfile
   });
 
   // Mutation for updating bio
@@ -1037,6 +1070,7 @@ export default function CmaPresentationPage() {
         onNext={handleNextWidget}
         onPrevious={handlePreviousWidget}
         onEditBio={() => setIsBioModalOpen(true)}
+        isAgentProfileLoading={isAgentProfileLoading}
       />
 
       {/* Bio Edit Modal */}
