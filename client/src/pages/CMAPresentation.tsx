@@ -223,7 +223,27 @@ export default function CMAPresentation() {
         sqft: parsedSqft,
         lotSizeAcres: lotAcres,
         daysOnMarket: comp.daysOnMarket || comp.dom || 0,
-        photos: (comp.photos || (comp.imageUrl ? [comp.imageUrl] : [])),
+        photos: (() => {
+          // Handle multiple Repliers photo field formats
+          if (comp.photos && Array.isArray(comp.photos) && comp.photos.length > 0) {
+            return comp.photos;
+          }
+          // Handle Repliers images array with CDN prefix
+          if (comp.images && Array.isArray(comp.images) && comp.images.length > 0) {
+            return comp.images.map((img: string) => 
+              img.startsWith('http') ? img : `https://cdn.repliers.io/${img}`
+            );
+          }
+          // Handle singular photo field from current API
+          if (comp.photo && typeof comp.photo === 'string') {
+            return [comp.photo];
+          }
+          // Handle imageUrl fallback
+          if (comp.imageUrl && typeof comp.imageUrl === 'string') {
+            return [comp.imageUrl];
+          }
+          return [];
+        })(),
         map: lat && lng ? { latitude: lat, longitude: lng } : null,
         latitude: lat,
         longitude: lng,
