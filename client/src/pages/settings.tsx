@@ -439,13 +439,16 @@ export default function SettingsPage() {
     queryFn: async () => {
       const res = await fetch("/api/agent-profile", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch agent profile");
-      return res.json();
+      const data = await res.json();
+      // Server returns { profile: {...}, user: {...} }, but we need the profile data directly
+      return data.profile;
     },
   });
 
   // Set form values when agent profile loads
   useEffect(() => {
-    if (agentProfile) {
+    // Guard against race conditions during refetch - only update if we have actual profile data
+    if (agentProfile && (agentProfile.phone !== undefined || agentProfile.title !== undefined || agentProfile.bio !== undefined)) {
       setProfileForm({
         phone: agentProfile.phone || "",
         title: agentProfile.title || "",

@@ -86,7 +86,12 @@ export default function CMAPresentation() {
       marketingEmail?: string;
     } | null;
   }>({
-    queryKey: ['/api/agent/profile'],
+    queryKey: ['/api/agent-profile'],
+    queryFn: async () => {
+      const response = await fetch('/api/agent-profile', { credentials: 'include' });
+      if (!response.ok) return { profile: null, user: null };
+      return response.json();
+    },
     staleTime: 0,               // Always consider stale - refetch on mount
     refetchOnMount: true,       // Refetch when component mounts
     refetchOnWindowFocus: true, // Refetch when window gains focus
