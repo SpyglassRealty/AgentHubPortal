@@ -38,14 +38,6 @@ export function PhotoGalleryModal({
   // Reset index when modal opens or photos change
   useEffect(() => {
     if (open) {
-      console.log('[PhotoGallery Debug] Modal opened:', {
-        photosCount: photos.length,
-        photosPreview: photos.slice(0, 3),
-        initialIndex,
-        propertyAddress,
-        allPhotosValid: photos.every(p => p && p.startsWith('http'))
-      });
-      
       setCurrentIndex(Math.max(0, Math.min(initialIndex, photos.length - 1)));
       setImageError(false);
     }
