@@ -4126,19 +4126,55 @@ Respond with valid JSON in this exact format:
       const profile = await storage.getAgentProfile(user.id);
       console.log(`[Get Profile] Found profile:`, !!profile, 'headshotUrl length:', profile?.headshotUrl?.length || 0);
       
-      // Build complete agent profile for CMA presentation
-      const agentProfile = {
+      // Debug user data
+      console.log(`[Get Profile] User data:`, {
         firstName: user.firstName,
         lastName: user.lastName,
-        title: profile?.title || '',
-        phone: profile?.phone || '',
-        email: user.email || '', // Use user email as primary
-        headshotUrl: profile?.headshotUrl || user.profileImageUrl || '',
-        bio: profile?.bio || '',
+        email: user.email,
+        profileImageUrl: user.profileImageUrl
+      });
+      
+      // Debug profile data
+      console.log(`[Get Profile] Profile data:`, {
+        title: profile?.title,
+        phone: profile?.phone,
+        headshotUrl: profile?.headshotUrl ? `${profile.headshotUrl.substring(0, 50)}...` : null,
+        bio: profile?.bio ? `${profile.bio.substring(0, 50)}...` : null
+      });
+      
+      // Return nested structure expected by CMA Presentation frontend
+      const response = {
+        profile: {
+          headshotUrl: profile?.headshotUrl || null,
+          title: profile?.title || null,
+          bio: profile?.bio || null,
+          phone: profile?.phone || null,
+          facebookUrl: null, // TODO: Add when social fields are implemented
+          instagramUrl: null // TODO: Add when social fields are implemented
+        },
+        user: {
+          firstName: user.firstName || null,
+          lastName: user.lastName || null,
+          email: user.email || null,
+          profileImageUrl: user.profileImageUrl || null
+        }
       };
 
-      console.log(`[Get Profile] Returning headshotUrl length:`, agentProfile.headshotUrl.length);
-      res.json(agentProfile);
+      console.log(`[Get Profile] Final response structure:`, {
+        profile: {
+          title: response.profile.title,
+          phone: response.profile.phone,
+          headshotUrl: response.profile.headshotUrl ? `${response.profile.headshotUrl.substring(0, 50)}...` : null,
+          bio: response.profile.bio ? `${response.profile.bio.substring(0, 50)}...` : null
+        },
+        user: {
+          firstName: response.user.firstName,
+          lastName: response.user.lastName,
+          email: response.user.email
+        }
+      });
+      
+      res.json(response);
     } catch (error) {
       console.error("Error fetching agent profile:", error);
       res.status(500).json({ message: "Failed to fetch agent profile" });
@@ -4512,6 +4548,30 @@ Respond with valid JSON in this exact format:
       res.status(500).json({ 
         error: error.message,
         timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // GET /api/mapbox-token - Get Mapbox access token for maps
+  app.get('/api/mapbox-token', isAuthenticated, async (req: any, res) => {
+    try {
+      const mapboxToken = process.env.MAPBOX_ACCESS_TOKEN;
+      
+      if (!mapboxToken) {
+        console.log('[Mapbox] MAPBOX_ACCESS_TOKEN not configured');
+        return res.status(503).json({ 
+          error: "Mapbox token not configured",
+          message: "MAPBOX_ACCESS_TOKEN environment variable not set"
+        });
+      }
+      
+      console.log('[Mapbox] Returning access token (length:', mapboxToken.length, ')');
+      res.json({ token: mapboxToken });
+    } catch (error) {
+      console.error("Error fetching Mapbox token:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch Mapbox token",
+        message: error.message 
       });
     }
   });
