@@ -228,23 +228,31 @@ export default function CMAPresentation() {
       const parsedBaths = typeof comp.bathrooms === 'string' ? parseFloat(comp.bathrooms) : (comp.bathrooms || comp.baths || comp.bathroomsTotal || 0);
       const parsedPrice = comp.listPrice || comp.price || comp.closePrice || 0;
 
-      // Debug logging for photo fields (based on official Repliers reference)
+      // Enhanced debug logging for photo fields (based on official Repliers API reference)
       if (index === 0) {
-        console.log('[CMA Debug] First comp photo fields analysis:', {
-          hasImages: !!comp.images,
-          imagesCount: Array.isArray(comp.images) ? comp.images.length : 0,
-          imagesPreview: Array.isArray(comp.images) ? comp.images.slice(0, 2) : null,
-          hasPhotos: !!comp.photos,
-          photosCount: Array.isArray(comp.photos) ? comp.photos.length : 0,
-          hasSinglePhoto: !!comp.photo,
-          hasImageUrl: !!comp.imageUrl,
-          mlsNumber: comp.mlsNumber,
+        console.log('[CMA Debug] First comp comprehensive photo analysis:', {
+          mlsNumber: comp.mlsNumber || comp.id,
           status: comp.status || comp.standardStatus,
+          // Primary field (official Repliers API)
+          hasImages: !!comp.images,
+          imagesType: Array.isArray(comp.images) ? 'array' : typeof comp.images,
+          imagesCount: Array.isArray(comp.images) ? comp.images.length : 0,
+          imagesPreview: Array.isArray(comp.images) ? comp.images.slice(0, 3) : comp.images,
+          // Legacy field
+          hasPhotos: !!comp.photos,
+          photosType: Array.isArray(comp.photos) ? 'array' : typeof comp.photos,
+          photosCount: Array.isArray(comp.photos) ? comp.photos.length : 0,
+          photosPreview: Array.isArray(comp.photos) ? comp.photos.slice(0, 3) : comp.photos,
+          // Single photo fallbacks
+          hasSinglePhoto: !!comp.photo,
+          singlePhotoValue: comp.photo,
+          hasImageUrl: !!comp.imageUrl,
+          imageUrlValue: comp.imageUrl,
+          // All photo-related fields for debugging
           allPhotoFields: Object.keys(comp).filter(k => 
             k.toLowerCase().includes('image') || 
             k.toLowerCase().includes('photo')
-          ),
-          firstFewFields: Object.keys(comp).slice(0, 10)
+          ).reduce((acc, key) => ({ ...acc, [key]: comp[key] }), {}),
         });
       }
       
@@ -307,7 +315,11 @@ export default function CMAPresentation() {
             const validImages = comp.images.filter((url: string) => 
               url && typeof url === 'string' && url.trim().length > 0
             );
-            if (index === 0) console.log('[CMA Debug] Using Repliers comp.images (official):', validImages);
+            if (index === 0) console.log('[CMA Debug] ✅ Using Repliers comp.images (official):', {
+              count: validImages.length,
+              firstThree: validImages.slice(0, 3),
+              allValid: validImages.every(url => url.startsWith('http'))
+            });
             return validImages;
           }
           
@@ -316,7 +328,10 @@ export default function CMAPresentation() {
             const validPhotos = comp.photos.filter((url: string) => 
               url && typeof url === 'string' && url.trim().length > 0
             );
-            if (index === 0) console.log('[CMA Debug] Using legacy comp.photos:', validPhotos);
+            if (index === 0) console.log('[CMA Debug] 📷 Using legacy comp.photos fallback:', {
+              count: validPhotos.length,
+              firstThree: validPhotos.slice(0, 3)
+            });
             return validPhotos;
           }
           
@@ -325,13 +340,21 @@ export default function CMAPresentation() {
           for (const field of singlePhotoFields) {
             if (comp[field] && typeof comp[field] === 'string' && comp[field].trim().length > 0) {
               const result = [comp[field]];
-              if (index === 0) console.log(`[CMA Debug] Using single ${field}:`, result);
+              if (index === 0) console.log(`[CMA Debug] 🖼️ Using single ${field} fallback:`, {
+                field,
+                value: comp[field],
+                result
+              });
               return result;
             }
           }
           
           // No photos found - this is normal for some sold listings per Repliers reference
-          if (index === 0) console.log('[CMA Debug] No photos found (normal for some sold listings)');
+          if (index === 0) console.log('[CMA Debug] ⚠️ No photos found (normal for older sold listings)', {
+            mlsNumber: comp.mlsNumber,
+            status: comp.status || comp.standardStatus,
+            checkedFields: ['images', 'photos', 'photo', 'imageUrl', 'primaryPhoto', 'coverPhoto']
+          });
           return [];
         })(),
         map: lat && lng ? { latitude: lat, longitude: lng } : null,
