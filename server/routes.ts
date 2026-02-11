@@ -4114,7 +4114,7 @@ Respond with valid JSON in this exact format:
   // AGENT PROFILE ENDPOINTS (Stage 2: Editable Bio for CMA)
   // ============================================
 
-  // GET /api/agent-profile - Get complete agent profile for CMA presentation
+  // GET /api/agent-profile - Get complete agent profile for CMA presentation  
   app.get('/api/agent-profile', isAuthenticated, async (req: any, res) => {
     try {
       const user = await getDbUser(req);
@@ -4573,6 +4573,27 @@ Respond with valid JSON in this exact format:
         error: "Failed to fetch Mapbox token",
         message: error.message 
       });
+    }
+  });
+
+  // DEBUG: Authentication status check (no auth required)
+  app.get('/api/debug/auth-status', async (req: any, res) => {
+    try {
+      const authStatus = {
+        isAuthenticated: req.isAuthenticated?.(),
+        hasUser: !!req.user,
+        sessionId: req.sessionID,
+        userProvider: req.user?.provider,
+        userEmail: req.user?.claims?.email || req.user?.email,
+        sessionCookies: !!req.headers.cookie,
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log('[Auth Debug] Authentication status:', authStatus);
+      res.json(authStatus);
+    } catch (error) {
+      console.error('[Auth Debug] Error:', error);
+      res.status(500).json({ error: error.message });
     }
   });
 

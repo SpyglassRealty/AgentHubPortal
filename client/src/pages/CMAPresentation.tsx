@@ -85,7 +85,15 @@ export default function CMAPresentation() {
     staleTime: 0,               // Always consider stale - refetch on mount
     refetchOnMount: true,       // Refetch when component mounts
     refetchOnWindowFocus: true, // Refetch when window gains focus
-    retry: 3,                   // Retry failed requests
+    retry: (failureCount, error: any) => {
+      // Don't retry on authentication errors
+      if (error?.response?.status === 401) {
+        console.log('[Agent Profile] 401 - redirecting to login');
+        window.location.href = '/api/login';
+        return false;
+      }
+      return failureCount < 3;
+    },
     retryDelay: 1000,           // Delay between retries
   });
 
@@ -338,10 +346,17 @@ export default function CMAPresentation() {
 
   const isLoading = transactionLoading || cmaLoading || profileLoading;
 
-  // Debug: Add direct API test on component mount
+  // Debug: Add direct API test and auth check on component mount
   useEffect(() => {
-    const testAgentProfileAPI = async () => {
+    const testAuthAndAPI = async () => {
       try {
+        // First check authentication status
+        console.log('[CMA Debug] Checking authentication status...');
+        const authResponse = await fetch('/api/debug/auth-status');
+        const authData = await authResponse.json();
+        console.log('[CMA Debug] Auth status:', authData);
+        
+        // Then test the agent profile API
         console.log('[CMA Debug] Testing direct fetch to /api/agent-profile...');
         const response = await fetch('/api/agent-profile');
         const data = await response.json();
@@ -354,14 +369,17 @@ export default function CMAPresentation() {
         
         if (!response.ok) {
           console.error('[CMA Debug] API returned error:', response.status, data);
+          if (response.status === 401) {
+            console.log('[CMA Debug] Authentication required - user needs to login');
+          }
         }
       } catch (error) {
-        console.error('[CMA Debug] Direct fetch failed:', error);
+        console.error('[CMA Debug] Test failed:', error);
       }
     };
     
-    // Test the API directly on mount
-    testAgentProfileAPI();
+    // Test auth and API on mount
+    testAuthAndAPI();
   }, []);
 
   if (isLoading) {
