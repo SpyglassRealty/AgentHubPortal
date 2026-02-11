@@ -338,6 +338,32 @@ export default function CMAPresentation() {
 
   const isLoading = transactionLoading || cmaLoading || profileLoading;
 
+  // Debug: Add direct API test on component mount
+  useEffect(() => {
+    const testAgentProfileAPI = async () => {
+      try {
+        console.log('[CMA Debug] Testing direct fetch to /api/agent-profile...');
+        const response = await fetch('/api/agent-profile');
+        const data = await response.json();
+        console.log('[CMA Debug] Direct fetch result:', { 
+          url: '/api/agent-profile',
+          status: response.status, 
+          statusText: response.statusText,
+          data 
+        });
+        
+        if (!response.ok) {
+          console.error('[CMA Debug] API returned error:', response.status, data);
+        }
+      } catch (error) {
+        console.error('[CMA Debug] Direct fetch failed:', error);
+      }
+    };
+    
+    // Test the API directly on mount
+    testAgentProfileAPI();
+  }, []);
+
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
@@ -357,6 +383,11 @@ export default function CMAPresentation() {
         </div>
       </div>
     );
+  }
+
+  // Debug: Display agent profile error if any
+  if (profileError) {
+    console.error('[CMA Debug] Agent profile error:', profileError);
   }
 
   if (currentSlide !== null) {
