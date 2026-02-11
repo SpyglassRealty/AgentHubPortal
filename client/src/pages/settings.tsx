@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
+import Cropper from 'react-easy-crop';
 import Layout from "@/components/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,268 +91,153 @@ interface PhotoCropModalProps {
 }
 
 function PhotoCropModal({ isOpen, onClose, imageFile, onCrop, isUploading }: PhotoCropModalProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [zoom, setZoom] = useState([1.0]);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
-
-  const cropSize = 200; // Size of the crop circle
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1.2);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (imageFile && isOpen) {
+    if (isOpen && imageFile) {
+      setIsLoading(true);
+      setImageError(null);
+      
       const reader = new FileReader();
       reader.onload = (e) => {
-        if (imageRef.current && e.target?.result) {
-          imageRef.current.src = e.target.result as string;
+        if (e.target?.result) {
+          const url = e.target.result as string;
+          setImageUrl(url);
+          
+          // Test if image loads properly
+          const img = new Image();
+          img.onload = () => {
+            setIsLoading(false);
+            setImageError(null);
+          };
+          img.onerror = () => {
+            setIsLoading(false);
+            setImageError('Could not load image. Please try uploading a different photo.');
+          };
+          img.src = url;
         }
       };
       reader.readAsDataURL(imageFile);
     }
-  }, [imageFile, isOpen]);
+  }, [isOpen, imageFile]);
 
-  const handleImageLoad = () => {
-    if (imageRef.current) {
-      const img = imageRef.current;
-      const containerSize = cropSize * 1.5; // Make container slightly larger than crop
-      
-      // Calculate scale to fit image in container
-      const scale = Math.min(containerSize / img.naturalWidth, containerSize / img.naturalHeight);
-      const scaledWidth = img.naturalWidth * scale;
-      const scaledHeight = img.naturalHeight * scale;
-      
-      setImageDimensions({ width: scaledWidth, height: scaledHeight });
-      setPosition({ x: 0, y: 0 }); // Center the image
-      setZoom([1.0]);
-      setImageLoaded(true);
-      drawCanvas();
-    }
-  };
+  const onCropChange = useCallback((location: any) => {
+    setCrop(location);
+  }, []);
 
-  const drawCanvas = useCallback(() => {
-    if (!canvasRef.current || !imageRef.current || !imageLoaded) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const currentZoom = zoom[0];
-    
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Calculate image dimensions
-    const imgWidth = imageDimensions.width * currentZoom;
-    const imgHeight = imageDimensions.height * currentZoom;
-    
-    // Calculate position (center crop circle)
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const imgX = centerX - imgWidth / 2 + position.x;
-    const imgY = centerY - imgHeight / 2 + position.y;
-    
-    // Draw image
-    ctx.drawImage(imageRef.current, imgX, imgY, imgWidth, imgHeight);
-    
-    // Draw crop overlay
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Clear circular crop area
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, cropSize / 2, 0, 2 * Math.PI);
-    ctx.fill();
-    
-    // Draw crop circle border
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.strokeStyle = '#EF4923';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, cropSize / 2, 0, 2 * Math.PI);
-    ctx.stroke();
-    
-  }, [zoom, position, imageDimensions, imageLoaded]);
-
-  useEffect(() => {
-    drawCanvas();
-  }, [drawCanvas]);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    
-    const newX = e.clientX - dragStart.x;
-    const newY = e.clientY - dragStart.y;
-    
-    // Limit drag to keep image visible in crop area
-    const maxDrag = 100;
-    setPosition({
-      x: Math.max(-maxDrag, Math.min(maxDrag, newX)),
-      y: Math.max(-maxDrag, Math.min(maxDrag, newY))
-    });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleZoomChange = (newZoom: number[]) => {
+  const onZoomChange = useCallback((newZoom: number) => {
     setZoom(newZoom);
+  }, []);
+
+  const onCropComplete = useCallback(
+    (_croppedArea: any, croppedAreaPixels: any) => {
+      setCroppedAreaPixels(croppedAreaPixels);
+    },
+    []
+  );
+
+  const handleSave = async () => {
+    if (!croppedAreaPixels) return;
+
+    try {
+      const croppedImage = await getCroppedImg(imageUrl, croppedAreaPixels);
+      onCrop(croppedImage);
+      resetAndClose();
+    } catch (error) {
+      console.error('Error cropping image:', error);
+      setImageError('Failed to crop image');
+    }
   };
 
-  const handleApplyCrop = () => {
-    console.log('[Crop Modal] Apply crop clicked');
-    
-    if (!canvasRef.current || !imageRef.current) {
-      console.log('[Crop Modal] Missing canvas or image ref');
-      return;
-    }
-
-    // Create a new canvas for the cropped result
-    const cropCanvas = document.createElement('canvas');
-    const cropCtx = cropCanvas.getContext('2d');
-    if (!cropCtx) {
-      console.log('[Crop Modal] Could not get canvas context');
-      return;
-    }
-
-    const cropDiameter = 400; // High resolution output
-    cropCanvas.width = cropDiameter;
-    cropCanvas.height = cropDiameter;
-
-    const currentZoom = zoom[0];
-    const canvas = canvasRef.current;
-    
-    console.log('[Crop Modal] Crop settings:', { zoom: currentZoom, position, cropDiameter });
-    
-    // Calculate source crop area
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const radius = cropSize / 2;
-    
-    // Calculate image position and size
-    const imgWidth = imageDimensions.width * currentZoom;
-    const imgHeight = imageDimensions.height * currentZoom;
-    const imgX = centerX - imgWidth / 2 + position.x;
-    const imgY = centerY - imgHeight / 2 + position.y;
-    
-    // Create clipping path for perfect circle
-    cropCtx.beginPath();
-    cropCtx.arc(cropDiameter / 2, cropDiameter / 2, cropDiameter / 2, 0, 2 * Math.PI);
-    cropCtx.clip();
-    
-    // Scale factor for high-res output
-    const scale = cropDiameter / (radius * 2);
-    
-    // Draw the cropped portion
-    cropCtx.drawImage(
-      imageRef.current,
-      (imgX - centerX + radius) / scale * -1,
-      (imgY - centerY + radius) / scale * -1,
-      imgWidth / scale,
-      imgHeight / scale
-    );
-
-    // Convert to base64
-    const croppedImageData = cropCanvas.toDataURL('image/jpeg', 0.8);
-    console.log('[Crop Modal] Cropped image data length:', croppedImageData.length);
-    console.log('[Crop Modal] Cropped image data prefix:', croppedImageData.substring(0, 50));
-    
-    onCrop(croppedImageData);
-  };
-
-  const handleCancel = () => {
-    setImageLoaded(false);
-    setZoom([1.0]);
-    setPosition({ x: 0, y: 0 });
+  const resetAndClose = () => {
+    setCrop({ x: 0, y: 0 });
+    setZoom(1.2);
+    setCroppedAreaPixels(null);
+    setIsLoading(true);
+    setImageError(null);
+    setImageUrl("");
     onClose();
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      resetAndClose();
+    }
   };
 
   if (!imageFile) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Adjust Profile Photo</DialogTitle>
         </DialogHeader>
-        
-        <div className="space-y-4">
-          {/* Image Canvas Container */}
-          <div className="flex justify-center">
-            <div 
-              ref={containerRef}
-              className="relative bg-gray-100 rounded-lg overflow-hidden"
-              style={{ width: cropSize * 1.5, height: cropSize * 1.5 }}
-            >
-              <canvas
-                ref={canvasRef}
-                width={cropSize * 1.5}
-                height={cropSize * 1.5}
-                className="cursor-move"
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-              />
-            </div>
-          </div>
 
-          {/* Hidden image for loading */}
-          <img
-            ref={imageRef}
-            style={{ display: 'none' }}
-            onLoad={handleImageLoad}
-            alt="Crop preview"
-          />
-
-          {/* Zoom Controls */}
-          {imageLoaded && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <ZoomOut className="h-4 w-4 text-muted-foreground" />
-                <div className="flex-1">
-                  <Slider
-                    value={zoom}
-                    onValueChange={handleZoomChange}
-                    min={0.5}
-                    max={3.0}
-                    step={0.1}
-                    className="w-full"
-                  />
-                </div>
-                <ZoomIn className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground w-12">
-                  {zoom[0].toFixed(1)}x
-                </span>
-              </div>
-              
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Move className="h-4 w-4" />
-                <span>Drag to reposition</span>
-              </div>
+        <div className="relative w-full h-80 bg-gray-900 dark:bg-gray-800 rounded-lg overflow-hidden">
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+              <Loader2 className="w-8 h-8 text-white animate-spin" />
             </div>
+          )}
+          {imageError && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white p-4">
+              <AlertCircle className="w-10 h-10 mb-2 text-destructive" />
+              <p className="text-sm text-center">{imageError}</p>
+            </div>
+          )}
+          {!imageError && imageUrl && (
+            <Cropper
+              image={imageUrl}
+              crop={crop}
+              zoom={zoom}
+              aspect={1}
+              cropShape="round"
+              showGrid={false}
+              onCropChange={onCropChange}
+              onZoomChange={onZoomChange}
+              onCropComplete={onCropComplete}
+            />
           )}
         </div>
 
+        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <Move className="w-4 h-4" />
+          <span>Drag to reposition</span>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm">Zoom</Label>
+            <span className="text-sm text-muted-foreground">{zoom.toFixed(1)}x</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <ZoomOut className="w-4 h-4 text-muted-foreground" />
+            <Slider
+              value={[zoom]}
+              onValueChange={([value]) => setZoom(value)}
+              min={1}
+              max={3}
+              step={0.1}
+              className="flex-1"
+              disabled={!!imageError}
+            />
+            <ZoomIn className="w-4 h-4 text-muted-foreground" />
+          </div>
+        </div>
+
         <DialogFooter>
-          <Button variant="outline" onClick={handleCancel} disabled={isUploading}>
+          <Button variant="outline" onClick={resetAndClose}>
             Cancel
           </Button>
           <Button 
-            onClick={handleApplyCrop} 
-            disabled={!imageLoaded || isUploading}
-            className="bg-[#EF4923] hover:bg-[#EF4923]/90"
+            onClick={handleSave} 
+            disabled={!!imageError || isLoading || isUploading}
           >
             {isUploading ? (
               <>
@@ -368,6 +254,41 @@ function PhotoCropModal({ isOpen, onClose, imageFile, onCrop, isUploading }: Pho
   );
 }
 
+// Utility functions for cropping
+async function getCroppedImg(imageSrc: string, pixelCrop: any): Promise<string> {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) throw new Error('Could not get canvas context');
+
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
+  );
+
+  return canvas.toDataURL('image/jpeg', 0.9);
+}
+
+function createImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener('load', () => resolve(image));
+    image.addEventListener('error', (error) => reject(error));
+    image.crossOrigin = 'anonymous';
+    image.src = url;
+  });
+}
 export default function SettingsPage() {
   const [yentaIdInput, setYentaIdInput] = useState("");
   const [localNotifSettings, setLocalNotifSettings] = useState<Partial<NotificationSettings> | null>(null);
@@ -497,7 +418,7 @@ export default function SettingsPage() {
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { phone?: string; title?: string }) => {
+    mutationFn: async (data: { phone?: string; title?: string; bio?: string }) => {
       const res = await fetch("/api/agent-profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -532,12 +453,20 @@ export default function SettingsPage() {
       return res.json();
     },
     onSuccess: (data) => {
-      // Invalidate all related queries
+      // Update the query cache immediately with the new photo
+      queryClient.setQueryData(["/api/agent-profile"], (oldData: any) => {
+        if (oldData) {
+          return {
+            ...oldData,
+            headshotUrl: data.headshotUrl || data.profile?.headshotUrl
+          };
+        }
+        return oldData;
+      });
+      
+      // Invalidate and refetch to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["/api/agent-profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      
-      // Also refetch immediately to ensure fresh data
-      queryClient.refetchQueries({ queryKey: ["/api/agent-profile"] });
       
       toast({ title: "Photo updated", description: "Your profile photo has been updated." });
       handleCloseCropModal();
@@ -630,12 +559,15 @@ export default function SettingsPage() {
   };
 
   const handleSaveProfile = () => {
-    const changes: { phone?: string; title?: string } = {};
+    const changes: { phone?: string; title?: string; bio?: string } = {};
     if (profileForm.phone !== (agentProfile?.phone || "")) {
       changes.phone = profileForm.phone;
     }
     if (profileForm.title !== (agentProfile?.title || "")) {
       changes.title = profileForm.title;
+    }
+    if (profileForm.bio !== (agentProfile?.bio || "")) {
+      changes.bio = profileForm.bio;
     }
     
     if (Object.keys(changes).length > 0) {
@@ -733,10 +665,12 @@ export default function SettingsPage() {
                 {/* Profile Photo Section */}
                 <div className="flex items-center gap-6">
                   <div className="relative group">
-                    <Avatar className="h-20 w-20 cursor-pointer" onClick={triggerPhotoUpload}>
-                      <AvatarImage src={agentProfile?.headshotUrl || userProfile?.profileImageUrl} className="object-contain bg-gray-50 dark:bg-gray-800" />
+                    <Avatar className="h-24 w-24 border-2 border-muted cursor-pointer" onClick={triggerPhotoUpload}>
+                      {agentProfile?.headshotUrl ? (
+                        <AvatarImage src={agentProfile.headshotUrl} alt="Agent headshot" />
+                      ) : null}
                       <AvatarFallback className="text-xl bg-[#EF4923] text-white">
-                        {userProfile?.firstName?.charAt(0) || userProfile?.email?.charAt(0)?.toUpperCase() || "U"}
+                        <User className="h-10 w-10 text-white" />
                       </AvatarFallback>
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center">
                         <Camera className="h-6 w-6 text-white" />
