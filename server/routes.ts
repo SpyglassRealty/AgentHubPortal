@@ -2176,13 +2176,31 @@ Respond with valid JSON in this exact format:
         return res.status(404).json({ message: "User not found" });
       }
 
-      let settings = await storage.getNotificationSettings(user.id);
-      
-      if (!settings) {
-        settings = await storage.upsertNotificationSettings({ userId: user.id });
+      // Graceful fallback for missing user_notification_settings table
+      try {
+        let settings = await storage.getNotificationSettings(user.id);
+        
+        if (!settings) {
+          settings = await storage.upsertNotificationSettings({ userId: user.id });
+        }
+        
+        res.json({ settings });
+      } catch (dbError: any) {
+        // Handle missing table gracefully
+        if (dbError.message?.includes('relation "user_notification_settings" does not exist')) {
+          console.log('[Notification Settings] Table missing, returning default settings');
+          return res.json({
+            settings: {
+              userId: user.id,
+              emailNotifications: true,
+              pushNotifications: true,
+              marketingEmails: false,
+              message: "Notification settings not yet initialized"
+            }
+          });
+        }
+        throw dbError; // Re-throw other errors
       }
-      
-      res.json({ settings });
     } catch (error) {
       console.error("Error fetching notification settings:", error);
       res.status(500).json({ message: "Failed to fetch notification settings" });
@@ -2208,12 +2226,30 @@ Respond with valid JSON in this exact format:
 
       const validatedData = parseResult.data;
 
-      const settings = await storage.upsertNotificationSettings({
-        userId: user.id,
-        ...validatedData,
-      });
+      // Graceful fallback for missing user_notification_settings table
+      try {
+        const settings = await storage.upsertNotificationSettings({
+          userId: user.id,
+          ...validatedData,
+        });
 
-      res.json({ success: true, settings });
+        res.json({ success: true, settings });
+      } catch (dbError: any) {
+        // Handle missing table gracefully
+        if (dbError.message?.includes('relation "user_notification_settings" does not exist')) {
+          console.log('[Notification Settings] Table missing, cannot save settings');
+          return res.json({
+            success: false,
+            message: "Notification settings feature not yet initialized",
+            settings: {
+              userId: user.id,
+              ...validatedData,
+              message: "Settings cannot be saved until table is created"
+            }
+          });
+        }
+        throw dbError; // Re-throw other errors
+      }
     } catch (error) {
       console.error("Error updating notification settings:", error);
       res.status(500).json({ message: "Failed to update notification settings" });
