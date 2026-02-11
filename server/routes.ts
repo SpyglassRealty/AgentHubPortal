@@ -981,9 +981,10 @@ export async function registerRoutes(
     }
   });
 
-  // DEBUG: Simple API test endpoint (remove auth temporarily)
-  app.get('/api/market-pulse/test', async (req: any, res) => {
-    console.log('🔥 [DEBUG] Market Pulse TEST endpoint hit');
+  // Market Pulse API test endpoint (dev/staging only)
+  if (process.env.NODE_ENV !== 'production') {
+    app.get('/api/market-pulse/test', async (req: any, res) => {
+      console.log('Market Pulse TEST endpoint hit');
     const apiKey = process.env.IDX_GRID_API_KEY;
     
     if (!apiKey) {
@@ -997,14 +998,14 @@ export async function registerRoutes(
     try {
       // Direct API test
       const testUrl = 'https://api.repliers.io/listings?listings=false&type=Sale&standardStatus=Active&officeId=ACT1518371';
-      console.log('🔥 [DEBUG] Testing direct API call:', testUrl);
+      console.log('Testing direct API call:', testUrl);
       
       const response = await fetch(testUrl, {
         headers: { 'REPLIERS-API-KEY': apiKey }
       });
       
       const data = await response.json();
-      console.log('🔥 [DEBUG] Direct API response:', data);
+      console.log('Direct API response received');
       
       res.json({
         status: 'success',
@@ -1014,14 +1015,15 @@ export async function registerRoutes(
         active_count: data.count || 0
       });
     } catch (error) {
-      console.error('🔥 [DEBUG] Direct API test failed:', error);
+      console.error('Direct API test failed:', error);
       res.json({
         status: 'error',
         message: error instanceof Error ? error.message : String(error),
         api_key_length: apiKey.length
       });
     }
-  });
+    });
+  }
 
   app.get('/api/market-pulse', async (req: any, res) => {
     try {
@@ -4690,8 +4692,9 @@ Respond with valid JSON in this exact format:
     }
   });
 
-  // DEBUG: Environment variables check endpoint (REMOVE IN PRODUCTION)
-  app.get('/api/debug/env-check', isAuthenticated, async (req: any, res) => {
+  // Environment variables check endpoint (dev/staging only)
+  if (process.env.NODE_ENV !== 'production') {
+    app.get('/api/debug/env-check', isAuthenticated, async (req: any, res) => {
     try {
       const user = await getDbUser(req);
       if (!user?.isSuperAdmin) {
@@ -4727,7 +4730,8 @@ Respond with valid JSON in this exact format:
       console.error('[Env Check] Error:', error);
       res.status(500).json({ error: error.message });
     }
-  });
+    });
+  }
 
   return httpServer;
 }
