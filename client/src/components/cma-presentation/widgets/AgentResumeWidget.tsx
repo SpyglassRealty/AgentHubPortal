@@ -14,11 +14,14 @@ export function AgentResumeWidget({ agent }: AgentResumeWidgetProps) {
             {/* Left column - Agent photo and contact */}
             <div className="flex flex-col items-center md:items-start gap-4 md:w-1/3">
               {agent.photo ? (
-                <img
-                  src={agent.photo}
-                  alt={agent.name}
-                  className="w-40 h-40 md:w-48 md:h-48 rounded-lg object-contain shadow-md bg-gray-50 dark:bg-gray-800"
-                />
+                <div className="w-40 h-40 md:w-48 md:h-48 rounded-full overflow-hidden shadow-md bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+                  <img
+                    src={agent.photo}
+                    alt={agent.name}
+                    className="w-full h-full object-cover"
+                    style={{ minWidth: '128px', minHeight: '128px' }}
+                  />
+                </div>
               ) : (
                 <div className="w-40 h-40 md:w-48 md:h-48 rounded-lg bg-gradient-to-br from-[#EF4923] to-[#EF4923]/80 flex items-center justify-center">
                   <span className="text-4xl font-semibold text-white">

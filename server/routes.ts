@@ -4363,24 +4363,37 @@ Respond with valid JSON in this exact format:
 
       console.log(`[Photo Upload] Image validation passed, size estimate: ${Math.round(sizeEstimate / 1024)}KB`);
       console.log(`[Photo Upload] Updating headshot_url for userId:`, user.id);
+      console.log(`[Photo Upload] Saving to DB, data length:`, imageData.length);
 
-      // Use ONLY raw SQL to avoid any Drizzle ORM issues
-      await db.execute(sql`
+      // Use raw SQL UPDATE, then INSERT if no rows affected
+      const updateResult = await db.execute(sql`
         UPDATE agent_profiles 
         SET headshot_url = ${imageData}, updated_at = NOW() 
         WHERE user_id = ${user.id}
       `);
       
-      // Verify with a SEPARATE raw SQL query after saving
-      const verify = await db.execute(sql`
-        SELECT LENGTH(headshot_url) as len FROM agent_profiles WHERE user_id = ${user.id}
-      `);
-      console.log(`[Photo Upload] DB verification:`, verify.rows[0]);
+      console.log(`[Photo Upload] Update affected rows:`, updateResult.rowCount);
+      
+      if (updateResult.rowCount === 0) {
+        // No existing profile, INSERT new one
+        console.log(`[Photo Upload] No existing profile, inserting new row`);
+        await db.execute(sql`
+          INSERT INTO agent_profiles (id, user_id, headshot_url, created_at, updated_at)
+          VALUES (gen_random_uuid(), ${user.id}, ${imageData}, NOW(), NOW())
+        `);
+      }
+      
+      // Verify by querying back
+      const verify = await pool.query(
+        'SELECT headshot_url, LENGTH(headshot_url) as len FROM agent_profiles WHERE user_id = $1',
+        [user.id]
+      );
+      console.log(`[Photo Upload] DB verification - length:`, verify.rows[0]?.len || 0);
       
       // Get the updated profile to return  
       const profile = await storage.getAgentProfile(user.id);
       
-      console.log(`[Photo Upload] SUCCESS - Profile headshotUrl length:`, profile?.headshotUrl?.length || 0);
+      console.log(`[Photo Upload] SUCCESS - Final headshotUrl length:`, profile?.headshotUrl?.length || 0);
 
       res.json({ 
         success: true, 

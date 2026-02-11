@@ -6,13 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
-import { TrendingUp, Link2, Link2Off, Unlink, Check, AlertCircle, Bell, Users, Calendar, Home, CheckSquare, Megaphone, Moon, Mail, Loader2, User, ExternalLink, Camera, Upload, ZoomIn, ZoomOut, Move } from "lucide-react";
+import { TrendingUp, Link2, Link2Off, Unlink, Check, AlertCircle, Bell, Users, Calendar, Home, CheckSquare, Megaphone, Moon, Mail, Loader2, User, ExternalLink, Camera, Upload, ZoomIn, ZoomOut, Move, Sparkles } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -370,8 +371,10 @@ function PhotoCropModal({ isOpen, onClose, imageFile, onCrop, isUploading }: Pho
 export default function SettingsPage() {
   const [yentaIdInput, setYentaIdInput] = useState("");
   const [localNotifSettings, setLocalNotifSettings] = useState<Partial<NotificationSettings> | null>(null);
-  const [profileForm, setProfileForm] = useState({ phone: "", title: "" });
+  const [profileForm, setProfileForm] = useState({ phone: "", title: "", bio: "" });
   const [profileChanges, setProfileChanges] = useState(false);
+  const [bioChanges, setBioChanges] = useState(false);
+  const [selectedBioTone, setSelectedBioTone] = useState<"professional" | "friendly" | "luxury">("professional");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
@@ -446,8 +449,10 @@ export default function SettingsPage() {
       setProfileForm({
         phone: agentProfile.phone || "",
         title: agentProfile.title || "",
+        bio: agentProfile.bio || "",
       });
       setProfileChanges(false);
+      setBioChanges(false);
     }
   }, [agentProfile]);
 
@@ -543,12 +548,82 @@ export default function SettingsPage() {
     },
   });
 
+  const updateBioMutation = useMutation({
+    mutationFn: async (bio: string) => {
+      const res = await fetch("/api/agent-profile/bio", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ bio }),
+      });
+      if (!res.ok) throw new Error("Failed to update bio");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/agent-profile"] });
+      toast({ title: "Bio updated", description: "Your professional bio has been saved." });
+      setBioChanges(false);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update bio. Please try again.", variant: "destructive" });
+    },
+  });
+
+  const generateBioMutation = useMutation({
+    mutationFn: async (tone: string) => {
+      const res = await fetch("/api/agent-profile/generate-bio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ tone }),
+      });
+      if (!res.ok) throw new Error("Failed to generate bio");
+      const data = await res.json();
+      return data.bio;
+    },
+    onSuccess: (generatedBio) => {
+      setProfileForm(prev => ({ ...prev, bio: generatedBio }));
+      setBioChanges(true);
+      toast({ title: "Bio generated", description: "AI generated bio is ready for editing." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to generate bio. Please try again.", variant: "destructive" });
+    },
+  });
+
   const isRezenLinked = !!userProfile?.rezenYentaId;
   const isFubLinked = !!userProfile?.fubUserId;
 
+  // Phone number formatting function
+  const formatPhoneNumber = (value: string) => {
+    // Remove all non-digits
+    const digits = value.replace(/\D/g, '');
+    
+    // Apply formatting based on length
+    if (digits.length <= 3) {
+      return digits;
+    } else if (digits.length <= 6) {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    } else {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+    }
+  };
+
   const handleProfileFormChange = (field: keyof typeof profileForm, value: string) => {
-    setProfileForm(prev => ({ ...prev, [field]: value }));
-    setProfileChanges(true);
+    let processedValue = value;
+    
+    // Apply phone formatting if this is the phone field
+    if (field === 'phone') {
+      processedValue = formatPhoneNumber(value);
+    }
+    
+    setProfileForm(prev => ({ ...prev, [field]: processedValue }));
+    
+    if (field === 'bio') {
+      setBioChanges(true);
+    } else {
+      setProfileChanges(true);
+    }
   };
 
   const handleSaveProfile = () => {
@@ -563,6 +638,16 @@ export default function SettingsPage() {
     if (Object.keys(changes).length > 0) {
       updateProfileMutation.mutate(changes);
     }
+  };
+
+  const handleSaveBio = () => {
+    if (profileForm.bio !== (agentProfile?.bio || "")) {
+      updateBioMutation.mutate(profileForm.bio);
+    }
+  };
+
+  const handleGenerateBio = () => {
+    generateBioMutation.mutate(selectedBioTone);
   };
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -758,6 +843,99 @@ export default function SettingsPage() {
                         onChange={(e) => handleProfileFormChange('title', e.target.value)}
                         disabled={isAgentProfileLoading || updateProfileMutation.isPending}
                       />
+                    </div>
+                  </div>
+
+                  {/* Professional Bio Section */}
+                  <div className="space-y-4 pt-6 border-t">
+                    <div>
+                      <Label htmlFor="bio" className="text-lg font-semibold">Professional Bio</Label>
+                      <p className="text-sm text-muted-foreground">This bio appears on your CMA Presentation Agent Resume</p>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <Textarea
+                          id="bio"
+                          placeholder="Write about your experience, specialties, and what makes you unique as a real estate professional..."
+                          value={profileForm.bio}
+                          onChange={(e) => handleProfileFormChange('bio', e.target.value)}
+                          disabled={isAgentProfileLoading || updateBioMutation.isPending}
+                          className="min-h-[120px] resize-none"
+                          maxLength={500}
+                        />
+                        <div className="flex justify-between items-center mt-1">
+                          <span className="text-xs text-muted-foreground">
+                            {profileForm.bio.length}/500 characters
+                          </span>
+                          {bioChanges && (
+                            <Button
+                              size="sm"
+                              onClick={handleSaveBio}
+                              disabled={updateBioMutation.isPending}
+                              className="bg-[#EF4923] hover:bg-[#EF4923]/90"
+                            >
+                              {updateBioMutation.isPending ? (
+                                <>
+                                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                  Saving...
+                                </>
+                              ) : (
+                                "Save Bio"
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* AI Bio Generator */}
+                      <div className="bg-muted/30 p-4 rounded-lg">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Sparkles className="h-4 w-4 text-[#EF4923]" />
+                          <Label className="font-medium">AI Bio Generator</Label>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <div className="flex gap-2 flex-wrap">
+                            {[
+                              { value: "professional", label: "Professional" },
+                              { value: "friendly", label: "Friendly" },
+                              { value: "luxury", label: "Luxury" }
+                            ].map((tone) => (
+                              <Button
+                                key={tone.value}
+                                type="button"
+                                variant={selectedBioTone === tone.value ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setSelectedBioTone(tone.value as typeof selectedBioTone)}
+                                disabled={generateBioMutation.isPending}
+                                className={selectedBioTone === tone.value ? "bg-[#EF4923] hover:bg-[#EF4923]/90" : ""}
+                              >
+                                {tone.label}
+                              </Button>
+                            ))}
+                          </div>
+                          
+                          <Button
+                            type="button"
+                            onClick={handleGenerateBio}
+                            disabled={generateBioMutation.isPending}
+                            className="w-full bg-[#EF4923] hover:bg-[#EF4923]/90"
+                          >
+                            {generateBioMutation.isPending ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="mr-2 h-4 w-4" />
+                                Generate Bio
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
