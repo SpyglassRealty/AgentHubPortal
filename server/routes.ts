@@ -3514,26 +3514,8 @@ Respond with valid JSON in this exact format:
 
   // REMOVED: Duplicate endpoint - using the one below with proper structure
 
-  // Update agent profile (CMA presentation settings)
-  app.put('/api/agent-profile', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await getDbUser(req);
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-      
-      const { updateAgentProfileSchema } = await import("@shared/schema");
-      const profileData = updateAgentProfileSchema.partial().safeParse(req.body.profile || req.body);
-      
-      if (!profileData.success) {
-        return res.status(400).json({ message: "Invalid profile data", details: profileData.error.issues });
-      }
-      
-      const updatedProfile = await storage.updateAgentProfileCma(user.id, profileData.data);
-      res.json({ success: true, profile: updatedProfile });
-    } catch (error) {
-      console.error('[Agent Profile] Error updating:', error);
-      res.status(500).json({ message: "Failed to update agent profile" });
-    }
-  });
+  // REMOVED: Duplicate PUT /api/agent-profile endpoint
+  // The Settings page uses the endpoint defined later (line ~4322) which handles phone/title/bio fields correctly
 
   // ==========================================
   // Agent Resources Routes (Presentation Builder)
@@ -4327,6 +4309,7 @@ Respond with valid JSON in this exact format:
       }
 
       const { phone, title, bio } = req.body;
+      console.log(`[Update Profile] User ${user.id} updating:`, { phone, title, bio: bio ? `${bio.substring(0, 30)}...` : null });
       
       // Get existing profile or create new one
       let profile = await storage.getAgentProfile(user.id);
@@ -4374,6 +4357,13 @@ Respond with valid JSON in this exact format:
         headshotUrl: profile.headshotUrl || user.profileImageUrl || '',
         bio: profile.bio || '',
       };
+
+      console.log(`[Update Profile] Successfully updated profile for user ${user.id}:`, {
+        savedPhone: profile.phone,
+        savedTitle: profile.title,
+        savedBio: profile.bio ? 'present' : 'null',
+        responsePhone: agentProfile.phone,
+      });
 
       res.json(agentProfile);
     } catch (error) {
