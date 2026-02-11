@@ -56,7 +56,15 @@ export default function MarketPulse({ isClickable = true }: MarketPulseProps) {
 
   const handleBarClick = (data: { status: string }) => {
     if (isClickable) {
-      setLocation(`/properties?status=${data.status}`);
+      // Add 30-day filter for closed properties to match Market Pulse calculation
+      if (data.status === 'Closed') {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const minSoldDate = thirtyDaysAgo.toISOString().split('T')[0];
+        setLocation(`/properties?status=Closed&minSoldDate=${minSoldDate}`);
+      } else {
+        setLocation(`/properties?status=${data.status}`);
+      }
     }
   };
 
@@ -255,7 +263,14 @@ export default function MarketPulse({ isClickable = true }: MarketPulseProps) {
           </Card>
           <Card 
             className={`bg-gray-50 border-gray-200 ${isClickable ? 'cursor-pointer hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200' : ''}`}
-            onClick={() => isClickable && setLocation('/properties?status=Closed')}
+            onClick={() => {
+              if (isClickable) {
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                const minSoldDate = thirtyDaysAgo.toISOString().split('T')[0];
+                setLocation(`/properties?status=Closed&minSoldDate=${minSoldDate}`);
+              }
+            }}
           >
             <CardContent className="p-2 sm:p-3">
               <div className="flex items-center gap-1 text-gray-700 text-[10px] sm:text-xs font-medium mb-1 sm:mb-2">

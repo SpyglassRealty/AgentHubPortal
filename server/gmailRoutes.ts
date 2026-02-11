@@ -9,7 +9,7 @@
 import type { Express } from "express";
 import { isAuthenticated } from "./replitAuth";
 import { storage } from "./storage";
-import { getGmailInbox, getGmailMessage } from "./gmailClient";
+import { getGmailInbox, getGmailMessage, getGmailCategoryUnreadCounts } from "./gmailClient";
 import type { User } from "@shared/schema";
 
 // Helper: get the actual database user (same pattern as routes.ts)
@@ -123,6 +123,50 @@ export function registerGmailRoutes(app: Express) {
       }
       
       res.status(500).json({ message: "Failed to fetch message" });
+    }
+  });
+
+  // GET /api/gmail/unread-counts — Get unread counts for each category
+  app.get('/api/gmail/unread-counts', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      let targetEmail = user.email;
+
+      const requestedAgentId = req.query.agentId as string;
+      if (requestedAgentId && user.isSuperAdmin) {
+        const targetUser = await storage.getUser(requestedAgentId);
+        if (targetUser?.email) {
+          targetEmail = targetUser.email;
+        } else {
+          return res.status(404).json({ message: "Agent not found or has no email" });
+        }
+      }
+
+      if (!targetEmail) {
+        return res.json({ 
+          primary: 0, 
+          promotions: 0, 
+          social: 0, 
+          forums: 0 
+        });
+      }
+
+      const counts = await getGmailCategoryUnreadCounts(targetEmail);
+      res.json(counts);
+    } catch (error: any) {
+      console.error("[Gmail Routes] Error fetching unread counts:", error);
+      
+      if (error.message?.includes('Not Authorized') || error.code === 403) {
+        return res.status(403).json({ 
+          message: "Gmail access not authorized for this user." 
+        });
+      }
+      
+      res.status(500).json({ message: "Failed to fetch unread counts" });
     }
   });
 }

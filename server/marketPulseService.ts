@@ -166,6 +166,8 @@ export async function refreshAndCacheMarketPulse(): Promise<MarketPulseData> {
     lastUpdatedAt: new Date(data.lastUpdatedAt)
   };
   
+  console.log(`[Market Pulse DEBUG] Snapshot for insert:`, snapshot);
+  
   await storage.saveMarketPulseSnapshot(snapshot);
   console.log(`[Market Pulse Service] Data cached successfully at ${data.lastUpdatedAt}`);
   

@@ -113,12 +113,21 @@ export const agentProfiles = pgTable("agent_profiles", {
   onboardingAnswers: jsonb("onboarding_answers"),
   dismissedSuggestions: text("dismissed_suggestions").array(),
   lastSurveyedAt: timestamp("last_surveyed_at"),
-  // Marketing profile fields for CMA agent resume
+  // CMA Presentation Builder fields (migrated from Contract Conduit)
+  title: text("title"),
+  headshotUrl: text("headshot_url"),
+  bio: text("bio"),
+  defaultCoverLetter: text("default_cover_letter"),
+  facebookUrl: text("facebook_url"),
+  instagramUrl: text("instagram_url"),
+  linkedinUrl: text("linkedin_url"),
+  twitterUrl: text("twitter_url"),
+  websiteUrl: text("website_url"),
+  marketingCompany: text("marketing_company"),
+  // Additional marketing profile fields for CMA agent resume
   marketingTitle: varchar("marketing_title"),
   marketingPhone: varchar("marketing_phone"),
   marketingEmail: varchar("marketing_email"),
-  headshotUrl: varchar("headshot_url"),
-  bio: text("bio"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -320,6 +329,66 @@ export const updateContentIdeaStatusSchema = z.object({
   status: z.enum(['saved', 'scheduled', 'posted'])
 });
 
+// CMA Brochure type
+export interface CmaBrochure {
+  type: "pdf" | "image";
+  url: string;
+  thumbnail?: string;
+  filename: string;
+  generated: boolean;
+  uploadedAt: string;
+}
+
+// CMA Adjustment Rates
+export interface CmaAdjustmentRates {
+  sqftPerUnit: number;
+  bedroomValue: number;
+  bathroomValue: number;
+  poolValue: number;
+  garagePerSpace: number;
+  yearBuiltPerYear: number;
+  lotSizePerSqft: number;
+}
+
+// CMA Comparable Adjustment Overrides
+export interface CmaCompAdjustmentOverrides {
+  sqft: number | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  pool: number | null;
+  garage: number | null;
+  yearBuilt: number | null;
+  lotSize: number | null;
+  custom: { name: string; value: number }[];
+}
+
+// CMA Adjustments Data
+export interface CmaAdjustmentsData {
+  rates: CmaAdjustmentRates;
+  compAdjustments: Record<string, CmaCompAdjustmentOverrides>;
+  enabled: boolean;
+}
+
+// Cover Page Config
+export interface CoverPageConfig {
+  title: string;
+  subtitle: string;
+  showDate: boolean;
+  showAgentPhoto: boolean;
+  background: "none" | "gradient" | "property";
+}
+
+// Default adjustment rates
+export const DEFAULT_ADJUSTMENT_RATES: CmaAdjustmentRates = {
+  sqftPerUnit: 50,
+  bedroomValue: 10000,
+  bathroomValue: 7500,
+  poolValue: 25000,
+  garagePerSpace: 5000,
+  yearBuiltPerYear: 1000,
+  lotSizePerSqft: 2,
+};
+
 // CMA (Comparative Market Analysis) tables
 export const cmas = pgTable("cmas", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -330,6 +399,16 @@ export const cmas = pgTable("cmas", {
   notes: text("notes"),
   status: varchar("status").default("draft"), // 'draft', 'completed', 'shared'
   presentationConfig: jsonb("presentation_config"), // { sections: [...], layout: { theme, primaryColor } }
+  // Presentation Builder fields (migrated from Contract Conduit)
+  shareToken: varchar("share_token").unique(), // for public share links
+  shareCreatedAt: timestamp("share_created_at"), // when share link was created
+  propertiesData: jsonb("properties_data").$type<any[]>(), // full properties data from Repliers MLS
+  preparedFor: text("prepared_for"), // client name the CMA is prepared for
+  suggestedListPrice: integer("suggested_list_price"), // suggested price
+  coverLetter: text("cover_letter"), // custom cover letter
+  brochure: jsonb("brochure").$type<CmaBrochure>(), // listing brochure config
+  adjustments: jsonb("adjustments").$type<CmaAdjustmentsData>(), // property value adjustments
+  expiresAt: timestamp("expires_at"), // share link expiry
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -338,6 +417,279 @@ export const cmas = pgTable("cmas", {
 
 export type Cma = typeof cmas.$inferSelect;
 export type InsertCma = typeof cmas.$inferInsert;
+
+// CMA Report Configs table - 1:1 with cmas for presentation settings
+export const cmaReportConfigs = pgTable("cma_report_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cmaId: varchar("cma_id").notNull().unique(), // References cmas.id
+  includedSections: jsonb("included_sections").$type<string[]>(),
+  sectionOrder: jsonb("section_order").$type<string[]>(),
+  coverLetterOverride: text("cover_letter_override"),
+  layout: text("layout").default("two_photos"), // two_photos, single_photo, no_photos
+  template: text("template").default("default"),
+  theme: text("theme").default("spyglass"),
+  photoLayout: text("photo_layout").default("first_dozen"), // first_dozen, all, ai_suggested, custom
+  mapStyle: text("map_style").default("streets"), // streets, satellite, dark
+  showMapPolygon: boolean("show_map_polygon").default(true),
+  includeAgentFooter: boolean("include_agent_footer").default(true),
+  coverPageConfig: jsonb("cover_page_config").$type<CoverPageConfig>(),
+  customPhotoSelections: jsonb("custom_photo_selections").$type<Record<string, string[]>>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type CmaReportConfig = typeof cmaReportConfigs.$inferSelect;
+export type InsertCmaReportConfig = typeof cmaReportConfigs.$inferInsert;
+
+// CMA Report Templates - user-owned reusable templates
+export const cmaReportTemplates = pgTable("cma_report_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  isDefault: boolean("is_default").default(false),
+  includedSections: jsonb("included_sections").$type<string[]>(),
+  sectionOrder: jsonb("section_order").$type<string[]>(),
+  coverLetterOverride: text("cover_letter_override"),
+  layout: text("layout").default("two_photos"),
+  theme: text("theme").default("spyglass"),
+  photoLayout: text("photo_layout").default("first_dozen"),
+  mapStyle: text("map_style").default("streets"),
+  showMapPolygon: boolean("show_map_polygon").default(true),
+  includeAgentFooter: boolean("include_agent_footer").default(true),
+  coverPageConfig: jsonb("cover_page_config").$type<CoverPageConfig>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type CmaReportTemplate = typeof cmaReportTemplates.$inferSelect;
+export type InsertCmaReportTemplate = typeof cmaReportTemplates.$inferInsert;
+
+// CMA Statistics types
+export interface CmaStatRange {
+  min: number;
+  max: number;
+}
+
+export interface CmaStatMetric {
+  range: CmaStatRange;
+  average: number;
+  median: number;
+}
+
+export interface PropertyStatistics {
+  price: CmaStatMetric;
+  pricePerSqFt: CmaStatMetric;
+  daysOnMarket: CmaStatMetric;
+  livingArea: CmaStatMetric;
+  lotSize: CmaStatMetric;
+  acres: CmaStatMetric;
+  bedrooms: CmaStatMetric;
+  bathrooms: CmaStatMetric;
+  yearBuilt: CmaStatMetric;
+}
+
+export interface TimelineDataPoint {
+  date: string;
+  price: number;
+  status: string;
+  propertyId: string;
+  address: string;
+  daysOnMarket: number | null;
+  cumulativeDaysOnMarket: number | null;
+}
+
+// CMA Comparable type (for shared views)
+export interface CMAComparable {
+  address: string;
+  price: number;
+  listPrice?: number;
+  closePrice?: number;
+  bedrooms: number;
+  bathrooms: number;
+  sqft: number | string;
+  daysOnMarket: number;
+  distance: number;
+  imageUrl?: string;
+  photos?: string[];
+  mlsNumber?: string;
+  status?: string;
+  listDate?: string;
+  closeDate?: string;
+  yearBuilt?: number;
+  map?: {
+    latitude: number;
+    longitude: number;
+  };
+}
+
+// Property interface for CMA and search results (from Repliers API)
+export interface Property {
+  id: string;
+  mlsNumber?: string;
+  unparsedAddress: string;
+  streetNumber?: string;
+  streetName?: string;
+  streetSuffix?: string;
+  city: string;
+  state?: string;
+  postalCode: string;
+  county?: string;
+
+  // Property characteristics
+  bedrooms?: number;
+  bathrooms?: number;
+  bathroomsFull?: number;
+  bathroomsHalf?: number;
+  sqft?: number;
+  livingArea?: number;
+  lotSize?: number;
+  lotSizeAcres?: number;
+  yearBuilt?: number;
+  propertyType?: string;
+  propertySubType?: string;
+  stories?: number;
+  garage?: string;
+  garageSpaces?: number;
+
+  // Status and dates
+  standardStatus?: string;
+  status?: string;
+  listDate?: string;
+  listingContractDate?: string;
+  soldDate?: string;
+  closeDate?: string;
+  daysOnMarket?: number;
+  simpleDaysOnMarket?: number | null;
+  cumulativeDaysOnMarket?: number | null;
+
+  // Pricing
+  listPrice?: number;
+  originalListPrice?: number;
+  soldPrice?: number;
+  closePrice?: number;
+  pricePerSqft?: number;
+
+  // Location
+  latitude?: number;
+  longitude?: number;
+  subdivision?: string;
+  neighborhood?: string;
+
+  // School information
+  schoolDistrict?: string;
+  elementarySchool?: string;
+  middleSchool?: string;
+  highSchool?: string;
+
+  // Media
+  photos?: string[];
+  photoCount?: number;
+  virtualTourUrl?: string;
+
+  // Description
+  description?: string;
+  publicRemarks?: string;
+
+  // Features
+  interiorFeatures?: string[];
+  exteriorFeatures?: string[];
+  appliances?: string[];
+  heatingCooling?: string[];
+  flooring?: string[];
+  pool?: string;
+
+  // Listing agent info
+  listingAgent?: string;
+  listingAgentName?: string;
+  listingAgentPhone?: string;
+  listingAgentEmail?: string;
+  listingOffice?: string;
+  listingOfficeName?: string;
+
+  // Financial
+  hoaFee?: number;
+  hoaFrequency?: string;
+  taxAmount?: number;
+  taxYear?: number;
+
+  // Search API specific fields
+  type?: string;
+  class?: string;
+  transactionType?: string;
+
+  // Legacy/alternate field names (for compatibility with different data sources)
+  bedroomsTotal?: number;
+  bathroomsTotalInteger?: number;
+  lotSizeSquareFeet?: number;
+  stateOrProvince?: string;
+  middleOrJuniorSchool?: string;
+
+  // Additional raw data
+  details?: Record<string, any>;
+  rawData?: Record<string, any>;
+}
+
+// Agent resources for CMA presentations
+export const agentResources = pgTable("agent_resources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id").notNull(),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // 'link' or 'file'
+  url: text("url"), // For external links
+  fileUrl: text("file_url"), // For uploaded files (object storage URL)
+  fileName: text("file_name"), // Original file name
+  fileData: text("file_data"), // Base64 encoded file content (for database storage)
+  fileMimeType: text("file_mime_type"), // MIME type of uploaded file
+  isActive: boolean("is_active").default(true),
+  displayOrder: integer("display_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type AgentResource = typeof agentResources.$inferSelect;
+export type InsertAgentResource = typeof agentResources.$inferInsert;
+
+// Helper schema for optional URLs that auto-prepends https:// if missing
+const optionalUrlSchema = z
+  .string()
+  .transform((val) => {
+    if (!val || val.trim() === "") return "";
+    let url = val.trim();
+    if (!url.match(/^https?:\/\//i)) {
+      url = `https://${url}`;
+    }
+    return url;
+  })
+  .refine(
+    (val) => {
+      if (!val) return true;
+      try {
+        new URL(val);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: "Please enter a valid URL (e.g., facebook.com/yourprofile)" }
+  )
+  .optional()
+  .or(z.literal(''));
+
+// Agent profile update validation schema (for CMA presentation settings)
+export const updateAgentProfileSchema = z.object({
+  title: z.string().optional(),
+  headshotUrl: z.string().url().optional().or(z.literal('')),
+  bio: z.string().optional(),
+  defaultCoverLetter: z.string().optional(),
+  facebookUrl: optionalUrlSchema,
+  instagramUrl: optionalUrlSchema,
+  linkedinUrl: optionalUrlSchema,
+  twitterUrl: optionalUrlSchema,
+  websiteUrl: optionalUrlSchema,
+  marketingCompany: z.string().optional(),
+});
+
+export type UpdateAgentProfile = z.infer<typeof updateAgentProfileSchema>;
 
 // =====================================================// Pulse V2 — Reventure-level data tables
 // ============================================================

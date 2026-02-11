@@ -144,75 +144,198 @@ export async function registerRoutes(
     }
   });
 
-  app.get('/api/fub/calendar', isAuthenticated, async (req: any, res) => {
+  // Debug endpoint to test FUB API connectivity
+  app.get('/api/test-fub', async (req: any, res) => {
     try {
-      const user = await getDbUser(req);
+      const hasKey = !!process.env.FUB_API_KEY;
+      console.log('[Test FUB] API Key exists:', hasKey);
       
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+      if (!hasKey) {
+        return res.json({ success: false, error: 'FUB_API_KEY not set' });
       }
 
       const fubClient = getFubClient();
       if (!fubClient) {
+        return res.json({ success: false, error: 'FUB Client failed to initialize' });
+      }
+
+      // Test API call
+      const result = await fubClient.fetch('/me');
+      res.json({ success: true, fubResponse: result });
+    } catch (error) {
+      console.error('[Test FUB] Error:', error);
+      res.json({ success: false, error: error.message });
+    }
+  });
+
+  // Debug endpoint to test Google Calendar setup
+  app.get('/api/test-google-calendar', async (req: any, res) => {
+    try {
+      const hasCredentials = !!(process.env.GOOGLE_CALENDAR_CREDENTIALS || process.env.GOOGLE_CALENDAR_CREDENTIALS_FILE);
+      console.log('[Test Google Calendar] Credentials exist:', hasCredentials);
+      console.log('[Test Google Calendar] GOOGLE_CALENDAR_CREDENTIALS env var set:', !!process.env.GOOGLE_CALENDAR_CREDENTIALS);
+      console.log('[Test Google Calendar] GOOGLE_CALENDAR_CREDENTIALS_FILE env var:', process.env.GOOGLE_CALENDAR_CREDENTIALS_FILE);
+      console.log('[Test Google Calendar] GOOGLE_SERVICE_ACCOUNT_JSON env var set:', !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+
+      if (!hasCredentials) {
+        return res.json({ 
+          success: false, 
+          error: 'Google Calendar credentials not configured',
+          details: {
+            hasCredentialsEnv: !!process.env.GOOGLE_CALENDAR_CREDENTIALS,
+            hasCredentialsFileEnv: !!process.env.GOOGLE_CALENDAR_CREDENTIALS_FILE,
+            hasServiceAccountEnv: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+            credentialsFileValue: process.env.GOOGLE_CALENDAR_CREDENTIALS_FILE
+          }
+        });
+      }
+
+      // Test getting calendar events (using a dummy email that won't work but will test auth)
+      const { getGoogleCalendarEvents } = await import('./googleCalendarClient');
+      const testResult = await getGoogleCalendarEvents('test@spyglassrealty.com', '2024-01-01', '2024-01-02');
+      
+      res.json({ success: true, message: 'Google Calendar client initialized successfully' });
+    } catch (error) {
+      console.error('[Test Google Calendar] Error:', error);
+      res.json({ 
+        success: false, 
+        error: error.message,
+        stack: error.stack?.split('\n').slice(0, 5) // First 5 lines of stack trace
+      });
+    }
+  });
+
+  app.get('/api/fub/calendar', isAuthenticated, async (req: any, res) => {
+    console.log('[Calendar Debug] Request received for /api/fub/calendar');
+    try {
+      const user = await getDbUser(req);
+      console.log('[Calendar Debug] User found:', !!user, user ? { id: user.id, email: user.email, fubUserId: user.fubUserId } : 'null');
+      
+      if (!user) {
+        console.log('[Calendar Debug] User not found in database');
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const fubClient = getFubClient();
+      console.log('[Calendar Debug] FUB Client initialized:', !!fubClient);
+      if (!fubClient) {
+        console.log('[Calendar Debug] FUB Client is null - integration not configured');
         return res.status(503).json({ message: "Follow Up Boss integration not configured" });
       }
 
       let fubUserId: number | null = null;
       const requestedAgentId = req.query.agentId as string;
+      console.log('[Calendar Debug] Requested agent ID:', requestedAgentId, 'User is super admin:', user.isSuperAdmin);
 
       if (requestedAgentId && user.isSuperAdmin) {
         fubUserId = parseInt(requestedAgentId, 10);
+        console.log('[Calendar Debug] Using super admin requested fubUserId:', fubUserId);
       } else {
         fubUserId = user.fubUserId;
+        console.log('[Calendar Debug] User fubUserId from DB:', fubUserId);
         
         if (!fubUserId && user.email) {
-          const fubUser = await fubClient.getUserByEmail(user.email);
-          if (fubUser) {
-            fubUserId = fubUser.id;
-            await storage.updateUserFubId(user.id, fubUserId);
+          console.log('[Calendar Debug] No fubUserId found, looking up by email:', user.email);
+          try {
+            const fubUser = await fubClient.getUserByEmail(user.email);
+            console.log('[Calendar Debug] FUB user lookup result:', !!fubUser, fubUser ? { id: fubUser.id } : 'null');
+            if (fubUser) {
+              fubUserId = fubUser.id;
+              await storage.updateUserFubId(user.id, fubUserId);
+              console.log('[Calendar Debug] Updated user fubUserId in DB:', fubUserId);
+            }
+          } catch (emailLookupError) {
+            console.error('[Calendar Debug] Error looking up FUB user by email:', emailLookupError);
           }
         }
       }
 
+      console.log('[Calendar Debug] Final fubUserId:', fubUserId);
       if (!fubUserId) {
+        console.log('[Calendar Debug] No fubUserId available - returning empty response');
         return res.json({ events: [], tasks: [], message: "No Follow Up Boss account linked" });
       }
 
       const startDate = req.query.startDate as string;
       const endDate = req.query.endDate as string;
+      console.log('[Calendar Debug] Date range:', { startDate, endDate });
 
-      const [appointments, tasks] = await Promise.all([
-        fubClient.getAppointments(fubUserId, startDate, endDate),
-        fubClient.getTasks(fubUserId, startDate, endDate),
-      ]);
+      console.log('[Calendar Debug] Making FUB API calls for appointments and tasks...');
+      try {
+        const [appointments, tasks] = await Promise.all([
+          fubClient.getAppointments(fubUserId, startDate, endDate),
+          fubClient.getTasks(fubUserId, startDate, endDate),
+        ]);
 
-      res.json({ events: appointments, tasks });
+        console.log('[Calendar Debug] FUB API response:', { appointmentsCount: appointments?.length || 0, tasksCount: tasks?.length || 0 });
+        
+        // Map FubEvent to GoogleCalendarEvent format for frontend compatibility
+        const mapFubToGoogleEvent = (fubEvent: any): any => ({
+          id: fubEvent.id.toString(), // Convert number to string
+          title: fubEvent.title,
+          description: fubEvent.description,
+          startDate: fubEvent.startDate,
+          endDate: fubEvent.endDate,
+          allDay: fubEvent.allDay || false,
+          // Map FUB types to Google Calendar types
+          type: fubEvent.type === 'appointment' ? 'meeting' : 
+                fubEvent.type === 'task' ? 'event' :
+                fubEvent.type === 'deal_closing' ? 'closing' : 'event',
+          location: fubEvent.location,
+          status: 'confirmed' as const, // FUB doesn't have status, default to confirmed
+          personName: fubEvent.personName,
+          personId: fubEvent.personId
+        });
+        
+        // Combine appointments and tasks into single events array
+        const allEvents = [
+          ...(appointments || []).map(mapFubToGoogleEvent),
+          ...(tasks || []).map(mapFubToGoogleEvent)
+        ];
+        
+        res.json({ events: allEvents });
+      } catch (apiError) {
+        console.error('[Calendar Debug] FUB API call failed:', apiError);
+        throw apiError; // Re-throw to be caught by outer catch
+      }
     } catch (error) {
-      console.error("Error fetching FUB calendar:", error);
-      res.status(500).json({ message: "Failed to fetch calendar data" });
+      console.error("[Calendar Debug] Error in calendar route - Full stack trace:", error);
+      console.error("[Calendar Debug] Error message:", error?.message);
+      console.error("[Calendar Debug] Error stack:", error?.stack);
+      res.status(500).json({ message: "Failed to fetch calendar data", debug: error?.message });
     }
   });
 
-  // Google Calendar - uses domain-wide delegation to impersonate users
+  // DEPRECATED: Google Calendar route - Calendar now uses Follow Up Boss
+  // Commented out to prevent confusion - Calendar page now calls /api/fub/calendar
+  /*
   app.get('/api/google/calendar', isAuthenticated, async (req: any, res) => {
+    console.log('[Google Calendar Debug] Request received for /api/google/calendar');
     try {
       const user = await getDbUser(req);
+      console.log('[Google Calendar Debug] User found:', !!user, user ? { id: user.id, email: user.email } : 'null');
       
       if (!user) {
+        console.log('[Google Calendar Debug] User not found in database');
         return res.status(404).json({ message: "User not found" });
       }
 
       let targetEmail = user.email;
       const requestedAgentId = req.query.agentId as string;
+      console.log('[Google Calendar Debug] Target email (initial):', targetEmail, 'Requested agent ID:', requestedAgentId);
 
       // If super admin is viewing another agent's calendar, look up their email
       if (requestedAgentId && user.isSuperAdmin) {
+        console.log('[Google Calendar Debug] Super admin requesting specific agent calendar');
         // agentId comes from FUB agent selector as a FUB user ID number
         const fubAgentId = parseInt(requestedAgentId, 10);
+        console.log('[Google Calendar Debug] Looking up fubAgentId:', fubAgentId);
         // Look up the DB user that has this fubUserId to get their email
         const agentUsers = await db.select().from(usersTable).where(eq(usersTable.fubUserId, fubAgentId));
+        console.log('[Google Calendar Debug] Agent users found:', agentUsers.length);
         if (agentUsers.length > 0 && agentUsers[0].email) {
           targetEmail = agentUsers[0].email;
+          console.log('[Google Calendar Debug] Using agent email from DB:', targetEmail);
         } else {
           // Try to find by FUB API as fallback
           const fubClient = getFubClient();
@@ -230,22 +353,30 @@ export async function registerRoutes(
         }
       }
 
+      console.log('[Google Calendar Debug] Final target email:', targetEmail);
       if (!targetEmail) {
+        console.log('[Google Calendar Debug] No email address available - returning empty response');
         return res.json({ events: [], message: "No email address found for this user" });
       }
 
       const startDate = req.query.startDate as string;
       const endDate = req.query.endDate as string;
+      console.log('[Google Calendar Debug] Date parameters:', { startDate, endDate });
 
       if (!startDate || !endDate) {
+        console.log('[Google Calendar Debug] Missing date parameters');
         return res.status(400).json({ message: "startDate and endDate are required" });
       }
 
+      console.log('[Google Calendar Debug] Calling getGoogleCalendarEvents with:', { targetEmail, startDate, endDate });
       const events = await getGoogleCalendarEvents(targetEmail, startDate, endDate);
+      console.log('[Google Calendar Debug] Got events:', events?.length || 0);
 
       res.json({ events });
     } catch (error: any) {
-      console.error("Error fetching Google Calendar:", error);
+      console.error("[Google Calendar Debug] Error in Google Calendar route - Full stack trace:", error);
+      console.error("[Google Calendar Debug] Error message:", error?.message);
+      console.error("[Google Calendar Debug] Error code:", error?.code);
       
       // Provide helpful error messages for common issues
       if (error.message?.includes('Not Authorized') || error.code === 403) {
@@ -258,6 +389,7 @@ export async function registerRoutes(
       res.status(500).json({ message: "Failed to fetch Google Calendar data" });
     }
   });
+  */
 
   app.get('/api/fub/deals', isAuthenticated, async (req: any, res) => {
     try {
@@ -935,6 +1067,7 @@ export async function registerRoutes(
       const propertyType = (req.query.propertyType as string) || '';
       const maxDom = req.query.maxDom ? parseInt(req.query.maxDom as string, 10) : undefined;
       const search = (req.query.search as string) || '';
+      const minSoldDate = (req.query.minSoldDate as string) || '';
 
       const baseUrl = 'https://api.repliers.io/listings';
       const msaCounties = ['Travis', 'Williamson', 'Hays', 'Bastrop', 'Caldwell'];
@@ -1018,11 +1151,23 @@ export async function registerRoutes(
       if (status && status !== 'all') {
         if (status === 'Closed') {
           // For closed/sold listings, use status=U with lastStatus=Sld
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
           params.append('status', 'U');
           params.append('lastStatus', 'Sld');
-          params.append('minClosedDate', thirtyDaysAgo.toISOString().split('T')[0]);
+          
+          // Use minSoldDate from URL params, or default to 30 days
+          if (minSoldDate) {
+            params.append('minSoldDate', minSoldDate);
+            console.log(`[Company Listings] CLOSED STATUS - USING CUSTOM minSoldDate: ${minSoldDate}`);
+          } else {
+            // Default to 30-day filter if no date specified
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const defaultDate = thirtyDaysAgo.toISOString().split('T')[0];
+            params.append('minSoldDate', defaultDate);
+            console.log(`[Company Listings] CLOSED STATUS - USING DEFAULT 30-DAY FILTER: ${defaultDate}`);
+          }
+          
+          console.log(`[Company Listings] CLOSED STATUS - Final Repliers params: status=U, lastStatus=Sld, minSoldDate=${params.get('minSoldDate')}`);
         } else {
           // Active, Active Under Contract, Pending use standardStatus
           params.append('standardStatus', status);
@@ -1034,6 +1179,11 @@ export async function registerRoutes(
 
       const fullUrl = `${baseUrl}?${params.toString()}`;
       console.log(`[Company Listings] Fetching page ${page} (limit ${limit}): ${status} listings...`);
+      console.log(`[Company Listings DEBUG] Received params:`, { 
+        status: req.query.status, 
+        minSoldDate: req.query.minSoldDate,
+        parsedMinSoldDate: minSoldDate 
+      });
       console.log(`[Company Listings] API URL: ${fullUrl}`);
 
       const response = await fetch(fullUrl, {
@@ -2402,23 +2552,38 @@ Respond with valid JSON in this exact format:
   // Create a new CMA
   app.post('/api/cma', isAuthenticated, async (req: any, res) => {
     try {
+      console.log('[CMA DEBUG] CMA save request received:', req.body);
+      
       const user = await getDbUser(req);
+      console.log('[CMA DEBUG] User lookup result:', user ? { id: user.id, email: user.email } : 'null');
+      
       if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
       const { name, subjectProperty, comparableProperties, notes, status } = req.body;
+      console.log('[CMA DEBUG] Parsed request data:', { name, subjectProperty, comparableProperties, notes, status });
+      
       if (!name) return res.status(400).json({ message: "Name is required" });
-      const cma = await storage.createCma({
+      
+      const cmaData = {
         userId: user.id,
         name,
         subjectProperty: subjectProperty || null,
         comparableProperties: comparableProperties || [],
         notes: notes || null,
         status: status || 'draft',
-      });
+      };
+      
+      console.log('[CMA DEBUG] Creating CMA with data:', cmaData);
+      
+      const cma = await storage.createCma(cmaData);
+      console.log('[CMA DEBUG] CMA created successfully:', cma.id);
+      
       res.json(cma);
     } catch (error) {
-      console.error('[CMA] Error creating CMA:', error);
+      console.error('[CMA DEBUG] CRITICAL ERROR creating CMA:', error);
+      console.error('[CMA DEBUG] Error stack:', error.stack);
       const errMsg = error instanceof Error ? error.message : String(error);
-      res.status(500).json({ message: "Failed to create CMA", error: errMsg });
+      res.status(500).json({ message: "Failed to create CMA", error: errMsg, debug: true });
     }
   });
 
@@ -3050,6 +3215,461 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // ==========================================
+  // CMA Report Config Routes (Presentation Builder)
+  // ==========================================
+
+  // Get report config for a CMA
+  app.get('/api/cmas/:id/report-config', isAuthenticated, async (req: any, res) => {
+    try {
+      const config = await storage.getCmaReportConfig(req.params.id);
+      res.json(config || {
+        cmaId: req.params.id,
+        includedSections: ['cover_page', 'cover_letter', 'map_all_listings', 'summary_comparables', 'property_details', 'price_per_sqft', 'comparable_stats'],
+        sectionOrder: null,
+        layout: 'two_photos',
+        template: 'default',
+        theme: 'spyglass',
+        photoLayout: 'first_dozen',
+        mapStyle: 'streets',
+        showMapPolygon: true,
+        includeAgentFooter: true,
+      });
+    } catch (error) {
+      console.error('[CMA Report Config] Error getting config:', error);
+      res.status(500).json({ message: "Failed to get CMA report config" });
+    }
+  });
+
+  // Create/update report config for a CMA
+  app.put('/api/cmas/:id/report-config', isAuthenticated, async (req: any, res) => {
+    try {
+      const config = await storage.upsertCmaReportConfig({
+        ...req.body,
+        cmaId: req.params.id,
+      });
+      res.json(config);
+    } catch (error) {
+      console.error('[CMA Report Config] Error updating config:', error);
+      res.status(500).json({ message: "Failed to update CMA report config" });
+    }
+  });
+
+  // Delete report config for a CMA
+  app.delete('/api/cmas/:id/report-config', isAuthenticated, async (req: any, res) => {
+    try {
+      const deleted = await storage.deleteCmaReportConfig(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Report config not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[CMA Report Config] Error deleting config:', error);
+      res.status(500).json({ message: "Failed to delete CMA report config" });
+    }
+  });
+
+  // ==========================================
+  // CMA Template Routes (Presentation Builder)
+  // ==========================================
+
+  // List user's templates
+  app.get('/api/cma-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const templates = await storage.getCmaReportTemplates(user.id);
+      res.json(templates);
+    } catch (error) {
+      console.error('[CMA Templates] Error listing:', error);
+      res.status(500).json({ message: "Failed to list templates" });
+    }
+  });
+
+  // Create template
+  app.post('/api/cma-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const template = await storage.createCmaReportTemplate({
+        ...req.body,
+        userId: user.id,
+      });
+      res.status(201).json(template);
+    } catch (error) {
+      console.error('[CMA Templates] Error creating:', error);
+      res.status(500).json({ message: "Failed to create template" });
+    }
+  });
+
+  // Update template
+  app.put('/api/cma-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      // Verify ownership
+      const existing = await storage.getCmaReportTemplate(req.params.id);
+      if (!existing || existing.userId !== user.id) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      
+      const updated = await storage.updateCmaReportTemplate(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error('[CMA Templates] Error updating:', error);
+      res.status(500).json({ message: "Failed to update template" });
+    }
+  });
+
+  // Delete template
+  app.delete('/api/cma-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const deleted = await storage.deleteCmaReportTemplate(req.params.id, user.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[CMA Templates] Error deleting:', error);
+      res.status(500).json({ message: "Failed to delete template" });
+    }
+  });
+
+  // Apply template to a CMA
+  app.post('/api/cma-templates/:id/apply/:cmaId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const template = await storage.getCmaReportTemplate(req.params.id);
+      if (!template || template.userId !== user.id) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      
+      // Apply template settings to the CMA's report config
+      const config = await storage.upsertCmaReportConfig({
+        cmaId: req.params.cmaId,
+        includedSections: template.includedSections,
+        sectionOrder: template.sectionOrder,
+        coverLetterOverride: template.coverLetterOverride,
+        layout: template.layout,
+        theme: template.theme,
+        photoLayout: template.photoLayout,
+        mapStyle: template.mapStyle,
+        showMapPolygon: template.showMapPolygon,
+        includeAgentFooter: template.includeAgentFooter,
+        coverPageConfig: template.coverPageConfig,
+      });
+      
+      res.json(config);
+    } catch (error) {
+      console.error('[CMA Templates] Error applying:', error);
+      res.status(500).json({ message: "Failed to apply template" });
+    }
+  });
+
+  // ==========================================
+  // Share Link Routes (Presentation Builder)
+  // ==========================================
+
+  // Generate share link for CMA
+  app.post('/api/cmas/:id/share', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const cma = await storage.getCma(req.params.id, user.id);
+      if (!cma) {
+        return res.status(404).json({ message: "CMA not found" });
+      }
+      
+      // Generate a unique share token
+      const token = `cma_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      
+      // Set expiration (default 30 days)
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + (req.body.expirationDays || 30));
+      
+      const updated = await storage.updateCma(req.params.id, user.id, {
+        shareToken: token,
+        shareCreatedAt: new Date(),
+        expiresAt,
+        status: 'shared',
+      } as any);
+      
+      res.json({ shareToken: token, expiresAt });
+    } catch (error) {
+      console.error('[CMA Share] Error generating share link:', error);
+      res.status(500).json({ message: "Failed to generate share link" });
+    }
+  });
+
+  // Remove share link from CMA
+  app.delete('/api/cmas/:id/share', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const cma = await storage.getCma(req.params.id, user.id);
+      if (!cma) {
+        return res.status(404).json({ message: "CMA not found" });
+      }
+      
+      await storage.updateCma(req.params.id, user.id, {
+        shareToken: null,
+        shareCreatedAt: null,
+        expiresAt: null,
+      } as any);
+      
+      res.json({ message: "Share link removed" });
+    } catch (error) {
+      console.error('[CMA Share] Error removing share link:', error);
+      res.status(500).json({ message: "Failed to remove share link" });
+    }
+  });
+
+  // Public: Get shared CMA data (NO AUTH)
+  app.get('/api/shared/cma/:token', async (req: any, res) => {
+    try {
+      const cma = await storage.getCmaByShareToken(req.params.token);
+      if (!cma) {
+        return res.status(404).json({ message: "CMA not found or link expired" });
+      }
+      // Check expiration
+      if (cma.expiresAt && new Date(cma.expiresAt) < new Date()) {
+        return res.status(410).json({ message: "This CMA link has expired" });
+      }
+      res.json(cma);
+    } catch (error) {
+      console.error('[CMA Share] Error fetching shared CMA:', error);
+      res.status(500).json({ message: "Failed to fetch shared CMA" });
+    }
+  });
+
+  // Public: Get agent resources for shared CMA (NO AUTH)
+  app.get('/api/shared/cma/:token/resources', async (req: any, res) => {
+    try {
+      const cma = await storage.getCmaByShareToken(req.params.token);
+      if (!cma) {
+        return res.status(404).json({ message: "CMA not found or link expired" });
+      }
+      if (cma.expiresAt && new Date(cma.expiresAt) < new Date()) {
+        return res.status(410).json({ message: "This CMA link has expired" });
+      }
+      if (!cma.userId) {
+        return res.json([]);
+      }
+      const resources = await storage.getAgentResources(cma.userId);
+      // Only return active resources
+      const activeResources = resources.filter(r => r.isActive !== false);
+      res.json(activeResources);
+    } catch (error) {
+      console.error('[CMA Share] Error fetching shared resources:', error);
+      res.status(500).json({ message: "Failed to fetch resources" });
+    }
+  });
+
+  // ==========================================
+  // Agent Profile Routes (Presentation Builder)
+  // ==========================================
+
+  // Get agent profile for CMA presentations
+  app.get('/api/agent-profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const profile = await storage.getAgentProfile(user.id);
+      res.json({
+        profile: profile || null,
+        user: user ? {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profileImageUrl: user.profileImageUrl,
+        } : null,
+      });
+    } catch (error) {
+      console.error('[Agent Profile] Error fetching:', error);
+      res.status(500).json({ message: "Failed to fetch agent profile" });
+    }
+  });
+
+  // Update agent profile (CMA presentation settings)
+  app.put('/api/agent-profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const { updateAgentProfileSchema } = await import("@shared/schema");
+      const profileData = updateAgentProfileSchema.partial().safeParse(req.body.profile || req.body);
+      
+      if (!profileData.success) {
+        return res.status(400).json({ message: "Invalid profile data", details: profileData.error.issues });
+      }
+      
+      const updatedProfile = await storage.updateAgentProfileCma(user.id, profileData.data);
+      res.json({ success: true, profile: updatedProfile });
+    } catch (error) {
+      console.error('[Agent Profile] Error updating:', error);
+      res.status(500).json({ message: "Failed to update agent profile" });
+    }
+  });
+
+  // ==========================================
+  // Agent Resources Routes (Presentation Builder)
+  // ==========================================
+
+  // List user's resources
+  app.get('/api/agent-resources', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const resources = await storage.getAgentResources(user.id);
+      res.json(resources);
+    } catch (error) {
+      console.error('[Agent Resources] Error listing:', error);
+      res.status(500).json({ message: "Failed to fetch resources" });
+    }
+  });
+
+  // Create resource
+  app.post('/api/agent-resources', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const { name, type, url, fileUrl, fileName, fileData, fileMimeType } = req.body;
+      
+      if (!name || !type) {
+        return res.status(400).json({ message: "Name and type are required" });
+      }
+      
+      if (!['link', 'file'].includes(type)) {
+        return res.status(400).json({ message: "Type must be 'link' or 'file'" });
+      }
+      
+      const resource = await storage.createAgentResource({
+        userId: user.id,
+        name,
+        type,
+        url: url || null,
+        fileUrl: fileUrl || null,
+        fileName: fileName || null,
+        fileData: fileData || null,
+        fileMimeType: fileMimeType || null,
+        isActive: true,
+      });
+      
+      res.status(201).json(resource);
+    } catch (error) {
+      console.error('[Agent Resources] Error creating:', error);
+      res.status(500).json({ message: "Failed to create resource" });
+    }
+  });
+
+  // Update resource
+  app.put('/api/agent-resources/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      // Verify ownership
+      const existing = await storage.getAgentResource(req.params.id);
+      if (!existing || existing.userId !== user.id) {
+        return res.status(404).json({ message: "Resource not found" });
+      }
+      
+      const { name, url, isActive, fileData, fileMimeType } = req.body;
+      const updateData: any = {};
+      if (name !== undefined) updateData.name = name;
+      if (url !== undefined) updateData.url = url;
+      if (isActive !== undefined) updateData.isActive = isActive;
+      if (fileData !== undefined) updateData.fileData = fileData;
+      if (fileMimeType !== undefined) updateData.fileMimeType = fileMimeType;
+      
+      const updated = await storage.updateAgentResource(req.params.id, updateData);
+      res.json(updated);
+    } catch (error) {
+      console.error('[Agent Resources] Error updating:', error);
+      res.status(500).json({ message: "Failed to update resource" });
+    }
+  });
+
+  // Delete resource
+  app.delete('/api/agent-resources/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      // Verify ownership
+      const existing = await storage.getAgentResource(req.params.id);
+      if (!existing || existing.userId !== user.id) {
+        return res.status(404).json({ message: "Resource not found" });
+      }
+      
+      await storage.deleteAgentResource(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Agent Resources] Error deleting:', error);
+      res.status(500).json({ message: "Failed to delete resource" });
+    }
+  });
+
+  // Reorder resources
+  app.put('/api/agent-resources/reorder', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const { orderedIds } = req.body;
+      if (!Array.isArray(orderedIds)) {
+        return res.status(400).json({ message: "orderedIds must be an array" });
+      }
+      
+      await storage.reorderAgentResources(user.id, orderedIds);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Agent Resources] Error reordering:', error);
+      res.status(500).json({ message: "Failed to reorder resources" });
+    }
+  });
+
+  // Serve file from database storage (public access for CMA viewers)
+  app.get('/api/agent-resources/:id/file', async (req: any, res) => {
+    try {
+      const resource = await storage.getAgentResource(req.params.id);
+      if (!resource || !resource.fileData) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      // Parse base64 data URI
+      const matches = resource.fileData.match(/^data:([^;]+);base64,(.+)$/);
+      if (!matches) {
+        return res.status(500).json({ message: "Invalid file data format" });
+      }
+      
+      const mimeType = matches[1];
+      const base64Data = matches[2];
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Content-Disposition', `inline; filename="${resource.fileName || 'document'}"`);
+      res.setHeader('Content-Length', buffer.length);
+      res.send(buffer);
+    } catch (error) {
+      console.error('[Agent Resources] Error serving file:', error);
+      res.status(500).json({ message: "Failed to serve file" });
+    }
+  });
+
   // ======================================================  // PULSE - Market Intelligence Endpoints
   // =============================================================
 
@@ -3528,7 +4148,7 @@ Respond with valid JSON in this exact format:
       const agentProfile = {
         firstName: user.firstName,
         lastName: user.lastName,
-        marketingTitle: profile?.marketingTitle || '',
+        marketingTitle: profile?.marketingTitle || profile?.title || '',
         marketingPhone: profile?.marketingPhone || '',
         marketingEmail: profile?.marketingEmail || user.email || '',
         headshotUrl: profile?.headshotUrl || user.profileImageUrl || '',
@@ -3584,7 +4204,7 @@ Respond with valid JSON in this exact format:
       const agentProfile = {
         firstName: user.firstName,
         lastName: user.lastName,
-        marketingTitle: profile.marketingTitle || '',
+        marketingTitle: profile.marketingTitle || profile.title || '',
         marketingPhone: profile.marketingPhone || '',
         marketingEmail: profile.marketingEmail || user.email || '',
         headshotUrl: profile.headshotUrl || user.profileImageUrl || '',

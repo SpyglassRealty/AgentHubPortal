@@ -22,6 +22,7 @@ interface Filters {
   propertyType: string;
   maxDom: string;
   search: string;
+  minSoldDate: string;
 }
 
 const DEFAULT_FILTERS: Filters = {
@@ -37,15 +38,17 @@ const DEFAULT_FILTERS: Filters = {
   propertyType: '',
   maxDom: '',
   search: '',
+  minSoldDate: '',
 };
 
 interface AustinMetroListingsProps {
   initialStatus?: string;
   controlledStatus?: string;
   onStatusChange?: (status: string) => void;
+  controlledMinSoldDate?: string;
 }
 
-export function AustinMetroListings({ initialStatus = 'Active', controlledStatus, onStatusChange }: AustinMetroListingsProps) {
+export function AustinMetroListings({ initialStatus = 'Active', controlledStatus, onStatusChange, controlledMinSoldDate }: AustinMetroListingsProps) {
   const { isDark } = useTheme();
   
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -55,6 +58,7 @@ export function AustinMetroListings({ initialStatus = 'Active', controlledStatus
   const [filters, setFilters] = useState<Filters>({
     ...DEFAULT_FILTERS,
     status: controlledStatus || initialStatus,
+    minSoldDate: controlledMinSoldDate || '',
   });
 
   useEffect(() => {
@@ -63,6 +67,13 @@ export function AustinMetroListings({ initialStatus = 'Active', controlledStatus
       setPage(1);
     }
   }, [controlledStatus]);
+
+  useEffect(() => {
+    if (controlledMinSoldDate !== undefined && controlledMinSoldDate !== filters.minSoldDate) {
+      setFilters(prev => ({ ...prev, minSoldDate: controlledMinSoldDate }));
+      setPage(1);
+    }
+  }, [controlledMinSoldDate]);
   const [showFilters, setShowFilters] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   

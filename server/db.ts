@@ -91,13 +91,12 @@ async function addAgentProfileMarketingFields() {
     
     const columnNames = new Set(existingColumns.rows.map(row => row.column_name));
     
-    // Define marketing profile columns for CMA presentation
+    // Define additional marketing profile columns for CMA presentation
+    // Note: bio, headshot_url, title already exist from Stage 1
     const marketingColumns = [
       { name: 'marketing_title', sql: 'ALTER TABLE agent_profiles ADD COLUMN marketing_title varchar' },
       { name: 'marketing_phone', sql: 'ALTER TABLE agent_profiles ADD COLUMN marketing_phone varchar' },
       { name: 'marketing_email', sql: 'ALTER TABLE agent_profiles ADD COLUMN marketing_email varchar' },
-      { name: 'headshot_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN headshot_url varchar' },
-      { name: 'bio', sql: 'ALTER TABLE agent_profiles ADD COLUMN bio text' },
     ];
     
     // Add missing columns
@@ -213,6 +212,105 @@ async function createPulseDataTables() {
             created_at timestamp DEFAULT NOW()
           )
         `
+      },
+      // Market Pulse History for daily snapshots and trending
+      {
+        name: 'market_pulse_history',
+        sql: `
+          CREATE TABLE IF NOT EXISTS market_pulse_history (
+            id serial PRIMARY KEY,
+            date date NOT NULL,
+            zip varchar(5) NOT NULL,
+            
+            -- Price metrics
+            median_home_value numeric,
+            median_sale_price numeric,
+            median_list_price numeric,
+            price_per_sqft numeric,
+            
+            -- Market activity
+            homes_sold integer,
+            active_listings integer,
+            new_listings integer,
+            pending_listings integer,
+            
+            -- Market timing
+            median_dom integer,
+            avg_dom integer,
+            
+            -- Market conditions  
+            months_of_supply numeric,
+            sale_to_list_ratio numeric,
+            price_drops_pct numeric,
+            
+            -- Calculated metrics
+            inventory_growth_mom numeric, -- month-over-month inventory change
+            sales_growth_mom numeric,     -- month-over-month sales change
+            price_growth_mom numeric,     -- month-over-month price change
+            price_growth_yoy numeric,     -- year-over-year price change
+            
+            -- Market temperature (calculated)
+            market_temperature varchar(20), -- 'Hot', 'Warm', 'Balanced', 'Cool', 'Cold'
+            market_score integer,           -- 0-100 composite score
+            
+            -- Metadata
+            data_source varchar(50) DEFAULT 'repliers_mls',
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      // Notifications table
+      {
+        name: 'notifications',
+        sql: `
+          CREATE TABLE IF NOT EXISTS notifications (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            type varchar NOT NULL,
+            title varchar NOT NULL,
+            message text,
+            is_read boolean DEFAULT false,
+            payload jsonb,
+            created_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      // User video preferences table
+      {
+        name: 'user_video_preferences',
+        sql: `
+          CREATE TABLE IF NOT EXISTS user_video_preferences (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            video_id varchar(50) NOT NULL,
+            video_name varchar(255),
+            video_thumbnail varchar(500),
+            video_duration integer,
+            is_favorite boolean DEFAULT false,
+            is_watch_later boolean DEFAULT false,
+            watch_progress integer DEFAULT 0,
+            watch_percentage integer DEFAULT 0,
+            last_watched_at timestamp,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      // Sync status table
+      {
+        name: 'sync_status',
+        sql: `
+          CREATE TABLE IF NOT EXISTS sync_status (
+            id serial PRIMARY KEY,
+            user_id varchar NOT NULL,
+            section varchar(50) NOT NULL,
+            last_manual_refresh timestamp,
+            last_auto_refresh timestamp,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
       }
     ];
     
@@ -228,6 +326,8 @@ async function createPulseDataTables() {
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_census_zip_year ON pulse_census_data(zip, year)',
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_redfin_zip_period ON pulse_redfin_data(zip, period_start)',
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_metrics_zip_date ON pulse_metrics(zip, date)',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_market_pulse_history_date_zip ON market_pulse_history(date, zip)',
+      'CREATE INDEX IF NOT EXISTS idx_market_pulse_history_zip_date ON market_pulse_history(zip, date DESC)',
     ];
     
     for (const indexSql of indexes) {
@@ -240,8 +340,66 @@ async function createPulseDataTables() {
     
     console.log("[Database] All required tables created successfully");
     
+    // Add market pulse snapshots schema migration
+    await migrateMarketPulseSnapshots();
+    
   } catch (error) {
     console.error("[Database] Tables creation error:", error);
     // Don't throw - some features can work without all tables
+  }
+}
+
+// Auto-migration for market_pulse_snapshots to match schema.ts expectations
+export async function migrateMarketPulseSnapshots() {
+  try {
+    console.log('[Migration] Checking market_pulse_snapshots schema...');
+    
+    const alterStatements = [
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS total_properties INTEGER DEFAULT 0",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS active INTEGER DEFAULT 0", 
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS active_under_contract INTEGER DEFAULT 0",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS pending INTEGER DEFAULT 0",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS closed INTEGER DEFAULT 0",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS last_updated_at TIMESTAMP DEFAULT NOW()",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS office_id VARCHAR(50) DEFAULT 'ACT1518371'",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'spyglass'",
+      "ALTER TABLE market_pulse_snapshots ALTER COLUMN cached_data DROP NOT NULL",
+      // CMA table fixes - add ALL missing columns to match schema.ts
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS subject_property JSONB",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS comparable_properties JSONB DEFAULT '[]'::jsonb",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS notes TEXT",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'draft'",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS presentation_config JSONB",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS share_token TEXT",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS share_created_at TIMESTAMP",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS properties_data JSONB",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS prepared_for TEXT", 
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS suggested_list_price INTEGER",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS cover_letter TEXT",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS brochure JSONB",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS adjustments JSONB",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP"
+    ];
+
+    for (const stmt of alterStatements) {
+      try {
+        await pool.query(stmt);
+        console.log(`[Migration] Executed: ${stmt.substring(0, 60)}...`);
+      } catch (e) {
+        // Ignore if column already exists
+        console.log(`[Migration] Column might already exist: ${e.message}`);
+      }
+    }
+    
+    console.log('[Migration] market_pulse_snapshots schema updated successfully');
+    
+  } catch (error) {
+    console.error('[Migration] CRITICAL: market_pulse_snapshots migration failed:', error);
+    console.error('[Migration] Full error details:', JSON.stringify(error, null, 2));
+    // Re-throw to see the error in startup logs
+    throw error;
   }
 }

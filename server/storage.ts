@@ -11,12 +11,16 @@ import {
   syncStatus,
   savedContentIdeas,
   cmas,
+  cmaReportConfigs,
+  cmaReportTemplates,
+  agentResources,
   integrationConfigs,
   appVisibility,
   type User, 
   type UpsertUser,
   type AgentProfile,
   type InsertAgentProfile,
+  type UpdateAgentProfile,
   type ContextSuggestion,
   type InsertContextSuggestion,
   type MarketPulseSnapshot,
@@ -33,6 +37,12 @@ import {
   type InsertSavedContentIdea,
   type Cma,
   type InsertCma,
+  type CmaReportConfig,
+  type InsertCmaReportConfig,
+  type CmaReportTemplate,
+  type InsertCmaReportTemplate,
+  type AgentResource,
+  type InsertAgentResource,
   type IntegrationConfig,
   type InsertIntegrationConfig,
   type AppVisibility,
@@ -92,11 +102,35 @@ export interface IStorage {
   
   // CMA methods
   getCmas(userId: string): Promise<Cma[]>;
-  getCma(id: string, userId: string): Promise<Cma | undefined>;
+  getCma(id: string, userId?: string): Promise<Cma | undefined>;
+  getCmaByShareToken(token: string): Promise<Cma | undefined>;
   createCma(cma: InsertCma): Promise<Cma>;
-  updateCma(id: string, userId: string, data: Partial<InsertCma>): Promise<Cma | undefined>;
+  updateCma(id: string, userId: string | null, data: Partial<InsertCma>): Promise<Cma | undefined>;
   deleteCma(id: string, userId: string): Promise<boolean>;
   
+  // CMA Report Config methods
+  getCmaReportConfig(cmaId: string): Promise<CmaReportConfig | undefined>;
+  upsertCmaReportConfig(config: InsertCmaReportConfig): Promise<CmaReportConfig>;
+  deleteCmaReportConfig(cmaId: string): Promise<boolean>;
+  
+  // CMA Report Template methods
+  getCmaReportTemplates(userId: string): Promise<CmaReportTemplate[]>;
+  getCmaReportTemplate(id: string): Promise<CmaReportTemplate | undefined>;
+  createCmaReportTemplate(template: InsertCmaReportTemplate): Promise<CmaReportTemplate>;
+  updateCmaReportTemplate(id: string, data: Partial<InsertCmaReportTemplate>): Promise<CmaReportTemplate | undefined>;
+  deleteCmaReportTemplate(id: string, userId: string): Promise<boolean>;
+  
+  // Agent Profile (CMA-specific) methods
+  updateAgentProfileCma(userId: string, data: UpdateAgentProfile): Promise<AgentProfile | undefined>;
+  
+  // Agent Resource methods
+  getAgentResources(userId: string): Promise<AgentResource[]>;
+  getAgentResource(id: string): Promise<AgentResource | undefined>;
+  createAgentResource(resource: InsertAgentResource): Promise<AgentResource>;
+  updateAgentResource(id: string, data: Partial<InsertAgentResource>): Promise<AgentResource | undefined>;
+  deleteAgentResource(id: string): Promise<boolean>;
+  reorderAgentResources(userId: string, orderedIds: string[]): Promise<boolean>;
+
   // Integration config methods
   getIntegrationConfigs(): Promise<IntegrationConfig[]>;
   getIntegrationConfig(name: string): Promise<IntegrationConfig | undefined>;
@@ -550,21 +584,45 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(cmas).where(eq(cmas.userId, userId)).orderBy(desc(cmas.updatedAt));
   }
 
-  async getCma(id: string, userId: string): Promise<Cma | undefined> {
-    const [cma] = await db.select().from(cmas).where(and(eq(cmas.id, id), eq(cmas.userId, userId)));
+  async getCma(id: string, userId?: string): Promise<Cma | undefined> {
+    if (userId) {
+      const [cma] = await db.select().from(cmas).where(and(eq(cmas.id, id), eq(cmas.userId, userId)));
+      return cma;
+    }
+    const [cma] = await db.select().from(cmas).where(eq(cmas.id, id));
+    return cma;
+  }
+
+  async getCmaByShareToken(token: string): Promise<Cma | undefined> {
+    const [cma] = await db.select().from(cmas).where(eq(cmas.shareToken, token));
     return cma;
   }
 
   async createCma(cma: InsertCma): Promise<Cma> {
-    const [created] = await db.insert(cmas).values(cma).returning();
-    return created;
+    console.log('[Storage DEBUG] Creating CMA with data:', cma);
+    try {
+      const [created] = await db.insert(cmas).values(cma).returning();
+      console.log('[Storage DEBUG] CMA created successfully:', created.id);
+      return created;
+    } catch (error) {
+      console.error('[Storage DEBUG] CMA creation failed:', error);
+      throw error;
+    }
   }
 
-  async updateCma(id: string, userId: string, data: Partial<InsertCma>): Promise<Cma | undefined> {
+  async updateCma(id: string, userId: string | null, data: Partial<InsertCma>): Promise<Cma | undefined> {
+    if (userId) {
+      const [updated] = await db
+        .update(cmas)
+        .set({ ...data, updatedAt: new Date() })
+        .where(and(eq(cmas.id, id), eq(cmas.userId, userId)))
+        .returning();
+      return updated;
+    }
     const [updated] = await db
       .update(cmas)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(cmas.id, id), eq(cmas.userId, userId)))
+      .where(eq(cmas.id, id))
       .returning();
     return updated;
   }
@@ -575,7 +633,151 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(cmas.id, id), eq(cmas.userId, userId)))
       .limit(1);
     if (!existing) return false;
+    // Also delete associated report config
+    await db.delete(cmaReportConfigs).where(eq(cmaReportConfigs.cmaId, id));
     await db.delete(cmas).where(eq(cmas.id, id));
+    return true;
+  }
+
+  // CMA Report Config methods
+  async getCmaReportConfig(cmaId: string): Promise<CmaReportConfig | undefined> {
+    const [config] = await db.select().from(cmaReportConfigs).where(eq(cmaReportConfigs.cmaId, cmaId));
+    return config;
+  }
+
+  async upsertCmaReportConfig(config: InsertCmaReportConfig): Promise<CmaReportConfig> {
+    const existing = await this.getCmaReportConfig(config.cmaId);
+    if (existing) {
+      const [updated] = await db
+        .update(cmaReportConfigs)
+        .set({ ...config, updatedAt: new Date() })
+        .where(eq(cmaReportConfigs.cmaId, config.cmaId))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(cmaReportConfigs).values(config).returning();
+    return created;
+  }
+
+  async deleteCmaReportConfig(cmaId: string): Promise<boolean> {
+    const [existing] = await db.select().from(cmaReportConfigs).where(eq(cmaReportConfigs.cmaId, cmaId)).limit(1);
+    if (!existing) return false;
+    await db.delete(cmaReportConfigs).where(eq(cmaReportConfigs.cmaId, cmaId));
+    return true;
+  }
+
+  // CMA Report Template methods
+  async getCmaReportTemplates(userId: string): Promise<CmaReportTemplate[]> {
+    return db.select().from(cmaReportTemplates).where(eq(cmaReportTemplates.userId, userId)).orderBy(desc(cmaReportTemplates.updatedAt));
+  }
+
+  async getCmaReportTemplate(id: string): Promise<CmaReportTemplate | undefined> {
+    const [template] = await db.select().from(cmaReportTemplates).where(eq(cmaReportTemplates.id, id));
+    return template;
+  }
+
+  async createCmaReportTemplate(template: InsertCmaReportTemplate): Promise<CmaReportTemplate> {
+    const [created] = await db.insert(cmaReportTemplates).values(template).returning();
+    return created;
+  }
+
+  async updateCmaReportTemplate(id: string, data: Partial<InsertCmaReportTemplate>): Promise<CmaReportTemplate | undefined> {
+    const [updated] = await db
+      .update(cmaReportTemplates)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(cmaReportTemplates.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteCmaReportTemplate(id: string, userId: string): Promise<boolean> {
+    const [existing] = await db.select().from(cmaReportTemplates)
+      .where(and(eq(cmaReportTemplates.id, id), eq(cmaReportTemplates.userId, userId)))
+      .limit(1);
+    if (!existing) return false;
+    await db.delete(cmaReportTemplates).where(eq(cmaReportTemplates.id, id));
+    return true;
+  }
+
+  // Agent Profile (CMA-specific) methods
+  async updateAgentProfileCma(userId: string, data: UpdateAgentProfile): Promise<AgentProfile | undefined> {
+    const existing = await this.getAgentProfile(userId);
+    
+    // Filter out empty strings - only update fields with actual content
+    const filteredData: Partial<UpdateAgentProfile> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== '' && value !== null && value !== undefined) {
+        (filteredData as any)[key] = value;
+      }
+    }
+    
+    if (!existing) {
+      // Create new profile with CMA fields
+      const [created] = await db
+        .insert(agentProfiles)
+        .values({ userId, ...filteredData })
+        .returning();
+      return created;
+    }
+    
+    if (Object.keys(filteredData).length === 0) return existing;
+    
+    const [updated] = await db
+      .update(agentProfiles)
+      .set({ ...filteredData, updatedAt: new Date() })
+      .where(eq(agentProfiles.userId, userId))
+      .returning();
+    return updated;
+  }
+
+  // Agent Resource methods
+  async getAgentResources(userId: string): Promise<AgentResource[]> {
+    return db.select().from(agentResources)
+      .where(eq(agentResources.userId, userId))
+      .orderBy(agentResources.displayOrder);
+  }
+
+  async getAgentResource(id: string): Promise<AgentResource | undefined> {
+    const [resource] = await db.select().from(agentResources).where(eq(agentResources.id, id)).limit(1);
+    return resource;
+  }
+
+  async createAgentResource(resource: InsertAgentResource): Promise<AgentResource> {
+    const existing = await this.getAgentResources(resource.userId);
+    const maxOrder = existing.length > 0
+      ? Math.max(...existing.map(r => r.displayOrder ?? 0)) + 1
+      : 0;
+    const [created] = await db
+      .insert(agentResources)
+      .values({ ...resource, displayOrder: maxOrder })
+      .returning();
+    return created;
+  }
+
+  async updateAgentResource(id: string, data: Partial<InsertAgentResource>): Promise<AgentResource | undefined> {
+    const [updated] = await db
+      .update(agentResources)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(agentResources.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteAgentResource(id: string): Promise<boolean> {
+    await db.delete(agentResources).where(eq(agentResources.id, id));
+    return true;
+  }
+
+  async reorderAgentResources(userId: string, orderedIds: string[]): Promise<boolean> {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db
+        .update(agentResources)
+        .set({ displayOrder: i, updatedAt: new Date() })
+        .where(and(
+          eq(agentResources.id, orderedIds[i]),
+          eq(agentResources.userId, userId)
+        ));
+    }
     return true;
   }
 
