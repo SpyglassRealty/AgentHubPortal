@@ -307,6 +307,20 @@ async function createPulseDataTables() {
           )
         `
       },
+      // Site content table for homepage editor
+      {
+        name: 'site_content',
+        sql: `
+          CREATE TABLE IF NOT EXISTS site_content (
+            id serial PRIMARY KEY,
+            section varchar(100) NOT NULL UNIQUE,
+            content jsonb NOT NULL,
+            updated_by varchar REFERENCES users(id),
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
       // Sync status table
       {
         name: 'sync_status',

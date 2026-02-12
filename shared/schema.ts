@@ -857,6 +857,21 @@ export const communities = pgTable("communities", {
 export type Community = typeof communities.$inferSelect;
 export type InsertCommunity = typeof communities.$inferInsert;
 
+// Site Content table — stores homepage section content as JSON blobs
+export const siteContent = pgTable("site_content", {
+  id: serial("id").primaryKey(),
+  section: varchar("section", { length: 100 }).notNull().unique(),
+  content: jsonb("content").notNull(),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("idx_site_content_section").on(table.section),
+]);
+
+export type SiteContent = typeof siteContent.$inferSelect;
+export type InsertSiteContent = typeof siteContent.$inferInsert;
+
 export const INTEGRATION_DEFINITIONS = [
   {
     name: 'fub',
