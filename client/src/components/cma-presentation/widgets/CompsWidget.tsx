@@ -224,7 +224,7 @@ function PropertyCard({ property, isSubject = false, onClick }: { property: CmaP
             className="cursor-pointer group"
             onClick={(e) => {
               e.stopPropagation();
-              onPhotoClick?.();
+              onClick?.();
             }}
           >
             <SafeImage 
