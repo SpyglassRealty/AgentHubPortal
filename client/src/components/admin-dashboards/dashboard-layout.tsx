@@ -36,7 +36,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Overview", href: "/admin/dashboards", icon: LayoutDashboard, section: "DASHBOARD" },
-  { label: "Insights", href: "/admin/dashboards/insights", icon: Lightbulb, section: "DASHBOARD" },
+  { label: "Analytics", href: "/admin/dashboards/insights", icon: Lightbulb, section: "DASHBOARD" },
   { label: "Leads", href: "/admin/dashboards/leads", icon: Target, section: "DASHBOARD" },
   { label: "Transactions", href: "/admin/dashboards/transactions", icon: FileText, section: "PRODUCTION" },
   { label: "Listings", href: "/admin/dashboards/listings", icon: Home, section: "PRODUCTION" },
