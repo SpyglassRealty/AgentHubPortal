@@ -34,11 +34,11 @@ const getStatusColor = (status: string, isSubject?: boolean) => {
 function DetailItem({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
   return (
     <div data-testid={`detail-${label.toLowerCase().replace(/\s+/g, '-')}`}>
-      <p className="text-sm text-muted-foreground flex items-center gap-1">
+      <p className="text-sm text-gray-600 flex items-center gap-1">
         {icon}
         {label}
       </p>
-      <p className="text-lg font-semibold">{value}</p>
+      <p className="text-lg font-semibold text-gray-900">{value}</p>
     </div>
   );
 }
@@ -88,7 +88,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
       <div 
         className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 
                    md:w-full md:max-w-2xl md:max-h-[90vh] 
-                   bg-white dark:bg-gray-800 rounded-xl shadow-2xl z-[80] overflow-hidden flex flex-col"
+                   bg-white rounded-xl shadow-2xl z-[80] overflow-hidden flex flex-col"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
@@ -99,7 +99,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
             <h2 id="modal-title" className="text-xl font-bold truncate" data-testid="modal-address">
               {property.address}
             </h2>
-            <p className="text-sm text-muted-foreground" data-testid="modal-mls">
+            <p className="text-sm text-gray-600" data-testid="modal-mls">
               MLS# {property.mlsNumber || property.id}
             </p>
           </div>
@@ -164,7 +164,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
                 )}
               </>
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+              <div className="w-full h-full flex items-center justify-center text-gray-600">
                 <div className="text-center">
                   <p className="text-lg">No photos available</p>
                   <p className="text-sm">MLS# {property.mlsNumber || property.id}</p>
@@ -176,40 +176,40 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
           <div className="p-4 border-t">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <div>
-                <p className="text-3xl font-bold" data-testid="modal-price">
+                <p className="text-3xl font-bold text-gray-900" data-testid="modal-price">
                   {formatCurrency(displayPrice)}
                 </p>
-                <p className="text-sm text-muted-foreground" data-testid="modal-price-per-sqft">
+                <p className="text-sm text-gray-600" data-testid="modal-price-per-sqft">
                   ${pricePerSqft}/sqft
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-lg font-semibold" data-testid="modal-beds-baths">
+                <p className="text-lg font-semibold text-gray-900" data-testid="modal-beds-baths">
                   {property.beds} beds • {property.baths} baths
                 </p>
-                <p className="text-muted-foreground" data-testid="modal-sqft">
+                <p className="text-gray-600" data-testid="modal-sqft">
                   {displaySqft.toLocaleString()} sqft
                 </p>
               </div>
             </div>
             
             {property.listPrice && property.listPrice !== property.soldPrice && (
-              <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg" data-testid="price-history">
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg" data-testid="price-history">
                 <p className="text-sm font-medium mb-2">Price History</p>
                 <div className="flex flex-wrap gap-4 text-sm">
                   {property.originalPrice && property.originalPrice !== property.listPrice && (
                     <div>
-                      <span className="text-muted-foreground">Original: </span>
-                      <span className="line-through">{formatCurrency(property.originalPrice)}</span>
+                      <span className="text-gray-600">Original: </span>
+                      <span className="line-through text-gray-900">{formatCurrency(property.originalPrice)}</span>
                     </div>
                   )}
                   <div>
-                    <span className="text-muted-foreground">List: </span>
-                    <span>{formatCurrency(property.listPrice)}</span>
+                    <span className="text-gray-600">List: </span>
+                    <span className="text-gray-900">{formatCurrency(property.listPrice)}</span>
                   </div>
                   {property.soldPrice && (
                     <div>
-                      <span className="text-muted-foreground">Sold: </span>
+                      <span className="text-gray-600">Sold: </span>
                       <span className="text-green-600 font-medium">{formatCurrency(property.soldPrice)}</span>
                     </div>
                   )}
@@ -219,7 +219,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
           </div>
           
           <div className="p-4 border-t">
-            <h3 className="text-sm font-medium mb-3 text-muted-foreground">Property Details</h3>
+            <h3 className="text-sm font-medium mb-3 text-gray-600">Property Details</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <DetailItem 
               label="Bedrooms" 
@@ -242,7 +242,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
               icon={<Clock className="w-3 h-3" />}
             />
             <div data-testid="detail-status">
-              <p className="text-sm text-muted-foreground">Status</p>
+              <p className="text-sm text-gray-600">Status</p>
               <Badge className={`${getStatusColor(property.status, property.isSubject)} text-white mt-1`}>
                 {property.isSubject ? 'Subject' : property.status}
               </Badge>
@@ -281,8 +281,8 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
           
           {property.description && (
             <div className="p-4 border-t" data-testid="property-description-section">
-              <h3 className="text-sm font-medium mb-2 text-muted-foreground">Property Description</h3>
-              <p className="text-sm text-foreground leading-relaxed" data-testid="property-description-text">
+              <h3 className="text-sm font-medium mb-2 text-gray-600">Property Description</h3>
+              <p className="text-sm text-gray-900 leading-relaxed" data-testid="property-description-text">
                 {property.description}
               </p>
             </div>
