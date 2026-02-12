@@ -47,11 +47,20 @@ export interface AgentDistribution {
   count: number;
 }
 
+export interface LeadSourceBreakdown {
+  name: string;
+  count: number;
+  volume: number;
+  gci: number;
+  avgCommissionPct: number;
+}
+
 export interface AnalyticsDashboardData {
   byType: TypeBreakdown[];
   topAgents: AgentProduction[];
   agentDistribution: AgentDistribution[];
   byPropertyType: TypeBreakdown[];
+  byLeadSource: LeadSourceBreakdown[];
   totalTransactions: number;
 }
 

@@ -297,11 +297,32 @@ export function registerRezenDashboardRoutes(app: Express): void {
           .map(([type, data]) => ({ name: type, ...data }))
           .sort((a, b) => b.volume - a.volume);
 
+        // By Lead Source
+        const leadSourceMap: Record<string, { count: number; volume: number; gci: number }> = {};
+        closedTransactions.forEach((t) => {
+          const source = (t as any).leadSource?.name || "Unknown";
+          if (!leadSourceMap[source]) {
+            leadSourceMap[source] = { count: 0, volume: 0, gci: 0 };
+          }
+          leadSourceMap[source].count++;
+          leadSourceMap[source].volume += t.price?.amount || 0;
+          leadSourceMap[source].gci += t.grossCommission?.amount || 0;
+        });
+
+        const byLeadSource = Object.entries(leadSourceMap)
+          .map(([source, data]) => ({
+            name: source,
+            ...data,
+            avgCommissionPct: data.volume > 0 ? ((data.gci / data.volume) * 100) : 0,
+          }))
+          .sort((a, b) => b.volume - a.volume);
+
         const result = {
           byType,
           topAgents,
           agentDistribution,
           byPropertyType,
+          byLeadSource,
           totalTransactions: closedTransactions.length,
         };
 

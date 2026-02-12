@@ -211,46 +211,75 @@ export default function InsightsPage() {
           </CardContent>
         </Card>
 
-        {/* Panel 3: By Property Type — Bar Chart */}
+        {/* Panel 3: By Lead Source — Donut */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium">
-              By Property Type
+              By Lead Source
             </CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-[320px] w-full" />
-            ) : !data?.byPropertyType?.length ? (
+            ) : !data?.byLeadSource?.length ? (
               <div className="flex items-center justify-center h-[320px] text-muted-foreground">
                 No data available
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={data.byPropertyType.slice(0, 10)}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="name" className="text-xs" angle={-25} textAnchor="end" height={60} />
-                  <YAxis
-                    className="text-xs"
-                    tickFormatter={(v) => formatCurrency(v, true)}
-                  />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (!active || !payload?.length) return null;
-                      const d = payload[0].payload;
-                      return (
-                        <div className="rounded-lg border bg-card p-3 shadow-md">
-                          <p className="text-sm font-medium mb-1">{d.name}</p>
-                          <p className="text-sm">Volume: {formatCurrency(d.volume)}</p>
-                          <p className="text-sm">GCI: {formatCurrency(d.gci)}</p>
-                          <p className="text-sm">Count: {d.count}</p>
-                        </div>
-                      );
-                    }}
-                  />
-                  <Bar dataKey="volume" name="Volume" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <div>
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie
+                      data={data.byLeadSource.slice(0, 12)}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={65}
+                      outerRadius={110}
+                      paddingAngle={2}
+                      dataKey="volume"
+                      label={({ name, percent }) =>
+                        percent >= 0.04 ? `${name.length > 15 ? name.slice(0, 14) + '…' : name}` : null
+                      }
+                      labelLine={false}
+                    >
+                      {data.byLeadSource.slice(0, 12).map((_: any, index: number) => (
+                        <Cell key={index} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0].payload;
+                        return (
+                          <div className="rounded-lg border bg-card p-3 shadow-md">
+                            <p className="text-sm font-medium mb-1">{d.name}</p>
+                            <p className="text-sm">Sales: {formatCurrency(d.volume)}</p>
+                            <p className="text-sm">GCI: {formatCurrency(d.gci)}</p>
+                            <p className="text-sm">Avg Comm: {d.avgCommissionPct?.toFixed(2)}%</p>
+                            <p className="text-sm">{d.count} Transactions</p>
+                          </div>
+                        );
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="mt-3 space-y-1 max-h-[200px] overflow-y-auto">
+                  {data.byLeadSource.map((item: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}
+                        />
+                        <span className="truncate">{item.name}</span>
+                      </div>
+                      <div className="text-muted-foreground whitespace-nowrap ml-2">
+                        {formatCurrency(item.volume, true)} · {item.count} deals
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
