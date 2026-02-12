@@ -18,6 +18,7 @@ import { registerPulseV2Routes } from "./pulseV2Routes";
 import { registerAdminRoutes } from "./adminRoutes";
 import { registerGmailRoutes } from "./gmailRoutes";
 import { registerXanoRoutes } from "./xanoProxy";
+import { registerRezenDashboardRoutes } from "./rezenDashboardRoutes";
 
 
 // Helper function to get the actual database user from request
@@ -4586,6 +4587,9 @@ Respond with valid JSON in this exact format:
 
   // Register Xano proxy routes for admin dashboards
   registerXanoRoutes(app, isAuthenticated);
+
+  // Register ReZen-powered admin dashboard routes
+  registerRezenDashboardRoutes(app);
 
   // ==========================================
   // DEBUG ENDPOINT FOR DATABASE DIAGNOSIS

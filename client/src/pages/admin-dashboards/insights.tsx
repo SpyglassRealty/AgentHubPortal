@@ -1,501 +1,327 @@
 import { DashboardLayout } from "@/components/admin-dashboards/dashboard-layout";
-import { KpiCard } from "@/components/admin-dashboards/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Lightbulb, RefreshCw, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Lightbulb,
-  RefreshCw,
-  Send,
-  AlertTriangle,
-  Clock,
-  TrendingUp,
-  DollarSign,
-  Bot,
-  Activity,
-  Star,
-} from "lucide-react";
-import {
-  useXanoTransactionsClosed,
-  useXanoTransactionsPending,
-  useXanoListings,
-  useXanoNetwork,
+  useAnalyticsData,
+  useRefreshDashboard,
   formatCurrency,
   formatNumber,
-  getMonthKey,
-} from "@/lib/xano";
-import { useMemo, useState } from "react";
+} from "@/lib/rezen-dashboard";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+
+const DONUT_COLORS = [
+  "#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6",
+  "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16",
+  "#64748b",
+];
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border bg-card p-3 shadow-md">
+      {label && <p className="text-sm font-medium mb-1">{label}</p>}
+      {payload.map((entry: any, i: number) => (
+        <p key={i} className="text-sm" style={{ color: entry.color || entry.payload?.fill }}>
+          {entry.name}: {typeof entry.value === "number" && entry.value > 1000
+            ? formatCurrency(entry.value, true)
+            : formatNumber(entry.value)}
+        </p>
+      ))}
+    </div>
+  );
+};
+
+const renderCustomLabel = ({ name, percent }: any) => {
+  if (percent < 0.03) return null;
+  return `${name} (${(percent * 100).toFixed(0)}%)`;
+};
 
 export default function InsightsPage() {
-  const closedTx = useXanoTransactionsClosed();
-  const pendingTx = useXanoTransactionsPending();
-  const listings = useXanoListings();
-  const network = useXanoNetwork();
-  const [activityFilter, setActivityFilter] = useState("all");
-  const [noraInput, setNoraInput] = useState("");
-
-  const isLoading =
-    closedTx.isLoading || pendingTx.isLoading || listings.isLoading || network.isLoading;
-
-  const metrics = useMemo(() => {
-    const closed = Array.isArray(closedTx.data) ? closedTx.data : [];
-    const pending = Array.isArray(pendingTx.data) ? pendingTx.data : [];
-    const listingsData = Array.isArray(listings.data) ? listings.data : [];
-    const networkData = Array.isArray(network.data) ? network.data : [];
-
-    const closedUnits = closed.length;
-    const totalGci = closed.reduce((sum, t) => sum + (t.gci || t.gross_commission || 0), 0);
-    const pendingUnits = pending.length;
-    const activeListings = listingsData.length;
-
-    // Listings expiring soon (next 30 days)
-    const now = new Date();
-    const thirtyDays = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-    const expiringListings = listingsData.filter((l) => {
-      const exp = l.expiration_date ? new Date(l.expiration_date) : null;
-      return exp && exp >= now && exp <= thirtyDays;
-    });
-
-    // New agents (last 30 days)
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const newAgents = networkData.filter((m) => {
-      const joinDate = m.join_date ? new Date(m.join_date) : null;
-      return joinDate && joinDate >= thirtyDaysAgo;
-    });
-
-    // Upcoming revenue (pending closing in next 30 days)
-    const upcomingRevenue = pending
-      .filter((t) => {
-        const d = t.expected_close_date || t.close_date;
-        if (!d) return false;
-        const date = new Date(d);
-        return date >= now && date <= thirtyDays;
-      })
-      .sort((a, b) => {
-        const da = new Date(a.expected_close_date || a.close_date || "");
-        const db = new Date(b.expected_close_date || b.close_date || "");
-        return da.getTime() - db.getTime();
-      });
-
-    const upcomingRevenueTotal = upcomingRevenue.reduce(
-      (sum, t) => sum + (t.gci || t.gross_commission || 0) * 0.72,
-      0
-    );
-
-    // Needs attention: overdue deals (pending with expected close in past)
-    const overduePending = pending.filter((t) => {
-      const d = t.expected_close_date;
-      if (!d) return false;
-      return new Date(d) < now;
-    });
-    const overdueVolume = overduePending.reduce(
-      (sum, t) => sum + (t.close_price || t.sale_price || t.price || t.volume || 0),
-      0
-    );
-
-    // Aging deals (pending > 60 days old)
-    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-    const agingDeals = pending.filter((t) => {
-      const d = t.created_at;
-      if (!d) return false;
-      return new Date(d) < sixtyDaysAgo;
-    });
-    const agingVolume = agingDeals.reduce(
-      (sum, t) => sum + (t.close_price || t.sale_price || t.price || t.volume || 0),
-      0
-    );
-
-    // Latest activity - combine recent closed/pending transactions
-    const recentActivity = [
-      ...closed.slice(0, 20).map((t) => ({
-        type: "transaction" as const,
-        subType: "closed",
-        name: t.agent_name || t.listing_agent || t.buying_agent || "Agent",
-        detail: t.address || t.street_address || "Property",
-        amount: t.close_price || t.sale_price || t.price || t.volume || 0,
-        date: t.close_date || t.closing_date || t.created_at || "",
-      })),
-      ...pending.slice(0, 10).map((t) => ({
-        type: "transaction" as const,
-        subType: "pending",
-        name: t.agent_name || t.listing_agent || t.buying_agent || "Agent",
-        detail: t.address || t.street_address || "Property",
-        amount: t.price || t.sale_price || t.volume || 0,
-        date: t.created_at || "",
-      })),
-      ...listingsData.slice(0, 10).map((l) => ({
-        type: "listing" as const,
-        subType: "new",
-        name: l.agent_name || "Agent",
-        detail: l.address || l.street_address || "Property",
-        amount: l.list_price || l.price || 0,
-        date: l.listing_date || l.created_at || "",
-      })),
-      ...newAgents.map((m) => ({
-        type: "network" as const,
-        subType: "joined",
-        name: m.name || `${m.first_name || ""} ${m.last_name || ""}`.trim() || "Agent",
-        detail: `Tier ${m.tier || "—"}`,
-        amount: 0,
-        date: m.join_date || "",
-      })),
-    ]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 30);
-
-    return {
-      closedUnits,
-      totalGci,
-      pendingUnits,
-      activeListings,
-      expiringListings,
-      newAgents,
-      upcomingRevenue,
-      upcomingRevenueTotal,
-      overduePending,
-      overdueVolume,
-      agingDeals,
-      agingVolume,
-      recentActivity,
-    };
-  }, [closedTx.data, pendingTx.data, listings.data, network.data]);
-
-  const filteredActivity = useMemo(() => {
-    if (activityFilter === "all") return metrics.recentActivity;
-    return metrics.recentActivity.filter((a) => {
-      if (activityFilter === "transactions") return a.type === "transaction";
-      if (activityFilter === "listings") return a.type === "listing";
-      if (activityFilter === "network") return a.type === "network";
-      return true;
-    });
-  }, [metrics.recentActivity, activityFilter]);
+  const { data, isLoading, isError, error } = useAnalyticsData();
+  const refreshMutation = useRefreshDashboard();
 
   const handleRefresh = () => {
-    closedTx.refetch();
-    pendingTx.refetch();
-    listings.refetch();
-    network.refetch();
-  };
-
-  const getActivityBadge = (type: string, subType: string) => {
-    if (type === "transaction" && subType === "closed")
-      return <Badge className="bg-teal-500 text-white text-[10px]">Closed</Badge>;
-    if (type === "transaction" && subType === "pending")
-      return <Badge className="bg-yellow-500 text-white text-[10px]">Pending</Badge>;
-    if (type === "listing")
-      return <Badge className="bg-pink-400 text-white text-[10px]">Listing</Badge>;
-    if (type === "network")
-      return <Badge className="bg-red-400 text-white text-[10px]">Network</Badge>;
-    return <Badge variant="outline" className="text-[10px]">{subType}</Badge>;
+    refreshMutation.mutate();
   };
 
   return (
     <DashboardLayout
-      title="Insights"
-      subtitle="AI-powered insights, activity feed, and alerts"
+      title="Transaction Analytics"
+      subtitle="Breakdown by type, agent, and property — powered by ReZen"
       icon={Lightbulb}
       actions={
-        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={isLoading || refreshMutation.isPending}
+        >
+          <RefreshCw
+            className={`h-4 w-4 mr-2 ${
+              isLoading || refreshMutation.isPending ? "animate-spin" : ""
+            }`}
+          />
           Refresh
         </Button>
       }
     >
-      {/* Hero Achievement Banner */}
-      <Card className="mb-6 bg-gradient-to-r from-teal-500/10 via-primary/5 to-transparent border-teal-500/30">
-        <CardContent className="p-6 flex items-center gap-4">
-          <div className="p-3 rounded-full bg-teal-500/20">
-            <Star className="h-8 w-8 text-teal-500" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold">
-              Great progress! Your team has closed {formatNumber(metrics.closedUnits)} deals.
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              {formatCurrency(metrics.totalGci, true)} earned • {metrics.pendingUnits} pending •{" "}
-              {metrics.activeListings} active listings
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {isError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {(error as any)?.message || "Failed to load analytics data."}
+          </AlertDescription>
+        </Alert>
+      )}
 
-      {/* Alert Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {isLoading ? (
-          Array(3)
-            .fill(null)
-            .map((_, i) => (
-              <Card key={i}>
-                <CardContent className="p-4">
-                  <Skeleton className="h-4 w-20 mb-2" />
-                  <Skeleton className="h-8 w-24" />
-                </CardContent>
-              </Card>
-            ))
-        ) : (
-          <>
-            <Card className="border-l-4 border-l-amber-500">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  <span className="text-sm font-medium">Listings Expiring Soon</span>
+      {/* Summary */}
+      {data && (
+        <div className="mb-6 text-sm text-muted-foreground">
+          Analyzing <span className="font-semibold text-foreground">{formatNumber(data.totalTransactions)}</span> closed transactions
+        </div>
+      )}
+
+      {/* 2×2 grid of chart panels */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Panel 1: By Transaction Type — Donut */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium">
+              By Transaction Type
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-[320px] w-full" />
+            ) : !data?.byType?.length ? (
+              <div className="flex items-center justify-center h-[320px] text-muted-foreground">
+                No data available
+              </div>
+            ) : (
+              <div>
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie
+                      data={data.byType}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={65}
+                      outerRadius={110}
+                      paddingAngle={3}
+                      dataKey="count"
+                      label={renderCustomLabel}
+                      labelLine={false}
+                    >
+                      {data.byType.map((_, index) => (
+                        <Cell key={index} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="mt-3 space-y-1">
+                  {data.byType.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}
+                        />
+                        <span>{item.name}</span>
+                      </div>
+                      <div className="text-muted-foreground">
+                        {item.count} deals · {formatCurrency(item.volume, true)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="text-2xl font-bold">{metrics.expiringListings.length}</div>
-                <p className="text-xs text-muted-foreground">Next 30 days</p>
-              </CardContent>
-            </Card>
-            <KpiCard
-              title="Transactions"
-              value={formatNumber(metrics.closedUnits)}
-              subtitle="Closed this period"
-              category="transactions"
-            />
-            <KpiCard
-              title="Revenue"
-              value={formatCurrency(metrics.totalGci, true)}
-              subtitle="Total GCI"
-              category="revenue"
-            />
-          </>
-        )}
-      </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-      {/* NORA AI Section */}
-      <Card className="mb-6">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" />
-            NORA AI Assistant
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            Ask NORA about your team&apos;s performance, market trends, or coaching strategies.
-          </p>
-          <div className="flex gap-2 mb-4">
-            <Input
-              placeholder="Ask NORA a question about your business..."
-              value={noraInput}
-              onChange={(e) => setNoraInput(e.target.value)}
-              className="flex-1"
-            />
-            <Button size="sm" disabled>
-              <Send className="h-4 w-4 mr-1" />
-              Ask
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {[
-              "Who are my top performers this month?",
-              "Which deals are at risk?",
-              "Suggest coaching tips for new agents",
-              "Summarize revenue trends",
-            ].map((prompt) => (
-              <Badge
-                key={prompt}
-                variant="outline"
-                className="cursor-pointer hover:bg-muted transition-colors text-xs"
-                onClick={() => setNoraInput(prompt)}
-              >
-                {prompt}
-              </Badge>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground mt-3 italic">
-            NORA integration coming soon — powered by AgentDashboards AI
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Three Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Latest Activity */}
-        <Card className="lg:col-span-1">
+        {/* Panel 2: Production by Agent — Horizontal Bar */}
+        <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-medium flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              Latest Activity
+            <CardTitle className="text-base font-medium">
+              Production by Agent (Top 15)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-1 mb-3">
-              {["all", "transactions", "listings", "network"].map((f) => (
-                <Button
-                  key={f}
-                  variant={activityFilter === f ? "default" : "outline"}
-                  size="sm"
-                  className="text-xs h-6 px-2"
-                  onClick={() => setActivityFilter(f)}
+            {isLoading ? (
+              <Skeleton className="h-[320px] w-full" />
+            ) : !data?.topAgents?.length ? (
+              <div className="flex items-center justify-center h-[320px] text-muted-foreground">
+                No data available
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={Math.max(320, data.topAgents.length * 32)}>
+                <BarChart
+                  data={data.topAgents}
+                  layout="vertical"
+                  margin={{ left: 100, right: 20 }}
                 >
-                  {f.charAt(0).toUpperCase() + f.slice(1)}
-                </Button>
-              ))}
-            </div>
-            {isLoading ? (
-              <div className="space-y-3">
-                {Array(5)
-                  .fill(null)
-                  .map((_, i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
-                  ))}
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                {filteredActivity.slice(0, 15).map((item, i) => (
-                  <div key={i} className="flex items-start gap-2 p-2 rounded-md hover:bg-muted/50">
-                    {getActivityBadge(item.type, item.subType)}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{item.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{item.detail}</p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      {item.amount > 0 && (
-                        <p className="text-xs font-medium">{formatCurrency(item.amount, true)}</p>
-                      )}
-                      <p className="text-[10px] text-muted-foreground">
-                        {item.date ? new Date(item.date).toLocaleDateString() : ""}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                {filteredActivity.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">No activity found</p>
-                )}
-              </div>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis
+                    type="number"
+                    className="text-xs"
+                    tickFormatter={(v) => formatCurrency(v, true)}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    className="text-xs"
+                    width={95}
+                    tick={{ fontSize: 11 }}
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const d = payload[0].payload;
+                      return (
+                        <div className="rounded-lg border bg-card p-3 shadow-md">
+                          <p className="text-sm font-medium mb-1">{d.name}</p>
+                          <p className="text-sm">Volume: {formatCurrency(d.volume)}</p>
+                          <p className="text-sm">GCI: {formatCurrency(d.gci)}</p>
+                          <p className="text-sm">Deals: {d.count}</p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Bar dataKey="volume" name="Volume" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
-        {/* Upcoming Revenue */}
-        <Card className="lg:col-span-1">
+        {/* Panel 3: By Property Type — Bar Chart */}
+        <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-medium flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              Upcoming Revenue
+            <CardTitle className="text-base font-medium">
+              By Property Type
             </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {formatCurrency(metrics.upcomingRevenueTotal, true)} in next 30 days
-            </p>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="space-y-3">
-                {Array(5)
-                  .fill(null)
-                  .map((_, i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
-                  ))}
+              <Skeleton className="h-[320px] w-full" />
+            ) : !data?.byPropertyType?.length ? (
+              <div className="flex items-center justify-center h-[320px] text-muted-foreground">
+                No data available
               </div>
             ) : (
-              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                {metrics.upcomingRevenue.slice(0, 15).map((t, i) => (
-                  <div key={i} className="flex items-start gap-2 p-2 rounded-md hover:bg-muted/50">
-                    <Clock className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {t.agent_name || t.listing_agent || t.buying_agent || "Agent"}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {t.address || t.street_address || "Property"}
-                      </p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-xs font-medium">
-                        {formatCurrency((t.gci || t.gross_commission || 0) * 0.72, true)}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {t.expected_close_date
-                          ? new Date(t.expected_close_date).toLocaleDateString()
-                          : ""}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                {metrics.upcomingRevenue.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No upcoming closings
-                  </p>
-                )}
-              </div>
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={data.byPropertyType.slice(0, 10)}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="name" className="text-xs" angle={-25} textAnchor="end" height={60} />
+                  <YAxis
+                    className="text-xs"
+                    tickFormatter={(v) => formatCurrency(v, true)}
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const d = payload[0].payload;
+                      return (
+                        <div className="rounded-lg border bg-card p-3 shadow-md">
+                          <p className="text-sm font-medium mb-1">{d.name}</p>
+                          <p className="text-sm">Volume: {formatCurrency(d.volume)}</p>
+                          <p className="text-sm">GCI: {formatCurrency(d.gci)}</p>
+                          <p className="text-sm">Count: {d.count}</p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Bar dataKey="volume" name="Volume" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
-        {/* Needs Attention */}
-        <Card className="lg:col-span-1">
+        {/* Panel 4: Agent Distribution — Donut */}
+        <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-medium flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              Needs Attention
+            <CardTitle className="text-base font-medium">
+              Volume Distribution by Agent
             </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {metrics.overduePending.length + metrics.agingDeals.length + metrics.newAgents.length}{" "}
-              items
-            </p>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="space-y-3">
-                {Array(3)
-                  .fill(null)
-                  .map((_, i) => (
-                    <Skeleton key={i} className="h-16 w-full" />
-                  ))}
+              <Skeleton className="h-[320px] w-full" />
+            ) : !data?.agentDistribution?.length ? (
+              <div className="flex items-center justify-center h-[320px] text-muted-foreground">
+                No data available
               </div>
             ) : (
-              <div className="space-y-3">
-                {metrics.overduePending.length > 0 && (
-                  <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30">
-                    <div className="flex items-center gap-2 mb-1">
-                      <AlertTriangle className="h-4 w-4 text-red-500" />
-                      <span className="text-sm font-medium text-red-700 dark:text-red-400">
-                        Overdue Deals
-                      </span>
+              <div>
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie
+                      data={data.agentDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={65}
+                      outerRadius={110}
+                      paddingAngle={2}
+                      dataKey="value"
+                      label={({ name, percent }) =>
+                        percent >= 0.04 ? `${name.split(" ")[0]} (${(percent * 100).toFixed(0)}%)` : null
+                      }
+                      labelLine={false}
+                    >
+                      {data.agentDistribution.map((_, index) => (
+                        <Cell key={index} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0].payload;
+                        return (
+                          <div className="rounded-lg border bg-card p-3 shadow-md">
+                            <p className="text-sm font-medium mb-1">{d.name}</p>
+                            <p className="text-sm">Volume: {formatCurrency(d.value)}</p>
+                            <p className="text-sm">GCI: {formatCurrency(d.gci)}</p>
+                            <p className="text-sm">Deals: {d.count}</p>
+                          </div>
+                        );
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="mt-3 space-y-1 max-h-[200px] overflow-y-auto">
+                  {data.agentDistribution.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}
+                        />
+                        <span className="truncate">{item.name}</span>
+                      </div>
+                      <div className="text-muted-foreground whitespace-nowrap ml-2">
+                        {formatCurrency(item.value, true)}
+                      </div>
                     </div>
-                    <p className="text-lg font-bold">
-                      {metrics.overduePending.length} deals
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatCurrency(metrics.overdueVolume, true)} volume
-                    </p>
-                  </div>
-                )}
-                {metrics.agingDeals.length > 0 && (
-                  <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Clock className="h-4 w-4 text-amber-500" />
-                      <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                        Aging Deals (&gt;60 days)
-                      </span>
-                    </div>
-                    <p className="text-lg font-bold">{metrics.agingDeals.length} deals</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatCurrency(metrics.agingVolume, true)} volume
-                    </p>
-                  </div>
-                )}
-                {metrics.newAgents.length > 0 && (
-                  <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/30">
-                    <div className="flex items-center gap-2 mb-1">
-                      <TrendingUp className="h-4 w-4 text-blue-500" />
-                      <span className="text-sm font-medium text-blue-700 dark:text-blue-400">
-                        New Agents
-                      </span>
-                    </div>
-                    <p className="text-lg font-bold">{metrics.newAgents.length} agents</p>
-                    <p className="text-xs text-muted-foreground">Joined in last 30 days</p>
-                  </div>
-                )}
-                {metrics.overduePending.length === 0 &&
-                  metrics.agingDeals.length === 0 &&
-                  metrics.newAgents.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      Nothing needs attention right now 🎉
-                    </p>
-                  )}
+                  ))}
+                </div>
               </div>
             )}
           </CardContent>

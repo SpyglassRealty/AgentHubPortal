@@ -1,28 +1,21 @@
 import { DashboardLayout } from "@/components/admin-dashboards/dashboard-layout";
 import { KpiCard } from "@/components/admin-dashboards/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   LayoutDashboard,
   AlertTriangle,
-  TrendingUp,
-  DollarSign,
   RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  useXanoTransactionsClosed,
-  useXanoTransactionsPending,
-  useXanoListings,
-  useXanoNetwork,
-  useXanoRevShare,
-  useXanoRoster,
+  useRevenueData,
+  useAnalyticsData,
+  useRefreshDashboard,
   formatCurrency,
   formatNumber,
-  getMonthKey,
-} from "@/lib/xano";
+} from "@/lib/rezen-dashboard";
 import {
   BarChart,
   Bar,
@@ -38,157 +31,59 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { useMemo } from "react";
 
-const COLORS = ["#0d9488", "#f472b6", "#7c3aed", "#eab308", "#ec4899"];
+const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6"];
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border bg-card p-3 shadow-md">
+      {label && <p className="text-sm font-medium mb-1">{label}</p>}
+      {payload.map((entry: any, i: number) => (
+        <p key={i} className="text-sm" style={{ color: entry.color }}>
+          {entry.name}: {typeof entry.value === "number" && entry.value > 100
+            ? formatCurrency(entry.value, true)
+            : formatNumber(entry.value)}
+        </p>
+      ))}
+    </div>
+  );
+};
 
 export default function AdminDashboardOverview() {
-  const closedTx = useXanoTransactionsClosed();
-  const pendingTx = useXanoTransactionsPending();
-  const listings = useXanoListings();
-  const network = useXanoNetwork();
-  const revshare = useXanoRevShare();
-  const roster = useXanoRoster();
+  const revenue = useRevenueData();
+  const analytics = useAnalyticsData();
+  const refreshMutation = useRefreshDashboard();
 
-  const isLoading =
-    closedTx.isLoading ||
-    pendingTx.isLoading ||
-    listings.isLoading ||
-    network.isLoading;
-
-  const hasError =
-    closedTx.isError ||
-    pendingTx.isError ||
-    listings.isError ||
-    network.isError;
-
-  // ── Computed metrics ────────────────────────────────
-  const metrics = useMemo(() => {
-    const closed = Array.isArray(closedTx.data) ? closedTx.data : [];
-    const pending = Array.isArray(pendingTx.data) ? pendingTx.data : [];
-    const listingsData = Array.isArray(listings.data) ? listings.data : [];
-    const networkData = Array.isArray(network.data) ? network.data : [];
-    const revshareData = Array.isArray(revshare.data) ? revshare.data : [];
-    const rosterData = Array.isArray(roster.data) ? roster.data : [];
-
-    // Closed transactions metrics
-    const closedUnits = closed.length;
-    const closedVolume = closed.reduce(
-      (sum, t) => sum + (t.close_price || t.sale_price || t.price || t.volume || 0),
-      0
-    );
-    const closedGci = closed.reduce(
-      (sum, t) => sum + (t.gci || t.gross_commission || 0),
-      0
-    );
-
-    // Pending
-    const pendingUnits = pending.length;
-    const pendingVolume = pending.reduce(
-      (sum, t) => sum + (t.price || t.sale_price || t.volume || 0),
-      0
-    );
-
-    // Avg sale price
-    const avgSalePrice = closedUnits > 0 ? closedVolume / closedUnits : 0;
-
-    // Listings
-    const totalListings = listingsData.length;
-    const totalListingVolume = listingsData.reduce(
-      (sum, l) => sum + (l.list_price || l.price || 0),
-      0
-    );
-
-    // Network tiers
-    const networkActive = networkData.filter(
-      (m) => m.status === "Active" || m.status === "active"
-    );
-    const totalAgents = networkActive.length || networkData.length;
-    const tierCounts: Record<number, number> = {};
-    networkData.forEach((m) => {
-      const tier = m.tier || 0;
-      tierCounts[tier] = (tierCounts[tier] || 0) + 1;
-    });
-
-    // RevShare totals
-    const revshareTotal = typeof revshareData === 'object' && !Array.isArray(revshareData) 
-      ? (revshareData as any)?.total || 0
-      : Array.isArray(revshareData) 
-        ? revshareData.reduce((sum, r) => sum + (r.amount || r.total || 0), 0)
-        : 0;
-
-    // Roster
-    const rosterCount = rosterData.length;
-
-    // Monthly closed units (for chart)
-    const monthlyData: Record<string, { month: string; units: number; volume: number; gci: number }> = {};
-    closed.forEach((t) => {
-      const date = t.close_date || t.closing_date || t.created_at;
-      if (!date) return;
-      const key = getMonthKey(date);
-      if (!monthlyData[key]) {
-        const d = new Date(date);
-        monthlyData[key] = {
-          month: d.toLocaleString("en-US", { month: "short", year: "2-digit" }),
-          units: 0,
-          volume: 0,
-          gci: 0,
-        };
-      }
-      monthlyData[key].units++;
-      monthlyData[key].volume += t.close_price || t.sale_price || t.price || t.volume || 0;
-      monthlyData[key].gci += t.gci || t.gross_commission || 0;
-    });
-
-    const chartData = Object.entries(monthlyData)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-12)
-      .map(([, v]) => v);
-
-    // Tier pie data
-    const tierPieData = Object.entries(tierCounts)
-      .filter(([tier]) => Number(tier) > 0)
-      .sort(([a], [b]) => Number(a) - Number(b))
-      .map(([tier, count]) => ({
-        name: `Tier ${tier}`,
-        value: count,
-      }));
-
-    return {
-      closedUnits,
-      closedVolume,
-      closedGci,
-      pendingUnits,
-      pendingVolume,
-      avgSalePrice,
-      totalListings,
-      totalListingVolume,
-      totalAgents,
-      tierCounts,
-      tierPieData,
-      revshareTotal,
-      rosterCount,
-      chartData,
-    };
-  }, [closedTx.data, pendingTx.data, listings.data, network.data, revshare.data, roster.data]);
+  const isLoading = revenue.isLoading || analytics.isLoading;
+  const hasError = revenue.isError || analytics.isError;
 
   const handleRefresh = () => {
-    closedTx.refetch();
-    pendingTx.refetch();
-    listings.refetch();
-    network.refetch();
-    revshare.refetch();
-    roster.refetch();
+    refreshMutation.mutate();
   };
+
+  const kpis = revenue.data?.kpis;
+  const monthlyTrend = revenue.data?.monthlyTrend || [];
+  const byType = analytics.data?.byType || [];
+  const agentDistribution = analytics.data?.agentDistribution || [];
 
   return (
     <DashboardLayout
       title="Business Dashboard"
-      subtitle="Spyglass Realty — Team overview powered by AgentDashboards"
+      subtitle="Spyglass Realty — Team overview powered by ReZen"
       icon={LayoutDashboard}
       actions={
-        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={isLoading || refreshMutation.isPending}
+        >
+          <RefreshCw
+            className={`h-4 w-4 mr-2 ${
+              isLoading || refreshMutation.isPending ? "animate-spin" : ""
+            }`}
+          />
           Refresh
         </Button>
       }
@@ -197,20 +92,17 @@ export default function AdminDashboardOverview() {
         <Alert variant="destructive" className="mb-6">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Failed to load some data from AgentDashboards. Check the Xano auth token in
-            admin settings. Errors:{" "}
-            {[closedTx.error, pendingTx.error, listings.error, network.error]
-              .filter(Boolean)
-              .map((e: any) => e?.message)
-              .join(", ")}
+            Failed to load some data from ReZen. Make sure your ReZen account is linked in settings.
+            {revenue.error && ` Revenue: ${(revenue.error as any)?.message}`}
+            {analytics.error && ` Analytics: ${(analytics.error as any)?.message}`}
           </AlertDescription>
         </Alert>
       )}
 
-      {/* KPI Row 1 - Transactions */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+      {/* KPI Row */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
         {isLoading ? (
-          Array(5)
+          Array(6)
             .fill(null)
             .map((_, i) => (
               <Card key={i} className="border-l-4 border-l-muted">
@@ -223,78 +115,40 @@ export default function AdminDashboardOverview() {
         ) : (
           <>
             <KpiCard
-              title="Closed Units"
-              value={formatNumber(metrics.closedUnits)}
+              title="Closed Deals"
+              value={formatNumber(kpis?.commissionCount)}
               category="transactions"
-              tooltip="Total number of closed transactions in the period"
+              tooltip="Total closed transactions in ReZen"
             />
             <KpiCard
               title="Closed Volume"
-              value={formatCurrency(metrics.closedVolume, true)}
+              value={formatCurrency(kpis?.closedVolume, true)}
               category="transactions"
               tooltip="Total dollar volume of closed transactions"
             />
             <KpiCard
-              title="Closed GCI"
-              value={formatCurrency(metrics.closedGci, true)}
-              category="transactions"
-              tooltip="Gross Commission Income from closed transactions"
-            />
-            <KpiCard
-              title="Pending Units"
-              value={formatNumber(metrics.pendingUnits)}
-              category="transactions"
-            />
-            <KpiCard
-              title="Avg Sale Price"
-              value={formatCurrency(metrics.avgSalePrice, true)}
-              category="transactions"
-            />
-          </>
-        )}
-      </div>
-
-      {/* KPI Row 2 - Mixed */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-        {isLoading ? (
-          Array(5)
-            .fill(null)
-            .map((_, i) => (
-              <Card key={i} className="border-l-4 border-l-muted">
-                <CardContent className="p-4 flex flex-col items-center justify-center min-h-[120px]">
-                  <Skeleton className="h-4 w-20 mb-2" />
-                  <Skeleton className="h-8 w-24" />
-                </CardContent>
-              </Card>
-            ))
-        ) : (
-          <>
-            <KpiCard
-              title="Gross Income"
-              value={formatCurrency(metrics.closedGci, true)}
-              subtitle="Closed"
+              title="Gross GCI"
+              value={formatCurrency(kpis?.grossGCI, true)}
               category="revenue"
+              tooltip="Total Gross Commission Income"
             />
             <KpiCard
               title="Net Income"
-              value={formatCurrency(metrics.closedGci * 0.72, true)}
-              subtitle="Closed (est.)"
+              value={formatCurrency(kpis?.netIncome, true)}
               category="revenue"
+              tooltip="Total net payout after splits and fees"
             />
             <KpiCard
-              title="Total Listings"
-              value={formatNumber(metrics.totalListings)}
-              category="listings"
+              title="Avg Commission"
+              value={formatCurrency(kpis?.avgCommission, true)}
+              category="revenue"
+              tooltip="Average commission per closed deal"
             />
             <KpiCard
-              title="Total Agents"
-              value={formatNumber(metrics.totalAgents)}
-              category="network"
-            />
-            <KpiCard
-              title="RevShare Income"
-              value={formatCurrency(metrics.revshareTotal, true)}
-              category="revshare"
+              title="Fees & Splits"
+              value={formatCurrency(kpis?.feesDeductions, true)}
+              category="revenue"
+              tooltip="Total deductions (gross - net)"
             />
           </>
         )}
@@ -302,35 +156,45 @@ export default function AdminDashboardOverview() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Monthly Units Chart */}
+        {/* Monthly Revenue */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium">
-              Closed Units (Monthly)
+              Monthly Revenue (Last 12 Months)
             </CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-[300px] w-full" />
+            ) : monthlyTrend.length === 0 ? (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                No data available
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
-                <ComposedChart data={metrics.chartData}>
+                <ComposedChart data={monthlyTrend}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="month" className="text-xs" />
-                  <YAxis className="text-xs" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
+                  <YAxis
+                    className="text-xs"
+                    tickFormatter={(v) => formatCurrency(v, true)}
                   />
+                  <Tooltip content={<CustomTooltip />} />
                   <Legend />
                   <Bar
-                    dataKey="units"
-                    name="Monthly Units"
-                    fill="#0d9488"
+                    dataKey="grossGCI"
+                    name="Gross GCI"
+                    fill="#10b981"
                     radius={[4, 4, 0, 0]}
+                    opacity={0.8}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="netIncome"
+                    name="Net Income"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: "#3b82f6" }}
                   />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -338,81 +202,77 @@ export default function AdminDashboardOverview() {
           </CardContent>
         </Card>
 
-        {/* Agents by Tier Chart */}
+        {/* Transaction Type Distribution */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium">
-              Active Agents by Tier
+              Transaction Types
             </CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-[300px] w-full" />
-            ) : metrics.tierPieData.length > 0 ? (
+            ) : byType.length === 0 ? (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                No data available
+              </div>
+            ) : (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={metrics.tierPieData}
+                    data={byType}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
                     outerRadius={100}
                     paddingAngle={3}
-                    dataKey="value"
-                    label={({ name, value }) => `${name} (${value})`}
+                    dataKey="count"
+                    label={({ name, percent }) =>
+                      `${name} (${(percent * 100).toFixed(0)}%)`
+                    }
                   >
-                    {metrics.tierPieData.map((_, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
+                    {byType.map((_, index) => (
+                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<CustomTooltip />} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                No network data available
-              </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Monthly Revenue Chart */}
+      {/* Volume Trend */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-medium">
-            Monthly Revenue
+            Monthly Closed Volume
           </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <Skeleton className="h-[300px] w-full" />
+          ) : monthlyTrend.length === 0 ? (
+            <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+              No data available
+            </div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={metrics.chartData}>
+              <BarChart data={monthlyTrend}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="month" className="text-xs" />
                 <YAxis
                   className="text-xs"
                   tickFormatter={(v) => formatCurrency(v, true)}
                 />
-                <Tooltip
-                  formatter={(v: any) => formatCurrency(v)}
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                  }}
-                />
+                <Tooltip content={<CustomTooltip />} />
                 <Legend />
                 <Bar
-                  dataKey="gci"
-                  name="GCI"
-                  fill="#10b981"
+                  dataKey="volume"
+                  name="Volume"
+                  fill="#8b5cf6"
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
