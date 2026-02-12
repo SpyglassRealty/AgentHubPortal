@@ -360,7 +360,7 @@ function PropertyTable({ comparables, subjectProperty, onPropertyClick }: { comp
           {allProperties.map((property, index) => (
             <tr 
               key={property.id} 
-              className={`border-b hover:bg-muted/50 cursor-pointer ${property.isSubject ? 'bg-[#EF4923]/10' : ''}`}
+              className={`border-b hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer ${property.isSubject ? 'bg-[#EF4923]/10' : ''}`}
               data-testid={`property-row-${property.id}`}
               onClick={() => onPropertyClick?.(property)}
               tabIndex={0}
@@ -400,7 +400,7 @@ function CompsMapView({ comparables, subjectProperty }: { comparables: CmaProper
 
   if (!hasSubjectCoords && validComparables.length === 0) {
     return (
-      <div className="h-full min-h-[400px] flex items-center justify-center rounded-lg border bg-muted/30" data-testid="map-no-coords">
+      <div className="h-full min-h-[400px] flex items-center justify-center rounded-lg border bg-gray-50 dark:bg-gray-800/30" data-testid="map-no-coords">
         <div className="text-center text-muted-foreground">
           <MapPin className="w-12 h-12 mx-auto mb-2 opacity-50" />
           <p className="text-lg font-medium">Map Unavailable</p>
@@ -428,7 +428,7 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
       <div className="flex flex-col h-full bg-background" data-testid="comps-widget">
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-4">
               <BarChart3 className="w-8 h-8 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-semibold mb-2">No Comparable Properties</h3>
@@ -535,7 +535,7 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
             : null;
           
           return (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-4 p-2 sm:p-4 bg-muted/50 rounded-lg" data-testid="stats-summary">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-4 p-2 sm:p-4 bg-gray-50 dark:bg-gray-800/30 rounded-lg" data-testid="stats-summary">
               <StatItem 
                 label="LOW PRICE" 
                 value={formatCurrency(statistics.price.range.min)} 
