@@ -7,7 +7,6 @@ import { SafeImage } from '@/components/ui/safe-image';
 import { BarChart3, Map as MapIcon, TrendingUp, List, LayoutGrid, Table2, Bed, Bath, Square, Clock, MapPin, Home, AlertTriangle, ArrowUpRight, ArrowDownRight, Camera } from 'lucide-react';
 import { CMAMap } from '@/components/cma-map';
 import { PropertyDetailModal } from './PropertyDetailModal';
-import { PhotoGalleryModal } from '@/components/cma/PhotoGalleryModal';
 import { extractPrice, extractSqft, extractDOM, calculatePricePerSqft, getCityState } from '@/lib/cma-data-utils';
 import type { CmaProperty } from '../types';
 import type { Property } from '@shared/schema';
@@ -141,14 +140,14 @@ const normalizeStatus = (status: string): string => {
 
 function convertToProperty(cmaProperty: CmaProperty): Property {
   return {
-    id: cmaProperty.id,
     mlsNumber: cmaProperty.id,
-    unparsedAddress: cmaProperty.address,
+    address: cmaProperty.address,
     city: cmaProperty.city,
     state: cmaProperty.state,
     postalCode: cmaProperty.zipCode,
-    listPrice: cmaProperty.originalPrice || cmaProperty.price,
+    price: cmaProperty.price,
     soldPrice: cmaProperty.soldPrice,
+    listPrice: cmaProperty.originalPrice || cmaProperty.price,
     bedrooms: cmaProperty.beds,
     bathrooms: cmaProperty.baths,
     sqft: cmaProperty.sqft,
@@ -168,7 +167,7 @@ function StatItem({
   label, 
   value, 
   subtext, 
-  subtextColor = 'text-muted-foreground',
+  subtextColor = 'text-gray-600',
   vsMarketPercent,
   yourValue
 }: { 
@@ -182,10 +181,10 @@ function StatItem({
   const testId = `stat-${label.toLowerCase().replace(/[\s/]+/g, '-')}`;
   return (
     <div className="text-center" data-testid={testId}>
-      <p className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider" data-testid={`${testId}-label`}>
+      <p className="text-[10px] sm:text-xs text-gray-600 font-medium uppercase tracking-wider" data-testid={`${testId}-label`}>
         {label}
       </p>
-      <p className="text-sm sm:text-lg font-bold" data-testid={`${testId}-value`}>{value}</p>
+      <p className="text-sm sm:text-lg font-bold text-gray-900" data-testid={`${testId}-value`}>{value}</p>
       {vsMarketPercent !== undefined && vsMarketPercent !== null && (
         <p className={`text-[10px] sm:text-xs flex items-center justify-center gap-0.5 ${vsMarketPercent > 0 ? 'text-red-500' : 'text-green-500'}`} data-testid={`${testId}-vs-market`}>
           {vsMarketPercent > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
@@ -193,7 +192,7 @@ function StatItem({
         </p>
       )}
       {yourValue && (
-        <p className="text-[10px] sm:text-xs text-muted-foreground truncate" data-testid={`${testId}-your`}>
+        <p className="text-[10px] sm:text-xs text-gray-600 truncate" data-testid={`${testId}-your`}>
           Your: {yourValue}
         </p>
       )}
@@ -204,7 +203,7 @@ function StatItem({
   );
 }
 
-function PropertyCard({ property, isSubject = false, onClick, onPhotoClick }: { property: CmaProperty; isSubject?: boolean; onClick?: () => void; onPhotoClick?: () => void }) {
+function PropertyCard({ property, isSubject = false, onClick }: { property: CmaProperty; isSubject?: boolean; onClick?: () => void }) {
   return (
     <Card 
       className={`overflow-hidden cursor-pointer hover:shadow-lg transition-shadow ${isSubject ? 'border-[#EF4923] border-2' : ''}`}
@@ -219,18 +218,31 @@ function PropertyCard({ property, isSubject = false, onClick, onPhotoClick }: { 
         }
       }}
     >
-      <div 
-        className="relative aspect-[4/3] cursor-pointer group"
-        onClick={(e) => {
-          e.stopPropagation();
-          onPhotoClick?.();
-        }}
-      >
-        <SafeImage 
-          src={property.photos?.[0] || ""} 
-          alt={property.address}
-          className="w-full h-full object-cover"
-        />
+      <div className="relative aspect-[4/3]">
+        {property.photos?.[0] ? (
+          <div 
+            className="cursor-pointer group"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPhotoClick?.();
+            }}
+          >
+            <SafeImage 
+              src={property.photos[0]} 
+              alt={property.address}
+              className="w-full h-full object-cover"
+              data-testid={`property-image-${property.id}`}
+            />
+          </div>
+        ) : (
+          <div className="w-full h-full bg-gray-50 flex flex-col items-center justify-center text-gray-600 gap-1">
+            <Home className="w-8 h-8" />
+            <span className="text-xs text-yellow-600 font-medium flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" />
+              No Photo
+            </span>
+          </div>
+        )}
         <div className="absolute top-3 left-3 flex items-center gap-2 flex-wrap">
           <span 
             className={`px-2 py-1 text-xs font-medium text-white rounded ${isSubject ? 'bg-[#EF4923]' : getStatusColor(property.status)}`}
@@ -239,41 +251,24 @@ function PropertyCard({ property, isSubject = false, onClick, onPhotoClick }: { 
             {isSubject ? 'Subject' : property.status}
           </span>
         </div>
-        
-        {/* Photo count indicator for multiple photos */}
-        {property.photos && property.photos.length > 1 && (
-          <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded text-xs flex items-center gap-1">
-            <Camera className="w-3 h-3" />
-            <span>{property.photos.length}</span>
-          </div>
-        )}
-
-        {/* Hover overlay hint */}
-        {property.photos && property.photos.length > 0 && (
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-            <span className="opacity-0 group-hover:opacity-100 text-white text-sm font-medium">
-              {property.photos.length > 1 ? 'Click to view photos' : 'Click to view photo'}
-            </span>
-          </div>
-        )}
       </div>
       
       <div className="p-4">
-        <p className="font-medium text-sm truncate" data-testid={`property-address-${property.id}`}>{property.address}</p>
+        <p className="font-medium text-sm truncate text-gray-900" data-testid={`property-address-${property.id}`}>{property.address}</p>
         {getCityState(property) && (
-          <p className="text-xs text-muted-foreground truncate">
+          <p className="text-xs text-gray-600 truncate">
             {getCityState(property)}
           </p>
         )}
         <div className="flex items-baseline justify-between gap-2 mt-2 flex-wrap">
-          <p className="text-lg font-bold" data-testid={`property-price-${property.id}`}>
+          <p className="text-lg font-bold text-gray-900" data-testid={`property-price-${property.id}`}>
             {formatCurrency(getDisplayPrice(property))}
           </p>
-          <p className="text-sm text-muted-foreground" data-testid={`property-ppsf-${property.id}`}>
+          <p className="text-sm text-gray-600" data-testid={`property-ppsf-${property.id}`}>
             {getSafePricePerSqft(property)}/sqft
           </p>
         </div>
-        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
+        <div className="flex items-center gap-3 mt-2 text-xs text-gray-600 flex-wrap">
           <span className="flex items-center gap-1" data-testid={`property-beds-${property.id}`}>
             <Bed className="w-3 h-3" /> {property.beds}
           </span>
@@ -284,7 +279,7 @@ function PropertyCard({ property, isSubject = false, onClick, onPhotoClick }: { 
             <Square className="w-3 h-3" /> {property.sqft.toLocaleString()}
           </span>
         </div>
-        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1" data-testid={`property-dom-${property.id}`}>
+        <p className="text-xs text-gray-600 mt-2 flex items-center gap-1" data-testid={`property-dom-${property.id}`}>
           <Clock className="w-3 h-3" /> {property.daysOnMarket} days on market
         </p>
       </div>
@@ -308,11 +303,21 @@ function PropertyListItem({ property, isSubject = false, onClick }: { property: 
       }}
     >
       <div className="w-32 h-24 flex-shrink-0 rounded overflow-hidden">
-        <SafeImage 
-          src={property.photos?.[0] || ""} 
-          alt={property.address}
-          className="w-full h-full object-cover"
-        />
+        {property.photos?.[0] ? (
+          <SafeImage 
+            src={property.photos[0]} 
+            alt={property.address}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-50 flex flex-col items-center justify-center text-gray-600 gap-1">
+            <Home className="w-6 h-6" />
+            <span className="text-[10px] text-yellow-600 font-medium flex items-center gap-0.5">
+              <AlertTriangle className="w-2.5 h-2.5" />
+              No Photo
+            </span>
+          </div>
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -320,14 +325,14 @@ function PropertyListItem({ property, isSubject = false, onClick }: { property: 
             {isSubject ? 'Subject' : property.status}
           </Badge>
         </div>
-        <p className="font-medium text-sm truncate" data-testid={`property-list-address-${property.id}`}>{property.address}</p>
-        <p className="text-lg font-bold mt-1" data-testid={`property-list-price-${property.id}`}>
+        <p className="font-medium text-sm truncate text-gray-900" data-testid={`property-list-address-${property.id}`}>{property.address}</p>
+        <p className="text-lg font-bold mt-1 text-gray-900" data-testid={`property-list-price-${property.id}`}>
           {formatCurrency(getDisplayPrice(property))}
-          <span className="text-sm font-normal text-muted-foreground ml-2">
+          <span className="text-sm font-normal text-gray-600 ml-2">
             {getSafePricePerSqft(property)}/sqft
           </span>
         </p>
-        <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
+        <div className="flex items-center gap-4 mt-1 text-xs text-gray-600 flex-wrap">
           <span>{property.beds} beds</span>
           <span>{property.baths} baths</span>
           <span>{property.sqft.toLocaleString()} sqft</span>
@@ -360,7 +365,7 @@ function PropertyTable({ comparables, subjectProperty, onPropertyClick }: { comp
           {allProperties.map((property, index) => (
             <tr 
               key={property.id} 
-              className={`border-b hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer ${property.isSubject ? 'bg-[#EF4923]/10' : ''}`}
+              className={`border-b hover:bg-gray-50 cursor-pointer ${property.isSubject ? 'bg-[#EF4923]/10' : ''}`}
               data-testid={`property-row-${property.id}`}
               onClick={() => onPropertyClick?.(property)}
               tabIndex={0}
@@ -400,8 +405,8 @@ function CompsMapView({ comparables, subjectProperty }: { comparables: CmaProper
 
   if (!hasSubjectCoords && validComparables.length === 0) {
     return (
-      <div className="h-full min-h-[400px] flex items-center justify-center rounded-lg border bg-gray-50 dark:bg-gray-800/30" data-testid="map-no-coords">
-        <div className="text-center text-muted-foreground">
+      <div className="h-full min-h-[400px] flex items-center justify-center rounded-lg border bg-gray-50" data-testid="map-no-coords">
+        <div className="text-center text-gray-600">
           <MapPin className="w-12 h-12 mx-auto mb-2 opacity-50" />
           <p className="text-lg font-medium">Map Unavailable</p>
           <p className="text-sm">No coordinates found for properties</p>
@@ -425,14 +430,14 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
   // Handle empty comparables
   if (!comparables || comparables.length === 0) {
     return (
-      <div className="flex flex-col h-full bg-background" data-testid="comps-widget">
+      <div className="flex flex-col h-full bg-white" data-testid="comps-widget">
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center">
-            <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-4">
-              <BarChart3 className="w-8 h-8 text-muted-foreground" />
+            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <BarChart3 className="w-8 h-8 text-gray-600" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">No Comparable Properties</h3>
-            <p className="text-muted-foreground">
+            <h3 className="text-lg font-semibold mb-2 text-gray-900">No Comparable Properties</h3>
+            <p className="text-gray-600">
               No comparable properties were found for this CMA. Please check the CMA data or refresh the presentation.
             </p>
           </div>
@@ -440,14 +445,10 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
       </div>
     );
   }
-  
   const [mainView, setMainView] = useState<'compare' | 'map' | 'stats'>('compare');
   const [subView, setSubView] = useState<'grid' | 'list' | 'table'>('grid');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedProperty, setSelectedProperty] = useState<CmaProperty | null>(null);
-  const [galleryOpen, setGalleryOpen] = useState(false);
-  const [galleryProperty, setGalleryProperty] = useState<CmaProperty | null>(null);
-  const [initialPhotoIndex, setInitialPhotoIndex] = useState(0);
 
   const filteredComparables = useMemo(() => {
     if (statusFilter === 'all') return comparables;
@@ -456,30 +457,15 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
 
   const statistics = useMemo(() => calculateStatistics(filteredComparables), [filteredComparables]);
 
-  const handlePhotoClick = (property: CmaProperty, photoIndex: number = 0) => {
-    console.log('[CompsWidget Debug] Photo click for property:', {
-      mlsNumber: property.mlsNumber || property.id,
-      address: property.address,
-      photosCount: property.photos?.length || 0,
-      photosPreview: property.photos?.slice(0, 3) || [],
-      hasPhotosArray: Array.isArray(property.photos),
-      photoIndex,
-    });
-    
-    setGalleryProperty(property);
-    setInitialPhotoIndex(photoIndex);
-    setGalleryOpen(true);
-  };
-
   return (
-    <div className="flex flex-col h-full bg-background" data-testid="comps-widget">
+    <div className="flex flex-col h-full bg-white" data-testid="comps-widget">
       <div className="p-4 border-b space-y-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3 flex-wrap">
-            <h2 className="text-lg font-semibold" data-testid="comps-title">
+            <h2 className="text-lg font-semibold text-gray-900" data-testid="comps-title">
               Comparable Properties
             </h2>
-            <span className="text-sm text-muted-foreground" data-testid="comps-count">
+            <span className="text-sm text-gray-600" data-testid="comps-count">
               {filteredComparables.length} properties
             </span>
             <Badge variant="outline" className="text-xs" data-testid="badge-mls">
@@ -535,7 +521,7 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
             : null;
           
           return (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-4 p-2 sm:p-4 bg-gray-50 dark:bg-gray-800/30 rounded-lg" data-testid="stats-summary">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-4 p-2 sm:p-4 bg-gray-50 rounded-lg" data-testid="stats-summary">
               <StatItem 
                 label="LOW PRICE" 
                 value={formatCurrency(statistics.price.range.min)} 
@@ -570,7 +556,7 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
         
         {mainView === 'compare' && (
           <div className="flex items-center gap-2 flex-wrap" data-testid="view-toggles">
-            <span className="text-sm text-muted-foreground">View:</span>
+            <span className="text-sm text-gray-600">View:</span>
             <Button
               variant={subView === 'grid' ? 'default' : 'outline'}
               size="sm"
@@ -612,7 +598,6 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
                     property={{...subjectProperty, isSubject: true}} 
                     isSubject 
                     onClick={() => setSelectedProperty({...subjectProperty, isSubject: true})}
-                    onPhotoClick={() => handlePhotoClick({...subjectProperty, isSubject: true})}
                   />
                 )}
                 {filteredComparables.map(comp => (
@@ -620,7 +605,6 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
                     key={comp.id} 
                     property={comp} 
                     onClick={() => setSelectedProperty(comp)}
-                    onPhotoClick={() => handlePhotoClick(comp)}
                   />
                 ))}
               </div>
@@ -663,19 +647,19 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
         {mainView === 'stats' && statistics && (
           <div className="space-y-6" data-testid="stats-view">
             <Card className="p-6" data-testid="stats-price-card">
-              <h3 className="text-lg font-semibold mb-4">Price Statistics</h3>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Price Statistics</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div data-testid="stats-price-avg">
-                  <p className="text-sm text-muted-foreground">Average</p>
-                  <p className="text-2xl font-bold">{formatCurrency(statistics.price.average)}</p>
+                  <p className="text-sm text-gray-600">Average</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(statistics.price.average)}</p>
                 </div>
                 <div data-testid="stats-price-median">
-                  <p className="text-sm text-muted-foreground">Median</p>
-                  <p className="text-2xl font-bold">{formatCurrency(statistics.price.median)}</p>
+                  <p className="text-sm text-gray-600">Median</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(statistics.price.median)}</p>
                 </div>
                 <div data-testid="stats-price-range">
-                  <p className="text-sm text-muted-foreground">Range</p>
-                  <p className="text-lg font-medium">
+                  <p className="text-sm text-gray-600">Range</p>
+                  <p className="text-lg font-medium text-gray-900">
                     {formatCurrency(statistics.price.range.min)} - {formatCurrency(statistics.price.range.max)}
                   </p>
                 </div>
@@ -683,19 +667,19 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
             </Card>
             
             <Card className="p-6" data-testid="stats-ppsf-card">
-              <h3 className="text-lg font-semibold mb-4">Price Per Square Foot</h3>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Price Per Square Foot</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div data-testid="stats-ppsf-avg">
-                  <p className="text-sm text-muted-foreground">Average</p>
-                  <p className="text-2xl font-bold">${Math.round(statistics.pricePerSqFt.average)}/sqft</p>
+                  <p className="text-sm text-gray-600">Average</p>
+                  <p className="text-2xl font-bold text-gray-900">${Math.round(statistics.pricePerSqFt.average)}/sqft</p>
                 </div>
                 <div data-testid="stats-ppsf-median">
-                  <p className="text-sm text-muted-foreground">Median</p>
-                  <p className="text-2xl font-bold">${Math.round(statistics.pricePerSqFt.median)}/sqft</p>
+                  <p className="text-sm text-gray-600">Median</p>
+                  <p className="text-2xl font-bold text-gray-900">${Math.round(statistics.pricePerSqFt.median)}/sqft</p>
                 </div>
                 <div data-testid="stats-ppsf-range">
-                  <p className="text-sm text-muted-foreground">Range</p>
-                  <p className="text-lg font-medium">
+                  <p className="text-sm text-gray-600">Range</p>
+                  <p className="text-lg font-medium text-gray-900">
                     ${Math.round(statistics.pricePerSqFt.range.min)} - ${Math.round(statistics.pricePerSqFt.range.max)}/sqft
                   </p>
                 </div>
@@ -703,19 +687,19 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
             </Card>
             
             <Card className="p-6" data-testid="stats-dom-card">
-              <h3 className="text-lg font-semibold mb-4">Days on Market</h3>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Days on Market</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div data-testid="stats-dom-avg">
-                  <p className="text-sm text-muted-foreground">Average</p>
-                  <p className="text-2xl font-bold">{Math.round(statistics.daysOnMarket.average)} days</p>
+                  <p className="text-sm text-gray-600">Average</p>
+                  <p className="text-2xl font-bold text-gray-900">{Math.round(statistics.daysOnMarket.average)} days</p>
                 </div>
                 <div data-testid="stats-dom-median">
-                  <p className="text-sm text-muted-foreground">Median</p>
-                  <p className="text-2xl font-bold">{Math.round(statistics.daysOnMarket.median)} days</p>
+                  <p className="text-sm text-gray-600">Median</p>
+                  <p className="text-2xl font-bold text-gray-900">{Math.round(statistics.daysOnMarket.median)} days</p>
                 </div>
                 <div data-testid="stats-dom-range">
-                  <p className="text-sm text-muted-foreground">Range</p>
-                  <p className="text-lg font-medium">
+                  <p className="text-sm text-gray-600">Range</p>
+                  <p className="text-lg font-medium text-gray-900">
                     {Math.round(statistics.daysOnMarket.range.min)} - {Math.round(statistics.daysOnMarket.range.max)} days
                   </p>
                 </div>
@@ -728,38 +712,8 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
 
       {selectedProperty && (
         <PropertyDetailModal
-          property={(() => {
-            // Debug logging for PhotoGalleryModal issue
-            console.log('[CompsWidget] Opening PropertyDetailModal with property:', {
-              mlsNumber: selectedProperty.mlsNumber,
-              address: selectedProperty.address,
-              hasPhotos: !!selectedProperty.photos,
-              photosLength: Array.isArray(selectedProperty.photos) ? selectedProperty.photos.length : 0,
-              photosPreview: Array.isArray(selectedProperty.photos) ? selectedProperty.photos.slice(0, 3) : null,
-              allPhotoFields: Object.keys(selectedProperty).filter(k => 
-                k.toLowerCase().includes('photo') || k.toLowerCase().includes('image')
-              )
-            });
-            return selectedProperty;
-          })()}
+          property={selectedProperty}
           onClose={() => setSelectedProperty(null)}
-        />
-      )}
-
-      {galleryProperty && (
-        <PhotoGalleryModal
-          open={galleryOpen}
-          onOpenChange={setGalleryOpen}
-          photos={galleryProperty.photos || []}
-          initialIndex={initialPhotoIndex}
-          propertyAddress={galleryProperty.address}
-          propertyPrice={extractPrice(galleryProperty)}
-          propertyDetails={{
-            beds: galleryProperty.beds,
-            baths: galleryProperty.baths,
-            sqft: galleryProperty.sqft,
-            status: galleryProperty.status,
-          }}
         />
       )}
     </div>

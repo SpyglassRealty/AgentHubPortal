@@ -44,6 +44,15 @@ function DetailItem({ label, value, icon }: { label: string; value: string; icon
 }
 
 export function PropertyDetailModal({ property, onClose }: PropertyDetailModalProps) {
+  // Debug logging for description data
+  console.log('[PropertyDetailModal] Property data:', {
+    mlsNumber: property.mlsNumber,
+    address: property.address,
+    description: property.description,
+    descriptionLength: property.description?.length || 0,
+    hasDescription: !!property.description,
+  });
+  
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [fullscreenPhoto, setFullscreenPhoto] = useState(false);
   const photos = property.photos || [];
@@ -116,7 +125,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
         </div>
         
         <div className="flex-1 overflow-y-auto">
-          <div className="relative w-full aspect-video overflow-hidden">
+          <div className="relative w-full aspect-video bg-gray-50 overflow-hidden">
             {photos.length > 0 && photos[currentPhotoIndex] ? (
               <>
                 <div className="cursor-pointer" onClick={() => setFullscreenPhoto(true)}>
@@ -124,6 +133,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
                     src={photos[currentPhotoIndex]} 
                     alt={`${property.address} - Photo ${currentPhotoIndex + 1}`}
                     className="w-full h-full object-contain"
+                    data-testid="modal-main-photo"
                   />
                 </div>
                 
