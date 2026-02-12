@@ -229,6 +229,18 @@ export default function CMAPresentation() {
         sqft: parsedSqft,
         lotSizeAcres: lotAcres,
         daysOnMarket: comp.daysOnMarket || comp.dom || 0,
+        // DEBUG: Log photo data before assignment
+        ...(() => {
+          if (index === 0) console.log('[CMA Photo Debug] First comp photo data:', {
+            mlsNumber: comp.mlsNumber,
+            hasPhotos: !!comp.photos,
+            photosLength: comp.photos?.length,
+            hasImages: !!comp.images,
+            imagesLength: comp.images?.length,
+            imageUrl: comp.imageUrl,
+          });
+          return {};
+        })(),
         photos: comp.photos || comp.images || (comp.imageUrl ? [comp.imageUrl] : []),
         map: lat && lng ? { latitude: lat, longitude: lng } : null,
         latitude: lat,
