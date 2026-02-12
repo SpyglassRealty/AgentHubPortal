@@ -27,6 +27,28 @@ function setCache<T>(key: string, data: T): void {
   cache.set(key, { data, timestamp: Date.now() });
 }
 
+// ── Helper: timeout wrapper with fallback ──────────
+async function withTimeout<T>(
+  promise: Promise<T>, 
+  timeoutMs: number, 
+  fallbackValue: T, 
+  operation: string
+): Promise<T> {
+  const timeoutPromise = new Promise<T>((_, reject) => 
+    setTimeout(() => reject(new Error(`${operation} timeout after ${timeoutMs}ms`)), timeoutMs)
+  );
+  
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } catch (error: any) {
+    if (error.message.includes('timeout')) {
+      console.warn(`[ReZen Dashboard] ${operation} timed out, using fallback`, error.message);
+      return fallbackValue;
+    }
+    throw error;
+  }
+}
+
 // ── Helper: get DB user ──────────────────────────────
 async function getDbUser(req: any): Promise<User | undefined> {
   const sessionUserId = req.user?.claims?.sub;
@@ -142,7 +164,13 @@ export function registerRezenDashboardRoutes(app: Express): void {
           return res.json(cached);
         }
 
-        const closedTransactions = await fetchAllTransactions(yentaId, "CLOSED");
+        // Use 10-second timeout with empty fallback
+        const closedTransactions = await withTimeout(
+          fetchAllTransactions(yentaId, "CLOSED"),
+          10_000, // 10 seconds
+          [], // Empty array fallback
+          "Revenue data fetch"
+        );
 
         // KPI calculations
         const closedVolume = closedTransactions.reduce(
@@ -208,7 +236,24 @@ export function registerRezenDashboardRoutes(app: Express): void {
         res.json(result);
       } catch (error: any) {
         console.error("[ReZen Dashboard] Revenue error:", error);
-        res.status(500).json({ message: "Failed to fetch revenue data", error: error.message });
+        
+        // Return empty but valid revenue structure instead of 500 error on timeout
+        if (error.message?.includes('timeout')) {
+          const emptyResult = {
+            closedVolume: 0,
+            grossGci: 0,
+            netIncome: 0,
+            averageCommission: 0,
+            dealCount: 0,
+            feesAndExpenses: 0,
+            monthlyRevenue: [],
+            isPartialData: true,
+            error: "Revenue data temporarily unavailable due to timeout"
+          };
+          res.json(emptyResult);
+        } else {
+          res.status(500).json({ message: "Failed to fetch revenue data", error: error.message });
+        }
       }
     }
   );
@@ -232,7 +277,13 @@ export function registerRezenDashboardRoutes(app: Express): void {
           return res.json(cached);
         }
 
-        const closedTransactions = await fetchAllTransactions(yentaId, "CLOSED");
+        // Use 10-second timeout with empty fallback as requested
+        const closedTransactions = await withTimeout(
+          fetchAllTransactions(yentaId, "CLOSED"),
+          10_000, // 10 seconds
+          [], // Empty array fallback
+          "Analytics data fetch"
+        );
 
         // By Transaction Type
         const typeBreakdown: Record<string, { count: number; volume: number; gci: number }> = {};
@@ -324,13 +375,30 @@ export function registerRezenDashboardRoutes(app: Express): void {
           byPropertyType,
           byLeadSource,
           totalTransactions: closedTransactions.length,
+          isPartialData: closedTransactions.length === 0, // Flag when using fallback data
         };
 
         setCache(cacheKey, result);
         res.json(result);
       } catch (error: any) {
         console.error("[ReZen Dashboard] Analytics error:", error);
-        res.status(500).json({ message: "Failed to fetch analytics data", error: error.message });
+        
+        // Return empty but valid analytics structure instead of 500 error
+        if (error.message?.includes('timeout')) {
+          const emptyResult = {
+            byType: [],
+            topAgents: [],
+            agentDistribution: [],
+            byPropertyType: [],
+            byLeadSource: [],
+            totalTransactions: 0,
+            isPartialData: true,
+            error: "Analytics data temporarily unavailable due to timeout"
+          };
+          res.json(emptyResult);
+        } else {
+          res.status(500).json({ message: "Failed to fetch analytics data", error: error.message });
+        }
       }
     }
   );
@@ -354,7 +422,13 @@ export function registerRezenDashboardRoutes(app: Express): void {
           ? (status.toUpperCase() as "OPEN" | "CLOSED" | "TERMINATED")
           : "CLOSED";
 
-        const allTransactions = await fetchAllTransactions(yentaId, txStatus);
+        // Use 10-second timeout with empty fallback
+        const allTransactions = await withTimeout(
+          fetchAllTransactions(yentaId, txStatus),
+          10_000, // 10 seconds
+          [], // Empty array fallback
+          `Transactions (${txStatus}) data fetch`
+        );
 
         // Transform for table consumption
         const transactions = allTransactions.map((t) => {
@@ -383,7 +457,19 @@ export function registerRezenDashboardRoutes(app: Express): void {
         });
       } catch (error: any) {
         console.error("[ReZen Dashboard] Transactions table error:", error);
-        res.status(500).json({ message: "Failed to fetch transactions", error: error.message });
+        
+        // Return empty but valid transactions structure instead of 500 error on timeout
+        if (error.message?.includes('timeout')) {
+          const emptyResult = {
+            transactions: [],
+            totalTransactions: 0,
+            isPartialData: true,
+            error: "Transaction data temporarily unavailable due to timeout"
+          };
+          res.json(emptyResult);
+        } else {
+          res.status(500).json({ message: "Failed to fetch transactions", error: error.message });
+        }
       }
     }
   );
