@@ -55,41 +55,34 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
   
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [fullscreenPhoto, setFullscreenPhoto] = useState(false);
-  const [photos, setPhotos] = useState<string[]>(property.photos || []);
-  const [loadingPhotos, setLoadingPhotos] = useState(false);
-  
-  // Lazy-load full photo array if we only have 0-1 photos but have MLS number
+  const [loadedPhotos, setLoadedPhotos] = useState<string[]>([]);
+  const [photosLoading, setPhotosLoading] = useState(false);
+
   useEffect(() => {
-    const shouldLoadPhotos = (
-      photos.length <= 1 && 
-      (property.mlsNumber || property.id) && 
-      !loadingPhotos
-    );
-    
-    if (!shouldLoadPhotos) return;
-    
-    const mlsNumber = property.mlsNumber || property.id;
-    console.log(`[PropertyDetailModal] Lazy-loading photos for MLS# ${mlsNumber}`);
-    
-    setLoadingPhotos(true);
-    
-    fetch(`/api/listings/${mlsNumber}/photos`)
-      .then(response => response.json())
-      .then(data => {
-        if (data.photos && Array.isArray(data.photos) && data.photos.length > 0) {
-          console.log(`[PropertyDetailModal] Loaded ${data.photos.length} photos for MLS# ${mlsNumber}`);
-          setPhotos(data.photos);
-        } else {
-          console.log(`[PropertyDetailModal] No additional photos found for MLS# ${mlsNumber}`);
-        }
-      })
-      .catch(error => {
-        console.error(`[PropertyDetailModal] Error loading photos for MLS# ${mlsNumber}:`, error);
-      })
-      .finally(() => {
-        setLoadingPhotos(false);
-      });
-  }, [property.mlsNumber, property.id, photos.length, loadingPhotos]);
+    if (property.mlsNumber && (!property.photos || property.photos.length <= 1)) {
+      setPhotosLoading(true);
+      fetch(`/api/repliers/listing/${property.mlsNumber}/image-insights`)
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+        .then(data => {
+          if (data.images && data.images.length > 0) {
+            const urls = data.images
+              .map((img: any) => img.fullUrl || img.image || img.url)
+              .filter(Boolean);
+            if (urls.length > 0) setLoadedPhotos(urls);
+          }
+        })
+        .catch(err => console.error('Failed to load comp photos:', err))
+        .finally(() => setPhotosLoading(false));
+    }
+  }, [property.mlsNumber]);
+
+  const photos = loadedPhotos.length > 0 ? loadedPhotos : (property.photos || []);
+  }, [property.mlsNumber, property.photos]);
+
+  const photos = loadedPhotos.length > 0 ? loadedPhotos : (property.photos || []);
   
   const handlePrevPhoto = () => {
     setCurrentPhotoIndex(prev => (prev > 0 ? prev - 1 : photos.length - 1));
@@ -159,12 +152,12 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
         </div>
         
         <div className="flex-1 overflow-y-auto">
-          <div className="relative w-full aspect-video bg-gray-50 overflow-hidden">
-            {loadingPhotos ? (
-              <div className="w-full h-full flex items-center justify-center text-gray-600">
+          <div className="relative w-full aspect-video overflow-hidden">
+            {photosLoading ? (
+              <div className="w-full h-full flex items-center justify-center bg-gray-100">
                 <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto mb-3"></div>
-                  <p className="text-sm">Loading photos...</p>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-600">Loading photos...</p>
                 </div>
               </div>
             ) : photos.length > 0 && photos[currentPhotoIndex] ? (
