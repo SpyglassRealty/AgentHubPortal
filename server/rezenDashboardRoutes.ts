@@ -167,7 +167,7 @@ export function registerRezenDashboardRoutes(app: Express): void {
         // Use 10-second timeout with empty fallback
         const closedTransactions = await withTimeout(
           fetchAllTransactions(yentaId, "CLOSED"),
-          10_000, // 10 seconds
+          120_000, // 120 seconds
           [], // Empty array fallback
           "Revenue data fetch"
         );
@@ -280,7 +280,7 @@ export function registerRezenDashboardRoutes(app: Express): void {
         // Use 10-second timeout with empty fallback as requested
         const closedTransactions = await withTimeout(
           fetchAllTransactions(yentaId, "CLOSED"),
-          10_000, // 10 seconds
+          120_000, // 120 seconds
           [], // Empty array fallback
           "Analytics data fetch"
         );
@@ -425,7 +425,7 @@ export function registerRezenDashboardRoutes(app: Express): void {
         // Use 10-second timeout with empty fallback
         const allTransactions = await withTimeout(
           fetchAllTransactions(yentaId, txStatus),
-          10_000, // 10 seconds
+          120_000, // 120 seconds
           [], // Empty array fallback
           `Transactions (${txStatus}) data fetch`
         );
