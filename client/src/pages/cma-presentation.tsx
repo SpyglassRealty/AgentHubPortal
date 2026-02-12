@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SafeImage } from "@/components/ui/safe-image";
 import { toast } from "sonner";
 import {
   Home,
@@ -621,18 +622,11 @@ function SlideshowPlayer({ widgets, cma, agentProfile, activeWidgetId, onClose, 
                 {/* Property Image */}
                 <div className="w-full max-w-2xl mx-auto mb-8">
                   <div className="relative aspect-[4/3] rounded-lg overflow-hidden">
-                    {cma.subjectProperty.photos?.[0] ? (
-                      <img 
-                        src={cma.subjectProperty.photos[0]} 
-                        alt={cma.subjectProperty.address}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-muted flex flex-col items-center justify-center text-muted-foreground">
-                        <Home className="w-16 w-16 mb-4" />
-                        <span className="text-lg font-medium text-yellow-600">No Photo Available</span>
-                      </div>
-                    )}
+                    <SafeImage 
+                      src={cma.subjectProperty.photos?.[0] || ""} 
+                      alt={cma.subjectProperty.address}
+                      className="w-full h-full object-cover"
+                    />
                     {/* Subject Property Badge */}
                     <div className="absolute top-4 left-4">
                       <span className="px-3 py-2 text-sm font-bold text-white bg-[#EF4923] rounded">
@@ -695,20 +689,11 @@ function SlideshowPlayer({ widgets, cma, agentProfile, activeWidgetId, onClose, 
                     <div key={index} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                       {/* Property Image */}
                       <div className="relative aspect-[4/3]">
-                        {comp.photos?.[0] ? (
-                          <img 
-                            src={comp.photos[0]} 
-                            alt={comp.address}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-muted flex flex-col items-center justify-center text-muted-foreground">
-                            <Home className="w-8 h-8" />
-                            <span className="text-xs text-yellow-600 font-medium flex items-center gap-1 mt-2">
-                              No Photo
-                            </span>
-                          </div>
-                        )}
+                        <SafeImage 
+                          src={comp.photos?.[0] || ""} 
+                          alt={comp.address}
+                          className="w-full h-full object-cover"
+                        />
                         {/* Status Badge */}
                         <div className="absolute top-3 left-3">
                           <span className={`px-2 py-1 text-xs font-medium text-white rounded ${
@@ -808,15 +793,15 @@ function SlideshowPlayer({ widgets, cma, agentProfile, activeWidgetId, onClose, 
                 {cma.subjectProperty.photos && cma.subjectProperty.photos.length > 0 ? (
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {cma.subjectProperty.photos.map((photo, index) => (
-                      <div key={index} className="relative aspect-[4/3] rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                        <img 
+                      <div key={index} className="relative aspect-[4/3] rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                           onClick={() => {
+                             // Could add modal functionality here
+                             window.open(photo, '_blank');
+                           }}>
+                        <SafeImage 
                           src={photo} 
                           alt={`${cma.subjectProperty.address} - Photo ${index + 1}`}
-                          className="w-full h-full object-cover cursor-pointer"
-                          onClick={() => {
-                            // Could add modal functionality here
-                            window.open(photo, '_blank');
-                          }}
+                          className="w-full h-full object-cover"
                         />
                         <div className="absolute bottom-2 right-2">
                           <span className="px-2 py-1 text-xs font-medium text-white bg-black/60 rounded backdrop-blur">

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SafeImage } from '@/components/ui/safe-image';
 import { BarChart3, Map as MapIcon, TrendingUp, List, LayoutGrid, Table2, Bed, Bath, Square, Clock, MapPin, Home, AlertTriangle, ArrowUpRight, ArrowDownRight, Camera } from 'lucide-react';
 import { CMAMap } from '@/components/cma-map';
 import { PropertyDetailModal } from './PropertyDetailModal';
@@ -225,22 +226,11 @@ function PropertyCard({ property, isSubject = false, onClick, onPhotoClick }: { 
           onPhotoClick?.();
         }}
       >
-        {property.photos?.[0] ? (
-          <img 
-            src={property.photos[0]} 
-            alt={property.address}
-            className="w-full h-full object-cover"
-            data-testid={`property-image-${property.id}`}
-          />
-        ) : (
-          <div className="w-full h-full bg-muted flex flex-col items-center justify-center text-muted-foreground gap-1">
-            <Home className="w-8 h-8" />
-            <span className="text-xs text-yellow-600 font-medium flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" />
-              No Photo
-            </span>
-          </div>
-        )}
+        <SafeImage 
+          src={property.photos?.[0] || ""} 
+          alt={property.address}
+          className="w-full h-full object-cover"
+        />
         <div className="absolute top-3 left-3 flex items-center gap-2 flex-wrap">
           <span 
             className={`px-2 py-1 text-xs font-medium text-white rounded ${isSubject ? 'bg-[#EF4923]' : getStatusColor(property.status)}`}
@@ -318,21 +308,11 @@ function PropertyListItem({ property, isSubject = false, onClick }: { property: 
       }}
     >
       <div className="w-32 h-24 flex-shrink-0 rounded overflow-hidden">
-        {property.photos?.[0] ? (
-          <img 
-            src={property.photos[0]} 
-            alt={property.address}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-muted flex flex-col items-center justify-center text-muted-foreground gap-1">
-            <Home className="w-6 h-6" />
-            <span className="text-[10px] text-yellow-600 font-medium flex items-center gap-0.5">
-              <AlertTriangle className="w-2.5 h-2.5" />
-              No Photo
-            </span>
-          </div>
-        )}
+        <SafeImage 
+          src={property.photos?.[0] || ""} 
+          alt={property.address}
+          className="w-full h-full object-cover"
+        />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1 flex-wrap">

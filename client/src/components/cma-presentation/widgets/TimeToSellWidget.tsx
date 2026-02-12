@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { SafeImage } from '@/components/ui/safe-image';
 import { 
   X, Info, Home, ChevronLeft, ChevronRight, 
   Bed, Bath, Ruler, Calendar, Car, MapPin, 
@@ -126,19 +127,12 @@ function PropertySidebarItem({ property, showPercentOfList = false, isSelected =
       data-testid={`button-property-sidebar-item-${property.id}`}
       aria-label={`View details for ${property.address}`}
     >
-      <div className="w-16 h-12 rounded-md overflow-hidden flex-shrink-0 bg-muted">
-        {property.photos?.[0] ? (
-          <img
-            src={property.photos[0]}
-            alt={property.address}
-            className="w-full h-full object-cover"
-            loading="lazy"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Home className="w-5 h-5 text-muted-foreground" />
-          </div>
-        )}
+      <div className="w-16 h-12 rounded-md overflow-hidden flex-shrink-0">
+        <SafeImage
+          src={property.photos?.[0] || ""}
+          alt={property.address}
+          className="w-full h-full object-cover"
+        />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-foreground truncate">
@@ -254,15 +248,16 @@ function PropertyCardPanel({ property, subjectProperty, onClose, onViewClick }: 
         <X className="w-4 h-4" />
       </button>
       
-      <div className="relative w-full aspect-[4/3] bg-muted flex-shrink-0">
+      <div className="relative w-full aspect-[4/3] flex-shrink-0">
         {photos.length > 0 ? (
           <>
-            <img 
-              src={photos[currentPhotoIndex]} 
-              alt={property.address}
-              className="w-full h-full object-cover cursor-pointer"
-              onClick={onViewClick}
-            />
+            <div className="cursor-pointer" onClick={onViewClick}>
+              <SafeImage 
+                src={photos[currentPhotoIndex]} 
+                alt={property.address}
+                className="w-full h-full object-cover"
+              />
+            </div>
             {photos.length > 1 && (
               <>
                 <button

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Bed, Bath, Square, Clock, Calendar, Maximize } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { SafeImage } from '@/components/ui/safe-image';
 import { extractPrice, extractSqft, calculatePricePerSqft } from '@/lib/cma-data-utils';
 import type { CmaProperty } from '../types';
 
@@ -115,20 +116,16 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
         </div>
         
         <div className="flex-1 overflow-y-auto">
-          <div className="relative w-full aspect-video bg-muted overflow-hidden">
+          <div className="relative w-full aspect-video overflow-hidden">
             {photos.length > 0 && photos[currentPhotoIndex] ? (
               <>
-                <img 
-                  src={photos[currentPhotoIndex]} 
-                  alt={`${property.address} - Photo ${currentPhotoIndex + 1}`}
-                  className="w-full h-full object-contain cursor-pointer"
-                  onClick={() => setFullscreenPhoto(true)}
-                  onError={(e) => {
-                    console.error('PropertyDetailModal: Photo failed to load:', photos[currentPhotoIndex]);
-                    e.currentTarget.style.display = 'none';
-                  }}
-                  data-testid="modal-main-photo"
-                />
+                <div className="cursor-pointer" onClick={() => setFullscreenPhoto(true)}>
+                  <SafeImage 
+                    src={photos[currentPhotoIndex]} 
+                    alt={`${property.address} - Photo ${currentPhotoIndex + 1}`}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
                 
                 <button
                   onClick={() => setFullscreenPhoto(true)}
@@ -312,13 +309,13 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
             {currentPhotoIndex + 1} / {photos.length}
           </div>
           
-          <img 
-            src={photos[currentPhotoIndex]} 
-            alt={`${property.address} - Photo ${currentPhotoIndex + 1}`}
-            className="max-w-full max-h-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-            data-testid="fullscreen-photo"
-          />
+          <div onClick={(e) => e.stopPropagation()}>
+            <SafeImage 
+              src={photos[currentPhotoIndex]} 
+              alt={`${property.address} - Photo ${currentPhotoIndex + 1}`}
+              className="max-w-full max-h-full object-contain"
+            />
+          </div>
           
           {photos.length > 1 && (
             <>

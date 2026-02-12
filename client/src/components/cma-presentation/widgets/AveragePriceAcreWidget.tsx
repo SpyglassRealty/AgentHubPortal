@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { SafeImage } from '@/components/ui/safe-image';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Info, Home, TrendingUp } from 'lucide-react';
 import { 
@@ -107,14 +108,8 @@ function PropertySidebarItem({ property, isSelected, onClick }: PropertySidebarI
         ${isSelected ? 'bg-[#EF4923]/10 ring-2 ring-[#EF4923] ring-inset rounded-md' : 'hover-elevate rounded-md'}`}
       data-testid={`sidebar-property-${property.id}`}
     >
-      <div className="w-12 h-10 flex-shrink-0 rounded overflow-hidden bg-muted">
-        {property.photos?.[0] ? (
-          <img src={property.photos[0]} alt="" className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-            No img
-          </div>
-        )}
+      <div className="w-12 h-10 flex-shrink-0 rounded overflow-hidden">
+        <SafeImage src={property.photos?.[0] || ""} alt="" className="w-full h-full object-cover" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium truncate">{property.address}</p>
