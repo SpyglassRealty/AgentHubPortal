@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { SafeImage } from '@/components/ui/safe-image';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useState, useRef, useEffect } from 'react';
 import { Edit2, Check, X, Info, Star, Camera, MapPin, BarChart3, Home, TrendingUp, Lightbulb, Undo2 } from 'lucide-react';
@@ -376,11 +377,10 @@ export function SuggestedPriceWidget({
           <div className="relative rounded-xl overflow-hidden shadow-lg bg-muted min-h-[120px] md:min-h-0">
             {photosToShow.length > 0 && currentPhoto ? (
               <>
-                <img
+                <SafeImage
                   src={currentPhoto.url}
                   alt="Property"
                   className="w-full h-full object-cover"
-                  data-testid="property-photo"
                 />
                 
                 {currentPhoto.quality?.quantitative && currentPhoto.quality.quantitative > 0 && (
@@ -415,7 +415,7 @@ export function SuggestedPriceWidget({
                           onClick={() => setCurrentPhotoIndex(idx)}
                           data-testid={`photo-thumbnail-${idx}`}
                         >
-                          <img src={photo.url} alt="" className="w-full h-full object-cover" />
+                          <SafeImage src={photo.url} alt="" className="w-full h-full object-cover" />
                         </Button>
                       </div>
                     ))}
