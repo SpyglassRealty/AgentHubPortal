@@ -365,30 +365,40 @@ export class DatabaseStorage implements IStorage {
     return saved;
   }
 
-  async trackAppUsage(userId: string, appId: string, page: string): Promise<AppUsage> {
-    const [result] = await db
-      .insert(appUsage)
-      .values({ userId, appId, page, clickCount: 1, lastUsedAt: new Date() })
-      .onConflictDoUpdate({
-        target: [appUsage.userId, appUsage.appId, appUsage.page],
-        set: {
-          clickCount: sql`${appUsage.clickCount} + 1`,
-          lastUsedAt: new Date()
-        }
-      })
-      .returning();
-    return result;
+  async trackAppUsage(userId: string, appId: string, page: string): Promise<AppUsage | null> {
+    try {
+      const [result] = await db
+        .insert(appUsage)
+        .values({ userId, appId, page, clickCount: 1, lastUsedAt: new Date() })
+        .onConflictDoUpdate({
+          target: [appUsage.userId, appUsage.appId, appUsage.page],
+          set: {
+            clickCount: sql`${appUsage.clickCount} + 1`,
+            lastUsedAt: new Date()
+          }
+        })
+        .returning();
+      return result;
+    } catch (error) {
+      console.warn('app_usage table does not exist, skipping tracking:', error);
+      return null;
+    }
   }
 
   async getAppUsageByPage(userId: string, page: string): Promise<AppUsage[]> {
-    return db
-      .select()
-      .from(appUsage)
-      .where(and(
-        eq(appUsage.userId, userId),
-        eq(appUsage.page, page)
-      ))
-      .orderBy(desc(appUsage.clickCount));
+    try {
+      return db
+        .select()
+        .from(appUsage)
+        .where(and(
+          eq(appUsage.userId, userId),
+          eq(appUsage.page, page)
+        ))
+        .orderBy(desc(appUsage.clickCount));
+    } catch (error) {
+      console.warn('app_usage table does not exist, returning empty array:', error);
+      return [];
+    }
   }
 
   async getNotifications(userId: string, limit: number = 20): Promise<Notification[]> {
@@ -580,49 +590,69 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSavedContentIdeas(userId: string): Promise<SavedContentIdea[]> {
-    return db
-      .select()
-      .from(savedContentIdeas)
-      .where(eq(savedContentIdeas.userId, userId))
-      .orderBy(desc(savedContentIdeas.createdAt));
+    try {
+      return db
+        .select()
+        .from(savedContentIdeas)
+        .where(eq(savedContentIdeas.userId, userId))
+        .orderBy(desc(savedContentIdeas.createdAt));
+    } catch (error) {
+      console.warn('saved_content_ideas table does not exist, returning empty array:', error);
+      return [];
+    }
   }
 
-  async saveContentIdea(idea: InsertSavedContentIdea): Promise<SavedContentIdea> {
-    const [saved] = await db
-      .insert(savedContentIdeas)
-      .values(idea)
-      .returning();
-    return saved;
+  async saveContentIdea(idea: InsertSavedContentIdea): Promise<SavedContentIdea | null> {
+    try {
+      const [saved] = await db
+        .insert(savedContentIdeas)
+        .values(idea)
+        .returning();
+      return saved;
+    } catch (error) {
+      console.warn('saved_content_ideas table does not exist, skipping save:', error);
+      return null;
+    }
   }
 
   async deleteContentIdea(id: number, userId: string): Promise<boolean> {
-    const [existing] = await db
-      .select()
-      .from(savedContentIdeas)
-      .where(and(
-        eq(savedContentIdeas.id, id),
-        eq(savedContentIdeas.userId, userId)
-      ))
-      .limit(1);
+    try {
+      const [existing] = await db
+        .select()
+        .from(savedContentIdeas)
+        .where(and(
+          eq(savedContentIdeas.id, id),
+          eq(savedContentIdeas.userId, userId)
+        ))
+        .limit(1);
 
-    if (!existing) return false;
+      if (!existing) return false;
 
-    await db
-      .delete(savedContentIdeas)
-      .where(eq(savedContentIdeas.id, id));
-    return true;
+      await db
+        .delete(savedContentIdeas)
+        .where(eq(savedContentIdeas.id, id));
+      return true;
+    } catch (error) {
+      console.warn('saved_content_ideas table does not exist, skipping delete:', error);
+      return false;
+    }
   }
 
   async updateContentIdeaStatus(id: number, userId: string, status: string): Promise<SavedContentIdea | undefined> {
-    const [updated] = await db
-      .update(savedContentIdeas)
-      .set({ status, updatedAt: new Date() })
-      .where(and(
-        eq(savedContentIdeas.id, id),
-        eq(savedContentIdeas.userId, userId)
-      ))
-      .returning();
-    return updated;
+    try {
+      const [updated] = await db
+        .update(savedContentIdeas)
+        .set({ status, updatedAt: new Date() })
+        .where(and(
+          eq(savedContentIdeas.id, id),
+          eq(savedContentIdeas.userId, userId)
+        ))
+        .returning();
+      return updated;
+    } catch (error) {
+      console.warn('saved_content_ideas table does not exist, skipping update:', error);
+      return undefined;
+    }
   }
   // CMA methods
   async getCmas(userId: string): Promise<Cma[]> {
@@ -828,64 +858,94 @@ export class DatabaseStorage implements IStorage {
 
   // Integration config methods
   async getIntegrationConfigs(): Promise<IntegrationConfig[]> {
-    return db.select().from(integrationConfigs).orderBy(integrationConfigs.displayName);
+    try {
+      return db.select().from(integrationConfigs).orderBy(integrationConfigs.displayName);
+    } catch (error) {
+      console.warn('integration_configs table does not exist, returning empty array:', error);
+      return [];
+    }
   }
 
   async getIntegrationConfig(name: string): Promise<IntegrationConfig | undefined> {
-    const [config] = await db.select().from(integrationConfigs).where(eq(integrationConfigs.name, name));
-    return config;
+    try {
+      const [config] = await db.select().from(integrationConfigs).where(eq(integrationConfigs.name, name));
+      return config;
+    } catch (error) {
+      console.warn('integration_configs table does not exist, returning undefined:', error);
+      return undefined;
+    }
   }
 
-  async upsertIntegrationConfig(config: InsertIntegrationConfig): Promise<IntegrationConfig> {
-    const existing = await this.getIntegrationConfig(config.name);
-    if (existing) {
-      const [updated] = await db
-        .update(integrationConfigs)
-        .set({
-          apiKey: config.apiKey,
-          displayName: config.displayName || existing.displayName,
-          additionalConfig: config.additionalConfig !== undefined ? config.additionalConfig : existing.additionalConfig,
-          isActive: config.isActive !== undefined ? config.isActive : existing.isActive,
-          createdBy: config.createdBy || existing.createdBy,
-          updatedAt: new Date(),
-        })
-        .where(eq(integrationConfigs.name, config.name))
-        .returning();
-      return updated;
-    } else {
-      const [created] = await db.insert(integrationConfigs).values(config).returning();
-      return created;
+  async upsertIntegrationConfig(config: InsertIntegrationConfig): Promise<IntegrationConfig | null> {
+    try {
+      const existing = await this.getIntegrationConfig(config.name);
+      if (existing) {
+        const [updated] = await db
+          .update(integrationConfigs)
+          .set({
+            apiKey: config.apiKey,
+            displayName: config.displayName || existing.displayName,
+            additionalConfig: config.additionalConfig !== undefined ? config.additionalConfig : existing.additionalConfig,
+            isActive: config.isActive !== undefined ? config.isActive : existing.isActive,
+            createdBy: config.createdBy || existing.createdBy,
+            updatedAt: new Date(),
+          })
+          .where(eq(integrationConfigs.name, config.name))
+          .returning();
+        return updated;
+      } else {
+        const [created] = await db.insert(integrationConfigs).values(config).returning();
+        return created;
+      }
+    } catch (error) {
+      console.warn('integration_configs table does not exist, skipping upsert:', error);
+      return null;
     }
   }
 
   async updateIntegrationTestResult(name: string, result: string, message?: string): Promise<IntegrationConfig | undefined> {
-    const [updated] = await db
-      .update(integrationConfigs)
-      .set({
-        lastTestedAt: new Date(),
-        lastTestResult: result,
-        lastTestMessage: message || null,
-        updatedAt: new Date(),
-      })
-      .where(eq(integrationConfigs.name, name))
-      .returning();
-    return updated;
+    try {
+      const [updated] = await db
+        .update(integrationConfigs)
+        .set({
+          lastTestedAt: new Date(),
+          lastTestResult: result,
+          lastTestMessage: message || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(integrationConfigs.name, name))
+        .returning();
+      return updated;
+    } catch (error) {
+      console.warn('integration_configs table does not exist, skipping test result update:', error);
+      return undefined;
+    }
   }
 
   async deleteIntegrationConfig(name: string): Promise<boolean> {
-    const [existing] = await db.select()
-      .from(integrationConfigs)
-      .where(eq(integrationConfigs.name, name))
-      .limit(1);
-    if (!existing) return false;
-    await db.delete(integrationConfigs).where(eq(integrationConfigs.name, name));
-    return true;
+    try {
+      const [existing] = await db.select()
+        .from(integrationConfigs)
+        .where(eq(integrationConfigs.name, name))
+        .limit(1);
+      if (!existing) return false;
+      await db.delete(integrationConfigs).where(eq(integrationConfigs.name, name));
+      return true;
+    } catch (error) {
+      console.warn('integration_configs table does not exist, skipping delete:', error);
+      return false;
+    }
   }
 
   async getIntegrationApiKey(name: string): Promise<string | null> {
-    const config = await this.getIntegrationConfig(name);
-    if (!config || !config.isActive) return null;
-    return config.apiKey;
+    try {
+      const config = await this.getIntegrationConfig(name);
+      if (!config || !config.isActive) return null;
+      return config.apiKey;
+    } catch (error) {
+      console.warn('integration_configs table does not exist, returning null API key:', error);
+      return null;
+    }
   }
 
   // App visibility methods
@@ -964,14 +1024,19 @@ export class DatabaseStorage implements IStorage {
 
   // Activity logs
   async getActivityLogs(limit: number = 50): Promise<any[]> {
-    const result = await db.execute(
-      sql`SELECT al.*, u.email as admin_email, u.first_name as admin_first_name, u.last_name as admin_last_name
-          FROM admin_activity_logs al
-          LEFT JOIN users u ON al.admin_user_id = u.id
-          ORDER BY al.created_at DESC
-          LIMIT ${limit}`
-    );
-    return result.rows as any[];
+    try {
+      const result = await db.execute(
+        sql`SELECT al.*, u.email as admin_email, u.first_name as admin_first_name, u.last_name as admin_last_name
+            FROM admin_activity_logs al
+            LEFT JOIN users u ON al.admin_user_id = u.id
+            ORDER BY al.created_at DESC
+            LIMIT ${limit}`
+      );
+      return result.rows as any[];
+    } catch (error) {
+      console.warn('admin_activity_logs table does not exist, returning empty array:', error);
+      return [];
+    }
   }
 }
 
