@@ -88,7 +88,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
       <div 
         className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 
                    md:w-full md:max-w-2xl md:max-h-[90vh] 
-                   bg-background rounded-xl shadow-2xl z-[80] overflow-hidden flex flex-col"
+                   bg-white dark:bg-gray-800 rounded-xl shadow-2xl z-[80] overflow-hidden flex flex-col"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
@@ -194,7 +194,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
             </div>
             
             {property.listPrice && property.listPrice !== property.soldPrice && (
-              <div className="mb-4 p-3 bg-muted/50 rounded-lg" data-testid="price-history">
+              <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg" data-testid="price-history">
                 <p className="text-sm font-medium mb-2">Price History</p>
                 <div className="flex flex-wrap gap-4 text-sm">
                   {property.originalPrice && property.originalPrice !== property.listPrice && (
