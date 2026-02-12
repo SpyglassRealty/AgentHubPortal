@@ -55,7 +55,41 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
   
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [fullscreenPhoto, setFullscreenPhoto] = useState(false);
-  const photos = property.photos || [];
+  const [photos, setPhotos] = useState<string[]>(property.photos || []);
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
+  
+  // Lazy-load full photo array if we only have 0-1 photos but have MLS number
+  useEffect(() => {
+    const shouldLoadPhotos = (
+      photos.length <= 1 && 
+      (property.mlsNumber || property.id) && 
+      !loadingPhotos
+    );
+    
+    if (!shouldLoadPhotos) return;
+    
+    const mlsNumber = property.mlsNumber || property.id;
+    console.log(`[PropertyDetailModal] Lazy-loading photos for MLS# ${mlsNumber}`);
+    
+    setLoadingPhotos(true);
+    
+    fetch(`/api/listings/${mlsNumber}/photos`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.photos && Array.isArray(data.photos) && data.photos.length > 0) {
+          console.log(`[PropertyDetailModal] Loaded ${data.photos.length} photos for MLS# ${mlsNumber}`);
+          setPhotos(data.photos);
+        } else {
+          console.log(`[PropertyDetailModal] No additional photos found for MLS# ${mlsNumber}`);
+        }
+      })
+      .catch(error => {
+        console.error(`[PropertyDetailModal] Error loading photos for MLS# ${mlsNumber}:`, error);
+      })
+      .finally(() => {
+        setLoadingPhotos(false);
+      });
+  }, [property.mlsNumber, property.id, photos.length, loadingPhotos]);
   
   const handlePrevPhoto = () => {
     setCurrentPhotoIndex(prev => (prev > 0 ? prev - 1 : photos.length - 1));
@@ -126,7 +160,14 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
         
         <div className="flex-1 overflow-y-auto">
           <div className="relative w-full aspect-video bg-gray-50 overflow-hidden">
-            {photos.length > 0 && photos[currentPhotoIndex] ? (
+            {loadingPhotos ? (
+              <div className="w-full h-full flex items-center justify-center text-gray-600">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto mb-3"></div>
+                  <p className="text-sm">Loading photos...</p>
+                </div>
+              </div>
+            ) : photos.length > 0 && photos[currentPhotoIndex] ? (
               <>
                 <div className="cursor-pointer" onClick={() => setFullscreenPhoto(true)}>
                   <SafeImage 

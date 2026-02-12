@@ -1472,6 +1472,67 @@ export async function registerRoutes(
     }
   });
 
+  // Get full photo array for a specific MLS listing (for CMA Presentation photo galleries)
+  app.get('/api/listings/:mlsNumber/photos', isAuthenticated, async (req: any, res) => {
+    try {
+      const { mlsNumber } = req.params;
+      const apiKey = process.env.REPLIERS_API_KEY;
+      
+      if (!apiKey) {
+        return res.status(503).json({ message: 'Repliers API not configured' });
+      }
+      
+      if (!mlsNumber) {
+        return res.status(400).json({ message: 'MLS number is required' });
+      }
+      
+      console.log(`[Listing Photos] Fetching photos for MLS# ${mlsNumber}`);
+      
+      // Search for the specific listing by MLS number
+      const params = new URLSearchParams({
+        listings: 'true',
+        type: 'Sale',
+        resultsPerPage: '5',
+        pageNum: '1',
+        search: mlsNumber.trim(),
+      });
+      
+      const url = `https://api.repliers.io/listings?${params.toString()}`;
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'REPLIERS-API-KEY': apiKey
+        }
+      });
+      
+      if (!response.ok) {
+        console.error(`[Listing Photos] Repliers API error: ${response.status}`);
+        return res.status(response.status).json({ message: 'Failed to fetch listing data' });
+      }
+      
+      const data = await response.json();
+      const listings = data.listings || [];
+      
+      // Find exact MLS match
+      const listing = listings.find((l: any) => l.mlsNumber === mlsNumber.trim());
+      
+      if (!listing) {
+        console.log(`[Listing Photos] No listing found for MLS# ${mlsNumber}`);
+        return res.status(404).json({ message: 'Listing not found', photos: [] });
+      }
+      
+      // Extract photos using the same utility function
+      const photos = extractPhotosFromRepliersList(listing);
+      
+      console.log(`[Listing Photos] Found ${photos.length} photos for MLS# ${mlsNumber}`);
+      
+      res.json({ photos });
+    } catch (error: any) {
+      console.error('[Listing Photos] Error:', error);
+      res.status(500).json({ message: 'Failed to fetch listing photos' });
+    }
+  });
+
   app.get('/api/fub/leads/anniversary', isAuthenticated, async (req: any, res) => {
     console.log('[Leads API] ========== Anniversary endpoint called ==========');
     try {
