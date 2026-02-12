@@ -80,9 +80,6 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
   }, [property.mlsNumber]);
 
   const photos = loadedPhotos.length > 0 ? loadedPhotos : (property.photos || []);
-  }, [property.mlsNumber, property.photos]);
-
-  const photos = loadedPhotos.length > 0 ? loadedPhotos : (property.photos || []);
   
   const handlePrevPhoto = () => {
     setCurrentPhotoIndex(prev => (prev > 0 ? prev - 1 : photos.length - 1));
