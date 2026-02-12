@@ -46,6 +46,7 @@ export interface RezenTransaction {
   saleCommissionAmount?: RezenAmount;
   listingCommissionAmount?: RezenAmount;
   myNetPayout?: RezenAmount;
+  leadSource?: { id?: string; name?: string } | null;
   lifecycleState?: {
     state: string;
   };
