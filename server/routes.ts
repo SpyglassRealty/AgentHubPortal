@@ -19,6 +19,7 @@ import { registerAdminRoutes } from "./adminRoutes";
 import { registerGmailRoutes } from "./gmailRoutes";
 import { registerXanoRoutes } from "./xanoProxy";
 import { registerRezenDashboardRoutes } from "./rezenDashboardRoutes";
+import { registerCommunityEditorRoutes } from "./communityEditorRoutes";
 
 
 // Helper function to get the actual database user from request
@@ -4590,6 +4591,9 @@ Respond with valid JSON in this exact format:
 
   // Register ReZen-powered admin dashboard routes
   registerRezenDashboardRoutes(app);
+
+  // Register Community Editor routes (admin)
+  registerCommunityEditorRoutes(app);
 
   // ==========================================
   // DEBUG ENDPOINT FOR DATABASE DIAGNOSIS

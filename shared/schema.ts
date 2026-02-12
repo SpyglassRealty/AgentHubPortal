@@ -829,6 +829,34 @@ export const pulseSchoolsCache = pgTable("pulse_schools_cache", {
 export type PulseSchoolsCache = typeof pulseSchoolsCache.$inferSelect;
 export type InsertPulseSchoolsCache = typeof pulseSchoolsCache.$inferInsert;
 
+// ── Communities (SEO content editor) ────────────────────────────────────
+export const communities = pgTable("communities", {
+  id: serial("id").primaryKey(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  county: varchar("county", { length: 100 }),
+  metaTitle: varchar("meta_title", { length: 255 }),
+  metaDescription: text("meta_description"),
+  focusKeyword: varchar("focus_keyword", { length: 255 }),
+  description: text("description"),
+  highlights: jsonb("highlights").$type<string[]>(),
+  bestFor: jsonb("best_for").$type<string[]>(),
+  nearbyLandmarks: jsonb("nearby_landmarks").$type<string[]>(),
+  sections: jsonb("sections").$type<{ id: string; heading: string; content: string; order: number }[]>(),
+  published: boolean("published").default(false),
+  featured: boolean("featured").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: varchar("updated_by", { length: 255 }),
+}, (table) => [
+  uniqueIndex("idx_communities_slug").on(table.slug),
+  index("idx_communities_county").on(table.county),
+  index("idx_communities_published").on(table.published),
+]);
+
+export type Community = typeof communities.$inferSelect;
+export type InsertCommunity = typeof communities.$inferInsert;
+
 export const INTEGRATION_DEFINITIONS = [
   {
     name: 'fub',
