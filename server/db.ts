@@ -348,6 +348,37 @@ async function createPulseDataTables() {
       }
     }
     
+    // Communities table for SEO content editor
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS communities (
+        id serial PRIMARY KEY,
+        slug varchar(255) NOT NULL UNIQUE,
+        name varchar(255) NOT NULL,
+        county varchar(100),
+        meta_title varchar(255),
+        meta_description text,
+        focus_keyword varchar(255),
+        description text,
+        highlights jsonb,
+        best_for jsonb,
+        nearby_landmarks jsonb,
+        sections jsonb,
+        published boolean DEFAULT false,
+        featured boolean DEFAULT false,
+        created_at timestamp DEFAULT NOW(),
+        updated_at timestamp DEFAULT NOW(),
+        updated_by varchar(255)
+      )
+    `);
+    console.log(`[Database] Created/verified communities table`);
+
+    // Communities indexes
+    try {
+      await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_communities_slug ON communities(slug)');
+      await pool.query('CREATE INDEX IF NOT EXISTS idx_communities_county ON communities(county)');
+      await pool.query('CREATE INDEX IF NOT EXISTS idx_communities_published ON communities(published)');
+    } catch (e) { /* indexes may already exist */ }
+
     console.log("[Database] All required tables created successfully");
     
     // Add market pulse snapshots schema migration

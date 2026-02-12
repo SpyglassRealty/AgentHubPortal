@@ -255,6 +255,12 @@ export default function AdminPage() {
                 Beacon Recruiting →
               </span>
             </Link>
+            <Link href="/admin/communities">
+              <span className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 cursor-pointer transition-colors">
+                <Building2 className="h-4 w-4" />
+                Communities →
+              </span>
+            </Link>
           </div>
         </div>
 
