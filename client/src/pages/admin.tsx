@@ -261,6 +261,12 @@ export default function AdminPage() {
                 Communities →
               </span>
             </Link>
+            <Link href="/admin/site-editor">
+              <span className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-md text-sm font-medium hover:bg-teal-700 cursor-pointer transition-colors">
+                <ExternalLink className="h-4 w-4" />
+                Homepage Editor →
+              </span>
+            </Link>
           </div>
         </div>
 

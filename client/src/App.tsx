@@ -31,6 +31,7 @@ import AdminDashboardsRouter from "@/pages/admin-dashboards";
 import AdminBeaconPage from "@/pages/admin-beacon";
 import CommunityListPage from "@/pages/admin/CommunityList";
 import CommunityEditorPage from "@/pages/admin/CommunityEditor";
+import AdminSiteEditorPage from "@/pages/admin-site-editor";
 
 // Backward compatibility redirect component
 function CmaPresentationRedirect() {
@@ -96,6 +97,7 @@ function Router() {
       <Route path="/admin/beacon" component={AdminBeaconPage} />
       <Route path="/admin/communities/:slug" component={CommunityEditorPage} />
       <Route path="/admin/communities" component={CommunityListPage} />
+      <Route path="/admin/site-editor" component={AdminSiteEditorPage} />
       <Route path="/admin/dashboards/:rest*" component={AdminDashboardsRouter} />
       <Route path="/admin/dashboards" component={AdminDashboardsRouter} />
       <Route path="/share/:token" component={SharedCmaPage} />
