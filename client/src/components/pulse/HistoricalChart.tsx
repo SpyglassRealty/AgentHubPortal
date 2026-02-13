@@ -221,6 +221,27 @@ export default function HistoricalChart({
   const showForecast = selectedLayerId.includes("forecast");
   const showAffordability = selectedLayerId.includes("salary-to-afford");
 
+  // Download handler
+  const handleDownload = () => {
+    if (!selectedLayerId) return;
+    
+    // Convert frontend kebab-case to backend snake_case
+    const backendLayerId = selectedLayerId.replace(/-/g, "_");
+    
+    // Build download URL - include zip parameter if specific zip is selected
+    const baseUrl = `/api/pulse/v2/export/${backendLayerId}`;
+    const downloadUrl = selectedZip ? `${baseUrl}?zip=${selectedZip}` : baseUrl;
+    
+    // Trigger file download by creating a temporary link
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = ""; // Browser will use filename from Content-Disposition header
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Format tick values
   const formatValue = (val: number) => {
     if (!layer) return `${val}`;
@@ -244,7 +265,9 @@ export default function HistoricalChart({
           </div>
           <Button
             size="sm"
-            className="bg-[#EF4923] hover:bg-[#d4411f] text-white text-xs h-7 shrink-0"
+            onClick={handleDownload}
+            disabled={!selectedLayerId}
+            className="bg-[#EF4923] hover:bg-[#d4411f] text-white text-xs h-7 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="h-3 w-3 mr-1" />
             Download Data
