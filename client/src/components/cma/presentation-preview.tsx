@@ -39,6 +39,7 @@ interface PropertyData {
   soldDate?: string | null;
   daysOnMarket?: number;
   photo?: string | null;
+  photos?: string[];
   latitude?: number | null;
   longitude?: number | null;
 }
@@ -217,7 +218,14 @@ function MapSection({ comps, subject }: { comps: PropertyData[]; subject: Proper
   }, [comps, subject]);
 
   useEffect(() => {
-    if (!mapContainerRef.current || allProps.length === 0 || !mapboxToken) return;
+    if (!mapContainerRef.current || allProps.length === 0) return;
+    if (!mapboxToken) {
+      // Show loading state in map container
+      if (mapContainerRef.current) {
+        mapContainerRef.current.innerHTML = '<div style="display: flex; items-center: justify-center; height: 100%; background: #f5f5f5; color: #666; font-size: 14px;">Loading map...</div>';
+      }
+      return;
+    }
 
     mapboxgl.accessToken = mapboxToken;
 
@@ -375,11 +383,12 @@ function PropertyDetailsSection({ comps }: { comps: PropertyData[] }) {
             key={i}
             className="border rounded-lg p-3 flex gap-3 hover:shadow-sm transition"
           >
-            {c.photo ? (
+            {(c.photos && c.photos.length > 0) || c.photo ? (
               <img
-                src={c.photo}
-                alt=""
+                src={(c.photos && c.photos.length > 0) ? c.photos[0] : c.photo!}
+                alt={c.address}
                 className="w-20 h-16 rounded object-cover flex-shrink-0"
+                loading="lazy"
               />
             ) : (
               <div className="w-20 h-16 rounded bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -435,7 +444,7 @@ function PropertyDetailsSection({ comps }: { comps: PropertyData[] }) {
 }
 
 function PropertyPhotosSection({ comps }: { comps: PropertyData[] }) {
-  const withPhotos = comps.filter((c) => c.photo);
+  const withPhotos = comps.filter((c) => (c.photos && c.photos.length > 0) || c.photo);
 
   if (withPhotos.length === 0) {
     return (
@@ -457,9 +466,10 @@ function PropertyPhotosSection({ comps }: { comps: PropertyData[] }) {
         {withPhotos.slice(0, 9).map((c, i) => (
           <div key={i} className="relative">
             <img
-              src={c.photo!}
+              src={(c.photos && c.photos.length > 0) ? c.photos[0] : c.photo!}
               alt={c.address}
               className="w-full h-24 rounded object-cover"
+              loading="lazy"
             />
             <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1 py-0.5 rounded">
               {c.streetAddress || c.address.split(",")[0]}
