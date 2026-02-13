@@ -72,6 +72,7 @@ interface PropertyData {
   soldDate?: string | null;
   daysOnMarket?: number;
   photo?: string | null;
+  photos?: string[];
   stories?: number | null;
   subdivision?: string;
   latitude?: number | null;
@@ -277,11 +278,12 @@ function SubjectPropertyPanel({
         </CardHeader>
         <CardContent>
           <div className="flex gap-4">
-            {subject.photo ? (
+            {(subject.photos && subject.photos.length > 0) || subject.photo ? (
               <img
-                src={subject.photo}
+                src={(subject.photos && subject.photos.length > 0) ? subject.photos[0] : subject.photo!}
                 alt="Property"
                 className="w-28 h-20 rounded-lg object-cover flex-shrink-0"
+                loading="lazy"
               />
             ) : (
               <div className="w-28 h-20 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
@@ -491,11 +493,12 @@ function ComparablePropertiesPanel({
                 key={i}
                 className="flex items-center gap-3 p-2 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
               >
-                {comp.photo ? (
+                {(comp.photos && comp.photos.length > 0) || comp.photo ? (
                   <img
-                    src={comp.photo}
-                    alt=""
+                    src={(comp.photos && comp.photos.length > 0) ? comp.photos[0] : comp.photo!}
+                    alt={comp.address}
                     className="w-16 h-12 rounded object-cover flex-shrink-0"
+                    loading="lazy"
                   />
                 ) : (
                   <div className="w-16 h-12 rounded bg-muted flex items-center justify-center flex-shrink-0">
@@ -691,8 +694,7 @@ function AnalysisPanel({
   );
 }
 
-// Mapbox access token
-const MAPBOX_TOKEN = 'pk.eyJ1Ijoic3B5Z2xhc3NyZWFsdHkiLCJhIjoiY21sYmJjYjR5MG5teDNkb29oYnlldGJ6bCJ9.h6al6oHtIP5YiiIW97zhDw';
+// Mapbox access token will be fetched from API
 
 // Search Properties Section
 function SearchPropertiesSection({
@@ -715,6 +717,9 @@ function SearchPropertiesSection({
   const [showMlsPaste, setShowMlsPaste] = useState(false);
   const [mlsPasteText, setMlsPasteText] = useState("");
   const [mlsLookupLoading, setMlsLookupLoading] = useState(false);
+
+  // Mapbox token state
+  const [mapboxToken, setMapboxToken] = useState('');
 
   // Map state
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -1072,9 +1077,17 @@ function SearchPropertiesSection({
     setShowSearchButton(true);
   }, []);
 
+  // Fetch Mapbox token on component mount
+  useEffect(() => {
+    fetch('/api/mapbox-token')
+      .then(res => res.json())
+      .then(data => setMapboxToken(data.token))
+      .catch(() => console.warn('Failed to load Mapbox token'));
+  }, []);
+
   // Initialize map when tab switches to "map"
   useEffect(() => {
-    if (activeTab !== 'map') return;
+    if (activeTab !== 'map' || !mapboxToken) return;
 
     // Small delay to ensure container is visible and has dimensions
     const timer = setTimeout(() => {
@@ -1086,7 +1099,7 @@ function SearchPropertiesSection({
         return;
       }
 
-      mapboxgl.accessToken = MAPBOX_TOKEN;
+      mapboxgl.accessToken = mapboxToken;
 
       const map = new mapboxgl.Map({
         container: mapContainerRef.current,
@@ -1246,7 +1259,7 @@ function SearchPropertiesSection({
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [activeTab]);
+  }, [activeTab, mapboxToken]);
 
   // Cleanup map on unmount
   useEffect(() => {
