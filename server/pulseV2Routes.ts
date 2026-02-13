@@ -503,6 +503,81 @@ async function queryLayerData(layer: LayerDef, opts: { zip?: string; metro?: str
   }
 }
 
+// Generate mock timeseries data for Austin home value trends (2015-2025)
+function generateMockTimeseries(layer: LayerDef, zip: string, period: "monthly" | "yearly"): { date: string; value: number }[] {
+  const points: { date: string; value: number }[] = [];
+  const currentValue = mockValueForLayer(layer, zip);
+  const rng = seededRandom(`ts-${layer.id}-${zip}`);
+  const isCurrency = layer.unit === "currency";
+  const isHomeValueLayer = isCurrency && (
+    layer.id.includes("home_value") || layer.id === "home_value" ||
+    layer.id.includes("single_family") || layer.id.includes("condo_value") ||
+    layer.id.includes("median_sale_price")
+  );
+
+  // Austin home value trajectory (multiplier vs current value):
+  // 2015: ~50%, 2016: ~53%, 2017: ~57%, 2018: ~62%, 2019: ~65%, 
+  // 2020: ~68%, 2021: ~85%, 2022 peak: ~108%, 2023: ~97%, 2024: ~98%, 2025: ~100%
+  const yearlyMultipliers: Record<number, number> = {
+    2015: 0.50, 2016: 0.53, 2017: 0.57, 2018: 0.62, 2019: 0.65,
+    2020: 0.68, 2021: 0.85, 2022: 1.08, 2023: 0.97, 2024: 0.98, 2025: 1.00,
+  };
+
+  if (period === "yearly") {
+    for (let y = 2015; y <= 2025; y++) {
+      const noise = 1 + (rng() - 0.5) * 0.03; // ±1.5% noise
+      if (isHomeValueLayer) {
+        const mult = yearlyMultipliers[y] || 1.0;
+        const val = currentValue * mult * noise;
+        points.push({ date: y.toString(), value: parseFloat(val.toFixed(2)) });
+      } else if (isCurrency) {
+        // Other currency metrics: gentle upward trend
+        const trendMult = 0.7 + (y - 2015) * 0.03;
+        const val = currentValue * trendMult * noise;
+        points.push({ date: y.toString(), value: parseFloat(val.toFixed(2)) });
+      } else {
+        // Non-currency: drift around current with gentle noise
+        const drift = 1 + (rng() - 0.45) * 0.06;
+        const trendAdj = 1 + (y - 2020) * 0.015;
+        const val = currentValue * drift * trendAdj;
+        points.push({ date: y.toString(), value: parseFloat(val.toFixed(2)) });
+      }
+    }
+  } else {
+    // Monthly data 2020-2025
+    // Monthly multipliers interpolated from yearly curve
+    const monthlyBase: Record<string, number> = {};
+    for (let y = 2020; y <= 2025; y++) {
+      for (let m = 1; m <= (y === 2025 ? 6 : 12); m++) {
+        const yearMult = yearlyMultipliers[y] || 1.0;
+        const nextYearMult = yearlyMultipliers[y + 1] || yearMult;
+        // Interpolate within the year
+        const monthFrac = (m - 1) / 12;
+        const interpMult = yearMult + (nextYearMult - yearMult) * monthFrac;
+        // Add seasonal variation (spring bump, winter dip)
+        const seasonal = 1 + Math.sin(((m - 3) / 12) * Math.PI * 2) * 0.015;
+        const noise = 1 + (rng() - 0.5) * 0.01;
+        const key = `${y}-${String(m).padStart(2, "0")}`;
+
+        if (isHomeValueLayer) {
+          monthlyBase[key] = currentValue * interpMult * seasonal * noise;
+        } else if (isCurrency) {
+          const trendMult = 0.7 + ((y - 2020) * 12 + m) / (6 * 12) * 0.3;
+          monthlyBase[key] = currentValue * trendMult * seasonal * noise;
+        } else {
+          const drift = 1 + (rng() - 0.45) * 0.03;
+          const trendAdj = 1 + ((y - 2020) * 12 + m) / (6 * 12) * 0.08;
+          monthlyBase[key] = currentValue * drift * trendAdj * seasonal;
+        }
+      }
+    }
+    for (const [date, value] of Object.entries(monthlyBase)) {
+      points.push({ date, value: parseFloat(value.toFixed(2)) });
+    }
+  }
+  return points;
+}
+
 async function queryTimeseries(layer: LayerDef, zip: string, period: "monthly" | "yearly"): Promise<{ date: string; value: number }[]> {
   try {
     const client = await pool.connect();
@@ -525,6 +600,10 @@ async function queryTimeseries(layer: LayerDef, zip: string, period: "monthly" |
           ORDER BY period ASC
         `;
         const result = await client.query(query, [zip]);
+        // Check for empty results and generate mock data
+        if (result.rows.length === 0) {
+          return generateMockTimeseries(layer, zip, period);
+        }
         return result.rows.map((r: any) => ({
           date: new Date(r.period).getFullYear().toString(),
           value: Number(r.value),
@@ -537,6 +616,10 @@ async function queryTimeseries(layer: LayerDef, zip: string, period: "monthly" |
           ORDER BY year ASC
         `;
         const result = await client.query(query, [zip]);
+        // Check for empty results and generate mock data
+        if (result.rows.length === 0) {
+          return generateMockTimeseries(layer, zip, period);
+        }
         return result.rows.map((r: any) => ({ date: r.date, value: Number(r.value) }));
       } else {
         // Monthly
@@ -547,17 +630,18 @@ async function queryTimeseries(layer: LayerDef, zip: string, period: "monthly" |
           ORDER BY ${dateCol} ASC
         `;
         const result = await client.query(query, [zip]);
+        // Check for empty results and generate mock data
+        if (result.rows.length === 0) {
+          return generateMockTimeseries(layer, zip, period);
+        }
         return result.rows.map((r: any) => ({ date: r.date, value: Number(r.value) }));
       }
     } finally {
       client.release();
     }
   } catch {
-    // Mock time-series with realistic Austin growth curves
-    const points: { date: string; value: number }[] = [];
-    const currentValue = mockValueForLayer(layer, zip);
-    const rng = seededRandom(`ts-${layer.id}-${zip}`);
-    const isCurrency = layer.unit === "currency";
+    // Use the same mock data generator for database errors
+    return generateMockTimeseries(layer, zip, period);
     const isHomeValueLayer = isCurrency && (
       layer.id.includes("home_value") || layer.id === "home_value" ||
       layer.id.includes("single_family") || layer.id.includes("condo_value") ||
