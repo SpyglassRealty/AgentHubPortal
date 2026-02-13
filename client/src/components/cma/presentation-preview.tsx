@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,8 +17,7 @@ import {
 import type { PresentationSection } from "./presentation-sections";
 import mapboxgl from "mapbox-gl";
 
-const MAPBOX_TOKEN =
-  "pk.eyJ1Ijoic3B5Z2xhc3NyZWFsdHkiLCJhIjoiY21sYmJjYjR5MG5teDNkb29oYnlldGJ6bCJ9.h6al6oHtIP5YiiIW97zhDw";
+// Mapbox access token will be fetched from API
 
 interface PropertyData {
   mlsNumber: string;
@@ -196,6 +195,17 @@ function ContactMeSection() {
 function MapSection({ comps, subject }: { comps: PropertyData[]; subject: PropertyData | null }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  
+  // Mapbox token state
+  const [mapboxToken, setMapboxToken] = useState('');
+
+  // Fetch Mapbox token on component mount
+  useEffect(() => {
+    fetch('/api/mapbox-token')
+      .then(res => res.json())
+      .then(data => setMapboxToken(data.token))
+      .catch(() => console.warn('Failed to load Mapbox token'));
+  }, []);
 
   const allProps = useMemo(() => {
     const list: PropertyData[] = [];
@@ -207,9 +217,9 @@ function MapSection({ comps, subject }: { comps: PropertyData[]; subject: Proper
   }, [comps, subject]);
 
   useEffect(() => {
-    if (!mapContainerRef.current || allProps.length === 0) return;
+    if (!mapContainerRef.current || allProps.length === 0 || !mapboxToken) return;
 
-    mapboxgl.accessToken = MAPBOX_TOKEN;
+    mapboxgl.accessToken = mapboxToken;
 
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
@@ -248,7 +258,7 @@ function MapSection({ comps, subject }: { comps: PropertyData[]; subject: Proper
       map.remove();
       mapRef.current = null;
     };
-  }, [allProps, subject]);
+  }, [allProps, subject, mapboxToken]);
 
   if (allProps.length === 0) {
     return (
