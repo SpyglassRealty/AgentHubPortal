@@ -835,9 +835,19 @@ export const communities = pgTable("communities", {
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   county: varchar("county", { length: 100 }),
+  // Location data fields
+  locationType: varchar("location_type", { length: 20 }).notNull().default('polygon'), // 'polygon' | 'zip' | 'city'
+  filterValue: varchar("filter_value", { length: 50 }), // for zip/city types (e.g. "78704", "Bastrop")
+  polygon: jsonb("polygon").$type<[number, number][]>(), // array of [lng, lat] coordinates
+  displayPolygon: jsonb("display_polygon").$type<[number, number][]>(), // array of [lat, lng] for Leaflet
+  centroid: jsonb("centroid").$type<{ lat: number; lng: number }>(), // center point
+  heroImage: text("hero_image"), // URL for hero image
+  parentSlug: varchar("parent_slug", { length: 255 }), // for nesting (e.g. zip belongs to city)
+  // SEO fields
   metaTitle: varchar("meta_title", { length: 255 }),
   metaDescription: text("meta_description"),
   focusKeyword: varchar("focus_keyword", { length: 255 }),
+  // Content fields
   description: text("description"),
   highlights: jsonb("highlights").$type<string[]>(),
   bestFor: jsonb("best_for").$type<string[]>(),
@@ -852,6 +862,7 @@ export const communities = pgTable("communities", {
   uniqueIndex("idx_communities_slug").on(table.slug),
   index("idx_communities_county").on(table.county),
   index("idx_communities_published").on(table.published),
+  index("idx_communities_location_type").on(table.locationType),
 ]);
 
 export type Community = typeof communities.$inferSelect;
