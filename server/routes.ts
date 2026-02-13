@@ -2890,7 +2890,7 @@ Respond with valid JSON in this exact format:
         }
 
         // Transform the found listings
-        const listings = allListings.map((listing: any) => {
+        const listings = allListings.map((listing: any, index: number) => {
           const streetNumber = listing.address?.streetNumber || '';
           const streetName = listing.address?.streetName || '';
           const streetSuffix = listing.address?.streetSuffix || '';
@@ -2904,7 +2904,7 @@ Respond with valid JSON in this exact format:
           const photos = extractPhotosFromRepliersList(listing);
           
           // Debug photo fields for first few listings to help troubleshoot photo issues
-          if (listings.length < 3) {
+          if (index < 3) {
             console.log(`[CMA Search Debug] Property ${listing.mlsNumber || listing.listingId} photos:`, {
               hasImages: !!listing.images,
               imagesCount: Array.isArray(listing.images) ? listing.images.length : 0,
@@ -3137,7 +3137,7 @@ Respond with valid JSON in this exact format:
       }
 
       // Transform listings
-      const listings = (data.listings || []).map((listing: any) => {
+      const listings = (data.listings || []).map((listing: any, index: number) => {
         const streetNumber = listing.address?.streetNumber || '';
         const streetName = listing.address?.streetName || '';
         const streetSuffix = listing.address?.streetSuffix || '';
