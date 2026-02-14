@@ -42,7 +42,7 @@ import {
   Settings,
   Home,
   Star,
-  Redirect,
+  ArrowRightLeft as RedirectIcon,
   PenTool,
   Globe,
 } from "lucide-react";
@@ -281,7 +281,7 @@ export default function AdminPage() {
     {
       title: "SEO & TECHNICAL",
       items: [
-        { name: "Redirects", href: "/admin/redirects", icon: Redirect },
+        { name: "Redirects", href: "/admin/redirects", icon: RedirectIcon },
         { name: "Global Scripts", href: "/admin/global-scripts", icon: Code },
       ]
     }

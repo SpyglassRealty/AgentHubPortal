@@ -44,7 +44,7 @@ import {
   AlertCircle,
   ExternalLink,
   Trash2,
-  Sync,
+  RefreshCw as Sync,
 } from "lucide-react";
 
 interface ReviewSource {

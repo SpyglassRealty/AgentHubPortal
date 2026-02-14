@@ -19,7 +19,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import SeoPanel from "@/components/seo/SeoPanel";
+import { SeoPanel } from "@/components/seo/SeoPanel";
 import {
   ArrowLeft,
   Save,
