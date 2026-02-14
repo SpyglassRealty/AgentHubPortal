@@ -31,6 +31,18 @@ import AdminDashboardsRouter from "@/pages/admin-dashboards";
 import AdminBeaconPage from "@/pages/admin-beacon";
 import CommunityListPage from "@/pages/admin/CommunityList";
 import CommunityEditorPage from "@/pages/admin/CommunityEditor";
+import RedirectsListPage from "@/pages/admin/RedirectsList";
+import GlobalScriptsListPage from "@/pages/admin/GlobalScriptsList";
+import BlogPostListPage from "@/pages/admin/BlogPostList";
+import BlogPostEditorPage from "@/pages/admin/BlogPostEditor";
+import BlogCategoryListPage from "@/pages/admin/BlogCategoryList";
+import AgentListPage from "@/pages/admin/AgentList";
+import AgentEditorPage from "@/pages/admin/AgentEditor";
+import LandingPageListPage from "@/pages/admin/LandingPageList";
+import LandingPageEditorPage from "@/pages/admin/LandingPageEditor";
+import TestimonialListPage from "@/pages/admin/TestimonialList";
+import TestimonialEditorPage from "@/pages/admin/TestimonialEditor";
+import ReviewSourceManagerPage from "@/pages/admin/ReviewSourceManager";
 
 // Backward compatibility redirect component
 function CmaPresentationRedirect() {
@@ -96,6 +108,18 @@ function Router() {
       <Route path="/admin/beacon" component={AdminBeaconPage} />
       <Route path="/admin/communities/:slug" component={CommunityEditorPage} />
       <Route path="/admin/communities" component={CommunityListPage} />
+      <Route path="/admin/redirects" component={RedirectsListPage} />
+      <Route path="/admin/global-scripts" component={GlobalScriptsListPage} />
+      <Route path="/admin/blog/posts/:slug" component={BlogPostEditorPage} />
+      <Route path="/admin/blog/posts" component={BlogPostListPage} />
+      <Route path="/admin/blog/categories" component={BlogCategoryListPage} />
+      <Route path="/admin/agents/:id" component={AgentEditorPage} />
+      <Route path="/admin/agents" component={AgentListPage} />
+      <Route path="/admin/landing-pages/:id" component={LandingPageEditorPage} />
+      <Route path="/admin/landing-pages" component={LandingPageListPage} />
+      <Route path="/admin/testimonials/sources" component={ReviewSourceManagerPage} />
+      <Route path="/admin/testimonials/:id" component={TestimonialEditorPage} />
+      <Route path="/admin/testimonials" component={TestimonialListPage} />
       <Route path="/admin/dashboards/:rest*" component={AdminDashboardsRouter} />
       <Route path="/admin/dashboards" component={AdminDashboardsRouter} />
       <Route path="/share/:token" component={SharedCmaPage} />
