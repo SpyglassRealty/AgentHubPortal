@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, desc, asc, ilike, and, or, sql } from "drizzle-orm";
-import { db } from "./storage";
+import { db } from "./db";
 import { 
   landingPages,
   type LandingPage,

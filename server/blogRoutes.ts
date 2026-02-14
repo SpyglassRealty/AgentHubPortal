@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, desc, asc, ilike, inArray, and, sql, or, isNull } from "drizzle-orm";
-import { db } from "./storage";
+import { db } from "./db";
 import { 
   blogPosts, 
   blogCategories, 
