@@ -689,10 +689,10 @@ export const pulseZillowData = pgTable("pulse_zillow_data", {
   id: serial("id").primaryKey(),
   zip: varchar("zip", { length: 5 }).notNull(),
   date: date("date").notNull(),
-  homeValue: numeric("home_value"),           // ZHVI all homes
-  homeValueSf: numeric("home_value_sf"),      // ZHVI single-family
-  homeValueCondo: numeric("home_value_condo"),// ZHVI condo
-  rentalValue: numeric("rental_value"),       // ZORI rent
+  homeValue: numeric("home_value"),                     // ZHVI all homes
+  singleFamilyValue: numeric("single_family_value"),    // ZHVI single-family
+  condoValue: numeric("condo_value"),                   // ZHVI condo
+  rentValue: numeric("rent_value"),                     // ZORI rent
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
