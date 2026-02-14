@@ -465,23 +465,109 @@ router.post('/api/admin/review-sources/:id/sync', isAuthenticated, async (req, r
     }
 
     const source = sourceResult[0];
-    
+    let synced = 0;
+    let skipped = 0;
+
+    if (source.platform === 'google' && source.placeId) {
+      // Fetch reviews from Google Places API
+      const apiKey = process.env.VITE_GOOGLE_MAPS_API_KEY || source.apiKey;
+      if (!apiKey) {
+        return res.status(400).json({ message: 'Google API key not configured' });
+      }
+
+      const placesUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${source.placeId}&fields=reviews&reviews_sort=newest&key=${apiKey}`;
+      const placesResponse = await fetch(placesUrl);
+      const placesData = await placesResponse.json();
+
+      if (placesData.result?.reviews) {
+        for (const review of placesData.result.reviews) {
+          // ONLY import 5-star reviews
+          if (review.rating !== 5) {
+            skipped++;
+            continue;
+          }
+
+          // Check if review already exists (dedup by author + text)
+          const existing = await db
+            .select({ id: testimonials.id })
+            .from(testimonials)
+            .where(
+              and(
+                eq(testimonials.reviewerName, review.author_name),
+                eq(testimonials.source, 'google'),
+                eq(testimonials.reviewText, review.text || '')
+              )
+            )
+            .limit(1);
+
+          if (existing.length > 0) {
+            skipped++;
+            continue;
+          }
+
+          // Insert 5-star review, auto-approved
+          await db.insert(testimonials).values({
+            reviewerName: review.author_name,
+            reviewerLocation: review.relative_time_description || '',
+            reviewText: review.text || '',
+            rating: review.rating,
+            source: 'google',
+            sourceUrl: review.author_url || '',
+            photoUrl: review.profile_photo_url || '',
+            isApproved: true, // Auto-approve 5-star Google reviews
+            isFeatured: false,
+            displayOrder: 0,
+          });
+          synced++;
+        }
+      }
+    }
+
     // Update last synced timestamp
     await db
       .update(reviewSources)
       .set({ lastSyncedAt: new Date() })
       .where(eq(reviewSources.id, id));
 
-    // TODO: Implement actual sync logic for each platform
-    // For now, just return success
     res.json({ 
-      message: `Sync initiated for ${source.platform}`,
+      message: `Synced ${synced} new 5-star reviews (${skipped} skipped)`,
       platform: source.platform,
+      synced,
+      skipped,
       lastSyncedAt: new Date().toISOString(),
     });
   } catch (error) {
     console.error('Error syncing review source:', error);
     res.status(500).json({ message: 'Failed to sync review source' });
+  }
+});
+
+// GET /api/testimonials/rotating - Public route for rotating 5-star reviews
+router.get('/api/testimonials/rotating', async (req, res) => {
+  try {
+    const limit = Math.min(20, parseInt(req.query.limit as string) || 10);
+    
+    // Get approved 5-star reviews, randomized for rotation
+    const results = await db
+      .select()
+      .from(testimonials)
+      .where(
+        and(
+          eq(testimonials.isApproved, true),
+          eq(testimonials.rating, 5)
+        )
+      )
+      .orderBy(sql`RANDOM()`)
+      .limit(limit);
+
+    res.json({
+      testimonials: results,
+      total: results.length,
+      rotateIntervalMs: 8000, // Suggested rotation interval for frontend
+    });
+  } catch (error) {
+    console.error('Error fetching rotating testimonials:', error);
+    res.status(500).json({ message: 'Failed to fetch testimonials' });
   }
 });
 
