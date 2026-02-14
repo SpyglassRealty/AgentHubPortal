@@ -20,6 +20,13 @@ import { registerGmailRoutes } from "./gmailRoutes";
 import { registerXanoRoutes } from "./xanoProxy";
 import { registerRezenDashboardRoutes } from "./rezenDashboardRoutes";
 import { registerCommunityEditorRoutes } from "./communityEditorRoutes";
+import { registerRedirectsRoutes } from "./redirectsRoutes";
+import { registerGlobalScriptsRoutes } from "./globalScriptsRoutes";
+import { registerSeoRoutes } from "./seoRoutes";
+import blogRoutes from "./blogRoutes";
+import agentRoutes from "./agentRoutes";
+import landingPageRoutes from "./landingPageRoutes";
+import testimonialRoutes from "./testimonialRoutes";
 
 
 // Helper function to get the actual database user from request
@@ -4597,6 +4604,21 @@ Respond with valid JSON in this exact format:
 
   // Register Community Editor routes (admin)
   registerCommunityEditorRoutes(app);
+
+  // Register CMS Enhancement Phase 1 routes
+  registerRedirectsRoutes(app);
+  registerGlobalScriptsRoutes(app);
+  registerSeoRoutes(app);
+
+  // Register CMS Enhancement Phase 2 - Blog System
+  app.use('/api', blogRoutes);
+  
+  // Register CMS Enhancement Phase 3 - Agent Pages + Landing Pages
+  app.use('/api', agentRoutes);
+  app.use('/api', landingPageRoutes);
+  
+  // Register CMS Enhancement Phase 4 - Testimonials & Reviews System
+  app.use(testimonialRoutes);
 
   // ==========================================
   // DEBUG ENDPOINT FOR DATABASE DIAGNOSIS
