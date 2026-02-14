@@ -34,6 +34,9 @@ import {
   LogIn,
   Clock,
   UserCheck,
+  Code,
+  FileText,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -99,6 +102,7 @@ export default function AdminPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
 
   // ── Data queries ──
   const { data: usersData, isLoading: usersLoading } = useQuery<UsersResponse>({
@@ -267,79 +271,430 @@ export default function AdminPage() {
                 Homepage Editor →
               </span>
             </Link>
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Modern Sidebar */}
+      <div className={`${sidebarExpanded ? 'w-64' : 'w-16'} transition-all duration-300 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shadow-sm`}>
+        {/* Logo/Brand */}
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-3">
+            <Shield className="h-8 w-8 text-[#EF4923] flex-shrink-0" />
+            {sidebarExpanded && (
+              <div>
+                <h2 className="font-bold text-gray-900 dark:text-white">Spyglass Admin</h2>
+                <p className="text-xs text-gray-500">Content Management</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* ── Usage Stats Cards ── */}
-        <section>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                    <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  </div>
+        {/* Navigation Groups */}
+        <div className="flex-1 overflow-y-auto py-4 space-y-6">
+          {/* Dashboard */}
+          <div className="px-4">
+            {sidebarExpanded && (
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                Overview
+              </h3>
+            )}
+            <nav className="space-y-1">
+              <Link href="/admin/dashboards">
+                <div className="flex items-center gap-3 px-3 py-2 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer group">
+                  <BarChart3 className="h-5 w-5 flex-shrink-0" />
+                  {sidebarExpanded && <span>Business Dashboards</span>}
+                </div>
+              </Link>
+              <Link href="/admin/beacon">
+                <div className="flex items-center gap-3 px-3 py-2 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                  <Activity className="h-5 w-5 flex-shrink-0" />
+                  {sidebarExpanded && <span>Beacon Recruiting</span>}
+                </div>
+              </Link>
+            </nav>
+          </div>
+
+          {/* Content Management */}
+          <div className="px-4">
+            {sidebarExpanded && (
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                Content
+              </h3>
+            )}
+            <nav className="space-y-1">
+              <Link href="/admin/communities">
+                <div className="flex items-center gap-3 px-3 py-2 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                  <Building2 className="h-5 w-5 flex-shrink-0" />
+                  {sidebarExpanded && <span>Communities</span>}
+                </div>
+              </Link>
+              <Link href="/admin/blog/posts">
+                <div className="flex items-center gap-3 px-3 py-2 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                  <FileBarChart className="h-5 w-5 flex-shrink-0" />
+                  {sidebarExpanded && <span>Blog Management</span>}
+                </div>
+              </Link>
+              <Link href="/admin/landing-pages">
+                <div className="flex items-center gap-3 px-3 py-2 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                  <FileText className="h-5 w-5 flex-shrink-0" />
+                  {sidebarExpanded && <span>Landing Pages</span>}
+                </div>
+              </Link>
+            </nav>
+          </div>
+
+          {/* People */}
+          <div className="px-4">
+            {sidebarExpanded && (
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                People
+              </h3>
+            )}
+            <nav className="space-y-1">
+              <Link href="/admin/agents">
+                <div className="flex items-center gap-3 px-3 py-2 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                  <Users className="h-5 w-5 flex-shrink-0" />
+                  {sidebarExpanded && <span>Agent Directory</span>}
+                </div>
+              </Link>
+              <Link href="/admin/testimonials">
+                <div className="flex items-center gap-3 px-3 py-2 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                  <MessageSquare className="h-5 w-5 flex-shrink-0" />
+                  {sidebarExpanded && <span>Testimonials</span>}
+                </div>
+              </Link>
+            </nav>
+          </div>
+
+          {/* SEO & Technical */}
+          <div className="px-4">
+            {sidebarExpanded && (
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                SEO & Technical
+              </h3>
+            )}
+            <nav className="space-y-1">
+              <Link href="/admin/redirects">
+                <div className="flex items-center gap-3 px-3 py-2 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                  <ExternalLink className="h-5 w-5 flex-shrink-0" />
+                  {sidebarExpanded && <span>Redirects</span>}
+                </div>
+              </Link>
+              <Link href="/admin/global-scripts">
+                <div className="flex items-center gap-3 px-3 py-2 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                  <Code className="h-5 w-5 flex-shrink-0" />
+                  {sidebarExpanded && <span>Global Scripts</span>}
+                </div>
+              </Link>
+            </nav>
+          </div>
+        </div>
+
+        {/* Sidebar Toggle */}
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSidebarExpanded(!sidebarExpanded)}
+            className="w-full justify-center"
+          >
+            {sidebarExpanded ? (
+              <ChevronLeft className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Bar */}
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Admin Dashboard
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Welcome back! Manage your website content and settings.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Dashboard Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {/* Quick Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+
+            {/* Modern Stats Cards */}
+            <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-2xl font-bold">
-                      {statsLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : statsData?.totalUsers ?? "—"}
+                    <p className="text-blue-100 text-sm font-medium">Total Users</p>
+                    <p className="text-3xl font-bold">
+                      {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : statsData?.totalUsers ?? "—"}
                     </p>
-                    <p className="text-xs text-muted-foreground">Total Users</p>
+                  </div>
+                  <div className="p-3 bg-white/20 rounded-full">
+                    <Users className="h-6 w-6" />
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                    <UserCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  </div>
+            
+            <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white border-0">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-2xl font-bold">
-                      {statsLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : statsData?.activeLastWeek ?? "—"}
+                    <p className="text-green-100 text-sm font-medium">Active (7d)</p>
+                    <p className="text-3xl font-bold">
+                      {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : statsData?.activeLastWeek ?? "—"}
                     </p>
-                    <p className="text-xs text-muted-foreground">Active (7d)</p>
+                  </div>
+                  <div className="p-3 bg-white/20 rounded-full">
+                    <UserCheck className="h-6 w-6" />
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                    <FileBarChart className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                  </div>
+            
+            <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white border-0">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-2xl font-bold">
-                      {statsLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : statsData?.totalCmas ?? "—"}
+                    <p className="text-purple-100 text-sm font-medium">Total CMAs</p>
+                    <p className="text-3xl font-bold">
+                      {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : statsData?.totalCmas ?? "—"}
                     </p>
-                    <p className="text-xs text-muted-foreground">Total CMAs</p>
+                  </div>
+                  <div className="p-3 bg-white/20 rounded-full">
+                    <FileBarChart className="h-6 w-6" />
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
-                    <LogIn className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                  </div>
+            
+            <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white border-0">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-2xl font-bold">
-                      {statsLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : statsData?.loginsToday ?? "—"}
+                    <p className="text-orange-100 text-sm font-medium">Sessions Today</p>
+                    <p className="text-3xl font-bold">
+                      {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : statsData?.loginsToday ?? "—"}
                     </p>
-                    <p className="text-xs text-muted-foreground">Sessions Today</p>
+                  </div>
+                  <div className="p-3 bg-white/20 rounded-full">
+                    <LogIn className="h-6 w-6" />
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
-        </section>
 
-        <Separator />
+          {/* SEO Health Overview */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  SEO Health Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Pages with Good SEO</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 bg-gray-200 rounded-full h-2">
+                        <div className="bg-green-500 h-2 rounded-full w-3/4"></div>
+                      </div>
+                      <span className="text-sm font-medium">75%</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Meta Descriptions</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 bg-gray-200 rounded-full h-2">
+                        <div className="bg-yellow-500 h-2 rounded-full w-1/2"></div>
+                      </div>
+                      <span className="text-sm font-medium">50%</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Focus Keywords</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 bg-gray-200 rounded-full h-2">
+                        <div className="bg-blue-500 h-2 rounded-full w-5/6"></div>
+                      </div>
+                      <span className="text-sm font-medium">83%</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* ── Section A: Hidden Apps ── */}
-        <section>
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-blue-600" />
+                  Recent Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-gray-600">Blog post published</span>
+                    <span className="text-gray-400 ml-auto">2m ago</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="text-gray-600">Community page updated</span>
+                    <span className="text-gray-400 ml-auto">1h ago</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                    <span className="text-gray-600">New agent added</span>
+                    <span className="text-gray-400 ml-auto">3h ago</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                    <span className="text-gray-600">Testimonial approved</span>
+                    <span className="text-gray-400 ml-auto">6h ago</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Quick Actions
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Link href="/admin/communities/new">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer border-0 shadow-sm">
+                  <CardContent className="p-6 text-center">
+                    <Building2 className="h-8 w-8 text-emerald-600 mx-auto mb-3" />
+                    <h4 className="font-medium text-gray-900 dark:text-white">Add Community</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Create new community page</p>
+                  </CardContent>
+                </Card>
+              </Link>
+              
+              <Link href="/admin/blog/posts/new">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer border-0 shadow-sm">
+                  <CardContent className="p-6 text-center">
+                    <FileBarChart className="h-8 w-8 text-indigo-600 mx-auto mb-3" />
+                    <h4 className="font-medium text-gray-900 dark:text-white">Write Blog Post</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Create new blog content</p>
+                  </CardContent>
+                </Card>
+              </Link>
+              
+              <Link href="/admin/testimonials/new">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer border-0 shadow-sm">
+                  <CardContent className="p-6 text-center">
+                    <MessageSquare className="h-8 w-8 text-yellow-600 mx-auto mb-3" />
+                    <h4 className="font-medium text-gray-900 dark:text-white">Add Testimonial</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Add customer review</p>
+                  </CardContent>
+                </Card>
+              </Link>
+              
+              <Link href="/admin/agents/new">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer border-0 shadow-sm">
+                  <CardContent className="p-6 text-center">
+                    <Users className="h-8 w-8 text-green-600 mx-auto mb-3" />
+                    <h4 className="font-medium text-gray-900 dark:text-white">Add Agent</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Create agent profile</p>
+                  </CardContent>
+                </Card>
+              </Link>
+            </div>
+          </div>
+
+          {/* System Overview Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Integration Status */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Plug className="h-5 w-5 text-blue-600" />
+                  Integration Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {integrations.slice(0, 4).map((integ) => (
+                    <div key={integ.name} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 ${integ.color} rounded-lg flex items-center justify-center`}>
+                          <span className="text-white font-bold text-[10px]">{integ.icon}</span>
+                        </div>
+                        <span className="text-sm font-medium">{integ.displayName}</span>
+                      </div>
+                      {integ.lastTestResult === "success" ? (
+                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                          <Check className="w-3 h-3 mr-1" /> Connected
+                        </Badge>
+                      ) : integ.configured ? (
+                        <Badge variant="destructive">
+                          <X className="w-3 h-3 mr-1" /> Failed
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">Not Configured</Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* User Management Preview */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-green-600" />
+                  User Management
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {allUsers.slice(0, 4).map((user) => {
+                    const name = user.firstName && user.lastName
+                      ? `${user.firstName} ${user.lastName}`
+                      : user.firstName || user.email || "Unknown";
+                    return (
+                      <div key={user.id} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                            <span className="text-sm font-medium">
+                              {name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium">{name}</div>
+                            <div className="text-xs text-gray-500">{user.email}</div>
+                          </div>
+                        </div>
+                        {user.isSuperAdmin && (
+                          <Badge className="bg-[#EF4923]/10 text-[#EF4923]">
+                            Admin
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
           <div className="flex items-center gap-2 mb-4">
             <Lock className="h-5 w-5 text-[#EF4923]" />
             <h2 className="text-xl font-display font-semibold">Leadership-Only Apps</h2>
