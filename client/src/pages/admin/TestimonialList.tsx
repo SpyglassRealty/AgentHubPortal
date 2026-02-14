@@ -39,7 +39,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   Award,
-  AwardOff,
+  Award,
   Trash2,
   RefreshCw,
 } from "lucide-react";
@@ -391,7 +391,7 @@ export default function TestimonialList() {
                           className="border-gray-300 text-gray-700 hover:bg-gray-50"
                           disabled={bulkFeatureMutation.isPending}
                         >
-                          <AwardOff className="h-4 w-4 mr-1" />
+                          <Award className="h-4 w-4 mr-1" />
                           Unfeature
                         </Button>
                       </div>
