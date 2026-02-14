@@ -188,28 +188,28 @@ export async function refreshZillowData(): Promise<{ rowsProcessed: number; erro
     zip: string;
     date: string;
     homeValue: string | null;
-    homeValueSf: string | null;
-    homeValueCondo: string | null;
-    rentalValue: string | null;
+    singleFamilyValue: string | null;
+    condoValue: string | null;
+    rentValue: string | null;
   }> = [];
   
   for (const [zip, data] of Array.from(zipLookup)) {
     for (const dateCol of recentDates) {
       const homeValue = data.allHomes?.[dateCol] || null;
-      const homeValueSf = data.singleFamily?.[dateCol] || null;
-      const homeValueCondo = data.condo?.[dateCol] || null;
-      const rentalValue = data.rental?.[dateCol] || null;
+      const singleFamilyValue = data.singleFamily?.[dateCol] || null;
+      const condoValue = data.condo?.[dateCol] || null;
+      const rentValue = data.rental?.[dateCol] || null;
       
       // Skip rows where all values are null/empty
-      if (!homeValue && !homeValueSf && !homeValueCondo && !rentalValue) continue;
+      if (!homeValue && !singleFamilyValue && !condoValue && !rentValue) continue;
       
       allRecords.push({
         zip,
         date: dateCol,
         homeValue: homeValue || null,
-        homeValueSf: homeValueSf || null,
-        homeValueCondo: homeValueCondo || null,
-        rentalValue: rentalValue || null,
+        singleFamilyValue: singleFamilyValue || null,
+        condoValue: condoValue || null,
+        rentValue: rentValue || null,
       });
     }
   }
@@ -226,18 +226,18 @@ export async function refreshZillowData(): Promise<{ rowsProcessed: number; erro
           zip: r.zip,
           date: r.date,
           homeValue: r.homeValue,
-          homeValueSf: r.homeValueSf,
-          homeValueCondo: r.homeValueCondo,
-          rentalValue: r.rentalValue,
+          singleFamilyValue: r.singleFamilyValue,
+          condoValue: r.condoValue,
+          rentValue: r.rentValue,
           updatedAt: new Date(),
         })))
         .onConflictDoUpdate({
           target: [pulseZillowData.zip, pulseZillowData.date],
           set: {
             homeValue: sql`EXCLUDED.home_value`,
-            homeValueSf: sql`EXCLUDED.home_value_sf`,
-            homeValueCondo: sql`EXCLUDED.home_value_condo`,
-            rentalValue: sql`EXCLUDED.rental_value`,
+            singleFamilyValue: sql`EXCLUDED.single_family_value`,
+            condoValue: sql`EXCLUDED.condo_value`,
+            rentValue: sql`EXCLUDED.rent_value`,
             updatedAt: new Date(),
           },
         });

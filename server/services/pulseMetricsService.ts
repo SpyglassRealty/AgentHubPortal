@@ -171,7 +171,7 @@ export async function refreshPulseMetrics(): Promise<{ rowsProcessed: number; er
       
       const homeValue = parseFloat(latestZillow.homeValue);
       const medianIncome = latestCensus?.medianIncome ? parseFloat(latestCensus.medianIncome) : null;
-      const monthlyRent = latestZillow.rentalValue ? parseFloat(latestZillow.rentalValue) : null;
+      const monthlyRent = latestZillow.rentValue ? parseFloat(latestZillow.rentValue) : null;
       
       // --- Calculate each metric ---
       
