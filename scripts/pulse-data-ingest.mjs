@@ -452,22 +452,22 @@ async function ingestRedfin() {
         // Filter: zip level only (REGION_TYPE_ID=2 means zip code)
         const regionType = (row.REGION_TYPE || row.region_type || '').toLowerCase();
         const regionTypeId = (row.REGION_TYPE_ID || row.region_type_id || '');
-        if (regionType !== 'zip code' && regionType !== 'zip_code' && regionTypeId !== '2') return;
+        if (regionType !== 'zip code' && regionType !== 'zip_code' && regionTypeId !== '2') continue;
         
         // All Residential only (PROPERTY_TYPE_ID: -1 = All Residential, 1 = Single Family)
         const ptId = row.PROPERTY_TYPE_ID || row.property_type_id || '';
-        if (ptId && ptId !== '1' && ptId !== '-1') return;
+        if (ptId && ptId !== '1' && ptId !== '-1') continue;
         
         // Extract zip
         const rawRegion = row.REGION || row.region || '';
         const zipMatch = rawRegion.match(/(\d{5})/);
-        if (!zipMatch) return;
+        if (!zipMatch) continue;
         const zip = zipMatch[1];
-        if (!AUSTIN_MSA_ZIPS.has(zip)) return;
+        if (!AUSTIN_MSA_ZIPS.has(zip)) continue;
         
         // Recent data only
         const periodStart = row.PERIOD_BEGIN || row.period_begin || '';
-        if (periodStart < cutoffDate) return;
+        if (periodStart < cutoffDate) continue;
         
         const parseNum = (v) => {
           if (!v || v === '' || v === 'N/A' || v === 'nan') return null;
