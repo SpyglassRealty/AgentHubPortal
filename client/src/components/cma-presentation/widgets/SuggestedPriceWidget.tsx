@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useState, useRef, useEffect } from 'react';
 import { Edit2, Check, X, Info, Star, Camera, MapPin, BarChart3, Home, TrendingUp, Lightbulb, Undo2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { CMAMap } from '@/components/cma-map';
+import { extractPrice, extractSqft } from '@/lib/cma-data-utils';
 import type { Property } from '@shared/schema';
 import type { CmaProperty } from '../types';
 
@@ -366,32 +367,12 @@ export function SuggestedPriceWidget({
     return ((subjectValue - marketAverage) / marketAverage) * 100;
   };
 
-  // Debug: Log subjectProperty data
-  console.log('🔍 [SuggestedPriceWidget] DEBUG:', {
-    subjectProperty,
-    avgPrice,
-    avgPricePerSqft
-  });
-
-  const subjectPrice = subjectProperty?.listPrice || subjectProperty?.soldPrice || subjectProperty?.price || 0;
-  const subjectSqft = subjectProperty?.sqft || subjectProperty?.squareFeet || 0;
+  const subjectPrice = subjectProperty ? extractPrice(subjectProperty) || 0 : 0;
+  const subjectSqft = subjectProperty ? extractSqft(subjectProperty) || 0 : 0;
   const subjectPricePerSqft = subjectSqft > 0 ? subjectPrice / subjectSqft : 0;
-
-  // Debug: Log calculated values
-  console.log('🔍 [SuggestedPriceWidget] CALCULATED:', {
-    subjectPrice,
-    subjectSqft,
-    subjectPricePerSqft
-  });
 
   const priceVsMarket = calculateVsMarket(subjectPrice, avgPrice);
   const psfVsMarket = calculateVsMarket(subjectPricePerSqft, avgPricePerSqft);
-
-  // Debug: Log vs market results
-  console.log('🔍 [SuggestedPriceWidget] VS MARKET:', {
-    priceVsMarket,
-    psfVsMarket
-  });
   
   const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
   const maxPrice = validPrices.length > 0 ? Math.max(...validPrices) : 0;
