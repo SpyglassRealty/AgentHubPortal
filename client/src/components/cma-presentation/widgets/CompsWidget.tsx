@@ -451,7 +451,7 @@ function StatusLegend() {
 }
 
 // Side-by-side comparison view component
-function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, mapboxToken }: { comparables: CmaProperty[]; subjectProperty?: CmaProperty; geocodedCoords?: {latitude: number; longitude: number} | null; mapboxToken?: string }) {
+function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, mapboxToken, setSelectedProperty }: { comparables: CmaProperty[]; subjectProperty?: CmaProperty; geocodedCoords?: {latitude: number; longitude: number} | null; mapboxToken?: string; setSelectedProperty?: (property: CmaProperty | null) => void }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   
   // Responsive columns based on screen width
@@ -955,6 +955,7 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
             subjectProperty={subjectProperty}
             geocodedCoords={geocodedCoords}
             mapboxToken={mapboxToken}
+            setSelectedProperty={setSelectedProperty}
           />
         )}
 
