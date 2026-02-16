@@ -423,6 +423,8 @@ export default function CMAPresentation() {
         livingArea: 0,
         standardStatus: 'Active',
         mlsNumber: '',
+        listPrice: suggestedListPrice || 0,
+        price: suggestedListPrice || 0,
       } as any;
     }
     
