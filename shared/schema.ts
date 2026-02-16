@@ -916,3 +916,99 @@ export const INTEGRATION_DEFINITIONS = [
   },
 ] as const;
 
+// =====================================================
+// CMS Pages — Elementor-style page builder
+// =====================================================
+
+export const cmsPages = pgTable("cms_pages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  slug: varchar("slug").notNull().unique(),
+  type: varchar("type").notNull().default("page"), // 'page', 'blog', 'community', 'landing'
+  status: varchar("status").notNull().default("draft"), // 'draft', 'published', 'unlisted'
+  content: jsonb("content"), // The block/section tree from the editor
+  excerpt: text("excerpt"),
+  featuredImageUrl: text("featured_image_url"),
+  metaTitle: varchar("meta_title"),
+  metaDescription: text("meta_description"),
+  focusKeyword: varchar("focus_keyword"),
+  authorId: varchar("author_id").references(() => users.id),
+  tags: jsonb("tags").default(sql`'[]'::jsonb`),
+  category: varchar("category"),
+  publishedAt: timestamp("published_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_cms_pages_slug").on(table.slug),
+  index("idx_cms_pages_type").on(table.type),
+  index("idx_cms_pages_status").on(table.status),
+]);
+
+export type CmsPage = typeof cmsPages.$inferSelect;
+export type InsertCmsPage = typeof cmsPages.$inferInsert;
+
+// CMS Block/Section types for the page builder
+export interface BlockStyle {
+  padding?: string;
+  margin?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  fontSize?: string;
+  textAlign?: string;
+  customClass?: string;
+}
+
+export interface CmsBlock {
+  id: string;
+  type: string;
+  content: Record<string, any>;
+  style?: BlockStyle;
+}
+
+export interface CmsColumn {
+  id: string;
+  width: number; // fraction of 12
+  blocks: CmsBlock[];
+}
+
+export interface CmsSection {
+  id: string;
+  columns: CmsColumn[];
+  style?: BlockStyle;
+}
+
+export interface PageContent {
+  sections: CmsSection[];
+}
+
+// Validation schemas
+export const insertCmsPageSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  slug: z.string().min(1, "Slug is required"),
+  type: z.enum(["page", "blog", "community", "landing"]).default("page"),
+  status: z.enum(["draft", "published", "unlisted"]).default("draft"),
+  content: z.any().optional(),
+  excerpt: z.string().optional(),
+  featuredImageUrl: z.string().optional(),
+  metaTitle: z.string().optional(),
+  metaDescription: z.string().optional(),
+  focusKeyword: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  category: z.string().optional(),
+});
+
+export const updateCmsPageSchema = z.object({
+  title: z.string().min(1).optional(),
+  slug: z.string().min(1).optional(),
+  type: z.enum(["page", "blog", "community", "landing"]).optional(),
+  status: z.enum(["draft", "published", "unlisted"]).optional(),
+  content: z.any().optional(),
+  excerpt: z.string().optional(),
+  featuredImageUrl: z.string().optional().nullable(),
+  metaTitle: z.string().optional(),
+  metaDescription: z.string().optional(),
+  focusKeyword: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  category: z.string().optional(),
+});
+

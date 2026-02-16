@@ -350,12 +350,52 @@ async function createPulseDataTables() {
     
     console.log("[Database] All required tables created successfully");
     
+    // Create CMS pages table
+    await createCmsPagesTable();
+    
     // Add market pulse snapshots schema migration
     await migrateMarketPulseSnapshots();
     
   } catch (error) {
     console.error("[Database] Tables creation error:", error);
     // Don't throw - some features can work without all tables
+  }
+}
+
+// Create CMS pages table for the page builder
+async function createCmsPagesTable() {
+  try {
+    console.log("[Database] Creating CMS pages table if not exists...");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS cms_pages (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        title VARCHAR NOT NULL,
+        slug VARCHAR NOT NULL UNIQUE,
+        type VARCHAR NOT NULL DEFAULT 'page',
+        status VARCHAR NOT NULL DEFAULT 'draft',
+        content JSONB,
+        excerpt TEXT,
+        featured_image_url TEXT,
+        meta_title VARCHAR,
+        meta_description TEXT,
+        focus_keyword VARCHAR,
+        author_id VARCHAR REFERENCES users(id),
+        tags JSONB DEFAULT '[]'::jsonb,
+        category VARCHAR,
+        published_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    
+    // Create indexes
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_cms_pages_slug ON cms_pages(slug)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_cms_pages_type ON cms_pages(type)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_cms_pages_status ON cms_pages(status)`);
+    
+    console.log("[Database] CMS pages table created/verified successfully");
+  } catch (error) {
+    console.error("[Database] CMS pages table creation error:", error);
   }
 }
 
