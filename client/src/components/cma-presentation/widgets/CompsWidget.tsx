@@ -504,9 +504,31 @@ function SideBySideComparison({ comparables, subjectProperty }: { comparables: C
             <div className="p-4 space-y-4">
               {/* Subject Header */}
               <div className="text-center">
-                <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center mb-2">
-                  <MapPin className="w-8 h-8 text-gray-400" />
-                </div>
+                {subjectProperty?.latitude && subjectProperty?.longitude ? (
+                  <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden mb-2">
+                    <img
+                      src={`https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+e74c3c(${subjectProperty.longitude},${subjectProperty.latitude})/${subjectProperty.longitude},${subjectProperty.latitude},14,0/300x200@2x?access_token=${import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || process.env.MAPBOX_ACCESS_TOKEN}`}
+                      alt={`Map of ${subjectProperty.address}`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to address text if map fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallback = target.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                    <div className="w-full h-full bg-gray-100 rounded-lg flex-col items-center justify-center text-gray-600 gap-1 p-2" style={{ display: 'none' }}>
+                      <MapPin className="w-6 h-6" />
+                      <span className="text-xs text-center leading-tight">{subjectProperty.address}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full h-32 bg-gray-100 rounded-lg flex flex-col items-center justify-center text-gray-600 gap-1 p-2 mb-2">
+                    <MapPin className="w-6 h-6" />
+                    <span className="text-xs text-center leading-tight font-medium">{subjectProperty?.address || 'Subject Property'}</span>
+                  </div>
+                )}
                 <div className="font-medium text-sm">{subjectProperty.address}</div>
                 <div className="text-xs text-gray-600">Subject Property</div>
               </div>
