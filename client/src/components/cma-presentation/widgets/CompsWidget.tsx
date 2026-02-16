@@ -511,6 +511,15 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
             ? subjectPrice / subjectSqft 
             : null;
           
+          // Debug logging
+          console.log('🔍 [CompsWidget] Debug:', { 
+            hasSubjectProperty: !!subjectProperty,
+            subjectPrice, 
+            subjectSqft,
+            avgPrice: statistics.price.average,
+            avgPsf: statistics.pricePerSqFt.average
+          });
+          
           // Calculate % difference vs market average
           const priceVsMarket = (statistics.price.average > 0 && subjectPrice && subjectPrice > 0)
             ? ((subjectPrice - statistics.price.average) / statistics.price.average) * 100
@@ -519,6 +528,8 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
           const pricePerSqftVsMarket = (statistics.pricePerSqFt.average > 0 && subjectPricePerSqft && subjectPricePerSqft > 0)
             ? ((subjectPricePerSqft - statistics.pricePerSqFt.average) / statistics.pricePerSqFt.average) * 100
             : null;
+          
+          console.log('🔍 [CompsWidget] VS Market:', { priceVsMarket, pricePerSqftVsMarket });
           
           return (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-4 p-2 sm:p-4 bg-gray-50 rounded-lg" data-testid="stats-summary">
