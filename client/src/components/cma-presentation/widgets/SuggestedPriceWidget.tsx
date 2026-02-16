@@ -445,7 +445,7 @@ export function SuggestedPriceWidget({
         <div className="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
           
           {/* LEFT SIDE - Comparable Properties Photo Collage */}
-          <div className="relative rounded-xl overflow-hidden shadow-lg bg-muted h-full min-h-[200px]">
+          <div className="relative rounded-xl overflow-hidden shadow-lg bg-muted h-full min-h-[400px]">
             <ComparablePropertiesPhotoCollage comparables={comparables} />
           </div>
           
@@ -578,7 +578,7 @@ export function SuggestedPriceWidget({
           </div>
           
           {/* RIGHT SIDE - Comparable Properties Location Map (using CMAMap component) */}
-          <div className="relative rounded-xl overflow-hidden shadow-lg bg-muted h-full min-h-[200px]">
+          <div className="relative rounded-xl overflow-hidden shadow-lg bg-muted h-full min-h-[400px]">
             <CMAMap
               properties={normalizedComparables}
               subjectProperty={normalizedSubject}
