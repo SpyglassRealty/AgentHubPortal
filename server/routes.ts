@@ -2761,10 +2761,15 @@ Respond with valid JSON in this exact format:
         return res.status(400).json({ message: "No coordinates found in subject property data" });
       }
       
-      // Update the CMA with extracted coordinates
-      const updated = await storage.updateCma(req.params.id, user.id, {
+      // Update the subjectProperty JSON with top-level coordinates
+      const updatedSubjectProperty = {
+        ...subjectProperty,
         latitude,
         longitude
+      };
+      
+      const updated = await storage.updateCma(req.params.id, user.id, {
+        subjectProperty: updatedSubjectProperty
       });
       
       res.json({ 
