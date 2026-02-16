@@ -166,11 +166,11 @@ export default function CalendarPage() {
           <AlertCircle className="h-12 w-12 text-destructive mb-4" />
           <h2 className="text-xl font-display font-semibold mb-2">Unable to Load Calendar</h2>
           <p className="text-muted-foreground mb-4">
-            {(error as Error).message || "Please check your Google Calendar connection."}
+            {(error as Error).message || "Please check your Follow Up Boss connection."}
           </p>
-          <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer">
+          <a href="https://app.followupboss.com" target="_blank" rel="noopener noreferrer">
             <Button variant="outline">
-              Open Google Calendar
+              Open Follow Up Boss
               <ExternalLink className="ml-2 h-4 w-4" />
             </Button>
           </a>
@@ -204,10 +204,10 @@ export default function CalendarPage() {
               onRefresh={handleRefresh}
               isLoading={isLoading || isSyncing}
             />
-            <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer">
+            <a href="https://app.followupboss.com" target="_blank" rel="noopener noreferrer">
               <Button variant="outline" className="border-blue-500/30 hover:bg-blue-500/10 h-8 sm:h-9 px-2 sm:px-4 text-xs sm:text-sm">
-                <span className="hidden sm:inline">Open in Google Calendar</span>
-                <span className="sm:hidden">Calendar</span>
+                <span className="hidden sm:inline">Open in Follow Up Boss</span>
+                <span className="sm:hidden">FUB</span>
                 <ExternalLink className="ml-1 sm:ml-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </a>

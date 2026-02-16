@@ -1,0 +1,337 @@
+{
+  "austin_metro_areas": {
+    "austin_neighborhoods": [
+      {
+        "name": "Allandale",
+        "city": "Austin",
+        "zip_codes": ["78756"],
+        "area_type": "neighborhood",
+        "market_segment": "Mid-Century Modern",
+        "avg_price_range": "$500K-$900K",
+        "keywords": ["mid-century", "mature trees", "central austin"]
+      },
+      {
+        "name": "Barton Hills",
+        "city": "Austin", 
+        "zip_codes": ["78704"],
+        "area_type": "neighborhood",
+        "market_segment": "Hill Country Views",
+        "avg_price_range": "$600K-$1.5M",
+        "keywords": ["zilker nearby", "hill country", "greenbelt"]
+      },
+      {
+        "name": "Bouldin Creek",
+        "city": "Austin",
+        "zip_codes": ["78704"],
+        "area_type": "neighborhood", 
+        "market_segment": "Hip/Artsy",
+        "avg_price_range": "$400K-$800K",
+        "keywords": ["south first", "food trucks", "walkable"]
+      },
+      {
+        "name": "Clarksville",
+        "city": "Austin",
+        "zip_codes": ["78703"],
+        "area_type": "neighborhood",
+        "market_segment": "Historic Central",
+        "avg_price_range": "$600K-$2M",
+        "keywords": ["historic", "downtown adjacent", "cottage style"]
+      },
+      {
+        "name": "Crestview",
+        "city": "Austin",
+        "zip_codes": ["78757"],
+        "area_type": "neighborhood",
+        "market_segment": "Emerging/Hip",
+        "avg_price_range": "$400K-$700K",
+        "keywords": ["food scene", "young professionals", "walkable"]
+      },
+      {
+        "name": "East 6th Street",
+        "city": "Austin",
+        "zip_codes": ["78702"],
+        "area_type": "neighborhood",
+        "market_segment": "Entertainment District",
+        "avg_price_range": "$350K-$650K",
+        "keywords": ["nightlife", "restaurants", "condos"]
+      },
+      {
+        "name": "French Place",
+        "city": "Austin",
+        "zip_codes": ["78722"],
+        "area_type": "neighborhood",
+        "market_segment": "East Austin Historic",
+        "avg_price_range": "$450K-$800K",
+        "keywords": ["historic", "east austin", "bungalows"]
+      },
+      {
+        "name": "Govalle",
+        "city": "Austin",
+        "zip_codes": ["78702"],
+        "area_type": "neighborhood",
+        "market_segment": "Up-and-Coming",
+        "avg_price_range": "$300K-$600K",
+        "keywords": ["affordable", "emerging", "east austin"]
+      },
+      {
+        "name": "Holly",
+        "city": "Austin",
+        "zip_codes": ["78702"],
+        "area_type": "neighborhood",
+        "market_segment": "Transitional",
+        "avg_price_range": "$350K-$650K",
+        "keywords": ["east austin", "gentrifying", "close to downtown"]
+      },
+      {
+        "name": "Hyde Park",
+        "city": "Austin",
+        "zip_codes": ["78705"],
+        "area_type": "neighborhood",
+        "market_segment": "Historic Walkable",
+        "avg_price_range": "$500K-$1M",
+        "keywords": ["historic", "UT nearby", "walkable", "durand park"]
+      },
+      {
+        "name": "Kenwood",
+        "city": "Austin",
+        "zip_codes": ["78704"],
+        "area_type": "neighborhood",
+        "market_segment": "Family Friendly",
+        "avg_price_range": "$550K-$950K",
+        "keywords": ["south austin", "family", "schools"]
+      },
+      {
+        "name": "Mueller",
+        "city": "Austin",
+        "zip_codes": ["78723"],
+        "area_type": "neighborhood",
+        "market_segment": "New Urbanist",
+        "avg_price_range": "$500K-$800K",
+        "keywords": ["new development", "mixed use", "sustainable"]
+      },
+      {
+        "name": "North Loop",
+        "city": "Austin",
+        "zip_codes": ["78756"],
+        "area_type": "neighborhood",
+        "market_segment": "Eclectic/Local",
+        "avg_price_range": "$450K-$800K",
+        "keywords": ["local businesses", "airport blvd", "diverse"]
+      },
+      {
+        "name": "Rosedale",
+        "city": "Austin",
+        "zip_codes": ["78756"],
+        "area_type": "neighborhood",
+        "market_segment": "Mid-Century Charm",
+        "avg_price_range": "$600K-$1.2M",
+        "keywords": ["mid-century", "mature neighborhood", "central"]
+      },
+      {
+        "name": "South Lamar",
+        "city": "Austin",
+        "zip_codes": ["78704"],
+        "area_type": "neighborhood",
+        "market_segment": "Trendy Corridor",
+        "avg_price_range": "$500K-$1M",
+        "keywords": ["restaurants", "shopping", "condos", "walkable"]
+      },
+      {
+        "name": "South Park Meadows",
+        "city": "Austin",
+        "zip_codes": ["78748"],
+        "area_type": "neighborhood",
+        "market_segment": "Shopping/Suburban",
+        "avg_price_range": "$300K-$500K",
+        "keywords": ["outlets", "shopping", "new homes"]
+      },
+      {
+        "name": "Tarrytown",
+        "city": "Austin",
+        "zip_codes": ["78703"],
+        "area_type": "neighborhood",
+        "market_segment": "Upscale Central",
+        "avg_price_range": "$700K-$2M+",
+        "keywords": ["historic", "central", "prestigious"]
+      },
+      {
+        "name": "Travis Heights",
+        "city": "Austin",
+        "zip_codes": ["78704"],
+        "area_type": "neighborhood",
+        "market_segment": "Historic South Austin", 
+        "avg_price_range": "$500K-$1.2M",
+        "keywords": ["historic", "south austin", "character homes"]
+      },
+      {
+        "name": "Westlake Hills",
+        "city": "Westlake Hills",
+        "zip_codes": ["78746"],
+        "area_type": "neighborhood",
+        "market_segment": "Luxury Hills",
+        "avg_price_range": "$1M-$5M+",
+        "keywords": ["luxury", "lake austin", "westlake schools"]
+      },
+      {
+        "name": "Zilker",
+        "city": "Austin",
+        "zip_codes": ["78704"],
+        "area_type": "neighborhood",
+        "market_segment": "Park Adjacent",
+        "avg_price_range": "$600K-$1.5M",
+        "keywords": ["zilker park", "acl", "central", "trendy"]
+      }
+    ],
+    "surrounding_cities": [
+      {
+        "name": "Cedar Park",
+        "zip_codes": ["78613", "78630"],
+        "area_type": "city",
+        "market_segment": "Family Suburban",
+        "avg_price_range": "$400K-$700K",
+        "keywords": ["leander isd", "family friendly", "new homes"],
+        "distance_from_austin": "20 miles NW"
+      },
+      {
+        "name": "Leander", 
+        "zip_codes": ["78641", "78645"],
+        "area_type": "city",
+        "market_segment": "Affordable Family",
+        "avg_price_range": "$350K-$600K", 
+        "keywords": ["leander isd", "growing", "affordable"],
+        "distance_from_austin": "25 miles NW"
+      },
+      {
+        "name": "Round Rock",
+        "zip_codes": ["78664", "78665", "78681"],
+        "area_type": "city",
+        "market_segment": "Tech Corridor",
+        "avg_price_range": "$400K-$650K",
+        "keywords": ["dell", "tech jobs", "round rock isd"],
+        "distance_from_austin": "20 miles N"
+      },
+      {
+        "name": "Georgetown",
+        "zip_codes": ["78626", "78628", "78633"],
+        "area_type": "city", 
+        "market_segment": "Historic Charm",
+        "avg_price_range": "$450K-$800K",
+        "keywords": ["historic square", "southwestern university", "charm"],
+        "distance_from_austin": "30 miles N"
+      },
+      {
+        "name": "Pflugerville",
+        "zip_codes": ["78660"],
+        "area_type": "city",
+        "market_segment": "Growing Suburban", 
+        "avg_price_range": "$350K-$600K",
+        "keywords": ["pfluger", "family", "growing"],
+        "distance_from_austin": "15 miles NE"
+      },
+      {
+        "name": "Hutto",
+        "zip_codes": ["78634"],
+        "area_type": "city",
+        "market_segment": "New Development",
+        "avg_price_range": "$300K-$500K",
+        "keywords": ["new homes", "affordable", "family"],
+        "distance_from_austin": "25 miles NE"
+      },
+      {
+        "name": "Lakeway",
+        "zip_codes": ["78734"],
+        "area_type": "city",
+        "market_segment": "Lake Community",
+        "avg_price_range": "$600K-$1.5M",
+        "keywords": ["lake travis", "resort living", "luxury"],
+        "distance_from_austin": "20 miles W"
+      },
+      {
+        "name": "Bee Cave",
+        "zip_codes": ["78738"],
+        "area_type": "city",
+        "market_segment": "Upscale Suburban",
+        "avg_price_range": "$700K-$2M",
+        "keywords": ["lake travis isd", "upscale", "hill country"],
+        "distance_from_austin": "15 miles W"
+      },
+      {
+        "name": "Dripping Springs",
+        "zip_codes": ["78620"],
+        "area_type": "city",
+        "market_segment": "Hill Country",
+        "avg_price_range": "$500K-$1.2M",
+        "keywords": ["hill country", "wineries", "small town"],
+        "distance_from_austin": "25 miles W"
+      },
+      {
+        "name": "Buda", 
+        "zip_codes": ["78610"],
+        "area_type": "city",
+        "market_segment": "Small Town Charm",
+        "avg_price_range": "$400K-$700K",
+        "keywords": ["historic", "small town", "family"],
+        "distance_from_austin": "15 miles S"
+      },
+      {
+        "name": "Kyle",
+        "zip_codes": ["78640"],
+        "area_type": "city",
+        "market_segment": "Fast Growing",
+        "avg_price_range": "$350K-$600K", 
+        "keywords": ["new development", "growing", "hays cisd"],
+        "distance_from_austin": "20 miles S"
+      },
+      {
+        "name": "San Marcos",
+        "zip_codes": ["78666"],
+        "area_type": "city",
+        "market_segment": "University Town",
+        "avg_price_range": "$300K-$550K",
+        "keywords": ["texas state", "river", "university"],
+        "distance_from_austin": "30 miles S"
+      },
+      {
+        "name": "Bastrop",
+        "zip_codes": ["78602"],
+        "area_type": "city",
+        "market_segment": "Historic Small Town",
+        "avg_price_range": "$250K-$450K",
+        "keywords": ["historic", "colorado river", "small town"],
+        "distance_from_austin": "30 miles E"
+      },
+      {
+        "name": "Elgin",
+        "zip_codes": ["78621"],
+        "area_type": "city",
+        "market_segment": "Rural/Affordable",
+        "avg_price_range": "$250K-$400K",
+        "keywords": ["sausage capital", "rural", "affordable"],
+        "distance_from_austin": "25 miles E"
+      },
+      {
+        "name": "Manor",
+        "zip_codes": ["78653"],
+        "area_type": "city",
+        "market_segment": "Emerging Suburban",
+        "avg_price_range": "$300K-$500K",
+        "keywords": ["emerging", "manor isd", "east austin"],
+        "distance_from_austin": "12 miles E"
+      }
+    ],
+    "zip_code_reference": {
+      "central_austin": ["78701", "78703", "78704", "78705"],
+      "east_austin": ["78702", "78721", "78722", "78723", "78724"],
+      "north_austin": ["78751", "78752", "78753", "78756", "78757", "78758", "78759"],
+      "south_austin": ["78704", "78745", "78748", "78749"],
+      "west_austin": ["78733", "78734", "78735", "78738", "78746"],
+      "northwest_suburbs": ["78613", "78630", "78641", "78645"],
+      "northeast_suburbs": ["78634", "78660", "78664", "78665", "78681"],
+      "southwest_suburbs": ["78610", "78620", "78640"],
+      "lake_travis_area": ["78734", "78738", "78746"],
+      "leander_isd": ["78613", "78630", "78641", "78645"],
+      "round_rock_isd": ["78664", "78665", "78681"],
+      "austin_isd": ["78701", "78703", "78704", "78705", "78751", "78752", "78756", "78757"]
+    }
+  }
+}
