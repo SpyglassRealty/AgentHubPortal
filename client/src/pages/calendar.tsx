@@ -168,12 +168,9 @@ export default function CalendarPage() {
           <p className="text-muted-foreground mb-4">
             {(error as Error).message || "Please check your Follow Up Boss connection."}
           </p>
-          <a href="https://app.followupboss.com" target="_blank" rel="noopener noreferrer">
-            <Button variant="outline">
-              Open Follow Up Boss
-              <ExternalLink className="ml-2 h-4 w-4" />
-            </Button>
-          </a>
+          <p className="text-sm text-muted-foreground">
+            Events synced from Follow Up Boss
+          </p>
         </div>
       </Layout>
     );
@@ -204,13 +201,9 @@ export default function CalendarPage() {
               onRefresh={handleRefresh}
               isLoading={isLoading || isSyncing}
             />
-            <a href="https://app.followupboss.com" target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" className="border-blue-500/30 hover:bg-blue-500/10 h-8 sm:h-9 px-2 sm:px-4 text-xs sm:text-sm">
-                <span className="hidden sm:inline">Open in Follow Up Boss</span>
-                <span className="sm:hidden">FUB</span>
-                <ExternalLink className="ml-1 sm:ml-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </Button>
-            </a>
+            <div className="text-xs sm:text-sm text-muted-foreground px-2 sm:px-4">
+              Events synced from Follow Up Boss
+            </div>
           </div>
         </div>
 
