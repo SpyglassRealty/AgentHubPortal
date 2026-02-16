@@ -459,7 +459,7 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
   
   useEffect(() => {
     const updateColumns = () => {
-      const width = window.innerWidth;
+      const width = typeof window !== 'undefined' ? window.innerWidth : 1200;
       const totalComps = comparables.length;
       // Show all comparables if 5 or fewer, otherwise use responsive breakpoints
       if (totalComps <= 5 && width >= 1200) {
@@ -1031,7 +1031,7 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
 
       </div>
 
-      {selectedProperty && createPortal(
+      {selectedProperty && typeof document !== 'undefined' && createPortal(
         <PropertyDetailModal
           property={selectedProperty}
           onClose={() => setSelectedProperty(null)}
