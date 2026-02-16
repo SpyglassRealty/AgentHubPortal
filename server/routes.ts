@@ -1282,9 +1282,11 @@ export async function registerRoutes(
           mlsNumber: listing.mlsNumber,
           status: listing.standardStatus || listing.status || status,
           listPrice: listing.listPrice,
-          closePrice: listing.closePrice || listing.soldPrice,
-          closeDate: listing.closeDate || listing.soldDate,
-          listDate: listing.listDate || listing.timestamps?.listDate || '',
+          closePrice: listing.closePrice || listing.soldPrice || null,
+          closeDate: listing.closeDate || listing.soldDate || listing.timestamps?.closedDate || null,
+          soldPrice: listing.soldPrice || listing.closePrice || null,
+          soldDate: listing.soldDate || listing.closeDate || listing.timestamps?.soldDate || listing.timestamps?.closedDate || null,
+          listDate: listing.listDate || listing.timestamps?.listDate || listing.timestamps?.originalEntryTimestamp || '',
           daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
           address: {
             streetNumber,
@@ -1456,7 +1458,9 @@ export async function registerRoutes(
           mlsNumber: listing.mlsNumber,
           status: listing.standardStatus || listing.status || status,
           listPrice: listing.listPrice,
-          listDate: listing.listDate || listing.timestamps?.listDate || '',
+          soldPrice: listing.soldPrice || listing.closePrice || null,
+          soldDate: listing.soldDate || listing.closeDate || listing.timestamps?.soldDate || listing.timestamps?.closedDate || null,
+          listDate: listing.listDate || listing.timestamps?.listDate || listing.timestamps?.originalEntryTimestamp || '',
           daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
           address: {
             streetNumber,
@@ -3008,7 +3012,7 @@ Respond with valid JSON in this exact format:
             yearBuilt: listing.details?.yearBuilt || null,
             propertyType: listing.details?.propertyType || listing.propertyType || '',
             status: listing.standardStatus || listing.status || '',
-            listDate: listing.listDate || listing.timestamps?.listDate || '',
+            listDate: listing.listDate || listing.timestamps?.listDate || listing.timestamps?.originalEntryTimestamp || '',
             soldDate: listing.soldDate || listing.closeDate || listing.timestamps?.soldDate || listing.timestamps?.closedDate || null,
             daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
             photos,
@@ -3247,7 +3251,7 @@ Respond with valid JSON in this exact format:
           yearBuilt: listing.details?.yearBuilt || null,
           propertyType: listing.details?.style || listing.details?.propertyType || listing.propertyType || '',
           status: listing.standardStatus || listing.status || '',
-          listDate: listing.listDate || listing.timestamps?.listDate || '',
+          listDate: listing.listDate || listing.timestamps?.listDate || listing.timestamps?.originalEntryTimestamp || '',
           soldDate: listing.soldDate || listing.closeDate || listing.timestamps?.soldDate || listing.timestamps?.closedDate || null,
           daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
           photos,
@@ -3259,15 +3263,16 @@ Respond with valid JSON in this exact format:
       });
 
       // Debug logging for first listing date fields
-      if (listings.length > 0 && (data.listings || []).length > 0) {
-        const firstListing = (data.listings || [])[0];
-        console.log('[CMA Search] First listing date debug:', JSON.stringify({
-          listDate: firstListing.listDate,
-          soldDate: firstListing.soldDate,
-          closeDate: firstListing.closeDate,
-          daysOnMarket: firstListing.daysOnMarket,
-          dom: firstListing.dom,
-          timestamps: firstListing.timestamps,
+      if (data.listings && data.listings.length > 0) {
+        const sample = data.listings[0];
+        console.log('[CMA Search] Sample listing date fields:', JSON.stringify({
+          listDate: sample.listDate,
+          soldDate: sample.soldDate,
+          closeDate: sample.closeDate,
+          daysOnMarket: sample.daysOnMarket,
+          dom: sample.dom,
+          timestamps: sample.timestamps,
+          standardStatus: sample.standardStatus,
         }));
       }
 
