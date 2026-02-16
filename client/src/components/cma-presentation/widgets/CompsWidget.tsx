@@ -459,7 +459,8 @@ function SideBySideComparison({ comparables, subjectProperty }: { comparables: C
   useEffect(() => {
     const updateColumns = () => {
       const width = window.innerWidth;
-      if (width >= 1200) setVisibleColumns(4);
+      if (width >= 1400) setVisibleColumns(5);
+      else if (width >= 1200) setVisibleColumns(4);
       else if (width >= 768) setVisibleColumns(2);
       else setVisibleColumns(1);
     };
@@ -507,7 +508,7 @@ function SideBySideComparison({ comparables, subjectProperty }: { comparables: C
                 {subjectProperty?.latitude && subjectProperty?.longitude ? (
                   <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden mb-2">
                     <img
-                      src={`https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+e74c3c(${subjectProperty.longitude},${subjectProperty.latitude})/${subjectProperty.longitude},${subjectProperty.latitude},14,0/300x200@2x?access_token=${import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || process.env.MAPBOX_ACCESS_TOKEN}`}
+                      src={`https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+e74c3c(${subjectProperty.longitude},${subjectProperty.latitude})/${subjectProperty.longitude},${subjectProperty.latitude},14,0/300x200@2x?access_token=${import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}`}
                       alt={`Map of ${subjectProperty.address}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -520,13 +521,13 @@ function SideBySideComparison({ comparables, subjectProperty }: { comparables: C
                     />
                     <div className="w-full h-full bg-gray-100 rounded-lg flex-col items-center justify-center text-gray-600 gap-1 p-2" style={{ display: 'none' }}>
                       <MapPin className="w-6 h-6" />
-                      <span className="text-xs text-center leading-tight">{subjectProperty.address}</span>
+                      <span className="text-xs text-center leading-tight">Map unavailable</span>
                     </div>
                   </div>
                 ) : (
                   <div className="w-full h-32 bg-gray-100 rounded-lg flex flex-col items-center justify-center text-gray-600 gap-1 p-2 mb-2">
                     <MapPin className="w-6 h-6" />
-                    <span className="text-xs text-center leading-tight font-medium">{subjectProperty?.address || 'Subject Property'}</span>
+                    <span className="text-xs text-center leading-tight font-medium">No map coordinates</span>
                   </div>
                 )}
                 <div className="font-medium text-sm">{subjectProperty.address}</div>
