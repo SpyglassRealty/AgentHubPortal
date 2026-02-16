@@ -816,6 +816,14 @@ function SearchPropertiesSection({
 
       const res = await apiRequest("POST", "/api/cma/search-properties", body);
       const data = await res.json();
+      
+      // Debug logging to check photos data
+      console.log('[CMA Search Debug] API Response:', {
+        listingsCount: data.listings?.length || 0,
+        firstListingPhotos: data.listings?.[0]?.photos || 'no photos field',
+        firstListingPhoto: data.listings?.[0]?.photo || 'no photo field'
+      });
+      
       setSearchResults(data.listings || []);
       setTotalResults(data.total || 0);
       setPage(data.page || 1);
