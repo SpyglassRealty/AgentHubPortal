@@ -892,7 +892,7 @@ export function CMAMap({
 
   if (error) {
     return (
-      <div className="w-full h-[550px] rounded-lg border flex items-center justify-center bg-muted">
+      <div className="w-full h-full rounded-lg border flex items-center justify-center bg-muted">
         <p className="text-muted-foreground">{error}</p>
       </div>
     );
@@ -900,7 +900,7 @@ export function CMAMap({
 
   if (!token) {
     return (
-      <div className="w-full h-[550px] rounded-lg border flex items-center justify-center bg-muted">
+      <div className="w-full h-full rounded-lg border flex items-center justify-center bg-muted">
         <p className="text-muted-foreground">Loading map...</p>
       </div>
     );
@@ -911,7 +911,7 @@ export function CMAMap({
 
   return (
     <div
-      className="relative w-full h-[550px] rounded-lg overflow-hidden border"
+      className="relative w-full h-full rounded-lg overflow-hidden border"
       data-testid="cma-map-container"
     >
       <div ref={mapContainer} className="w-full h-full touch-manipulation" />
