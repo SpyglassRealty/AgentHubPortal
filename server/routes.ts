@@ -1284,8 +1284,8 @@ export async function registerRoutes(
           listPrice: listing.listPrice,
           closePrice: listing.closePrice || listing.soldPrice,
           closeDate: listing.closeDate || listing.soldDate,
-          listDate: listing.listDate,
-          daysOnMarket: listing.daysOnMarket || listing.dom || 0,
+          listDate: listing.listDate || listing.timestamps?.listDate || '',
+          daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
           address: {
             streetNumber,
             streetName,
@@ -1456,8 +1456,8 @@ export async function registerRoutes(
           mlsNumber: listing.mlsNumber,
           status: listing.standardStatus || listing.status || status,
           listPrice: listing.listPrice,
-          listDate: listing.listDate,
-          daysOnMarket: listing.daysOnMarket || listing.dom || 0,
+          listDate: listing.listDate || listing.timestamps?.listDate || '',
+          daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
           address: {
             streetNumber,
             streetName,
@@ -3008,9 +3008,9 @@ Respond with valid JSON in this exact format:
             yearBuilt: listing.details?.yearBuilt || null,
             propertyType: listing.details?.propertyType || listing.propertyType || '',
             status: listing.standardStatus || listing.status || '',
-            listDate: listing.listDate || '',
-            soldDate: listing.soldDate || listing.closeDate || null,
-            daysOnMarket: listing.daysOnMarket || 0,
+            listDate: listing.listDate || listing.timestamps?.listDate || '',
+            soldDate: listing.soldDate || listing.closeDate || listing.timestamps?.soldDate || listing.timestamps?.closedDate || null,
+            daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
             photos,
             stories: listing.details?.numStoreys || null,
             subdivision: listing.address?.area || listing.address?.neighborhood || '',
@@ -3247,9 +3247,9 @@ Respond with valid JSON in this exact format:
           yearBuilt: listing.details?.yearBuilt || null,
           propertyType: listing.details?.style || listing.details?.propertyType || listing.propertyType || '',
           status: listing.standardStatus || listing.status || '',
-          listDate: listing.listDate || '',
-          soldDate: listing.soldDate || listing.closeDate || null,
-          daysOnMarket: listing.daysOnMarket || 0,
+          listDate: listing.listDate || listing.timestamps?.listDate || '',
+          soldDate: listing.soldDate || listing.closeDate || listing.timestamps?.soldDate || listing.timestamps?.closedDate || null,
+          daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
           photos,
           stories: listing.details?.numStoreys || null,
           subdivision: listing.address?.neighborhood || listing.address?.area || '',
@@ -3257,6 +3257,19 @@ Respond with valid JSON in this exact format:
           longitude: listing.map?.longitude || listing.address?.longitude || null,
         };
       });
+
+      // Debug logging for first listing date fields
+      if (listings.length > 0 && (data.listings || []).length > 0) {
+        const firstListing = (data.listings || [])[0];
+        console.log('[CMA Search] First listing date debug:', JSON.stringify({
+          listDate: firstListing.listDate,
+          soldDate: firstListing.soldDate,
+          closeDate: firstListing.closeDate,
+          daysOnMarket: firstListing.daysOnMarket,
+          dom: firstListing.dom,
+          timestamps: firstListing.timestamps,
+        }));
+      }
 
       // Post-filter by subdivision if provided (substring match, like MLS)
       let filteredListings = listings;
