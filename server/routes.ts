@@ -4743,7 +4743,7 @@ Respond with valid JSON in this exact format:
   });
 
   // GET /api/mapbox-token - Get Mapbox access token for maps
-  app.get('/api/mapbox-token', isAuthenticated, async (req: any, res) => {
+  app.get('/api/mapbox-token', async (req: any, res) => {
     try {
       const mapboxToken = process.env.MAPBOX_ACCESS_TOKEN;
       
