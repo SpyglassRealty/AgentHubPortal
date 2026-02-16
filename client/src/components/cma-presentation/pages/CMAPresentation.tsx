@@ -409,7 +409,22 @@ export default function CMAPresentation() {
 
   const subjectProperty = useMemo(() => {
     const rawSubject = cmaData?.subjectProperty as any;
-    if (!rawSubject) return undefined;
+    if (!rawSubject) {
+      // Construct minimal subject from CMA name when subjectProperty is null in DB
+      return {
+        address: cmaData?.name || 'Subject Property',
+        unparsedAddress: cmaData?.name || 'Subject Property',
+        streetAddress: cmaData?.name || 'Subject Property',
+        beds: 0,
+        bedroomsTotal: 0,
+        baths: 0,
+        bathroomsTotal: 0,
+        sqft: 0,
+        livingArea: 0,
+        standardStatus: 'Active',
+        mlsNumber: '',
+      } as any;
+    }
     
     return {
       ...rawSubject,
