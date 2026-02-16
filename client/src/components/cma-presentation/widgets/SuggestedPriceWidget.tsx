@@ -8,6 +8,87 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import type { CmaProperty } from '../types';
 
+// Helper component for Comparable Properties Photo Collage
+function ComparablePropertiesPhotoCollage({ comparables }: { comparables: CmaProperty[] }) {
+  const compsWithPhotos = comparables
+    ?.filter(c => (c.photos && c.photos.length > 0) || c.photo)
+    ?.slice(0, 6) || [];
+
+  if (compsWithPhotos.length === 0) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-4">
+        <Home className="w-10 h-10 mb-2" />
+        <p className="font-medium text-sm text-center">No Comparable Photos Available</p>
+        <p className="text-xs text-center">Photos will appear when comparables are added</p>
+      </div>
+    );
+  }
+
+  const getGridLayout = (count: number) => {
+    if (count <= 2) return { cols: '1fr', rows: '1fr' };
+    if (count <= 4) return { cols: 'repeat(2, 1fr)', rows: 'repeat(2, 1fr)' };
+    return { cols: 'repeat(2, 1fr)', rows: 'repeat(3, 1fr)' };
+  };
+
+  const layout = getGridLayout(compsWithPhotos.length);
+  const formatPrice = (price: number) => {
+    if (price >= 1000000) return `$${(price / 1000000).toFixed(1)}M`;
+    return `$${Math.round(price / 1000)}K`;
+  };
+
+  return (
+    <div className="relative w-full h-full">
+      {/* Title overlay */}
+      <div className="absolute top-2 left-2 bg-black/80 backdrop-blur-sm text-white px-2 py-1 rounded text-xs font-medium z-10">
+        Comparable Properties
+      </div>
+      
+      <div 
+        className="grid gap-1 h-full p-1"
+        style={{
+          gridTemplateColumns: layout.cols,
+          gridTemplateRows: layout.rows,
+        }}
+      >
+        {compsWithPhotos.map((comp, i) => {
+          const photoUrl = (comp.photos && comp.photos.length > 0) ? comp.photos[0] : comp.photo!;
+          const price = comp.soldPrice || comp.listPrice || comp.price || 0;
+          const address = comp.address?.split(',')[0] || 'Property';
+          
+          return (
+            <div
+              key={i}
+              className="relative overflow-hidden rounded-md"
+              style={{
+                gridColumn: i === 0 && compsWithPhotos.length >= 5 ? 'span 2' : undefined,
+              }}
+            >
+              <img
+                src={photoUrl}
+                alt={comp.address || 'Comparable property'}
+                loading="lazy"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    parent.innerHTML = `<div class="w-full h-full bg-muted flex items-center justify-center"><svg class="w-6 h-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>`;
+                  }
+                }}
+              />
+              <div className="absolute bottom-0 left-0 right-0 bg-black/50 backdrop-blur-sm px-2 py-1">
+                <span className="text-white text-xs font-medium truncate block">
+                  {price > 0 ? formatPrice(price) : 'N/A'} · {address}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 interface ImageInsight {
   url: string;
   classification?: { imageOf?: string; prediction?: number };
@@ -217,21 +298,47 @@ export function SuggestedPriceWidget({
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
-    if (!subjectProperty?.latitude || !subjectProperty?.longitude) return;
     if (!mapToken) return;
     
     mapboxgl.accessToken = mapToken;
     
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [subjectProperty.longitude, subjectProperty.latitude],
-      zoom: 14,
+      style: 'mapbox://styles/mapbox/light-v11',
+      center: [subjectProperty?.longitude || -97.7431, subjectProperty?.latitude || 30.2672], // Default to Austin
+      zoom: 12,
     });
     
-    new mapboxgl.Marker({ color: '#EF4923' })
-      .setLngLat([subjectProperty.longitude, subjectProperty.latitude])
-      .addTo(map.current);
+    const bounds = new mapboxgl.LngLatBounds();
+    
+    // Subject property marker (larger orange)
+    if (subjectProperty?.latitude && subjectProperty?.longitude) {
+      const el = document.createElement('div');
+      el.style.cssText = 'width:20px;height:20px;background:#E03103;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);';
+      new mapboxgl.Marker(el)
+        .setLngLat([subjectProperty.longitude, subjectProperty.latitude])
+        .setPopup(new mapboxgl.Popup().setHTML('<strong>Subject Property</strong><br/>' + (subjectProperty.address || 'Property')))
+        .addTo(map.current);
+      bounds.extend([subjectProperty.longitude, subjectProperty.latitude]);
+    }
+    
+    // Comparable properties markers (smaller teal)
+    comparables?.forEach((comp) => {
+      if (!comp.latitude || !comp.longitude) return;
+      const el = document.createElement('div');
+      el.style.cssText = 'width:14px;height:14px;background:#0D9488;border:2px solid white;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.2);';
+      const price = comp.soldPrice || comp.listPrice || comp.price || 0;
+      new mapboxgl.Marker(el)
+        .setLngLat([comp.longitude, comp.latitude])
+        .setPopup(new mapboxgl.Popup().setHTML('<strong>' + (comp.address || 'Comparable') + '</strong><br/>$' + (price > 0 ? price.toLocaleString() : 'N/A')))
+        .addTo(map.current);
+      bounds.extend([comp.longitude, comp.latitude]);
+    });
+    
+    // Fit map bounds to show all markers
+    if (!bounds.isEmpty()) {
+      map.current.fitBounds(bounds, { padding: 50, maxZoom: 14 });
+    }
     
     map.current.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
     
@@ -239,7 +346,7 @@ export function SuggestedPriceWidget({
       map.current?.remove();
       map.current = null;
     };
-  }, [subjectProperty?.latitude, subjectProperty?.longitude, mapToken]);
+  }, [subjectProperty?.latitude, subjectProperty?.longitude, mapToken, comparables]);
 
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat('en-US', { 
@@ -374,59 +481,9 @@ export function SuggestedPriceWidget({
         
         <div className="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
           
+          {/* LEFT SIDE - Comparable Properties Photo Collage */}
           <div className="relative rounded-xl overflow-hidden shadow-lg bg-muted min-h-[120px] md:min-h-0">
-            {photosToShow.length > 0 && currentPhoto ? (
-              <>
-                <SafeImage
-                  src={currentPhoto.url}
-                  alt="Property"
-                  className="w-full h-full object-cover"
-                />
-                
-                {currentPhoto.quality?.quantitative && currentPhoto.quality.quantitative > 0 && (
-                  <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm text-white 
-                                  px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-medium shadow-lg"
-                       data-testid="ai-best-photo-badge">
-                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                    <span>AI Best Photo</span>
-                    <span className="bg-green-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
-                      {Math.round(currentPhoto.quality.quantitative * 20)}%
-                    </span>
-                  </div>
-                )}
-                
-                {currentPhoto.classification?.imageOf && (
-                  <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white 
-                                  px-2 py-1 rounded text-[10px] sm:text-xs">
-                    {formatImageLabel(currentPhoto.classification.imageOf)}
-                  </div>
-                )}
-                
-                {photosToShow.length > 1 && (
-                  <div className="absolute bottom-2 right-2 flex gap-1">
-                    {photosToShow.map((photo, idx) => (
-                      <div
-                        key={idx}
-                        className={`rounded-md ${currentPhotoIndex === idx ? 'ring-2 ring-[#EF4923]' : ''}`}
-                      >
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setCurrentPhotoIndex(idx)}
-                          data-testid={`photo-thumbnail-${idx}`}
-                        >
-                          <SafeImage src={photo.url} alt="" className="w-full h-full object-cover" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                <Camera className="w-10 h-10" />
-              </div>
-            )}
+            <ComparablePropertiesPhotoCollage comparables={comparables} />
           </div>
           
           <div className="flex flex-col justify-center items-center text-center py-1 sm:py-2">
@@ -557,27 +614,43 @@ export function SuggestedPriceWidget({
             </div>
           </div>
           
+          {/* RIGHT SIDE - Comparable Properties Location Map */}
           <div className="relative rounded-xl overflow-hidden shadow-lg bg-muted min-h-[120px] md:min-h-0">
-            {hasCoordinates && mapToken && !mapError ? (
-              <div 
-                ref={mapContainer}
-                className="w-full h-full min-h-[120px]"
-                data-testid="map-container"
-              />
+            {mapToken && !mapError ? (
+              <>
+                <div 
+                  ref={mapContainer}
+                  className="w-full h-full min-h-[120px]"
+                  data-testid="map-container"
+                />
+                
+                {/* Map Legend */}
+                <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm rounded-lg p-2 text-xs z-10 shadow-md">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-3 h-3 bg-[#E03103] border border-white rounded-full"></div>
+                    <span className="text-gray-800">Subject Property</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-[#0D9488] border border-white rounded-full"></div>
+                    <span className="text-gray-800">Comparables</span>
+                  </div>
+                </div>
+                
+                {/* Coordinates (only if subject has coordinates) */}
+                {hasCoordinates && (
+                  <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white 
+                                  px-2 py-1 rounded text-[10px] font-mono z-10">
+                    {subjectProperty?.latitude?.toFixed(4)}°N, {Math.abs(subjectProperty?.longitude || 0).toFixed(4)}°W
+                  </div>
+                )}
+              </>
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-3">
                 <MapPin className="w-8 h-8 mb-2" />
-                <p className="font-medium text-sm">Subject Property Map</p>
+                <p className="font-medium text-sm">Comparable Properties Map</p>
                 <p className="text-xs">
-                  {mapError ? 'Map unavailable' : !hasCoordinates ? 'No coordinates' : 'Loading...'}
+                  {mapError ? 'Map unavailable' : 'Loading map...'}
                 </p>
-              </div>
-            )}
-            
-            {hasCoordinates && (
-              <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white 
-                              px-2 py-1 rounded text-[10px] font-mono z-10">
-                {subjectProperty?.latitude?.toFixed(4)}°N, {Math.abs(subjectProperty?.longitude || 0).toFixed(4)}°W
               </div>
             )}
           </div>
