@@ -481,7 +481,7 @@ function SideBySideComparison({ comparables, subjectProperty }: { comparables: C
     setCurrentIndex(Math.min(comparables.length - visibleColumns, currentIndex + visibleColumns));
   };
   
-  if (!subjectProperty) {
+  if (!subjectProperty && !comparables?.length) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
         <div className="text-center">
