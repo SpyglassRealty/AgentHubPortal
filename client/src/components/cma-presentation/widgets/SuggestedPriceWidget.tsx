@@ -372,19 +372,8 @@ export function SuggestedPriceWidget({
   const subjectSqft = subjectProperty ? extractSqft(subjectProperty) || 0 : 0;
   const subjectPricePerSqft = subjectSqft > 0 && displayedPrice > 0 ? displayedPrice / subjectSqft : 0;
 
-  console.log('🔍 [SuggestedPriceWidget] Debug:', {
-    displayPrice,
-    suggestedPrice,
-    displayedPrice,
-    avgPrice,
-    avgPricePerSqft,
-    subjectSqft
-  });
-
   const priceVsMarket = calculateVsMarket(displayedPrice, avgPrice);
   const psfVsMarket = calculateVsMarket(subjectPricePerSqft, avgPricePerSqft);
-  
-  console.log('🔍 [SuggestedPriceWidget] VS Market:', { priceVsMarket, psfVsMarket });
   
   const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
   const maxPrice = validPrices.length > 0 ? Math.max(...validPrices) : 0;
