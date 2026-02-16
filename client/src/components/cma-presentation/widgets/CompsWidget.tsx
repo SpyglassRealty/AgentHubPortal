@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SafeImage } from '@/components/ui/safe-image';
-import { BarChart3, Map as MapIcon, TrendingUp, List, LayoutGrid, Table2, Bed, Bath, Square, Clock, MapPin, Home, AlertTriangle, ArrowUpRight, ArrowDownRight, Camera } from 'lucide-react';
+import { BarChart3, Map as MapIcon, TrendingUp, List, LayoutGrid, Table2, Bed, Bath, Square, Clock, MapPin, Home, AlertTriangle, ArrowUpRight, ArrowDownRight, Camera, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CMAMap } from '@/components/cma-map';
 import { PropertyDetailModal } from './PropertyDetailModal';
 import { extractPrice, extractSqft, extractDOM, calculatePricePerSqft, getCityState } from '@/lib/cma-data-utils';
@@ -397,6 +397,333 @@ function PropertyTable({ comparables, subjectProperty, onPropertyClick }: { comp
   );
 }
 
+// Helper function to calculate comparison indicators
+function getComparisonIndicator(compValue: number | null, subjectValue: number | null, field: 'sqft' | 'lot' | 'count') {
+  if (compValue === null || subjectValue === null || subjectValue === 0) return null;
+  
+  if (field === 'count') {
+    // For beds, baths, garage - show absolute difference
+    const diff = compValue - subjectValue;
+    if (diff === 0) return null;
+    return {
+      arrow: diff > 0 ? ArrowUpRight : ArrowDownRight,
+      text: `${diff > 0 ? '↑' : '↓'}${Math.abs(diff)}`,
+      color: diff > 0 ? 'text-green-500' : 'text-red-500'
+    };
+  } else {
+    // For sqft, lot - show percentage difference
+    const pctDiff = ((compValue - subjectValue) / subjectValue) * 100;
+    if (Math.abs(pctDiff) < 0.5) return null; // Don't show very small differences
+    return {
+      arrow: pctDiff > 0 ? ArrowUpRight : ArrowDownRight,
+      text: `${pctDiff > 0 ? '↑' : '↓'}${Math.abs(pctDiff).toFixed(1)}%`,
+      color: pctDiff > 0 ? 'text-green-500' : 'text-red-500'
+    };
+  }
+}
+
+// Status legend for subject column
+function StatusLegend() {
+  return (
+    <div className="space-y-1 text-xs">
+      <div className="font-medium">Listing Status</div>
+      <div className="space-y-0.5">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+          <span className="text-gray-600">Active (For Sale) are current competition</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+          <span className="text-gray-600">Sold determine recent market value</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+          <span className="text-gray-600">Pending signal market direction</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+          <span className="text-gray-600">Withdrawn/Expired indicate overpriced</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Side-by-side comparison view component
+function SideBySideComparison({ comparables, subjectProperty }: { comparables: CmaProperty[]; subjectProperty?: CmaProperty }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  // Responsive columns based on screen width
+  const [visibleColumns, setVisibleColumns] = useState(4);
+  
+  useEffect(() => {
+    const updateColumns = () => {
+      const width = window.innerWidth;
+      if (width >= 1200) setVisibleColumns(4);
+      else if (width >= 768) setVisibleColumns(2);
+      else setVisibleColumns(1);
+    };
+    
+    updateColumns();
+    window.addEventListener('resize', updateColumns);
+    return () => window.removeEventListener('resize', updateColumns);
+  }, []);
+  
+  const visibleComparables = comparables.slice(currentIndex, currentIndex + visibleColumns);
+  const canScrollLeft = currentIndex > 0;
+  const canScrollRight = currentIndex + visibleColumns < comparables.length;
+  
+  const scrollLeft = () => {
+    setCurrentIndex(Math.max(0, currentIndex - visibleColumns));
+  };
+  
+  const scrollRight = () => {
+    setCurrentIndex(Math.min(comparables.length - visibleColumns, currentIndex + visibleColumns));
+  };
+  
+  if (!subjectProperty) {
+    return (
+      <div className="flex items-center justify-center h-64 text-gray-500">
+        <div className="text-center">
+          <Home className="w-12 h-12 mx-auto mb-2 opacity-50" />
+          <p>Subject property required for comparison view</p>
+        </div>
+      </div>
+    );
+  }
+  
+  const subjectSqft = extractSqft(subjectProperty);
+  const subjectLotSize = subjectProperty.lotSize || subjectProperty.lotSizeAcres || null;
+  
+  return (
+    <div className="relative">
+      <div className="overflow-x-auto">
+        <div className="inline-flex min-w-full">
+          {/* Fixed Subject Column */}
+          <div className="w-64 flex-shrink-0 border-r border-gray-200 bg-blue-50">
+            <div className="p-4 space-y-4">
+              {/* Subject Header */}
+              <div className="text-center">
+                <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center mb-2">
+                  <MapPin className="w-8 h-8 text-gray-400" />
+                </div>
+                <div className="font-medium text-sm">{subjectProperty.address}</div>
+                <div className="text-xs text-gray-600">Subject Property</div>
+              </div>
+              
+              {/* Subject Stats */}
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Beds:</span>
+                  <span>{subjectProperty.beds || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Baths:</span>
+                  <span>{subjectProperty.baths || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Sq.Ft:</span>
+                  <span>{subjectSqft ? subjectSqft.toLocaleString() : '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Lot:</span>
+                  <span>{subjectLotSize ? subjectLotSize.toLocaleString() : '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Garage:</span>
+                  <span>{subjectProperty.garageSpaces || subjectProperty.garage || '0'}</span>
+                </div>
+              </div>
+              
+              {/* Your Comp Guide */}
+              <div className="pt-4 border-t border-blue-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <Home className="w-4 h-4" />
+                  <span className="font-medium text-sm">Your Comp Guide</span>
+                </div>
+                <StatusLegend />
+              </div>
+            </div>
+          </div>
+          
+          {/* Scrollable Comparable Columns */}
+          {visibleComparables.map((comp, index) => {
+            const compSqft = extractSqft(comp);
+            const compPrice = extractPrice(comp);
+            const compLotSize = comp.lotSize || comp.lotSizeAcres || null;
+            
+            // Calculate indicators
+            const sqftIndicator = getComparisonIndicator(compSqft, subjectSqft, 'sqft');
+            const lotIndicator = getComparisonIndicator(compLotSize, subjectLotSize, 'lot');
+            const bedsIndicator = getComparisonIndicator(comp.beds, subjectProperty.beds, 'count');
+            const bathsIndicator = getComparisonIndicator(comp.baths, subjectProperty.baths, 'count');
+            const garageIndicator = getComparisonIndicator(
+              comp.garageSpaces || comp.garage || 0, 
+              subjectProperty.garageSpaces || subjectProperty.garage || 0, 
+              'count'
+            );
+            
+            // Sold price percentage
+            const listPrice = comp.listPrice || comp.price;
+            const soldPrice = comp.soldPrice;
+            const soldPct = (listPrice && soldPrice) ? (soldPrice / listPrice) * 100 : null;
+            const soldPctColor = soldPct ? (soldPct >= 100 ? 'text-green-600' : soldPct >= 95 ? 'text-gray-900' : 'text-red-600') : '';
+            
+            return (
+              <div key={comp.id} className="w-64 flex-shrink-0 border-r border-gray-200">
+                <div className="p-4 space-y-4">
+                  {/* Comp Header */}
+                  <div className="text-center">
+                    <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden mb-2">
+                      {comp.photos && comp.photos.length > 0 ? (
+                        <img 
+                          src={comp.photos[0]} 
+                          alt={comp.address}
+                          className="w-full h-full object-cover cursor-pointer hover:opacity-80"
+                          onClick={() => {
+                            // TODO: Navigate to property detail
+                            console.log('Navigate to property detail:', comp.id);
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Camera className="w-8 h-8 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="font-medium text-sm text-gray-900">{comp.address}</div>
+                    <div className="text-sm font-semibold text-green-600">
+                      {compPrice ? `$${compPrice.toLocaleString()}` : '-'}
+                    </div>
+                    <div className="text-xs text-gray-600 capitalize">
+                      {comp.status || 'Unknown'}
+                    </div>
+                  </div>
+                  
+                  {/* Comp Stats with Indicators */}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span>Beds:</span>
+                      <div className="flex items-center gap-1">
+                        <span>{comp.beds || '-'}</span>
+                        {bedsIndicator && (
+                          <span className={`text-xs ${bedsIndicator.color}`}>
+                            {bedsIndicator.text}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>Baths:</span>
+                      <div className="flex items-center gap-1">
+                        <span>{comp.baths || '-'}</span>
+                        {bathsIndicator && (
+                          <span className={`text-xs ${bathsIndicator.color}`}>
+                            {bathsIndicator.text}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>Sq.Ft:</span>
+                      <div className="flex items-center gap-1">
+                        <span>{compSqft ? compSqft.toLocaleString() : '-'}</span>
+                        {sqftIndicator && (
+                          <span className={`text-xs ${sqftIndicator.color}`}>
+                            {sqftIndicator.text}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>Lot:</span>
+                      <div className="flex items-center gap-1">
+                        <span>{compLotSize ? compLotSize.toLocaleString() : '-'}</span>
+                        {lotIndicator && (
+                          <span className={`text-xs ${lotIndicator.color}`}>
+                            {lotIndicator.text}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>Garage:</span>
+                      <div className="flex items-center gap-1">
+                        <span>{comp.garageSpaces || comp.garage || '0'}</span>
+                        {garageIndicator && (
+                          <span className={`text-xs ${garageIndicator.color}`}>
+                            {garageIndicator.text}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Listing Details */}
+                  <div className="pt-4 border-t border-gray-200 space-y-1 text-xs">
+                    <div className="font-medium">Listing Details</div>
+                    {comp.originalPrice && (
+                      <div>Orig: ${comp.originalPrice.toLocaleString()}</div>
+                    )}
+                    {listPrice && (
+                      <div>List: ${listPrice.toLocaleString()}</div>
+                    )}
+                    {soldPct && (
+                      <div className={soldPctColor}>
+                        Sold: {soldPct.toFixed(1)}%
+                      </div>
+                    )}
+                    {compPrice && compSqft && (
+                      <div>$/Sqft: ${Math.round(compPrice / compSqft)}</div>
+                    )}
+                    {comp.soldDate && (
+                      <div>Sold: {new Date(comp.soldDate).toLocaleDateString()}</div>
+                    )}
+                    {comp.daysOnMarket && (
+                      <div>DOM: {comp.daysOnMarket}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      
+      {/* Navigation Controls */}
+      {comparables.length > visibleColumns && (
+        <div className="flex justify-center items-center gap-4 mt-4 pb-4">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={scrollLeft}
+            disabled={!canScrollLeft}
+            className="rounded-full w-12 h-12"
+            data-testid="scroll-left"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </Button>
+          
+          <div className="text-sm text-gray-600">
+            {currentIndex + 1}-{Math.min(currentIndex + visibleColumns, comparables.length)} of {comparables.length} comparables
+          </div>
+          
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={scrollRight}
+            disabled={!canScrollRight}
+            className="rounded-full w-12 h-12"
+            data-testid="scroll-right"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CompsMapView({ comparables, subjectProperty }: { comparables: CmaProperty[]; subjectProperty?: CmaProperty }) {
   const normalizedSubject: Property | null = subjectProperty ? convertToProperty(subjectProperty) : null;
   const normalizedComparables: Property[] = comparables.map(convertToProperty);
@@ -447,7 +774,6 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
     );
   }
   const [mainView, setMainView] = useState<'compare' | 'map' | 'stats'>('compare');
-  const [subView, setSubView] = useState<'grid' | 'list' | 'table'>('grid');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedProperty, setSelectedProperty] = useState<CmaProperty | null>(null);
 
@@ -557,87 +883,15 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
           );
         })()}
         
-        {mainView === 'compare' && (
-          <div className="flex items-center gap-2 flex-wrap" data-testid="view-toggles">
-            <span className="text-sm text-gray-600">View:</span>
-            <Button
-              variant={subView === 'grid' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSubView('grid')}
-              className="gap-1"
-              data-testid="view-grid"
-            >
-              <LayoutGrid className="w-4 h-4" /> Grid
-            </Button>
-            <Button
-              variant={subView === 'list' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSubView('list')}
-              className="gap-1"
-              data-testid="view-list"
-            >
-              <List className="w-4 h-4" /> List
-            </Button>
-            <Button
-              variant={subView === 'table' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSubView('table')}
-              className="gap-1"
-              data-testid="view-table"
-            >
-              <Table2 className="w-4 h-4" /> Table
-            </Button>
-          </div>
-        )}
+        {/* Removed old compare view toggles - now using side-by-side comparison */}
       </div>
       
       <div className="flex-1 overflow-auto p-4" data-testid="content-area">
         {mainView === 'compare' && (
-          <>
-            {subView === 'grid' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="grid-view">
-                {subjectProperty && (
-                  <PropertyCard 
-                    property={{...subjectProperty, isSubject: true}} 
-                    isSubject 
-                    onClick={() => setSelectedProperty({...subjectProperty, isSubject: true})}
-                  />
-                )}
-                {filteredComparables.map(comp => (
-                  <PropertyCard 
-                    key={comp.id} 
-                    property={comp} 
-                    onClick={() => setSelectedProperty(comp)}
-                  />
-                ))}
-              </div>
-            )}
-            {subView === 'list' && (
-              <div className="space-y-3" data-testid="list-view">
-                {subjectProperty && (
-                  <PropertyListItem 
-                    property={{...subjectProperty, isSubject: true}} 
-                    isSubject 
-                    onClick={() => setSelectedProperty({...subjectProperty, isSubject: true})}
-                  />
-                )}
-                {filteredComparables.map(comp => (
-                  <PropertyListItem 
-                    key={comp.id} 
-                    property={comp} 
-                    onClick={() => setSelectedProperty(comp)}
-                  />
-                ))}
-              </div>
-            )}
-            {subView === 'table' && (
-              <PropertyTable 
-                comparables={filteredComparables} 
-                subjectProperty={subjectProperty ? {...subjectProperty, isSubject: true} : undefined}
-                onPropertyClick={setSelectedProperty}
-              />
-            )}
-          </>
+          <SideBySideComparison 
+            comparables={filteredComparables}
+            subjectProperty={subjectProperty}
+          />
         )}
 
         {mainView === 'map' && (
