@@ -29,6 +29,7 @@ import AdminSettingsPage from "@/pages/admin-settings";
 import AdminPage from "@/pages/admin";
 import AdminDashboardsRouter from "@/pages/admin-dashboards";
 import AdminBeaconPage from "@/pages/admin-beacon";
+import CmsRouter from "@/pages/cms";
 
 // Backward compatibility redirect component
 function CmaPresentationRedirect() {
@@ -92,6 +93,10 @@ function Router() {
       <Route path="/admin" component={AdminPage} />
       <Route path="/admin/settings" component={AdminSettingsPage} />
       <Route path="/admin/beacon" component={AdminBeaconPage} />
+      <Route path="/admin/cms/editor/new" component={CmsRouter} />
+      <Route path="/admin/cms/editor/:id" component={CmsRouter} />
+      <Route path="/admin/cms/pages" component={CmsRouter} />
+      <Route path="/admin/cms" component={CmsRouter} />
       <Route path="/admin/dashboards/:rest*" component={AdminDashboardsRouter} />
       <Route path="/admin/dashboards" component={AdminDashboardsRouter} />
       <Route path="/share/:token" component={SharedCmaPage} />

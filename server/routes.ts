@@ -18,6 +18,7 @@ import { registerPulseV2Routes } from "./pulseV2Routes";
 import { registerAdminRoutes } from "./adminRoutes";
 import { registerGmailRoutes } from "./gmailRoutes";
 import { registerXanoRoutes } from "./xanoProxy";
+import { registerCmsRoutes } from "./cmsRoutes";
 
 
 // Helper function to get the actual database user from request
@@ -4523,6 +4524,9 @@ Respond with valid JSON in this exact format:
 
   // Register admin routes (integration settings, etc.)
   registerAdminRoutes(app);
+
+  // Register CMS routes (page builder, blog, site content)
+  registerCmsRoutes(app);
 
   // Register Gmail routes
   registerGmailRoutes(app);
