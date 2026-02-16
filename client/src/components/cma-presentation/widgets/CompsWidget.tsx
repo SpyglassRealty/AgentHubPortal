@@ -459,16 +459,25 @@ function SideBySideComparison({ comparables, subjectProperty }: { comparables: C
   useEffect(() => {
     const updateColumns = () => {
       const width = window.innerWidth;
-      if (width >= 1400) setVisibleColumns(5);
-      else if (width >= 1200) setVisibleColumns(4);
-      else if (width >= 768) setVisibleColumns(2);
-      else setVisibleColumns(1);
+      const totalComps = comparables.length;
+      // Show all comparables if 5 or fewer, otherwise use responsive breakpoints
+      if (totalComps <= 5 && width >= 1200) {
+        setVisibleColumns(totalComps);
+      } else if (width >= 1400) {
+        setVisibleColumns(5);
+      } else if (width >= 1200) {
+        setVisibleColumns(4);
+      } else if (width >= 768) {
+        setVisibleColumns(2);
+      } else {
+        setVisibleColumns(1);
+      }
     };
     
     updateColumns();
     window.addEventListener('resize', updateColumns);
     return () => window.removeEventListener('resize', updateColumns);
-  }, []);
+  }, [comparables.length]);
   
   const visibleComparables = comparables.slice(currentIndex, currentIndex + visibleColumns);
   const canScrollLeft = currentIndex > 0;
@@ -501,14 +510,14 @@ function SideBySideComparison({ comparables, subjectProperty }: { comparables: C
       <div className="overflow-x-auto">
         <div className="inline-flex min-w-full">
           {/* Fixed Subject Column */}
-          <div className="w-64 flex-shrink-0 border-r border-gray-200 bg-blue-50">
+          <div className="w-56 flex-shrink-0 border-r border-gray-200 bg-blue-50">
             <div className="p-4 space-y-4">
               {/* Subject Header */}
               <div className="text-center">
-                {subjectProperty?.latitude && subjectProperty?.longitude ? (
+                {subjectProperty?.latitude && subjectProperty?.longitude && mapboxToken ? (
                   <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden mb-2">
                     <img
-                      src={`https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+e74c3c(${subjectProperty.longitude},${subjectProperty.latitude})/${subjectProperty.longitude},${subjectProperty.latitude},14,0/300x200@2x?access_token=${import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}`}
+                      src={`https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+e74c3c(${subjectProperty.longitude},${subjectProperty.latitude})/${subjectProperty.longitude},${subjectProperty.latitude},14,0/300x200@2x?access_token=${mapboxToken}`}
                       alt={`Map of ${subjectProperty.address}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -593,7 +602,7 @@ function SideBySideComparison({ comparables, subjectProperty }: { comparables: C
             const soldPctColor = soldPct ? (soldPct >= 100 ? 'text-green-600' : soldPct >= 95 ? 'text-gray-900' : 'text-red-600') : '';
             
             return (
-              <div key={comp.id} className="w-64 flex-shrink-0 border-r border-gray-200">
+              <div key={comp.id} className="w-56 flex-shrink-0 border-r border-gray-200">
                 <div className="p-4 space-y-4">
                   {/* Comp Header */}
                   <div className="text-center">
@@ -799,6 +808,26 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
   const [mainView, setMainView] = useState<'compare' | 'map' | 'stats'>('compare');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedProperty, setSelectedProperty] = useState<CmaProperty | null>(null);
+  const [mapboxToken, setMapboxToken] = useState<string | null>(null);
+
+  // Fetch Mapbox token on mount
+  useEffect(() => {
+    const fetchMapboxToken = async () => {
+      try {
+        const response = await fetch('/api/mapbox-token');
+        if (response.ok) {
+          const { token } = await response.json();
+          console.log('[CompsWidget] Mapbox token received, length:', token?.length);
+          setMapboxToken(token);
+        } else {
+          console.warn('[CompsWidget] Failed to fetch Mapbox token:', response.status, response.statusText);
+        }
+      } catch (error) {
+        console.warn('[CompsWidget] Error fetching Mapbox token:', error);
+      }
+    };
+    fetchMapboxToken();
+  }, []);
 
   const filteredComparables = useMemo(() => {
     if (statusFilter === 'all') return comparables;
