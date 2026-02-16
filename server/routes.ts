@@ -52,6 +52,24 @@ export async function registerRoutes(
 ): Promise<Server> {
   await setupAuth(app);
 
+  // One-time coordinate backfill migration
+  (async () => {
+    try {
+      const result = await db.execute(sql`
+        UPDATE cmas 
+        SET subject_property = subject_property || jsonb_build_object(
+          'latitude', (subject_property->'map'->>'latitude')::numeric,
+          'longitude', (subject_property->'map'->>'longitude')::numeric
+        )
+        WHERE subject_property->'map'->>'latitude' IS NOT NULL 
+        AND (subject_property->>'latitude' IS NULL OR subject_property->>'latitude' = 'null')
+      `);
+      console.log('[Migration] Backfilled CMA coordinates:', result.rowCount, 'rows updated');
+    } catch (e) {
+      console.warn('[Migration] Coordinate backfill skipped:', e);
+    }
+  })();
+
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
