@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { SafeImage } from '@/components/ui/safe-image';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useState, useRef, useEffect } from 'react';
-import { Edit2, Check, X, Info, Star, Camera, MapPin, BarChart3, Home, TrendingUp, Lightbulb, Undo2 } from 'lucide-react';
+import { Edit2, Check, X, Info, Star, Camera, MapPin, BarChart3, Home, TrendingUp, Lightbulb, Undo2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { CMAMap } from '@/components/cma-map';
 import type { Property } from '@shared/schema';
 import type { CmaProperty } from '../types';
@@ -360,6 +360,19 @@ export function SuggestedPriceWidget({
     ? validPricePerSqft.reduce((sum, p) => sum + p, 0) / validPricePerSqft.length
     : 0;
   
+  // Calculate vs market percentages for subject property
+  const calculateVsMarket = (subjectValue: number, marketAverage: number): number | null => {
+    if (!marketAverage || marketAverage === 0 || !subjectValue) return null;
+    return ((subjectValue - marketAverage) / marketAverage) * 100;
+  };
+
+  const subjectPrice = subjectProperty?.listPrice || subjectProperty?.soldPrice || subjectProperty?.price || 0;
+  const subjectSqft = subjectProperty?.sqft || subjectProperty?.squareFeet || 0;
+  const subjectPricePerSqft = subjectSqft > 0 ? subjectPrice / subjectSqft : 0;
+
+  const priceVsMarket = calculateVsMarket(subjectPrice, avgPrice);
+  const psfVsMarket = calculateVsMarket(subjectPricePerSqft, avgPricePerSqft);
+  
   const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
   const maxPrice = validPrices.length > 0 ? Math.max(...validPrices) : 0;
   
@@ -613,12 +626,38 @@ export function SuggestedPriceWidget({
               <p className="text-xs sm:text-sm lg:text-base font-bold" data-testid="stat-avg-price">
                 {formatPriceShort(avgPrice)}
               </p>
+              {priceVsMarket !== null && (
+                <div className="mt-1">
+                  <div className={`text-[9px] sm:text-xs flex items-center justify-center gap-1 ${
+                    priceVsMarket > 0 ? 'text-red-400' : 'text-green-400'
+                  }`}>
+                    {priceVsMarket > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                    {Math.abs(priceVsMarket).toFixed(1)}% vs market
+                  </div>
+                  <div className="text-[8px] sm:text-[9px] text-muted-foreground">
+                    Your: {formatPriceShort(subjectPrice)}
+                  </div>
+                </div>
+              )}
             </Card>
             <Card className="p-1.5 sm:p-2 text-center">
               <p className="text-[9px] sm:text-xs text-muted-foreground">Avg $/sqft</p>
               <p className="text-xs sm:text-sm lg:text-base font-bold" data-testid="stat-avg-sqft">
                 ${avgPricePerSqft.toFixed(0)}
               </p>
+              {psfVsMarket !== null && (
+                <div className="mt-1">
+                  <div className={`text-[9px] sm:text-xs flex items-center justify-center gap-1 ${
+                    psfVsMarket > 0 ? 'text-red-400' : 'text-green-400'
+                  }`}>
+                    {psfVsMarket > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                    {Math.abs(psfVsMarket).toFixed(1)}% vs market
+                  </div>
+                  <div className="text-[8px] sm:text-[9px] text-muted-foreground">
+                    Your: ${Math.round(subjectPricePerSqft)}
+                  </div>
+                </div>
+              )}
             </Card>
             <Card className="p-1.5 sm:p-2 text-center">
               <p className="text-[9px] sm:text-xs text-muted-foreground">Price Range</p>
