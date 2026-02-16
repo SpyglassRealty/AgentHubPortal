@@ -367,12 +367,24 @@ export function SuggestedPriceWidget({
     return ((subjectValue - marketAverage) / marketAverage) * 100;
   };
 
-  const subjectPrice = subjectProperty ? extractPrice(subjectProperty) || 0 : 0;
+  // Use the displayed suggested price for vs market calculation (not subject property price)
+  const displayedPrice = displayPrice > 0 ? displayPrice : (suggestedPrice || 0);
   const subjectSqft = subjectProperty ? extractSqft(subjectProperty) || 0 : 0;
-  const subjectPricePerSqft = subjectSqft > 0 ? subjectPrice / subjectSqft : 0;
+  const subjectPricePerSqft = subjectSqft > 0 && displayedPrice > 0 ? displayedPrice / subjectSqft : 0;
 
-  const priceVsMarket = calculateVsMarket(subjectPrice, avgPrice);
+  console.log('🔍 [SuggestedPriceWidget] Debug:', {
+    displayPrice,
+    suggestedPrice,
+    displayedPrice,
+    avgPrice,
+    avgPricePerSqft,
+    subjectSqft
+  });
+
+  const priceVsMarket = calculateVsMarket(displayedPrice, avgPrice);
   const psfVsMarket = calculateVsMarket(subjectPricePerSqft, avgPricePerSqft);
+  
+  console.log('🔍 [SuggestedPriceWidget] VS Market:', { priceVsMarket, psfVsMarket });
   
   const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
   const maxPrice = validPrices.length > 0 ? Math.max(...validPrices) : 0;
@@ -636,7 +648,7 @@ export function SuggestedPriceWidget({
                     {Math.abs(priceVsMarket).toFixed(1)}% vs market
                   </div>
                   <div className="text-[8px] sm:text-[9px] text-muted-foreground">
-                    Your: {formatPriceShort(subjectPrice)}
+                    Your: {formatPriceShort(displayedPrice)}
                   </div>
                 </div>
               )}
