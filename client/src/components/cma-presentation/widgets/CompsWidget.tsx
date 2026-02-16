@@ -14,6 +14,7 @@ import type { Property } from '@shared/schema';
 interface CompsWidgetProps {
   comparables: CmaProperty[];
   subjectProperty?: CmaProperty;
+  suggestedListPrice?: number;
 }
 
 interface CmaStatMetric {
@@ -426,7 +427,7 @@ function CompsMapView({ comparables, subjectProperty }: { comparables: CmaProper
   );
 }
 
-export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) {
+export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }: CompsWidgetProps) {
   // Handle empty comparables
   if (!comparables || comparables.length === 0) {
     return (
@@ -505,20 +506,13 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
         
         {statistics && (() => {
           // Calculate subject property values for "vs market" comparison
-          const subjectPrice = subjectProperty ? extractPrice(subjectProperty) : null;
+          const extractedPrice = subjectProperty ? extractPrice(subjectProperty) : null;
+          // Use suggestedListPrice as fallback if subject property has no price data
+          const subjectPrice = extractedPrice || suggestedListPrice || null;
           const subjectSqft = subjectProperty ? extractSqft(subjectProperty) : null;
           const subjectPricePerSqft = (subjectPrice && subjectSqft && subjectSqft > 0) 
             ? subjectPrice / subjectSqft 
             : null;
-          
-          // Debug logging
-          console.log('🔍 [CompsWidget] Debug:', { 
-            hasSubjectProperty: !!subjectProperty,
-            subjectPrice, 
-            subjectSqft,
-            avgPrice: statistics.price.average,
-            avgPsf: statistics.pricePerSqFt.average
-          });
           
           // Calculate % difference vs market average
           const priceVsMarket = (statistics.price.average > 0 && subjectPrice && subjectPrice > 0)
@@ -528,8 +522,6 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
           const pricePerSqftVsMarket = (statistics.pricePerSqFt.average > 0 && subjectPricePerSqft && subjectPricePerSqft > 0)
             ? ((subjectPricePerSqft - statistics.pricePerSqFt.average) / statistics.pricePerSqFt.average) * 100
             : null;
-          
-          console.log('🔍 [CompsWidget] VS Market:', { priceVsMarket, pricePerSqftVsMarket });
           
           return (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-4 p-2 sm:p-4 bg-gray-50 rounded-lg" data-testid="stats-summary">
