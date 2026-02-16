@@ -516,8 +516,8 @@ function SideBySideComparison({ comparables, subjectProperty }: { comparables: C
               {/* Subject Header */}
               <div className="text-center">
                 {(() => {
-                  const subLat = subjectProperty?.latitude || subjectProperty?.map?.latitude;
-                  const subLng = subjectProperty?.longitude || subjectProperty?.map?.longitude;
+                  const subLat = subjectProperty?.latitude || subjectProperty?.map?.latitude || geocodedCoords?.latitude;
+                  const subLng = subjectProperty?.longitude || subjectProperty?.map?.longitude || geocodedCoords?.longitude;
                   return (subLat && subLng && mapboxToken) ? (
                     <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden mb-2">
                       <img
@@ -814,6 +814,7 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedProperty, setSelectedProperty] = useState<CmaProperty | null>(null);
   const [mapboxToken, setMapboxToken] = useState('');
+  const [geocodedCoords, setGeocodedCoords] = useState<{latitude: number; longitude: number}|null>(null);
 
   // Fetch Mapbox token on mount
   useEffect(() => {
@@ -822,6 +823,21 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
       .then(data => setMapboxToken(data.token))
       .catch(() => console.warn('Failed to load Mapbox token'));
   }, []);
+
+  useEffect(() => {
+    if (mapboxToken && subjectProperty?.address && !subjectProperty?.latitude && !subjectProperty?.longitude && !subjectProperty?.map?.latitude) {
+      const addr = `${subjectProperty.address}, ${subjectProperty.city || ''}, ${subjectProperty.state || ''} ${subjectProperty.zipCode || ''}`.trim();
+      fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?access_token=${mapboxToken}&limit=1`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.features?.[0]?.center) {
+            const [lng, lat] = data.features[0].center;
+            setGeocodedCoords({ latitude: lat, longitude: lng });
+          }
+        })
+        .catch(err => console.warn('Geocoding failed:', err));
+    }
+  }, [mapboxToken, subjectProperty]);
 
   const filteredComparables = useMemo(() => {
     if (statusFilter === 'all') return comparables;
