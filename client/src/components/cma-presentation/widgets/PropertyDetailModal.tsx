@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, Bed, Bath, Square, Clock, Calendar, Maximize } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Bed, Bath, Square, Clock, Calendar, Maximize, Car, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SafeImage } from '@/components/ui/safe-image';
@@ -57,6 +57,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
   const [fullscreenPhoto, setFullscreenPhoto] = useState(false);
   const [loadedPhotos, setLoadedPhotos] = useState<string[]>([]);
   const [photosLoading, setPhotosLoading] = useState(false);
+  const [mapboxToken, setMapboxToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (property.mlsNumber && (!property.photos || property.photos.length <= 1)) {
@@ -78,6 +79,14 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
         .finally(() => setPhotosLoading(false));
     }
   }, [property.mlsNumber]);
+
+  // Fetch Mapbox token
+  useEffect(() => {
+    fetch('/api/mapbox-token')
+      .then(res => res.json())
+      .then(data => setMapboxToken(data.token))
+      .catch(err => console.error('Failed to fetch Mapbox token:', err));
+  }, []);
 
   const photos = loadedPhotos.length > 0 ? loadedPhotos : (property.photos || []);
   
@@ -119,9 +128,9 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
       />
       
       <div 
-        className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 
-                   md:w-full md:max-w-2xl md:max-h-[90vh] 
-                   bg-white rounded-xl shadow-2xl z-[80] overflow-hidden flex flex-col"
+        className="fixed inset-0 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 
+                   md:w-[80vw] md:max-w-4xl md:max-h-[90vh] md:rounded-xl
+                   bg-white shadow-2xl z-[80] overflow-hidden flex flex-col"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
@@ -140,7 +149,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="flex-shrink-0"
+            className="flex-shrink-0 min-w-[44px] min-h-[44px]"
             aria-label="Close modal"
             data-testid="button-close-modal"
           >
@@ -181,7 +190,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
                   <>
                     <button
                       onClick={handlePrevPhoto}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 z-10 min-w-[44px] min-h-[44px] bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
                       aria-label="Previous photo"
                       data-testid="button-prev-photo"
                     >
@@ -189,7 +198,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
                     </button>
                     <button
                       onClick={handleNextPhoto}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 z-10 min-w-[44px] min-h-[44px] bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
                       aria-label="Next photo"
                       data-testid="button-next-photo"
                     >
@@ -234,26 +243,56 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
               </div>
             </div>
             
-            {property.listPrice && property.listPrice !== property.soldPrice && (
+            {(property.listPrice || property.originalPrice || property.listDate || property.soldDate) && (
               <div className="mb-4 p-3 bg-gray-50 rounded-lg" data-testid="price-history">
-                <p className="text-sm font-medium mb-2">Price History</p>
-                <div className="flex flex-wrap gap-4 text-sm">
-                  {property.originalPrice && property.originalPrice !== property.listPrice && (
-                    <div>
-                      <span className="text-gray-600">Original: </span>
-                      <span className="line-through text-gray-900">{formatCurrency(property.originalPrice)}</span>
-                    </div>
-                  )}
-                  <div>
-                    <span className="text-gray-600">List: </span>
-                    <span className="text-gray-900">{formatCurrency(property.listPrice)}</span>
+                <p className="text-sm font-medium mb-2">Price History & Dates</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-2">
+                    {property.originalPrice && property.originalPrice !== property.listPrice && (
+                      <div>
+                        <span className="text-gray-600">Original Price: </span>
+                        <span className="line-through text-gray-900">{formatCurrency(property.originalPrice)}</span>
+                      </div>
+                    )}
+                    {property.listPrice && (
+                      <div>
+                        <span className="text-gray-600">List Price: </span>
+                        <span className="text-gray-900">{formatCurrency(property.listPrice)}</span>
+                      </div>
+                    )}
+                    {property.soldPrice && (
+                      <div>
+                        <span className="text-gray-600">Sold Price: </span>
+                        <span className="text-green-600 font-medium">{formatCurrency(property.soldPrice)}</span>
+                      </div>
+                    )}
                   </div>
-                  {property.soldPrice && (
-                    <div>
-                      <span className="text-gray-600">Sold: </span>
-                      <span className="text-green-600 font-medium">{formatCurrency(property.soldPrice)}</span>
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    {property.listDate && (
+                      <div>
+                        <span className="text-gray-600">List Date: </span>
+                        <span className="text-gray-900">
+                          {new Date(property.listDate).toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            year: 'numeric' 
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    {property.soldDate && (
+                      <div>
+                        <span className="text-gray-600">Sold Date: </span>
+                        <span className="text-gray-900">
+                          {new Date(property.soldDate).toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            year: 'numeric' 
+                          })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -261,7 +300,34 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
           
           <div className="p-4 border-t">
             <h3 className="text-sm font-medium mb-3 text-gray-600">Property Details</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            
+            {/* Two-column layout: Map on left, Specs on right */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              {/* Left Column - Map */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-600">Location</h4>
+                {mapboxToken && property.latitude && property.longitude ? (
+                  <div className="w-full h-48 bg-gray-200 rounded-lg overflow-hidden">
+                    <img
+                      src={`https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s+ef4444(${property.longitude},${property.latitude})/${property.longitude},${property.latitude},15,0/400x300@2x?access_token=${mapboxToken}`}
+                      alt={`Map showing ${property.address}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <div className="text-center text-gray-500">
+                      <MapPin className="w-8 h-8 mx-auto mb-2" />
+                      <p className="text-sm">Map not available</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Right Column - Property Specs */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-600 mb-2">Specifications</h4>
+                <div className="grid grid-cols-2 gap-4">
             <DetailItem 
               label="Bedrooms" 
               value={property.beds.toString()} 
@@ -295,6 +361,13 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
                 icon={<Calendar className="w-3 h-3" />}
               />
             )}
+            {property.garageSpaces && (
+              <DetailItem 
+                label="Garage Spaces" 
+                value={property.garageSpaces.toString()} 
+                icon={<Car className="w-3 h-3" />}
+              />
+            )}
             {property.soldDate && (
               <DetailItem 
                 label="Sold Date" 
@@ -317,6 +390,8 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
                 value={property.acres.toFixed(2)} 
               />
             )}
+                </div>
+              </div>
             </div>
           </div>
           
