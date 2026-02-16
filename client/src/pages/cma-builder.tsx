@@ -89,12 +89,12 @@ interface CmaData {
 }
 
 interface SearchFilters {
+  quickSearch: string;
   city: string;
   subdivision: string;
   zip: string;
   county: string;
   area: string;
-  listingId: string;
   schoolDistrict: string;
   elementarySchool: string;
   middleSchool: string;
@@ -114,7 +114,6 @@ interface SearchFilters {
   stories: string;
   minYearBuilt: string;
   maxYearBuilt: string;
-  search: string;
   dateSoldDays: string;
   garageSpaces: string;
   parkingSpaces: string;
@@ -125,12 +124,12 @@ interface SearchFilters {
 }
 
 const defaultFilters: SearchFilters = {
+  quickSearch: "",
   city: "",
   subdivision: "",
   zip: "",
   county: "",
   area: "",
-  listingId: "",
   schoolDistrict: "",
   elementarySchool: "",
   middleSchool: "",
@@ -150,7 +149,6 @@ const defaultFilters: SearchFilters = {
   stories: "",
   minYearBuilt: "",
   maxYearBuilt: "",
-  search: "",
   dateSoldDays: "180",
   garageSpaces: "",
   parkingSpaces: "",
@@ -267,10 +265,14 @@ function SubjectPropertyPanel({
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Home className="h-5 w-5 text-[#EF4923]" />
-              Subject Property
-            </CardTitle>
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Home className="h-5 w-5 text-[#EF4923]" />
+                Subject Property
+                <div className="w-2 h-2 bg-green-500 rounded-full ml-1" title="Complete" />
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">The property being valued</p>
+            </div>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClear}>
               <X className="h-4 w-4" />
             </Button>
@@ -334,10 +336,13 @@ function SubjectPropertyPanel({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Home className="h-5 w-5 text-[#EF4923]" />
-          Subject Property
-        </CardTitle>
+        <div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Home className="h-5 w-5 text-[#EF4923]" />
+            Subject Property
+          </CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">The property being valued</p>
+        </div>
       </CardHeader>
       <CardContent>
         <Tabs value={mode} onValueChange={(v) => setMode(v as "search" | "manual")}>
@@ -469,15 +474,16 @@ function ComparablePropertiesPanel({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Building2 className="h-5 w-5 text-[#EF4923]" />
-          Comparable Properties
-          {comps.length > 0 && (
+        <div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-[#EF4923]" />
+            Comparable Properties
             <Badge variant="secondary" className="ml-2">
-              {comps.length}
+              {comps.length} of 10 max
             </Badge>
-          )}
-        </CardTitle>
+          </CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">Similar properties to compare against</p>
+        </div>
       </CardHeader>
       <CardContent>
         {comps.length === 0 ? (
@@ -543,6 +549,26 @@ function AnalysisPanel({
   subject: PropertyData | null;
   comps: PropertyData[];
 }) {
+  // Only show analysis when we have both subject property and at least one comparable
+  if (!subject || comps.length === 0) {
+    return (
+      <Card className="opacity-50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-[#EF4923]" />
+            Price Analysis
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-6 text-muted-foreground text-sm">
+            <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-40" />
+            <p>Add subject property and comparable properties to see analysis.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const analysis = useMemo(() => {
     if (comps.length === 0) return null;
 
@@ -696,7 +722,7 @@ function AnalysisPanel({
 
 // Mapbox access token will be fetched from API
 
-// Search Properties Section
+// Find Comparable Properties Section
 function SearchPropertiesSection({
   onAddComp,
   existingMlsNumbers,
@@ -712,11 +738,8 @@ function SearchPropertiesSection({
   const [totalResults, setTotalResults] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [filtersExpanded, setFiltersExpanded] = useState(true);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [activeTab, setActiveTab] = useState("criteria");
-  const [showMlsPaste, setShowMlsPaste] = useState(false);
-  const [mlsPasteText, setMlsPasteText] = useState("");
-  const [mlsLookupLoading, setMlsLookupLoading] = useState(false);
 
   // Mapbox token state
   const [mapboxToken, setMapboxToken] = useState('');
@@ -762,10 +785,10 @@ function SearchPropertiesSection({
 
   const handleSearch = async (pageNum = 1) => {
     // Validate: need at least one search criterion
-    if (!filters.search && !filters.listingId) {
+    if (!filters.quickSearch) {
       const hasLocation = filters.city || filters.subdivision || filters.zip || filters.county || filters.area || filters.schoolDistrict || filters.elementarySchool || filters.middleSchool || filters.highSchool;
       if (!hasLocation && !filters.propertyType && !filters.minBeds && !filters.minBaths && !filters.minPrice && !filters.maxPrice) {
-        toast({ title: "Enter search criteria", description: "Please enter at least one filter (location, property type, beds, etc.) before searching.", variant: "destructive" });
+        toast({ title: "Enter search criteria", description: "Please enter at least one filter (address, MLS#, location, etc.) before searching.", variant: "destructive" });
         return;
       }
     }
@@ -778,12 +801,20 @@ function SearchPropertiesSection({
         statuses: filters.statuses,
       };
       // Only include non-empty filters
+      if (filters.quickSearch) {
+        // Check if it looks like an MLS number/listing ID
+        const quickSearchTrimmed = filters.quickSearch.trim();
+        if (/^(MLS|ACT|TCT)\w+/i.test(quickSearchTrimmed) || /^\w{3,}\d+$/.test(quickSearchTrimmed)) {
+          body.listingId = quickSearchTrimmed;
+        } else {
+          body.search = quickSearchTrimmed;
+        }
+      }
       if (filters.city) body.city = filters.city;
       if (filters.subdivision) body.subdivision = filters.subdivision;
       if (filters.zip) body.zip = filters.zip;
       if (filters.county) body.county = filters.county;
       if (filters.area) body.area = filters.area;
-      if (filters.listingId) body.listingId = filters.listingId;
       if (filters.schoolDistrict) body.schoolDistrict = filters.schoolDistrict;
       if (filters.elementarySchool) body.elementarySchool = filters.elementarySchool;
       if (filters.middleSchool) body.middleSchool = filters.middleSchool;
@@ -802,7 +833,6 @@ function SearchPropertiesSection({
       if (filters.stories) body.stories = parseInt(filters.stories);
       if (filters.minYearBuilt) body.minYearBuilt = parseInt(filters.minYearBuilt);
       if (filters.maxYearBuilt) body.maxYearBuilt = parseInt(filters.maxYearBuilt);
-      if (filters.search) body.search = filters.search;
       if (filters.garageSpaces) body.garageSpaces = parseInt(filters.garageSpaces);
       if (filters.parkingSpaces) body.parkingSpaces = parseInt(filters.parkingSpaces);
       if (filters.privatePool) body.privatePool = filters.privatePool;
@@ -843,70 +873,7 @@ function SearchPropertiesSection({
     }
   };
 
-  // MLS bulk lookup handler
-  const handleMlsLookup = async () => {
-    if (!mlsPasteText.trim()) {
-      toast({ title: "No MLS numbers entered", description: "Please paste MLS numbers to look up.", variant: "destructive" });
-      return;
-    }
-
-    // Parse MLS numbers (comma, newline, or space separated)
-    const mlsNumbers = mlsPasteText
-      .split(/[,\n\r\s]+/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-
-    if (mlsNumbers.length === 0) {
-      toast({ title: "No valid MLS numbers found", variant: "destructive" });
-      return;
-    }
-
-    setMlsLookupLoading(true);
-    try {
-      const res = await apiRequest("POST", "/api/cma/search-properties", {
-        mlsNumbers,
-      });
-      const data = await res.json();
-      const listings: PropertyData[] = data.listings || [];
-      const mlsLookup = data.mlsLookup || { found: [], notFound: [] };
-
-      // Add each found listing as a comp (skip duplicates)
-      let addedCount = 0;
-      for (const listing of listings) {
-        if (!existingMlsNumbers.has(listing.mlsNumber)) {
-          onAddComp(listing);
-          addedCount++;
-        }
-      }
-
-      const notFoundCount = mlsLookup.notFound?.length || 0;
-      const alreadyExisting = listings.length - addedCount;
-
-      let description = `${addedCount} comp${addedCount !== 1 ? "s" : ""} added.`;
-      if (alreadyExisting > 0) description += ` ${alreadyExisting} already existed.`;
-      if (notFoundCount > 0) description += ` ${notFoundCount} not found: ${mlsLookup.notFound.join(", ")}`;
-
-      toast({
-        title: `MLS Lookup Complete`,
-        description,
-        variant: notFoundCount > 0 ? "destructive" : "default",
-      });
-
-      // Clear the paste field
-      setMlsPasteText("");
-      setShowMlsPaste(false);
-    } catch (err: any) {
-      console.error("MLS lookup failed:", err);
-      toast({
-        title: "MLS lookup failed",
-        description: err?.message || "An error occurred during the MLS lookup.",
-        variant: "destructive",
-      });
-    } finally {
-      setMlsLookupLoading(false);
-    }
-  };
-
+  // Clear filters
   const clearFilters = () => {
     setFilters(defaultFilters);
     setSearchResults([]);
@@ -1285,27 +1252,358 @@ function SearchPropertiesSection({
     <div className="space-y-4">
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Search className="h-5 w-5 text-[#EF4923]" />
-              Search Properties
-            </CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Search className="h-5 w-5 text-[#EF4923]" />
+            Find Comparable Properties
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* ROW 1: Quick Search */}
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Search by address, MLS#, or listing ID..."
+                value={filters.quickSearch}
+                onChange={(e) => updateFilter("quickSearch", e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch(1)}
+                className="flex-1"
+              />
+              <Button
+                className="bg-[#EF4923] hover:bg-[#d4401f] text-white px-6"
+                onClick={() => handleSearch(1)}
+                disabled={searching}
+              >
+                {searching ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Search className="h-4 w-4 mr-2" />
+                )}
+                Search
+              </Button>
+            </div>
+          </div>
+
+          {/* ROW 2: Advanced Filters (Collapsible) */}
+          <div className="border rounded-lg">
             <Button
               variant="ghost"
-              size="sm"
-              onClick={() => setFiltersExpanded(!filtersExpanded)}
+              className="w-full justify-between p-3"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
             >
-              {filtersExpanded ? (
+              <span className="text-sm font-medium">Show Advanced Filters</span>
+              {showAdvancedFilters ? (
                 <ChevronUp className="h-4 w-4" />
               ) : (
                 <ChevronDown className="h-4 w-4" />
               )}
             </Button>
+            
+            {showAdvancedFilters && (
+              <div className="p-4 pt-0 space-y-4 border-t">
+                {/* Location Row */}
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground mb-2 block">LOCATION</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <Input
+                      placeholder="City"
+                      value={filters.city}
+                      onChange={(e) => updateFilter("city", e.target.value)}
+                    />
+                    <Input
+                      placeholder="County"
+                      value={filters.county}
+                      onChange={(e) => updateFilter("county", e.target.value)}
+                    />
+                    <Input
+                      placeholder="Zip"
+                      value={filters.zip}
+                      onChange={(e) => updateFilter("zip", e.target.value)}
+                    />
+                    <Input
+                      placeholder="Subdivision"
+                      value={filters.subdivision}
+                      onChange={(e) => updateFilter("subdivision", e.target.value)}
+                    />
+                    <Input
+                      placeholder="Area"
+                      value={filters.area}
+                      onChange={(e) => updateFilter("area", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Property Row */}
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground mb-2 block">PROPERTY</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                    <Select
+                      value={filters.propertyType || "all"}
+                      onValueChange={(v) => updateFilter("propertyType", v === "all" ? "" : v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Any Type</SelectItem>
+                        {RESO_PROPERTY_TYPES.map((pt) => (
+                          <SelectItem key={pt} value={pt}>{pt}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={filters.minBeds || "any"}
+                      onValueChange={(v) => updateFilter("minBeds", v === "any" ? "" : v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Min Beds" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {BED_BATH_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value || "any"} value={opt.value || "any"}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={filters.minBaths || "any"}
+                      onValueChange={(v) => updateFilter("minBaths", v === "any" ? "" : v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Min Baths" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {BED_BATH_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value || "any"} value={opt.value || "any"}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      placeholder="Full Baths"
+                      value={filters.fullBaths}
+                      onChange={(e) => updateFilter("fullBaths", e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Half Baths"
+                      value={filters.halfBaths}
+                      onChange={(e) => updateFilter("halfBaths", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Size Row */}
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground mb-2 block">SIZE</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <Input
+                      type="number"
+                      placeholder="Min SqFt"
+                      value={filters.minSqft}
+                      onChange={(e) => updateFilter("minSqft", e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Max SqFt"
+                      value={filters.maxSqft}
+                      onChange={(e) => updateFilter("maxSqft", e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Stories"
+                      value={filters.stories}
+                      onChange={(e) => updateFilter("stories", e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Min Year Built"
+                      value={filters.minYearBuilt}
+                      onChange={(e) => updateFilter("minYearBuilt", e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Max Year Built"
+                      value={filters.maxYearBuilt}
+                      onChange={(e) => updateFilter("maxYearBuilt", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Status Row */}
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground mb-2 block">STATUS</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+                    <div className="flex flex-wrap gap-3">
+                      {["Active", "Active Under Contract", "Pending", "Closed"].map((s) => (
+                        <label key={s} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={filters.statuses.includes(s)}
+                            onChange={() => toggleStatus(s)}
+                            className="rounded border-gray-300 text-[#EF4923] focus:ring-[#EF4923]"
+                          />
+                          {s}
+                        </label>
+                      ))}
+                    </div>
+                    {filters.statuses.includes("Closed") && (
+                      <Select
+                        value={filters.dateSoldDays || "180"}
+                        onValueChange={(v) => updateFilter("dateSoldDays", v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Date Sold" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DATE_SOLD_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                </div>
+
+                {/* Price Row */}
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground mb-2 block">PRICE</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      type="number"
+                      placeholder="Min Price"
+                      value={filters.minPrice}
+                      onChange={(e) => updateFilter("minPrice", e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Max Price"
+                      value={filters.maxPrice}
+                      onChange={(e) => updateFilter("maxPrice", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Extras Row */}
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground mb-2 block">EXTRAS</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
+                    <Input
+                      type="number"
+                      placeholder="Min Lot (ac)"
+                      value={filters.minLotAcres}
+                      onChange={(e) => updateFilter("minLotAcres", e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Max Lot (ac)"
+                      value={filters.maxLotAcres}
+                      onChange={(e) => updateFilter("maxLotAcres", e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Garage"
+                      value={filters.garageSpaces}
+                      onChange={(e) => updateFilter("garageSpaces", e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Parking"
+                      value={filters.parkingSpaces}
+                      onChange={(e) => updateFilter("parkingSpaces", e.target.value)}
+                    />
+                    <Select
+                      value={filters.privatePool || "any"}
+                      onValueChange={(v) => updateFilter("privatePool", v === "any" ? "" : v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pool?" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={filters.waterfront || "any"}
+                      onValueChange={(v) => updateFilter("waterfront", v === "any" ? "" : v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Waterfront?" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={filters.hoa || "any"}
+                      onValueChange={(v) => updateFilter("hoa", v === "any" ? "" : v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="HOA?" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Schools Row */}
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground mb-2 block">SCHOOLS</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <Input
+                      placeholder="Elementary"
+                      value={filters.elementarySchool}
+                      onChange={(e) => updateFilter("elementarySchool", e.target.value)}
+                    />
+                    <Input
+                      placeholder="Middle"
+                      value={filters.middleSchool}
+                      onChange={(e) => updateFilter("middleSchool", e.target.value)}
+                    />
+                    <Input
+                      placeholder="High"
+                      value={filters.highSchool}
+                      onChange={(e) => updateFilter("highSchool", e.target.value)}
+                    />
+                    <Select
+                      value={filters.primaryBedOnMain || "any"}
+                      onValueChange={(v) => updateFilter("primaryBedOnMain", v === "any" ? "" : v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Primary Bed on Main" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Clear Filters */}
+                <div className="pt-2">
+                  <Button variant="outline" onClick={clearFilters} size="sm">
+                    Clear All Filters
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
-        </CardHeader>
-        <CardContent>
+
+          {/* Map Search Toggle */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="w-full mb-4">
+            <TabsList className="w-full">
               <TabsTrigger value="criteria" className="flex-1">
                 <Search className="h-4 w-4 mr-2" />
                 Search by Criteria
@@ -1316,436 +1614,7 @@ function SearchPropertiesSection({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="criteria">
-              {filtersExpanded && (
-                <div className="space-y-4">
-                  {/* Address / Listing ID search */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Address / MLS# Search</Label>
-                      <Input
-                        placeholder="Enter address or MLS number..."
-                        value={filters.search}
-                        onChange={(e) => updateFilter("search", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Listing ID</Label>
-                      <Input
-                        placeholder="MLS Listing ID (e.g., ACT1234567)"
-                        value={filters.listingId}
-                        onChange={(e) => updateFilter("listingId", e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Location filters */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">City</Label>
-                      <Input
-                        placeholder="City"
-                        value={filters.city}
-                        onChange={(e) => updateFilter("city", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">County</Label>
-                      <Input
-                        placeholder="e.g., Travis, Williamson"
-                        value={filters.county}
-                        onChange={(e) => updateFilter("county", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Area</Label>
-                      <Input
-                        placeholder="MLS area (e.g., Travis)"
-                        value={filters.area}
-                        onChange={(e) => updateFilter("area", e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Subdivision</Label>
-                      <Input
-                        placeholder="Subdivision"
-                        value={filters.subdivision}
-                        onChange={(e) => updateFilter("subdivision", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Zip Code</Label>
-                      <Input
-                        placeholder="Zip"
-                        value={filters.zip}
-                        onChange={(e) => updateFilter("zip", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">School District</Label>
-                      <Input
-                        placeholder="District"
-                        value={filters.schoolDistrict}
-                        onChange={(e) => updateFilter("schoolDistrict", e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  {/* School filters */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Elementary School</Label>
-                      <Input
-                        placeholder="Elementary"
-                        value={filters.elementarySchool}
-                        onChange={(e) => updateFilter("elementarySchool", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Middle School</Label>
-                      <Input
-                        placeholder="Middle"
-                        value={filters.middleSchool}
-                        onChange={(e) => updateFilter("middleSchool", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">High School</Label>
-                      <Input
-                        placeholder="High"
-                        value={filters.highSchool}
-                        onChange={(e) => updateFilter("highSchool", e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Beds, Baths & Price */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">
-                        Min Beds
-                      </Label>
-                      <Select
-                        value={filters.minBeds || "any"}
-                        onValueChange={(v) => updateFilter("minBeds", v === "any" ? "" : v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Any" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {BED_BATH_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value || "any"} value={opt.value || "any"}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">
-                        Min Baths (Total)
-                      </Label>
-                      <Select
-                        value={filters.minBaths || "any"}
-                        onValueChange={(v) => updateFilter("minBaths", v === "any" ? "" : v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Any" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {BED_BATH_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value || "any"} value={opt.value || "any"}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground"># Full Baths</Label>
-                      <Input
-                        type="number"
-                        placeholder="Min full baths"
-                        value={filters.fullBaths}
-                        onChange={(e) => updateFilter("fullBaths", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground"># Half Baths</Label>
-                      <Input
-                        type="number"
-                        placeholder="Min half baths"
-                        value={filters.halfBaths}
-                        onChange={(e) => updateFilter("halfBaths", e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Min Price</Label>
-                      <Input
-                        type="number"
-                        placeholder="Min $"
-                        value={filters.minPrice}
-                        onChange={(e) => updateFilter("minPrice", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Max Price</Label>
-                      <Input
-                        type="number"
-                        placeholder="Max $"
-                        value={filters.maxPrice}
-                        onChange={(e) => updateFilter("maxPrice", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Primary Bed on Main</Label>
-                      <Select
-                        value={filters.primaryBedOnMain || "any"}
-                        onValueChange={(v) => updateFilter("primaryBedOnMain", v === "any" ? "" : v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Any" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="any">Any</SelectItem>
-                          <SelectItem value="yes">Yes</SelectItem>
-                          <SelectItem value="no">No</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Property type and status */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">
-                        Property Type
-                      </Label>
-                      <Select
-                        value={filters.propertyType || "all"}
-                        onValueChange={(v) => updateFilter("propertyType", v === "all" ? "" : v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Property Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Any</SelectItem>
-                          {RESO_PROPERTY_TYPES.map((pt) => (
-                            <SelectItem key={pt} value={pt}>{pt}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Status</Label>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {["Active", "Active Under Contract", "Pending", "Closed"].map((s) => (
-                          <label key={s} className="flex items-center gap-1.5 text-xs cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={filters.statuses.includes(s)}
-                              onChange={() => toggleStatus(s)}
-                              className="rounded border-gray-300 text-[#EF4923] focus:ring-[#EF4923]"
-                            />
-                            {s}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Date Sold dropdown - only visible when Closed is selected */}
-                  {filters.statuses.includes("Closed") && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs font-medium text-muted-foreground">Date Sold</Label>
-                        <Select
-                          value={filters.dateSoldDays || "180"}
-                          onValueChange={(v) => updateFilter("dateSoldDays", v)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select date range" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {DATE_SOLD_OPTIONS.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Size, lot, stories, year */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Min Sq Ft</Label>
-                      <Input
-                        type="number"
-                        placeholder="Min"
-                        value={filters.minSqft}
-                        onChange={(e) => updateFilter("minSqft", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Max Sq Ft</Label>
-                      <Input
-                        type="number"
-                        placeholder="Max"
-                        value={filters.maxSqft}
-                        onChange={(e) => updateFilter("maxSqft", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Min Lot (Acres)</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="Min"
-                        value={filters.minLotAcres}
-                        onChange={(e) => updateFilter("minLotAcres", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Max Lot (Acres)</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="Max"
-                        value={filters.maxLotAcres}
-                        onChange={(e) => updateFilter("maxLotAcres", e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Stories / Levels</Label>
-                      <Input
-                        type="number"
-                        placeholder="Stories"
-                        value={filters.stories}
-                        onChange={(e) => updateFilter("stories", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Min Year Built</Label>
-                      <Input
-                        type="number"
-                        placeholder="Min"
-                        value={filters.minYearBuilt}
-                        onChange={(e) => updateFilter("minYearBuilt", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Max Year Built</Label>
-                      <Input
-                        type="number"
-                        placeholder="Max"
-                        value={filters.maxYearBuilt}
-                        onChange={(e) => updateFilter("maxYearBuilt", e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Garage, Parking, Pool, Waterfront, HOA */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground"># Garage Spaces</Label>
-                      <Input
-                        type="number"
-                        placeholder="Min garage"
-                        value={filters.garageSpaces}
-                        onChange={(e) => updateFilter("garageSpaces", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Total Parking Spaces</Label>
-                      <Input
-                        type="number"
-                        placeholder="Min parking"
-                        value={filters.parkingSpaces}
-                        onChange={(e) => updateFilter("parkingSpaces", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Private Pool?</Label>
-                      <Select
-                        value={filters.privatePool || "any"}
-                        onValueChange={(v) => updateFilter("privatePool", v === "any" ? "" : v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Any" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="any">Any</SelectItem>
-                          <SelectItem value="yes">Yes</SelectItem>
-                          <SelectItem value="no">No</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">Waterfront?</Label>
-                      <Select
-                        value={filters.waterfront || "any"}
-                        onValueChange={(v) => updateFilter("waterfront", v === "any" ? "" : v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Any" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="any">Any</SelectItem>
-                          <SelectItem value="yes">Yes</SelectItem>
-                          <SelectItem value="no">No</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground">HOA?</Label>
-                      <Select
-                        value={filters.hoa || "any"}
-                        onValueChange={(v) => updateFilter("hoa", v === "any" ? "" : v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Any" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="any">Any</SelectItem>
-                          <SelectItem value="yes">Yes</SelectItem>
-                          <SelectItem value="no">No</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Search / Clear buttons */}
-              <div className="flex gap-2 mt-4">
-                <Button
-                  className="flex-1 bg-[#EF4923] hover:bg-[#d4401f] text-white"
-                  onClick={() => handleSearch(1)}
-                  disabled={searching}
-                >
-                  {searching ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Search className="h-4 w-4 mr-2" />
-                  )}
-                  Search Properties
-                </Button>
-                <Button variant="outline" onClick={clearFilters}>
-                  Clear
-                </Button>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="map">
+            <TabsContent value="map" className="mt-4">
               {/* Mode toolbar */}
               <div className="flex items-center gap-2 mb-3">
                 <div className="flex items-center border rounded-lg overflow-hidden">
@@ -1841,54 +1710,7 @@ function SearchPropertiesSection({
         </CardContent>
       </Card>
 
-      {/* Add by MLS# Section */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Plus className="h-5 w-5 text-[#EF4923]" />
-              Add by MLS#
-            </CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowMlsPaste(!showMlsPaste)}
-            >
-              {showMlsPaste ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        </CardHeader>
-        {showMlsPaste && (
-          <CardContent className="space-y-3">
-            <p className="text-xs text-muted-foreground">
-              Paste multiple MLS numbers below (comma, space, or newline separated) to bulk-add comparable properties.
-            </p>
-            <textarea
-              className="w-full min-h-[80px] p-3 border rounded-lg text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[#EF4923]/50 bg-background"
-              placeholder={"MLS12345, MLS67890\nMLS11111\nMLS22222"}
-              value={mlsPasteText}
-              onChange={(e) => setMlsPasteText(e.target.value)}
-            />
-            <Button
-              className="w-full bg-[#EF4923] hover:bg-[#d4401f] text-white"
-              onClick={handleMlsLookup}
-              disabled={mlsLookupLoading || !mlsPasteText.trim()}
-            >
-              {mlsLookupLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Search className="h-4 w-4 mr-2" />
-              )}
-              Lookup MLS Numbers
-            </Button>
-          </CardContent>
-        )}
-      </Card>
-
+      {/* ROW 3: Search Results */}
       {/* Search Results */}
       {(searchResults.length > 0 || searching || hasSearched) && (
         <Card>
@@ -1953,61 +1775,63 @@ function SearchPropertiesSection({
                   return (
                     <div
                       key={i}
-                      className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                      className={`flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 rounded-lg border transition-colors ${
                         isAdded ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800" : "hover:bg-muted/50"
                       }`}
                     >
-                      {(prop.photos && prop.photos.length > 0) || prop.photo ? (
-                        <img
-                          src={(prop.photos && prop.photos.length > 0) ? prop.photos[0] : prop.photo!}
-                          alt={prop.address}
-                          className="w-20 h-14 rounded object-cover flex-shrink-0"
-                          loading="lazy"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                            const parent = e.currentTarget.parentElement;
-                            if (parent) {
-                              parent.innerHTML = `<div class="w-20 h-14 rounded bg-muted flex items-center justify-center flex-shrink-0"><svg class="h-6 w-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>`;
-                            }
-                          }}
-                        />
-                      ) : (
-                        <div className="w-20 h-14 rounded bg-muted flex items-center justify-center flex-shrink-0">
-                          <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{prop.address}</p>
-                        {prop.mlsNumber && (
-                          <p className="text-xs text-muted-foreground">MLS# {prop.mlsNumber}</p>
+                      <div className="flex items-center gap-3 w-full sm:w-auto">
+                        {(prop.photos && prop.photos.length > 0) || prop.photo ? (
+                          <img
+                            src={(prop.photos && prop.photos.length > 0) ? prop.photos[0] : prop.photo!}
+                            alt={prop.address}
+                            className="w-20 h-14 rounded object-cover flex-shrink-0"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              const parent = e.currentTarget.parentElement;
+                              if (parent) {
+                                parent.innerHTML = `<div class="w-20 h-14 rounded bg-muted flex items-center justify-center flex-shrink-0"><svg class="h-6 w-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>`;
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="w-20 h-14 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                            <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                          </div>
                         )}
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                          <span className="font-semibold text-foreground">
-                            {formatPrice(prop.soldPrice || prop.listPrice)}
-                          </span>
-                          <span>{prop.beds}bd / {prop.baths}ba</span>
-                          <span>{formatNumber(prop.sqft)} sqft</span>
-                          {prop.yearBuilt && <span>Built {prop.yearBuilt}</span>}
-                          {prop.daysOnMarket !== undefined && prop.daysOnMarket > 0 && (
-                            <span>{prop.daysOnMarket} DOM</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{prop.address}</p>
+                          {prop.mlsNumber && (
+                            <p className="text-xs text-muted-foreground">MLS# {prop.mlsNumber}</p>
                           )}
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
+                            <span className="font-semibold text-foreground text-base">
+                              {formatPrice(prop.soldPrice || prop.listPrice)}
+                            </span>
+                            <span>{prop.beds}bd / {prop.baths}ba</span>
+                            <span>{formatNumber(prop.sqft)} sqft</span>
+                            {prop.yearBuilt && <span>Built {prop.yearBuilt}</span>}
+                            {prop.daysOnMarket !== undefined && prop.daysOnMarket > 0 && (
+                              <span>{prop.daysOnMarket} DOM</span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="flex items-center justify-between w-full sm:w-auto sm:flex-col sm:items-end gap-2">
                         <Badge variant="outline" className="text-xs">
                           {prop.status}
                         </Badge>
                         <Button
                           size="sm"
                           variant={isAdded ? "secondary" : "default"}
-                          className={isAdded ? "" : "bg-[#EF4923] hover:bg-[#d4401f] text-white"}
+                          className={isAdded ? "" : "bg-[#EF4923] hover:bg-[#d4401f] text-white min-h-[44px] md:min-h-[36px]"}
                           disabled={isAdded}
                           onClick={() => onAddComp(prop)}
                         >
-                          {isAdded ? "Added" : (
+                          {isAdded ? "✓ Added" : (
                             <>
                               <Plus className="h-4 w-4 mr-1" />
-                              Add
+                              Add as Comparable
                             </>
                           )}
                         </Button>
