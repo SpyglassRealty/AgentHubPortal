@@ -835,14 +835,6 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
           const extractedPrice = subjectProperty ? extractPrice(subjectProperty) : null;
           // Use suggestedListPrice as fallback if subject property has no price data
           const subjectPrice = extractedPrice || suggestedListPrice || null;
-          
-          // DEBUG: Log values for troubleshooting
-          console.log('VS Market Debug:', {
-            extractedPrice,
-            suggestedListPrice,
-            subjectPrice,
-            statisticsAverage: statistics.price.average
-          });
           const subjectSqft = subjectProperty ? extractSqft(subjectProperty) : null;
           const subjectPricePerSqft = (subjectPrice && subjectSqft && subjectSqft > 0) 
             ? subjectPrice / subjectSqft 
@@ -852,12 +844,6 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
           const priceVsMarket = (statistics.price.average > 0 && subjectPrice && subjectPrice > 0)
             ? ((subjectPrice - statistics.price.average) / statistics.price.average) * 100
             : null;
-            
-          console.log('VS Market Calculation:', {
-            priceVsMarket,
-            condition: statistics.price.average > 0 && subjectPrice && subjectPrice > 0,
-            calculation: subjectPrice && statistics.price.average > 0 ? ((subjectPrice - statistics.price.average) / statistics.price.average) * 100 : 'N/A'
-          });
           
           const pricePerSqftVsMarket = (statistics.pricePerSqFt.average > 0 && subjectPricePerSqft && subjectPricePerSqft > 0)
             ? ((subjectPricePerSqft - statistics.pricePerSqFt.average) / statistics.pricePerSqFt.average) * 100
