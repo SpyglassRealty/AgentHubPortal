@@ -4,9 +4,35 @@ import { SafeImage } from '@/components/ui/safe-image';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useState, useRef, useEffect } from 'react';
 import { Edit2, Check, X, Info, Star, Camera, MapPin, BarChart3, Home, TrendingUp, Lightbulb, Undo2 } from 'lucide-react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import { CMAMap } from '@/components/cma-map';
+import type { Property } from '@shared/schema';
 import type { CmaProperty } from '../types';
+
+// Convert CmaProperty to Property for CMAMap compatibility  
+function convertToProperty(cmaProperty: CmaProperty): Property {
+  return {
+    mlsNumber: cmaProperty.id,
+    address: cmaProperty.address,
+    city: cmaProperty.city,
+    state: cmaProperty.state,
+    postalCode: cmaProperty.zipCode,
+    price: cmaProperty.price,
+    soldPrice: cmaProperty.soldPrice,
+    listPrice: cmaProperty.originalPrice || cmaProperty.price,
+    bedrooms: cmaProperty.beds,
+    bathrooms: cmaProperty.baths,
+    sqft: cmaProperty.sqft,
+    livingArea: cmaProperty.sqft,
+    lotSize: cmaProperty.lotSize,
+    yearBuilt: cmaProperty.yearBuilt,
+    status: cmaProperty.status,
+    standardStatus: cmaProperty.status,
+    daysOnMarket: cmaProperty.daysOnMarket,
+    photos: cmaProperty.photos,
+    latitude: cmaProperty.latitude,
+    longitude: cmaProperty.longitude,
+  } as Property;
+}
 
 // Helper component for Comparable Properties Photo Collage
 function ComparablePropertiesPhotoCollage({ comparables }: { comparables: CmaProperty[] }) {
@@ -203,14 +229,10 @@ export function SuggestedPriceWidget({
   const [editedPrice, setEditedPrice] = useState<number>(0);
   const [originalPrice, setOriginalPrice] = useState<number>(0);
   const [hasBeenEdited, setHasBeenEdited] = useState(false);
-  const [mapToken, setMapToken] = useState<string | null>(null);
-  const [mapError, setMapError] = useState<string | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [fetchedInsights, setFetchedInsights] = useState<ImageInsight[]>([]);
   
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
   const originalPriceInitialized = useRef(false);
 
   const closedComps = comparables.filter(c => c.status.toLowerCase().includes('closed'));
@@ -264,18 +286,7 @@ export function SuggestedPriceWidget({
     }
   }, [suggestedPrice, closedComps.length, subjectProperty?.sqft]);
 
-  useEffect(() => {
-    fetch('/api/mapbox-token')
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        if (data.token) setMapToken(data.token);
-        else setMapError(data.error || 'Failed to load map token');
-      })
-      .catch((err) => setMapError(`Failed to load map: ${err.message}`));
-  }, []);
+  // Mapbox token and initialization handled by CMAMap component
 
   useEffect(() => {
     if (imageInsights && imageInsights.length > 0) {
@@ -296,57 +307,7 @@ export function SuggestedPriceWidget({
       .catch(() => {});
   }, [mlsNumber, subjectProperty?.mlsNumber, imageInsights]);
 
-  useEffect(() => {
-    if (!mapContainer.current || map.current) return;
-    if (!mapToken) return;
-    
-    mapboxgl.accessToken = mapToken;
-    
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/light-v11',
-      center: [subjectProperty?.longitude || -97.7431, subjectProperty?.latitude || 30.2672], // Default to Austin
-      zoom: 12,
-    });
-    
-    const bounds = new mapboxgl.LngLatBounds();
-    
-    // Subject property marker (larger orange)
-    if (subjectProperty?.latitude && subjectProperty?.longitude) {
-      const el = document.createElement('div');
-      el.style.cssText = 'width:20px;height:20px;background:#E03103;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);';
-      new mapboxgl.Marker(el)
-        .setLngLat([subjectProperty.longitude, subjectProperty.latitude])
-        .setPopup(new mapboxgl.Popup().setHTML('<strong>Subject Property</strong><br/>' + (subjectProperty.address || 'Property')))
-        .addTo(map.current);
-      bounds.extend([subjectProperty.longitude, subjectProperty.latitude]);
-    }
-    
-    // Comparable properties markers (smaller teal)
-    comparables?.forEach((comp) => {
-      if (!comp.latitude || !comp.longitude) return;
-      const el = document.createElement('div');
-      el.style.cssText = 'width:14px;height:14px;background:#0D9488;border:2px solid white;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.2);';
-      const price = comp.soldPrice || comp.listPrice || comp.price || 0;
-      new mapboxgl.Marker(el)
-        .setLngLat([comp.longitude, comp.latitude])
-        .setPopup(new mapboxgl.Popup().setHTML('<strong>' + (comp.address || 'Comparable') + '</strong><br/>$' + (price > 0 ? price.toLocaleString() : 'N/A')))
-        .addTo(map.current);
-      bounds.extend([comp.longitude, comp.latitude]);
-    });
-    
-    // Fit map bounds to show all markers
-    if (!bounds.isEmpty()) {
-      map.current.fitBounds(bounds, { padding: 50, maxZoom: 14 });
-    }
-    
-    map.current.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
-    
-    return () => {
-      map.current?.remove();
-      map.current = null;
-    };
-  }, [subjectProperty?.latitude, subjectProperty?.longitude, mapToken, comparables]);
+  // Map handling moved to CMAMap component - no custom mapbox setup needed
 
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat('en-US', { 
@@ -442,7 +403,9 @@ export function SuggestedPriceWidget({
     onPriceUpdate?.(originalPrice);
   };
 
-  const hasCoordinates = subjectProperty?.latitude && subjectProperty?.longitude;
+  // Normalize properties for CMAMap component
+  const normalizedSubject: Property | null = subjectProperty ? convertToProperty(subjectProperty) : null;
+  const normalizedComparables: Property[] = comparables.map(convertToProperty);
 
   const aiPhotos: ImageInsight[] = fetchedInsights.length > 0
     ? fetchedInsights
@@ -614,45 +577,13 @@ export function SuggestedPriceWidget({
             </div>
           </div>
           
-          {/* RIGHT SIDE - Comparable Properties Location Map */}
+          {/* RIGHT SIDE - Comparable Properties Location Map (using CMAMap component) */}
           <div className="relative rounded-xl overflow-hidden shadow-lg bg-muted min-h-[120px] md:min-h-0">
-            {mapToken && !mapError ? (
-              <>
-                <div 
-                  ref={mapContainer}
-                  className="w-full h-full min-h-[120px]"
-                  data-testid="map-container"
-                />
-                
-                {/* Map Legend */}
-                <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm rounded-lg p-2 text-xs z-10 shadow-md">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-3 h-3 bg-[#E03103] border border-white rounded-full"></div>
-                    <span className="text-gray-800">Subject Property</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-[#0D9488] border border-white rounded-full"></div>
-                    <span className="text-gray-800">Comparables</span>
-                  </div>
-                </div>
-                
-                {/* Coordinates (only if subject has coordinates) */}
-                {hasCoordinates && (
-                  <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white 
-                                  px-2 py-1 rounded text-[10px] font-mono z-10">
-                    {subjectProperty?.latitude?.toFixed(4)}°N, {Math.abs(subjectProperty?.longitude || 0).toFixed(4)}°W
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-3">
-                <MapPin className="w-8 h-8 mb-2" />
-                <p className="font-medium text-sm">Comparable Properties Map</p>
-                <p className="text-xs">
-                  {mapError ? 'Map unavailable' : 'Loading map...'}
-                </p>
-              </div>
-            )}
+            <CMAMap
+              properties={normalizedComparables}
+              subjectProperty={normalizedSubject}
+              showPolygon={false}
+            />
           </div>
         </div>
         
