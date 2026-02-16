@@ -504,12 +504,26 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
         </div>
         
         {statistics && (() => {
+          // Debug: Log CompsWidget data
+          console.log('🔍 [CompsWidget] DEBUG:', {
+            subjectProperty,
+            statistics: statistics.price.average,
+            statisticsPsf: statistics.pricePerSqFt.average
+          });
+
           // Calculate subject property values for "vs market" comparison
           const subjectPrice = subjectProperty ? extractPrice(subjectProperty) : null;
           const subjectSqft = subjectProperty ? extractSqft(subjectProperty) : null;
           const subjectPricePerSqft = (subjectPrice && subjectSqft && subjectSqft > 0) 
             ? subjectPrice / subjectSqft 
             : null;
+          
+          // Debug: Log extracted values
+          console.log('🔍 [CompsWidget] EXTRACTED:', {
+            subjectPrice,
+            subjectSqft,
+            subjectPricePerSqft
+          });
           
           // Calculate % difference vs market average
           const priceVsMarket = (statistics.price.average > 0 && subjectPrice && subjectPrice > 0)
@@ -519,6 +533,12 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
           const pricePerSqftVsMarket = (statistics.pricePerSqFt.average > 0 && subjectPricePerSqft && subjectPricePerSqft > 0)
             ? ((subjectPricePerSqft - statistics.pricePerSqFt.average) / statistics.pricePerSqFt.average) * 100
             : null;
+
+          // Debug: Log vs market calculations
+          console.log('🔍 [CompsWidget] VS MARKET:', {
+            priceVsMarket,
+            pricePerSqftVsMarket
+          });
           
           return (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-4 p-2 sm:p-4 bg-gray-50 rounded-lg" data-testid="stats-summary">

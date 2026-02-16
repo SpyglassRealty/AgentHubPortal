@@ -366,12 +366,32 @@ export function SuggestedPriceWidget({
     return ((subjectValue - marketAverage) / marketAverage) * 100;
   };
 
+  // Debug: Log subjectProperty data
+  console.log('🔍 [SuggestedPriceWidget] DEBUG:', {
+    subjectProperty,
+    avgPrice,
+    avgPricePerSqft
+  });
+
   const subjectPrice = subjectProperty?.listPrice || subjectProperty?.soldPrice || subjectProperty?.price || 0;
   const subjectSqft = subjectProperty?.sqft || subjectProperty?.squareFeet || 0;
   const subjectPricePerSqft = subjectSqft > 0 ? subjectPrice / subjectSqft : 0;
 
+  // Debug: Log calculated values
+  console.log('🔍 [SuggestedPriceWidget] CALCULATED:', {
+    subjectPrice,
+    subjectSqft,
+    subjectPricePerSqft
+  });
+
   const priceVsMarket = calculateVsMarket(subjectPrice, avgPrice);
   const psfVsMarket = calculateVsMarket(subjectPricePerSqft, avgPricePerSqft);
+
+  // Debug: Log vs market results
+  console.log('🔍 [SuggestedPriceWidget] VS MARKET:', {
+    priceVsMarket,
+    psfVsMarket
+  });
   
   const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
   const maxPrice = validPrices.length > 0 ? Math.max(...validPrices) : 0;
