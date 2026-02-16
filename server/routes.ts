@@ -2640,6 +2640,8 @@ Respond with valid JSON in this exact format:
         userId: user.id,
         name,
         subjectProperty: subjectProperty || null,
+        latitude: subjectProperty?.map?.latitude || subjectProperty?.address?.latitude || subjectProperty?.latitude || null,
+        longitude: subjectProperty?.map?.longitude || subjectProperty?.address?.longitude || subjectProperty?.longitude || null,
         comparableProperties: comparableProperties || [],
         // CRITICAL FIX: Also save to propertiesData field (what presentation expects)
         propertiesData: comparableProperties || [],
@@ -2703,6 +2705,10 @@ Respond with valid JSON in this exact format:
       const updated = await storage.updateCma(req.params.id, user.id, {
         ...(name !== undefined && { name }),
         ...(subjectProperty !== undefined && { subjectProperty }),
+        ...(subjectProperty !== undefined && { 
+          latitude: subjectProperty?.map?.latitude || subjectProperty?.address?.latitude || subjectProperty?.latitude || null,
+          longitude: subjectProperty?.map?.longitude || subjectProperty?.address?.longitude || subjectProperty?.longitude || null
+        }),
         ...(comparableProperties !== undefined && { comparableProperties }),
         // CRITICAL FIX: Also update propertiesData when comparables change
         ...(comparableProperties !== undefined && { propertiesData: comparableProperties }),
@@ -2729,6 +2735,46 @@ Respond with valid JSON in this exact format:
     } catch (error) {
       console.error('[CMA] Error deleting CMA:', error);
       res.status(500).json({ message: "Failed to delete CMA" });
+    }
+  });
+
+  // Backfill coordinates for existing CMAs
+  app.patch('/api/cma/:id/backfill-coordinates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      // Get the existing CMA
+      const cma = await storage.getCma(req.params.id, user.id);
+      if (!cma) return res.status(404).json({ message: "CMA not found" });
+      
+      const subjectProperty = cma.subjectProperty;
+      if (!subjectProperty) {
+        return res.status(400).json({ message: "No subject property found" });
+      }
+      
+      // Extract coordinates from subjectProperty.map or subjectProperty.address
+      const latitude = subjectProperty.map?.latitude || subjectProperty.address?.latitude || subjectProperty.latitude || null;
+      const longitude = subjectProperty.map?.longitude || subjectProperty.address?.longitude || subjectProperty.longitude || null;
+      
+      if (!latitude || !longitude) {
+        return res.status(400).json({ message: "No coordinates found in subject property data" });
+      }
+      
+      // Update the CMA with extracted coordinates
+      const updated = await storage.updateCma(req.params.id, user.id, {
+        latitude,
+        longitude
+      });
+      
+      res.json({ 
+        success: true, 
+        coordinates: { latitude, longitude },
+        updated: !!updated
+      });
+    } catch (error) {
+      console.error('[CMA] Error backfilling coordinates:', error);
+      res.status(500).json({ message: "Failed to backfill coordinates" });
     }
   });
 
