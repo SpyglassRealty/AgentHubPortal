@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -1031,12 +1030,11 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
 
       </div>
 
-      {selectedProperty && typeof document !== 'undefined' && createPortal(
+      {selectedProperty && (
         <PropertyDetailModal
           property={selectedProperty}
           onClose={() => setSelectedProperty(null)}
-        />,
-        document.body
+        />
       )}
     </div>
   );
