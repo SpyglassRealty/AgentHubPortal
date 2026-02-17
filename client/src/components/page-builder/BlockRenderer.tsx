@@ -35,7 +35,7 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
 
   switch (type) {
     case 'heading': {
-      const Tag = `h${props.level || 2}` as keyof JSX.IntrinsicElements;
+      const level = props.level || 2;
       const sizes: Record<number, string> = {
         1: 'text-4xl font-bold',
         2: 'text-3xl font-bold',
@@ -44,17 +44,18 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
         5: 'text-lg font-medium',
         6: 'text-base font-medium',
       };
-      return (
-        <Tag
-          className={`${sizes[props.level || 2]} leading-tight`}
-          style={{
-            textAlign: props.alignment || 'left',
-            color: props.color || 'inherit',
-          }}
-        >
-          {props.text || 'Heading'}
-        </Tag>
-      );
+      const headingStyle = {
+        textAlign: props.alignment || 'left' as React.CSSProperties['textAlign'],
+        color: props.color || 'inherit',
+      };
+      const headingClass = `${sizes[level]} leading-tight`;
+      const text = props.text || 'Heading';
+      if (level === 1) return <h1 className={headingClass} style={headingStyle}>{text}</h1>;
+      if (level === 3) return <h3 className={headingClass} style={headingStyle}>{text}</h3>;
+      if (level === 4) return <h4 className={headingClass} style={headingStyle}>{text}</h4>;
+      if (level === 5) return <h5 className={headingClass} style={headingStyle}>{text}</h5>;
+      if (level === 6) return <h6 className={headingClass} style={headingStyle}>{text}</h6>;
+      return <h2 className={headingClass} style={headingStyle}>{text}</h2>;
     }
 
     case 'text':

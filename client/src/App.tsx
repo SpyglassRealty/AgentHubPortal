@@ -44,6 +44,8 @@ import LandingPageEditorPage from "@/pages/admin/LandingPageEditor";
 import TestimonialListPage from "@/pages/admin/TestimonialList";
 import TestimonialEditorPage from "@/pages/admin/TestimonialEditor";
 import ReviewSourceManagerPage from "@/pages/admin/ReviewSourceManager";
+import PagesListPage from "@/pages/admin/pages-list";
+import PageEditorPage from "@/pages/admin/page-editor";
 
 // Backward compatibility redirect component
 function CmaPresentationRedirect() {
@@ -119,6 +121,9 @@ function Router() {
       <Route path="/admin/agents" component={AgentListPage} />
       <Route path="/admin/landing-pages/:id" component={LandingPageEditorPage} />
       <Route path="/admin/landing-pages" component={LandingPageListPage} />
+      <Route path="/admin/pages/new" component={PageEditorPage} />
+      <Route path="/admin/pages/:id/edit" component={PageEditorPage} />
+      <Route path="/admin/pages" component={PagesListPage} />
       <Route path="/admin/testimonials/sources" component={ReviewSourceManagerPage} />
       <Route path="/admin/testimonials/:id" component={TestimonialEditorPage} />
       <Route path="/admin/testimonials" component={TestimonialListPage} />
