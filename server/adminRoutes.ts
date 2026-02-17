@@ -2,10 +2,10 @@ import type { Express } from "express";
 import { storage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
 import { resetFubClient, refreshFubDbConfig } from "./fubClient";
-import { INTEGRATION_DEFINITIONS, upsertIntegrationConfigSchema, siteContent } from "@shared/schema";
+import { INTEGRATION_DEFINITIONS, upsertIntegrationConfigSchema, siteContent, communities, blogPosts, testimonials, landingPages } from "@shared/schema";
 import type { User } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { SITE_CONTENT_DEFAULTS, VALID_SECTIONS } from "./siteContentDefaults";
 
 // Mask an API key to show only last 4 chars
@@ -353,6 +353,26 @@ export function registerAdminRoutes(app: Express) {
     } catch (error) {
       console.error("[Admin] Error fetching stats:", error);
       res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  // GET /api/admin/content-stats - Content statistics (real counts from DB)
+  app.get("/api/admin/content-stats", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const [communitiesCount] = await db.select({ count: sql<number>`count(*)::int` }).from(communities);
+      const [blogPostsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(blogPosts);
+      const [testimonialsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(testimonials);
+      const [landingPagesCount] = await db.select({ count: sql<number>`count(*)::int` }).from(landingPages);
+
+      res.json({
+        communities: communitiesCount?.count ?? 0,
+        blogPosts: blogPostsCount?.count ?? 0,
+        testimonials: testimonialsCount?.count ?? 0,
+        landingPages: landingPagesCount?.count ?? 0,
+      });
+    } catch (error) {
+      console.error("[Admin] Error fetching content stats:", error);
+      res.status(500).json({ message: "Failed to fetch content stats" });
     }
   });
 

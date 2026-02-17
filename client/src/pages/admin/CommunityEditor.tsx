@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import Layout from "@/components/layout";
+import AdminLayout from "@/components/AdminLayout";
 import {
   useAdminCommunity,
   useUpdateCommunity,
@@ -168,29 +168,29 @@ export default function CommunityEditor() {
 
   if (isLoading) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="flex items-center justify-center h-[60vh]">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
   if (!community) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="max-w-4xl mx-auto px-4 py-10 text-center">
           <p className="text-lg text-muted-foreground">Community not found</p>
           <Button variant="link" onClick={() => setLocation("/admin/communities")}>
             Back to list
           </Button>
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* ── Header ──────────────────────────────── */}
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -587,6 +587,6 @@ export default function CommunityEditor() {
           </div>
         </div>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 }

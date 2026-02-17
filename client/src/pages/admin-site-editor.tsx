@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import Layout from "@/components/layout";
+import AdminLayout from "@/components/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1606,18 +1606,18 @@ export default function AdminSiteEditorPage() {
   // Guard: admin only
   if (!user?.isSuperAdmin) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="max-w-2xl mx-auto py-12 text-center">
           <Shield className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
           <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
           <p className="text-muted-foreground">Administrator privileges required.</p>
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="h-[calc(100vh-64px)] flex flex-col">
         {/* Top Toolbar */}
         <div className="flex items-center justify-between border-b px-4 py-2 bg-background shrink-0">
@@ -1884,7 +1884,7 @@ export default function AdminSiteEditorPage() {
           </div>
         )}
       </div>
-    </Layout>
+    </AdminLayout>
   );
 }
 

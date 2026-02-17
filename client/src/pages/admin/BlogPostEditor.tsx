@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import Layout from "@/components/layout";
+import AdminLayout from "@/components/AdminLayout";
 import { SeoPanel } from "@/components/seo/SeoPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -352,17 +352,17 @@ export default function BlogPostEditor() {
 
   if (postLoading && !isNewPost) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="max-w-4xl mx-auto py-12 text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="text-muted-foreground mt-4">Loading blog post...</p>
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -777,6 +777,6 @@ export default function BlogPostEditor() {
           </div>
         </div>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 }

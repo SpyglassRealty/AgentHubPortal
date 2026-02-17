@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import Layout from "@/components/layout";
+import AdminLayout from "@/components/AdminLayout";
 import { useAdminCommunities } from "@/lib/community-editor";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -118,7 +118,7 @@ export default function CommunityList() {
   };
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
@@ -393,6 +393,6 @@ export default function CommunityList() {
           </div>
         )}
       </div>
-    </Layout>
+    </AdminLayout>
   );
 }

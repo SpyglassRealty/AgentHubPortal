@@ -124,6 +124,7 @@ function Router() {
       <Route path="/admin/pages/new" component={PageEditorPage} />
       <Route path="/admin/pages/:id/edit" component={PageEditorPage} />
       <Route path="/admin/pages" component={PagesListPage} />
+      <Route path="/admin/review-sources" component={ReviewSourceManagerPage} />
       <Route path="/admin/testimonials/sources" component={ReviewSourceManagerPage} />
       <Route path="/admin/testimonials/:id" component={TestimonialEditorPage} />
       <Route path="/admin/testimonials" component={TestimonialListPage} />

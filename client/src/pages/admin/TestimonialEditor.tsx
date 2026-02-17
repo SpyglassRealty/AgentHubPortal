@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import Layout from "@/components/layout";
+import AdminLayout from "@/components/AdminLayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -237,16 +237,16 @@ export default function TestimonialEditor({ params }: { params: { id: string } }
 
   if (!isNew && testimonialLoading) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="flex items-center justify-center min-h-screen">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="max-w-4xl mx-auto px-6 py-8">
           {/* Modern Header */}
@@ -577,6 +577,6 @@ export default function TestimonialEditor({ params }: { params: { id: string } }
           </form>
         </div>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 }
