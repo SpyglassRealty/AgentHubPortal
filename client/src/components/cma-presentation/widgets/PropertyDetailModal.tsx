@@ -395,10 +395,12 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
             </div>
           </div>
           
-          {property.description && (
-            <div className="p-4 border-t" data-testid="property-description-section">
-              <h3 className="text-sm font-medium mb-2 text-gray-600">Property Description</h3>
-              <p className="text-sm text-gray-900 leading-relaxed" data-testid="property-description-text">
+          {property.description && property.description.trim() !== '' && (
+            <div className="mt-6 mb-6 pt-4 border-t border-border" data-testid="property-description-section">
+              <h3 className="text-lg font-semibold mb-3">About This Home</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line" 
+                 style={{ overflowWrap: 'anywhere' }} 
+                 data-testid="property-description-text">
                 {property.description}
               </p>
             </div>

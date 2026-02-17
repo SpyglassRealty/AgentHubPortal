@@ -25,6 +25,7 @@ interface PropertyDetailModalProps {
     status: string;
     photos: string[];
     percentOfList?: string;
+    description?: string;
   };
 }
 
@@ -243,6 +244,15 @@ export function PropertyDetailModal({ isOpen, onClose, property }: PropertyDetai
               </div>
             )}
           </div>
+          
+          {property.description && property.description.trim() !== '' && (
+            <div className="mt-6 mb-6 pt-4 border-t border-zinc-700">
+              <h3 className="text-lg font-semibold mb-3 text-white">About This Home</h3>
+              <p className="text-sm text-zinc-400 leading-relaxed whitespace-pre-line" style={{ overflowWrap: 'anywhere' }}>
+                {property.description}
+              </p>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
