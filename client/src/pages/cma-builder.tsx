@@ -785,7 +785,8 @@ function SearchPropertiesSection({
 
   const handleSearch = async (pageNum = 1) => {
     // Validate: need at least one search criterion
-    if (!filters.quickSearch) {
+    // BUT: if we have a drawn polygon, that's sufficient for map search
+    if (!filters.quickSearch && !drawnPolygon) {
       const hasLocation = filters.city || filters.subdivision || filters.zip || filters.county || filters.area || filters.schoolDistrict || filters.elementarySchool || filters.middleSchool || filters.highSchool;
       if (!hasLocation && !filters.propertyType && !filters.minBeds && !filters.minBaths && !filters.minPrice && !filters.maxPrice) {
         toast({ title: "Enter search criteria", description: "Please enter at least one filter (address, MLS#, location, etc.) before searching.", variant: "destructive" });
@@ -842,6 +843,12 @@ function SearchPropertiesSection({
       // Include dateSoldDays when Closed is selected
       if (filters.statuses.includes("Closed") && filters.dateSoldDays) {
         body.dateSoldDays = parseInt(filters.dateSoldDays);
+      }
+
+      // Include polygon data if it exists (drawn polygon overrides location filters)
+      if (drawnPolygon && drawnPolygon.length >= 3) {
+        console.log('[Search] Using drawn polygon with criteria search');
+        body.polygon = drawnPolygon;
       }
 
       const res = await apiRequest("POST", "/api/cma/search-properties", body);
@@ -1068,9 +1075,16 @@ function SearchPropertiesSection({
     const timer = setTimeout(() => {
       if (!mapContainerRef.current) return;
 
-      // If map already exists, just resize it
+      // If map already exists, just resize it and return
       if (mapRef.current) {
+        console.log('[Map] Resizing existing map for tab switch');
         mapRef.current.resize();
+        // Force a repaint by invalidating size
+        setTimeout(() => {
+          if (mapRef.current) {
+            mapRef.current.resize();
+          }
+        }, 100);
         return;
       }
 
@@ -1235,6 +1249,21 @@ function SearchPropertiesSection({
 
     return () => clearTimeout(timer);
   }, [activeTab, mapboxToken]);
+
+  // Handle map resize on tab switches (fix white/blank map issue)
+  useEffect(() => {
+    if (activeTab === 'map' && mapRef.current) {
+      // Additional delay to ensure DOM has updated
+      const resizeTimer = setTimeout(() => {
+        if (mapRef.current) {
+          console.log('[Map] Forcing resize for tab switch');
+          mapRef.current.resize();
+          mapRef.current.redraw();
+        }
+      }, 200);
+      return () => clearTimeout(resizeTimer);
+    }
+  }, [activeTab]);
 
   // Cleanup map on unmount
   useEffect(() => {
