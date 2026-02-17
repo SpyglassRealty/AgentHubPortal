@@ -229,6 +229,7 @@ export const navItems = [
   { label: "Pulse", icon: Activity, href: "/pulse" },
   { label: "Marketing", icon: Megaphone, href: "/marketing" },
   { label: "Marketing Calendar", icon: CalendarDays, href: "/marketing-calendar" },
+  { label: "Pages", icon: FileText, href: "/admin/pages" },
   { label: "Training", icon: GraduationCap, href: "/training" },
   { label: "Settings", icon: Settings, href: "/settings" },
   { label: "Admin", icon: Shield, href: "/admin" },
