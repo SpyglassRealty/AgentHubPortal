@@ -120,7 +120,7 @@ export default function GlobalScriptsList() {
   });
 
   // ── Queries ──────────────────────────────────────────
-  const { data: scriptsData, isLoading: scriptsLoading } = useQuery<GlobalScriptsResponse>({
+  const { data: scriptsData, isLoading: scriptsLoading, error: scriptsError } = useQuery<GlobalScriptsResponse>({
     queryKey: ["/api/admin/global-scripts", filter, positionFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -133,6 +133,7 @@ export default function GlobalScriptsList() {
       if (!res.ok) throw new Error("Failed to fetch scripts");
       return res.json();
     },
+    retry: 1,
   });
 
   const { data: templatesData } = useQuery<ScriptTemplatesResponse>({
@@ -431,6 +432,35 @@ export default function GlobalScriptsList() {
       </div>
     );
   };
+
+  if (scriptsError) {
+    return (
+      <AdminLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+          <div className="flex items-center gap-3 mb-6">
+            <Button variant="ghost" size="icon" onClick={() => setLocation("/admin")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-2xl font-bold">Global Scripts</h1>
+          </div>
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-6 w-6 text-red-600" />
+                <div>
+                  <p className="font-medium text-red-800">Unable to load Global Scripts</p>
+                  <p className="text-sm text-red-700 mt-1">
+                    The global_scripts table may need to be created. Run the migration: <code className="bg-red-100 px-1 rounded">0003_cms_enhancement_phase1.sql</code>
+                  </p>
+                  <p className="text-xs text-red-600 mt-2">Error: {(scriptsError as Error).message}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
