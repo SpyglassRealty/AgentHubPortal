@@ -103,6 +103,7 @@ export interface CMAComparable {
   status: string;
   photos: string[];
   pricePerSqft: number;
+  description?: string; // MLS property description ("About This Home")
 }
 
 export interface CMAAgentInfo {

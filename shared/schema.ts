@@ -506,6 +506,7 @@ export interface CMAComparable {
   listDate?: string;
   closeDate?: string;
   yearBuilt?: number;
+  description?: string; // MLS property description ("About This Home")
   map?: {
     latitude: number;
     longitude: number;

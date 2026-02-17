@@ -1,8 +1,4 @@
 # HEARTBEAT.md
 
-## Email Check
-- Check clawd@spyglassrealty.com for new messages
-- Credentials: ~/clawd/.credentials/gmail.json  
-- **PRIORITY: Watch for maggie@spyglassrealty.com** - Auto-respond with helpful setup guidance
-- Look for: Replit notifications, anything from Ryan, urgent items
-- Summarize new emails if any found
+# Keep this file empty (or with only comments) to skip heartbeat API calls.
+# Add tasks below when you want the agent to check something periodically.
