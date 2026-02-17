@@ -506,6 +506,7 @@ export interface CMAComparable {
   listDate?: string;
   closeDate?: string;
   yearBuilt?: number;
+  description?: string;
   map?: {
     latitude: number;
     longitude: number;

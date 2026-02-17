@@ -3927,6 +3927,16 @@ export function CMAReport({
                 </div>
               </div>
 
+              {/* About This Home Section */}
+              {((floatingCardProperty as any).description && ((floatingCardProperty as any).description as string).trim() !== '') && (
+                <div className="mt-6 mb-6 pt-4 border-t border-border">
+                  <h3 className="text-lg font-semibold mb-3">About This Home</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line" style={{ overflowWrap: 'anywhere' }}>
+                    {(floatingCardProperty as any).description}
+                  </p>
+                </div>
+              )}
+
               <Separator className="my-4" />
 
               {/* Key Stats */}
