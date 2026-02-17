@@ -10,7 +10,7 @@ import { DrawingCanvas, type DrawingCanvasHandle } from '@/components/cma-presen
 import { WIDGETS } from '@/components/cma-presentation/constants/widgets';
 import { Loader2 } from 'lucide-react';
 import { useRef } from 'react';
-import type { Transaction, Cma, AgentProfile } from '@shared/schema';
+import type { Cma, AgentProfile } from '@shared/schema';
 
 export default function CMAPresentation() {
   const [, params] = useRoute('/cma/:id/cma-presentation');
@@ -55,13 +55,19 @@ export default function CMAPresentation() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSlide, sidebarOpen, drawingMode, handleClose]);
 
-  const { data: cmaData } = useQuery({
+  const { data: cmaData, isLoading: cmaLoading, error: cmaError } = useQuery({
     queryKey: ['/api/cma', id],
     queryFn: async () => {
-      const res = await fetch('/api/cma/' + id);
-      if (!res.ok) throw new Error('Failed to fetch CMA');
+      if (!id) throw new Error('No CMA ID provided');
+      const res = await fetch('/api/cma/' + id, { credentials: 'include' });
+      if (!res.ok) {
+        if (res.status === 404) throw new Error('CMA not found');
+        if (res.status === 401) throw new Error('Unauthorized');
+        throw new Error(`Failed to fetch CMA: ${res.status}`);
+      }
       return res.json();
     },
+    enabled: !!id,
   });
 
   // REMOVED: savedCma query - using cmaData instead
@@ -248,8 +254,14 @@ export default function CMAPresentation() {
   }, []);
 
   const presentationComparables = useMemo(() => {
-    const cmaPropertiesData = (cmaData?.comparableProperties || []) as any[];
-    const transactionCmaData = (cmaData?.comparableProperties || []) as any[];
+    // Safely access cmaData with null guards
+    if (!cmaData || typeof cmaData !== 'object') {
+      console.warn('[CMA Debug] No cmaData or invalid data structure');
+      return [];
+    }
+    
+    const cmaPropertiesData = Array.isArray(cmaData?.comparableProperties) ? cmaData.comparableProperties : [];
+    const transactionCmaData = Array.isArray(cmaData?.comparableProperties) ? cmaData.comparableProperties : [];
     
     // Create lookup maps from cmaData.comparableProperties by mlsNumber for coordinates and status
     // This ensures we always use the LATEST status from MLS sync
@@ -408,6 +420,10 @@ export default function CMAPresentation() {
   }, [cmaData?.comparableProperties, normalizeStatusWithLastStatus]);
 
   const subjectProperty = useMemo(() => {
+    if (!cmaData || typeof cmaData !== 'object') {
+      return null;
+    }
+    
     const rawSubject = cmaData?.subjectProperty as any;
     if (!rawSubject) {
       // Construct minimal subject from CMA name when subjectProperty is null in DB
@@ -470,14 +486,52 @@ export default function CMAPresentation() {
     return Math.round(total / compsWithAcres.length);
   }, [presentationComparables]);
 
-  const isLoading = profileLoading;
+  const isLoading = profileLoading || cmaLoading;
 
+  // Error states
+  if (cmaError) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+        <div className="text-center max-w-md px-6">
+          <div className="text-red-500 mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold mb-2">Error Loading CMA</h2>
+          <p className="text-muted-foreground mb-4">
+            {cmaError?.message || "Failed to load CMA data"}
+          </p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (profileError) {
+    console.warn('Profile error:', profileError);
+    // Continue with empty profile rather than failing completely
+  }
+
+  // Loading states
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
-          <p className="text-muted-foreground">Loading presentation...</p>
+          <p className="text-muted-foreground">Loading CMA presentation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check for missing required data
+  if (!id) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+        <div className="text-center">
+          <p className="text-muted-foreground">No CMA ID provided</p>
         </div>
       </div>
     );
@@ -487,7 +541,7 @@ export default function CMAPresentation() {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
         <div className="text-center">
-          <p className="text-muted-foreground">CMA not found</p>
+          <p className="text-muted-foreground">CMA data not found</p>
         </div>
       </div>
     );

@@ -22,6 +22,7 @@ import TrainingPage from "@/pages/training";
 import CmaPage from "@/pages/cma";
 import CmaBuilderPage from "@/pages/cma-builder";
 import CmaPresentationPage from "@/components/cma-presentation/pages/CMAPresentation";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import CMAPresentationBuilder from "@/pages/CMAPresentationBuilder";
 import SharedCmaPage from "@/pages/shared-cma";
 import PulsePage from "@/pages/pulse";
@@ -97,7 +98,13 @@ function Router() {
       <Route path="/properties" component={PropertiesPage} />
       <Route path="/pulse" component={PulsePage} />
       <Route path="/cma" component={CmaPage} />
-      <Route path="/cma/:id/cma-presentation" component={CmaPresentationPage} />
+      <Route path="/cma/:id/cma-presentation">
+        {(params) => (
+          <ErrorBoundary>
+            <CmaPresentationPage />
+          </ErrorBoundary>
+        )}
+      </Route>
       <Route path="/cma/:id/presentation-builder" component={CMAPresentationBuilder} />
       {/* Backward compatibility redirect */}
       <Route path="/cma/:id/presentation" component={CmaPresentationRedirect} />
