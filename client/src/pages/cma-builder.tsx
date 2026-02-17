@@ -1643,17 +1643,19 @@ function SearchPropertiesSection({
                     variant="outline"
                     size="sm"
                     onClick={handleClearDrawing}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
                   >
                     <Trash2 className="h-4 w-4 mr-1.5" />
-                    Clear Drawing
+                    Clear Polygon
                   </Button>
                 )}
 
                 {drawingInProgress && (
-                  <span className="text-xs text-muted-foreground ml-2 animate-pulse">
-                    Click to add points. Double-click to complete the shape.
-                  </span>
+                  <div className="flex items-center ml-2">
+                    <span className="text-xs text-blue-600 font-medium animate-pulse">
+                      🎯 Drawing polygon... Click to add points, double-click to complete
+                    </span>
+                  </div>
                 )}
               </div>
 
@@ -1668,13 +1670,27 @@ function SearchPropertiesSection({
                 {showSearchButton && !mapSearching && !drawingInProgress && (
                   <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
                     <Button
-                      size="sm"
-                      className="bg-[#EF4923] hover:bg-[#d4401f] text-white shadow-lg"
+                      size={drawnPolygon ? "default" : "sm"}
+                      className={`${drawnPolygon 
+                        ? 'bg-green-600 hover:bg-green-700 text-white shadow-xl animate-pulse' 
+                        : 'bg-[#EF4923] hover:bg-[#d4401f] text-white shadow-lg'
+                      }`}
                       onClick={handleMapSearch}
                     >
                       <Search className="h-4 w-4 mr-2" />
-                      {drawnPolygon ? 'Search This Polygon' : 'Search This Area'}
+                      {drawnPolygon ? '🔍 Search Properties in Polygon' : 'Search This Area'}
                     </Button>
+                  </div>
+                )}
+
+                {/* Polygon completion notification */}
+                {drawnPolygon && !mapSearching && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+                    <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-lg shadow-lg">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        ✅ Polygon drawn successfully! Click the search button above to find properties.
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -1701,9 +1717,9 @@ function SearchPropertiesSection({
               <p className="text-xs text-muted-foreground mt-2 text-center">
                 {mapMode === 'draw'
                   ? drawnPolygon
-                    ? 'Polygon drawn. Click "Search This Polygon" to find properties, or drag vertices to adjust.'
-                    : 'Click on the map to add polygon points. Double-click to complete the shape.'
-                  : 'Pan and zoom the map, then click "Search This Area" to find properties. Use Draw mode to search a custom area.'}
+                    ? '🎯 Polygon completed! Click the green search button above to find properties within this area.'
+                    : 'Click on the map to add polygon points. Double-click to complete the polygon and search.'
+                  : 'Pan and zoom the map, then click "Search This Area" to find properties. Use Draw mode to search a custom polygon area.'}
               </p>
             </TabsContent>
           </Tabs>
