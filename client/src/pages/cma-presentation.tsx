@@ -13,6 +13,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SafeImage } from "@/components/ui/safe-image";
 import { toast } from "sonner";
+import { PropertyDetailModal } from "@/components/cma-presentation/widgets/PropertyDetailModal";
+import type { CmaProperty } from "@/components/cma-presentation/types";
 import {
   Home,
   MapPin,
@@ -79,6 +81,7 @@ interface PropertyData {
   photos?: string[];
   latitude?: number | null;
   longitude?: number | null;
+  description?: string;
 }
 
 interface CmaData {
@@ -98,6 +101,34 @@ interface AgentProfile {
   email?: string;
   headshotUrl?: string;
   bio?: string;
+}
+
+// Convert PropertyData to CmaProperty for modal compatibility
+function convertPropertyData(property: PropertyData): CmaProperty {
+  return {
+    id: property.mlsNumber || Math.random().toString(),
+    mlsNumber: property.mlsNumber,
+    address: property.address,
+    city: property.city || '',
+    state: property.state || '',
+    zipCode: property.zip || '',
+    price: property.soldPrice || property.listPrice,
+    listPrice: property.listPrice,
+    soldPrice: property.soldPrice || undefined,
+    sqft: property.sqft,
+    beds: property.beds,
+    baths: property.baths,
+    yearBuilt: property.yearBuilt || undefined,
+    status: property.status as any,
+    daysOnMarket: property.daysOnMarket || 0,
+    listDate: property.listDate,
+    soldDate: property.soldDate || undefined,
+    pricePerSqft: property.soldPrice ? Math.round(property.soldPrice / property.sqft) : Math.round(property.listPrice / property.sqft),
+    photos: property.photos || [],
+    latitude: property.latitude || undefined,
+    longitude: property.longitude || undefined,
+    description: property.description || undefined,
+  };
 }
 
 // Widget definitions - 33 total widgets as mentioned by Daryl
@@ -686,7 +717,11 @@ function SlideshowPlayer({ widgets, cma, agentProfile, activeWidgetId, onClose, 
                 <h3 className="text-2xl font-semibold mb-4">Comparable Sales</h3>
                 <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                   {cma.comparableProperties.map((comp, index) => (
-                    <div key={index} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                    <div 
+                      key={index} 
+                      className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => setSelectedProperty(comp)}
+                    >
                       {/* Property Image */}
                       <div className="relative aspect-[4/3]">
                         <SafeImage 
@@ -870,6 +905,7 @@ export default function CmaPresentationPage() {
   const cmaId = routeParams?.id;
   const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
   const [isBioModalOpen, setIsBioModalOpen] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState<PropertyData | null>(null);
   const queryClient = useQueryClient();
 
   // Load CMA data
@@ -1066,6 +1102,14 @@ export default function CmaPresentationPage() {
         onSave={(bio) => updateBioMutation.mutate(bio)}
         isSaving={updateBioMutation.isPending}
       />
+
+      {/* Property Detail Modal */}
+      {selectedProperty && (
+        <PropertyDetailModal
+          property={convertPropertyData(selectedProperty)}
+          onClose={() => setSelectedProperty(null)}
+        />
+      )}
     </div>
   );
 }
