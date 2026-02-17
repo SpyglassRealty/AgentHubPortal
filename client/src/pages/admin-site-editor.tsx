@@ -22,22 +22,18 @@ import {
   ExternalLink,
   Plus,
   Trash2,
-  GripVertical,
   Shield,
   Star,
   Home,
-  Users,
   BarChart3,
-  Award,
-  MessageSquare,
   Quote,
-  HelpCircle,
-  ListChecks,
-  FileText,
-  Youtube,
-  Megaphone,
   Footprints,
   CheckCircle2,
+  SplitSquareHorizontal,
+  TrendingUp,
+  Building2,
+  MapPin,
+  Mail,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -52,19 +48,15 @@ interface SiteContentResponse {
 // ── Section metadata for display ─────────────────
 
 const SECTION_META: { key: string; label: string; icon: any; description: string }[] = [
-  { key: "hero", label: "Hero Section", icon: Home, description: "Main headline, background, CTA" },
-  { key: "stats", label: "Stats Bar", icon: BarChart3, description: "3 stat items below hero" },
-  { key: "awards", label: "Awards Section", icon: Award, description: "Award badges and review platforms" },
-  { key: "seller", label: "Seller Section", icon: Users, description: "Seller-focused content block" },
-  { key: "buyer", label: "Buyer Section", icon: Users, description: "Buyer-focused content block" },
+  { key: "hero", label: "Hero Section", icon: Home, description: "Main headline, background image, dual CTAs, search bar, trust bar" },
+  { key: "stats", label: "Stats Bar", icon: BarChart3, description: "4 stat items with icons below the hero" },
+  { key: "whatBringsYou", label: "What Brings You", icon: SplitSquareHorizontal, description: "Buy/Sell cards with images and links" },
+  { key: "spyglassDifference", label: "Spyglass Difference", icon: TrendingUp, description: "3 stat blocks showing competitive advantages" },
+  { key: "featuredListings", label: "Featured Listings", icon: Building2, description: "Heading and view-all link (listings are dynamic)" },
   { key: "testimonials", label: "Testimonials", icon: Quote, description: "Customer testimonial carousel" },
-  { key: "reviews", label: "Reviews Section", icon: Star, description: "5-star reviews feature" },
-  { key: "whyChoose", label: "Why Choose Section", icon: HelpCircle, description: "Why Choose Spyglass" },
-  { key: "threeReasons", label: "Three Reasons", icon: ListChecks, description: "3 reason cards" },
-  { key: "newForm", label: "New Form Section", icon: FileText, description: "New Form of Realty" },
-  { key: "youtube", label: "YouTube Section", icon: Youtube, description: "YouTube video showcase" },
-  { key: "cta", label: "CTA Bar", icon: Megaphone, description: "Call-to-action banner" },
-  { key: "footer", label: "Footer", icon: Footprints, description: "Site footer content" },
+  { key: "neighborhoods", label: "Neighborhoods", icon: MapPin, description: "Neighborhood cards linking to community pages" },
+  { key: "newForm", label: "Contact Form", icon: Mail, description: "CTA heading and contact form section" },
+  { key: "footer", label: "Footer", icon: Footprints, description: "Site footer content, social links, columns" },
 ];
 
 // ── Helpers ────────────────────────────────────────
@@ -143,53 +135,19 @@ function FieldGroup({ label, children }: { label: string; children: React.ReactN
   );
 }
 
-function ParagraphsEditor({
-  paragraphs,
-  onChange,
-  label = "Body Paragraphs",
-}: {
-  paragraphs: string[];
-  onChange: (paragraphs: string[]) => void;
-  label?: string;
-}) {
-  return (
-    <ArrayEditor
-      items={paragraphs}
-      onUpdate={onChange}
-      newItem={() => ""}
-      label={label}
-      renderItem={(item, index, onFieldChange) => (
-        <Textarea
-          value={item}
-          onChange={(e) => {
-            const updated = [...paragraphs];
-            updated[index] = e.target.value;
-            onChange(updated);
-          }}
-          rows={3}
-          placeholder={`Paragraph ${index + 1}`}
-        />
-      )}
-    />
-  );
-}
-
 // ── Section Editors ────────────────────────────────
 
 function HeroEditor({ data, onChange }: { data: any; onChange: (data: any) => void }) {
   return (
     <div className="space-y-4">
-      <FieldGroup label="Welcome Label">
-        <Input value={data.welcomeLabel || ""} onChange={(e) => onChange({ ...data, welcomeLabel: e.target.value })} />
-      </FieldGroup>
       <FieldGroup label="Headline">
-        <Input value={data.headline || ""} onChange={(e) => onChange({ ...data, headline: e.target.value })} />
+        <Input value={data.headline || ""} onChange={(e) => onChange({ ...data, headline: e.target.value })} placeholder="Your Home. Our Obsession." />
       </FieldGroup>
-      <FieldGroup label="Headline Highlight (orange text)">
-        <Input value={data.headlineHighlight || ""} onChange={(e) => onChange({ ...data, headlineHighlight: e.target.value })} />
+      <FieldGroup label="Subtitle Stats Line">
+        <Input value={data.subtitleStats || ""} onChange={(e) => onChange({ ...data, subtitleStats: e.target.value })} placeholder="1,200+ 5-star reviews  |  2,500+ Homes Sold  |  ..." />
       </FieldGroup>
-      <FieldGroup label="Headline Suffix">
-        <Input value={data.headlineSuffix || ""} onChange={(e) => onChange({ ...data, headlineSuffix: e.target.value })} />
+      <FieldGroup label="Subtitle Tagline">
+        <Input value={data.subtitleTagline || ""} onChange={(e) => onChange({ ...data, subtitleTagline: e.target.value })} placeholder="Austin's premier real estate brokerage" />
       </FieldGroup>
       <FieldGroup label="Background Image URL">
         <Input value={data.backgroundImage || ""} onChange={(e) => onChange({ ...data, backgroundImage: e.target.value })} placeholder="/images/austin-skyline-hero.jpg" />
@@ -197,17 +155,46 @@ function HeroEditor({ data, onChange }: { data: any; onChange: (data: any) => vo
       <FieldGroup label="Background Image Fallback URL">
         <Input value={data.backgroundImageFallback || ""} onChange={(e) => onChange({ ...data, backgroundImageFallback: e.target.value })} />
       </FieldGroup>
+      <Separator />
+      <p className="text-sm font-medium">Call-to-Action Buttons</p>
       <div className="grid grid-cols-2 gap-4">
-        <FieldGroup label="CTA Button Text">
-          <Input value={data.ctaText || ""} onChange={(e) => onChange({ ...data, ctaText: e.target.value })} />
+        <FieldGroup label="Primary CTA Text">
+          <Input value={data.primaryCtaText || ""} onChange={(e) => onChange({ ...data, primaryCtaText: e.target.value })} placeholder="Search Homes" />
         </FieldGroup>
-        <FieldGroup label="CTA Link">
-          <Input value={data.ctaLink || ""} onChange={(e) => onChange({ ...data, ctaLink: e.target.value })} />
+        <FieldGroup label="Primary CTA Link">
+          <Input value={data.primaryCtaLink || ""} onChange={(e) => onChange({ ...data, primaryCtaLink: e.target.value })} placeholder="/search" />
+        </FieldGroup>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <FieldGroup label="Secondary CTA Text">
+          <Input value={data.secondaryCtaText || ""} onChange={(e) => onChange({ ...data, secondaryCtaText: e.target.value })} placeholder="What's My Home Worth?" />
+        </FieldGroup>
+        <FieldGroup label="Secondary CTA Link">
+          <Input value={data.secondaryCtaLink || ""} onChange={(e) => onChange({ ...data, secondaryCtaLink: e.target.value })} placeholder="/sell" />
         </FieldGroup>
       </div>
       <FieldGroup label="Search Placeholder">
         <Input value={data.searchPlaceholder || ""} onChange={(e) => onChange({ ...data, searchPlaceholder: e.target.value })} />
       </FieldGroup>
+      <Separator />
+      <ArrayEditor
+        items={data.trustBarItems || []}
+        onUpdate={(trustBarItems) => onChange({ ...data, trustBarItems })}
+        newItem={() => ""}
+        label="Trust Bar Items"
+        maxItems={6}
+        renderItem={(item, index, _onFieldChange) => (
+          <Input
+            value={item}
+            onChange={(e) => {
+              const updated = [...(data.trustBarItems || [])];
+              updated[index] = e.target.value;
+              onChange({ ...data, trustBarItems: updated });
+            }}
+            placeholder="e.g. 1,200+ Reviews"
+          />
+        )}
+      />
     </div>
   );
 }
@@ -218,54 +205,134 @@ function StatsEditor({ data, onChange }: { data: any; onChange: (data: any) => v
     <ArrayEditor
       items={items}
       onUpdate={(items) => onChange({ ...data, items })}
-      newItem={() => ({ value: "", description: "", subtext: "" })}
+      newItem={() => ({ iconName: "HomeIcon", value: "", label: "" })}
       label="Stat Items"
-      maxItems={4}
+      maxItems={6}
       renderItem={(item, index, onFieldChange) => (
         <div className="grid grid-cols-1 gap-2">
-          <Input value={item.value || ""} onChange={(e) => onFieldChange("value", e.target.value)} placeholder="e.g. 6x Times" />
-          <Input value={item.description || ""} onChange={(e) => onFieldChange("description", e.target.value)} placeholder="Description" />
-          <Input value={item.subtext || ""} onChange={(e) => onFieldChange("subtext", e.target.value)} placeholder="Subtext" />
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <Label className="text-xs text-muted-foreground">Icon</Label>
+              <select
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={item.iconName || "HomeIcon"}
+                onChange={(e) => onFieldChange("iconName", e.target.value)}
+              >
+                <option value="HomeIcon">Home</option>
+                <option value="UserGroupIcon">Users</option>
+                <option value="MapPinIcon">Map Pin</option>
+                <option value="CurrencyDollarIcon">Dollar</option>
+                <option value="ChartBarIcon">Chart</option>
+                <option value="StarIcon">Star</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Value</Label>
+              <Input value={item.value || ""} onChange={(e) => onFieldChange("value", e.target.value)} placeholder="3,400+" />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Label</Label>
+              <Input value={item.label || ""} onChange={(e) => onFieldChange("label", e.target.value)} placeholder="For Sale" />
+            </div>
+          </div>
         </div>
       )}
     />
   );
 }
 
-function AwardsEditor({ data, onChange }: { data: any; onChange: (data: any) => void }) {
-  return (
-    <div className="space-y-6">
-      <FieldGroup label="Section Heading">
-        <Input value={data.heading || ""} onChange={(e) => onChange({ ...data, heading: e.target.value })} />
-      </FieldGroup>
+function WhatBringsYouEditor({ data, onChange }: { data: any; onChange: (data: any) => void }) {
+  const cards = data.cards || [];
 
+  const updateCard = (index: number, field: string, value: string) => {
+    const updated = [...cards];
+    updated[index] = { ...updated[index], [field]: value };
+    onChange({ ...data, cards: updated });
+  };
+
+  return (
+    <div className="space-y-4">
+      <FieldGroup label="Section Heading">
+        <Input value={data.heading || ""} onChange={(e) => onChange({ ...data, heading: e.target.value })} placeholder="What brings you here?" />
+      </FieldGroup>
+      <Separator />
+      {cards.map((card: any, index: number) => (
+        <Card key={index}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">{index === 0 ? "Buy Card" : "Sell Card"}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <FieldGroup label="Title">
+              <Input value={card.title || ""} onChange={(e) => updateCard(index, "title", e.target.value)} />
+            </FieldGroup>
+            <FieldGroup label="Description">
+              <Textarea value={card.description || ""} onChange={(e) => updateCard(index, "description", e.target.value)} rows={2} />
+            </FieldGroup>
+            <FieldGroup label="Image URL">
+              <Input value={card.imageUrl || ""} onChange={(e) => updateCard(index, "imageUrl", e.target.value)} />
+            </FieldGroup>
+            <FieldGroup label="Image Alt Text">
+              <Input value={card.imageAlt || ""} onChange={(e) => updateCard(index, "imageAlt", e.target.value)} />
+            </FieldGroup>
+            <div className="grid grid-cols-2 gap-4">
+              <FieldGroup label="Link Text">
+                <Input value={card.linkText || ""} onChange={(e) => updateCard(index, "linkText", e.target.value)} />
+              </FieldGroup>
+              <FieldGroup label="Link URL">
+                <Input value={card.linkHref || ""} onChange={(e) => updateCard(index, "linkHref", e.target.value)} />
+              </FieldGroup>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+      {cards.length < 2 && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onChange({ ...data, cards: [...cards, { title: "", description: "", imageUrl: "", imageAlt: "", linkText: "", linkHref: "" }] })}
+        >
+          <Plus className="h-3 w-3 mr-1" /> Add Card
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function SpyglassDifferenceEditor({ data, onChange }: { data: any; onChange: (data: any) => void }) {
+  return (
+    <div className="space-y-4">
+      <FieldGroup label="Section Heading">
+        <Input value={data.heading || ""} onChange={(e) => onChange({ ...data, heading: e.target.value })} placeholder="The Spyglass Difference" />
+      </FieldGroup>
+      <FieldGroup label="Subtitle">
+        <Input value={data.subtitle || ""} onChange={(e) => onChange({ ...data, subtitle: e.target.value })} placeholder="What sets us apart..." />
+      </FieldGroup>
+      <Separator />
       <ArrayEditor
-        items={data.badges || []}
-        onUpdate={(badges) => onChange({ ...data, badges })}
-        newItem={() => ({ title: "", subtitle: "", label: "", imageUrl: "" })}
-        label="Award Badges"
+        items={data.items || []}
+        onUpdate={(items) => onChange({ ...data, items })}
+        newItem={() => ({ stat: "", statLabel: "", title: "", description: "" })}
+        label="Difference Items"
+        maxItems={4}
         renderItem={(item, index, onFieldChange) => (
           <div className="grid grid-cols-1 gap-2">
-            <Input value={item.title || ""} onChange={(e) => onFieldChange("title", e.target.value)} placeholder="Title (e.g. LEADING)" />
-            <Input value={item.subtitle || ""} onChange={(e) => onFieldChange("subtitle", e.target.value)} placeholder="Subtitle (e.g. 5000)" />
-            <Input value={item.label || ""} onChange={(e) => onFieldChange("label", e.target.value)} placeholder="Label below badge" />
-            <Input value={item.imageUrl || ""} onChange={(e) => onFieldChange("imageUrl", e.target.value)} placeholder="Image URL (optional)" />
-          </div>
-        )}
-      />
-
-      <Separator />
-
-      <ArrayEditor
-        items={data.reviews || []}
-        onUpdate={(reviews) => onChange({ ...data, reviews })}
-        newItem={() => ({ rating: 5.0, platform: "", subtitle: "" })}
-        label="Review Platforms"
-        renderItem={(item, index, onFieldChange) => (
-          <div className="grid grid-cols-3 gap-2">
-            <Input type="number" step="0.1" min="0" max="5" value={item.rating ?? 5} onChange={(e) => onFieldChange("rating", parseFloat(e.target.value))} placeholder="Rating" />
-            <Input value={item.platform || ""} onChange={(e) => onFieldChange("platform", e.target.value)} placeholder="Platform name" />
-            <Input value={item.subtitle || ""} onChange={(e) => onFieldChange("subtitle", e.target.value)} placeholder="Subtitle" />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs text-muted-foreground">Stat Value</Label>
+                <Input value={item.stat || ""} onChange={(e) => onFieldChange("stat", e.target.value)} placeholder="$50K+" />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Stat Label</Label>
+                <Input value={item.statLabel || ""} onChange={(e) => onFieldChange("statLabel", e.target.value)} placeholder="More per sale on average" />
+              </div>
+            </div>
+            <FieldGroup label="Title">
+              <Input value={item.title || ""} onChange={(e) => onFieldChange("title", e.target.value)} placeholder="We don't just list it. We launch it." />
+            </FieldGroup>
+            <FieldGroup label="Description">
+              <Textarea value={item.description || ""} onChange={(e) => onFieldChange("description", e.target.value)} rows={2} />
+            </FieldGroup>
           </div>
         )}
       />
@@ -273,47 +340,21 @@ function AwardsEditor({ data, onChange }: { data: any; onChange: (data: any) => 
   );
 }
 
-function ContentBlockEditor({
-  data,
-  onChange,
-  sectionName,
-}: {
-  data: any;
-  onChange: (data: any) => void;
-  sectionName: string;
-}) {
+function FeaturedListingsEditor({ data, onChange }: { data: any; onChange: (data: any) => void }) {
   return (
     <div className="space-y-4">
-      <FieldGroup label="Label Tag">
-        <Input value={data.label || ""} onChange={(e) => onChange({ ...data, label: e.target.value })} />
-      </FieldGroup>
-      <FieldGroup label="Heading">
-        <Input value={data.heading || ""} onChange={(e) => onChange({ ...data, heading: e.target.value })} />
-      </FieldGroup>
-      <ParagraphsEditor
-        paragraphs={data.paragraphs || []}
-        onChange={(paragraphs) => onChange({ ...data, paragraphs })}
-      />
-      <FieldGroup label="Image URL">
-        <Input value={data.imageUrl || ""} onChange={(e) => onChange({ ...data, imageUrl: e.target.value })} />
-      </FieldGroup>
-      <FieldGroup label="Image Alt Text">
-        <Input value={data.imageAlt || ""} onChange={(e) => onChange({ ...data, imageAlt: e.target.value })} />
-      </FieldGroup>
-      <div className="grid grid-cols-2 gap-4">
-        <FieldGroup label="Primary Button Text">
-          <Input value={data.primaryButtonText || ""} onChange={(e) => onChange({ ...data, primaryButtonText: e.target.value })} />
-        </FieldGroup>
-        <FieldGroup label="Primary Button Link">
-          <Input value={data.primaryButtonLink || ""} onChange={(e) => onChange({ ...data, primaryButtonLink: e.target.value })} />
-        </FieldGroup>
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg px-4 py-2 text-sm text-blue-800 dark:text-blue-200">
+        Listings are fetched dynamically from the MLS API. You can customize the heading and "view all" link below.
       </div>
+      <FieldGroup label="Section Heading">
+        <Input value={data.heading || ""} onChange={(e) => onChange({ ...data, heading: e.target.value })} placeholder="Featured Listings" />
+      </FieldGroup>
       <div className="grid grid-cols-2 gap-4">
-        <FieldGroup label="Secondary Button Text">
-          <Input value={data.secondaryButtonText || ""} onChange={(e) => onChange({ ...data, secondaryButtonText: e.target.value })} />
+        <FieldGroup label="View All Link Text">
+          <Input value={data.viewAllText || ""} onChange={(e) => onChange({ ...data, viewAllText: e.target.value })} placeholder="View All Listings →" />
         </FieldGroup>
-        <FieldGroup label="Secondary Button Link">
-          <Input value={data.secondaryButtonLink || ""} onChange={(e) => onChange({ ...data, secondaryButtonLink: e.target.value })} />
+        <FieldGroup label="View All Link URL">
+          <Input value={data.viewAllLink || ""} onChange={(e) => onChange({ ...data, viewAllLink: e.target.value })} placeholder="/featured-listings" />
         </FieldGroup>
       </div>
     </div>
@@ -332,13 +373,13 @@ function TestimonialsEditor({ data, onChange }: { data: any; onChange: (data: an
       <ArrayEditor
         items={data.items || []}
         onUpdate={(items) => onChange({ ...data, items })}
-        newItem={() => ({ quote: "", author: "", rating: 5 })}
+        newItem={() => ({ quote: "", agent: "", rating: 5 })}
         label="Testimonials"
         renderItem={(item, index, onFieldChange) => (
           <div className="grid grid-cols-1 gap-2">
             <Textarea value={item.quote || ""} onChange={(e) => onFieldChange("quote", e.target.value)} placeholder="Quote text" rows={3} />
             <div className="grid grid-cols-2 gap-2">
-              <Input value={item.author || ""} onChange={(e) => onFieldChange("author", e.target.value)} placeholder="Author name" />
+              <Input value={item.agent || ""} onChange={(e) => onFieldChange("agent", e.target.value)} placeholder="Agent name" />
               <Input type="number" min="1" max="5" value={item.rating ?? 5} onChange={(e) => onFieldChange("rating", parseInt(e.target.value))} placeholder="Rating (1-5)" />
             </div>
           </div>
@@ -348,95 +389,48 @@ function TestimonialsEditor({ data, onChange }: { data: any; onChange: (data: an
   );
 }
 
-function ReviewsEditor({ data, onChange }: { data: any; onChange: (data: any) => void }) {
+function NeighborhoodsEditor({ data, onChange }: { data: any; onChange: (data: any) => void }) {
   return (
     <div className="space-y-4">
-      <FieldGroup label="Star Count">
-        <Input type="number" min="1" max="5" value={data.starCount ?? 5} onChange={(e) => onChange({ ...data, starCount: parseInt(e.target.value) })} />
+      <FieldGroup label="Section Heading">
+        <Input value={data.heading || ""} onChange={(e) => onChange({ ...data, heading: e.target.value })} placeholder="Austin Neighborhoods" />
       </FieldGroup>
-      <FieldGroup label="Heading">
-        <Input value={data.heading || ""} onChange={(e) => onChange({ ...data, heading: e.target.value })} />
-      </FieldGroup>
-      <ParagraphsEditor
-        paragraphs={data.paragraphs || []}
-        onChange={(paragraphs) => onChange({ ...data, paragraphs })}
-      />
-      <FieldGroup label="Image URL">
-        <Input value={data.imageUrl || ""} onChange={(e) => onChange({ ...data, imageUrl: e.target.value })} />
-      </FieldGroup>
-      <FieldGroup label="Image Alt Text">
-        <Input value={data.imageAlt || ""} onChange={(e) => onChange({ ...data, imageAlt: e.target.value })} />
+      <FieldGroup label="Subtitle">
+        <Input value={data.subtitle || ""} onChange={(e) => onChange({ ...data, subtitle: e.target.value })} placeholder="Explore the communities..." />
       </FieldGroup>
       <Separator />
-      <p className="text-sm font-medium">Floating Review Card</p>
-      <div className="grid grid-cols-2 gap-4">
-        <FieldGroup label="Review Text">
-          <Input value={data.floatingReview?.text || ""} onChange={(e) => onChange({ ...data, floatingReview: { ...data.floatingReview, text: e.target.value } })} />
-        </FieldGroup>
-        <FieldGroup label="Review Author">
-          <Input value={data.floatingReview?.author || ""} onChange={(e) => onChange({ ...data, floatingReview: { ...data.floatingReview, author: e.target.value } })} />
-        </FieldGroup>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <FieldGroup label="Button Text">
-          <Input value={data.buttonText || ""} onChange={(e) => onChange({ ...data, buttonText: e.target.value })} />
-        </FieldGroup>
-        <FieldGroup label="Button Link">
-          <Input value={data.buttonLink || ""} onChange={(e) => onChange({ ...data, buttonLink: e.target.value })} />
-        </FieldGroup>
-      </div>
-    </div>
-  );
-}
-
-function WhyChooseEditor({ data, onChange }: { data: any; onChange: (data: any) => void }) {
-  return (
-    <div className="space-y-4">
-      <FieldGroup label="Label">
-        <Input value={data.label || ""} onChange={(e) => onChange({ ...data, label: e.target.value })} />
-      </FieldGroup>
-      <FieldGroup label="Heading">
-        <Input value={data.heading || ""} onChange={(e) => onChange({ ...data, heading: e.target.value })} />
-      </FieldGroup>
-      <ParagraphsEditor
-        paragraphs={data.paragraphs || []}
-        onChange={(paragraphs) => onChange({ ...data, paragraphs })}
-      />
-      <div className="grid grid-cols-2 gap-4">
-        <FieldGroup label="Button Text">
-          <Input value={data.buttonText || ""} onChange={(e) => onChange({ ...data, buttonText: e.target.value })} />
-        </FieldGroup>
-        <FieldGroup label="Button Link">
-          <Input value={data.buttonLink || ""} onChange={(e) => onChange({ ...data, buttonLink: e.target.value })} />
-        </FieldGroup>
-      </div>
-    </div>
-  );
-}
-
-function ThreeReasonsEditor({ data, onChange }: { data: any; onChange: (data: any) => void }) {
-  return (
-    <div className="space-y-4">
-      <FieldGroup label="Heading">
-        <Input value={data.heading || ""} onChange={(e) => onChange({ ...data, heading: e.target.value })} />
-      </FieldGroup>
-      <FieldGroup label="Subtext">
-        <Input value={data.subtext || ""} onChange={(e) => onChange({ ...data, subtext: e.target.value })} />
-      </FieldGroup>
       <ArrayEditor
-        items={data.cards || []}
-        onUpdate={(cards) => onChange({ ...data, cards })}
-        newItem={() => ({ iconName: "HomeIcon", title: "", description: "" })}
-        label="Reason Cards"
-        maxItems={4}
+        items={data.items || []}
+        onUpdate={(items) => onChange({ ...data, items })}
+        newItem={() => ({ name: "", slug: "", image: "" })}
+        label="Neighborhood Cards"
         renderItem={(item, index, onFieldChange) => (
           <div className="grid grid-cols-1 gap-2">
-            <Input value={item.iconName || ""} onChange={(e) => onFieldChange("iconName", e.target.value)} placeholder="Icon name (ChartBarIcon, UsersIcon, HomeIcon)" />
-            <Input value={item.title || ""} onChange={(e) => onFieldChange("title", e.target.value)} placeholder="Card title" />
-            <Textarea value={item.description || ""} onChange={(e) => onFieldChange("description", e.target.value)} placeholder="Description" rows={2} />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs text-muted-foreground">Name</Label>
+                <Input value={item.name || ""} onChange={(e) => onFieldChange("name", e.target.value)} placeholder="South Congress" />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Slug</Label>
+                <Input value={item.slug || ""} onChange={(e) => onFieldChange("slug", e.target.value)} placeholder="south-congress" />
+              </div>
+            </div>
+            <FieldGroup label="Image URL">
+              <Input value={item.image || ""} onChange={(e) => onFieldChange("image", e.target.value)} placeholder="https://..." />
+            </FieldGroup>
           </div>
         )}
       />
+      <Separator />
+      <div className="grid grid-cols-2 gap-4">
+        <FieldGroup label="Explore All Button Text">
+          <Input value={data.exploreAllText || ""} onChange={(e) => onChange({ ...data, exploreAllText: e.target.value })} placeholder="Explore All Neighborhoods" />
+        </FieldGroup>
+        <FieldGroup label="Explore All Link">
+          <Input value={data.exploreAllLink || ""} onChange={(e) => onChange({ ...data, exploreAllLink: e.target.value })} placeholder="/communities" />
+        </FieldGroup>
+      </div>
     </div>
   );
 }
@@ -445,79 +439,14 @@ function NewFormEditor({ data, onChange }: { data: any; onChange: (data: any) =>
   return (
     <div className="space-y-4">
       <FieldGroup label="Heading">
-        <Input value={data.heading || ""} onChange={(e) => onChange({ ...data, heading: e.target.value })} />
+        <Input value={data.heading || ""} onChange={(e) => onChange({ ...data, heading: e.target.value })} placeholder="Ready to make your move?" />
       </FieldGroup>
-      <ParagraphsEditor
-        paragraphs={data.paragraphs || []}
-        onChange={(paragraphs) => onChange({ ...data, paragraphs })}
-      />
-      <div className="grid grid-cols-2 gap-4">
-        <FieldGroup label="Button Text">
-          <Input value={data.buttonText || ""} onChange={(e) => onChange({ ...data, buttonText: e.target.value })} />
-        </FieldGroup>
-        <FieldGroup label="Button Link">
-          <Input value={data.buttonLink || ""} onChange={(e) => onChange({ ...data, buttonLink: e.target.value })} />
-        </FieldGroup>
-      </div>
-    </div>
-  );
-}
-
-function YouTubeEditor({ data, onChange }: { data: any; onChange: (data: any) => void }) {
-  return (
-    <div className="space-y-4">
-      <FieldGroup label="Heading">
-        <Input value={data.heading || ""} onChange={(e) => onChange({ ...data, heading: e.target.value })} />
-      </FieldGroup>
-      <FieldGroup label="Subtext">
-        <Input value={data.subtext || ""} onChange={(e) => onChange({ ...data, subtext: e.target.value })} />
-      </FieldGroup>
-      <FieldGroup label="Channel URL">
-        <Input value={data.channelUrl || ""} onChange={(e) => onChange({ ...data, channelUrl: e.target.value })} />
+      <FieldGroup label="Description">
+        <Textarea value={data.description || ""} onChange={(e) => onChange({ ...data, description: e.target.value })} rows={3} placeholder="Connect with Austin's most trusted real estate experts..." />
       </FieldGroup>
       <FieldGroup label="Button Text">
-        <Input value={data.buttonText || ""} onChange={(e) => onChange({ ...data, buttonText: e.target.value })} />
+        <Input value={data.buttonText || ""} onChange={(e) => onChange({ ...data, buttonText: e.target.value })} placeholder="Get Started" />
       </FieldGroup>
-      <Separator />
-      <ArrayEditor
-        items={data.videos || []}
-        onUpdate={(videos) => onChange({ ...data, videos })}
-        newItem={() => ({ title: "", description: "", thumbnailUrl: "", videoUrl: "", featured: false })}
-        label="Videos"
-        renderItem={(item, index, onFieldChange) => (
-          <div className="grid grid-cols-1 gap-2">
-            <Input value={item.title || ""} onChange={(e) => onFieldChange("title", e.target.value)} placeholder="Video title" />
-            <Input value={item.description || ""} onChange={(e) => onFieldChange("description", e.target.value)} placeholder="Description" />
-            <Input value={item.thumbnailUrl || ""} onChange={(e) => onFieldChange("thumbnailUrl", e.target.value)} placeholder="Thumbnail URL" />
-            <Input value={item.videoUrl || ""} onChange={(e) => onFieldChange("videoUrl", e.target.value)} placeholder="Video URL (YouTube embed)" />
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={item.featured || false} onChange={(e) => onFieldChange("featured", e.target.checked)} />
-              Featured (large display)
-            </label>
-          </div>
-        )}
-      />
-    </div>
-  );
-}
-
-function CTAEditor({ data, onChange }: { data: any; onChange: (data: any) => void }) {
-  return (
-    <div className="space-y-4">
-      <FieldGroup label="Heading">
-        <Input value={data.heading || ""} onChange={(e) => onChange({ ...data, heading: e.target.value })} />
-      </FieldGroup>
-      <FieldGroup label="Subtext">
-        <Textarea value={data.subtext || ""} onChange={(e) => onChange({ ...data, subtext: e.target.value })} rows={2} />
-      </FieldGroup>
-      <div className="grid grid-cols-2 gap-4">
-        <FieldGroup label="Button Text">
-          <Input value={data.buttonText || ""} onChange={(e) => onChange({ ...data, buttonText: e.target.value })} />
-        </FieldGroup>
-        <FieldGroup label="Button Link">
-          <Input value={data.buttonLink || ""} onChange={(e) => onChange({ ...data, buttonLink: e.target.value })} />
-        </FieldGroup>
-      </div>
     </div>
   );
 }
@@ -587,16 +516,12 @@ function SectionEditor({ sectionKey, data, onChange }: { sectionKey: string; dat
   switch (sectionKey) {
     case "hero": return <HeroEditor data={data} onChange={onChange} />;
     case "stats": return <StatsEditor data={data} onChange={onChange} />;
-    case "awards": return <AwardsEditor data={data} onChange={onChange} />;
-    case "seller": return <ContentBlockEditor data={data} onChange={onChange} sectionName="seller" />;
-    case "buyer": return <ContentBlockEditor data={data} onChange={onChange} sectionName="buyer" />;
+    case "whatBringsYou": return <WhatBringsYouEditor data={data} onChange={onChange} />;
+    case "spyglassDifference": return <SpyglassDifferenceEditor data={data} onChange={onChange} />;
+    case "featuredListings": return <FeaturedListingsEditor data={data} onChange={onChange} />;
     case "testimonials": return <TestimonialsEditor data={data} onChange={onChange} />;
-    case "reviews": return <ReviewsEditor data={data} onChange={onChange} />;
-    case "whyChoose": return <WhyChooseEditor data={data} onChange={onChange} />;
-    case "threeReasons": return <ThreeReasonsEditor data={data} onChange={onChange} />;
+    case "neighborhoods": return <NeighborhoodsEditor data={data} onChange={onChange} />;
     case "newForm": return <NewFormEditor data={data} onChange={onChange} />;
-    case "youtube": return <YouTubeEditor data={data} onChange={onChange} />;
-    case "cta": return <CTAEditor data={data} onChange={onChange} />;
     case "footer": return <FooterEditor data={data} onChange={onChange} />;
     default: return <p className="text-muted-foreground">No editor for this section.</p>;
   }
