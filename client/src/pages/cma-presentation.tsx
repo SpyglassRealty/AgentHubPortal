@@ -105,14 +105,7 @@ interface AgentProfile {
 
 // Convert PropertyData to CmaProperty for modal compatibility
 function convertPropertyData(property: PropertyData): CmaProperty {
-  console.log('[convertPropertyData] Input property:', {
-    mlsNumber: property.mlsNumber,
-    address: property.address,
-    description: property.description,
-    hasDescription: !!property.description
-  });
-  
-  const converted = {
+  return {
     id: property.mlsNumber || Math.random().toString(),
     mlsNumber: property.mlsNumber,
     address: property.address,
@@ -136,15 +129,6 @@ function convertPropertyData(property: PropertyData): CmaProperty {
     longitude: property.longitude || undefined,
     description: property.description || undefined,
   };
-  
-  console.log('[convertPropertyData] Output CmaProperty:', {
-    mlsNumber: converted.mlsNumber,
-    address: converted.address,
-    description: converted.description,
-    hasDescription: !!converted.description
-  });
-  
-  return converted;
 }
 
 // Widget definitions - 33 total widgets as mentioned by Daryl
@@ -736,13 +720,63 @@ function SlideshowPlayer({ widgets, cma, agentProfile, activeWidgetId, onClose, 
                     <div 
                       key={index} 
                       className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => {
-                        console.log('[Comparable Click] Property data:', {
-                          mlsNumber: comp.mlsNumber,
-                          address: comp.address,
-                          description: comp.description,
-                          hasDescription: !!comp.description
-                        });
+                      onClick={async () => {
+                        console.log('[Comparable Click] Fetching fresh MLS data for:', comp.mlsNumber);
+                        
+                        // Fetch fresh property data from Repliers instead of using stored CMA data
+                        try {
+                          const response = await fetch('/api/cma/search-properties', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({
+                              mlsNumbers: [comp.mlsNumber],
+                              limit: 1
+                            })
+                          });
+                          
+                          if (response.ok) {
+                            const data = await response.json();
+                            if (data.listings && data.listings.length > 0) {
+                              const freshProp = data.listings[0];
+                              console.log('[Fresh MLS Data] Description check:', {
+                                mlsNumber: freshProp.mlsNumber,
+                                hasDescription: !!freshProp.description,
+                                description: freshProp.description?.substring(0, 100)
+                              });
+                              
+                              // Convert to PropertyData format
+                              const propertyData: PropertyData = {
+                                mlsNumber: freshProp.mlsNumber,
+                                address: freshProp.address,
+                                city: freshProp.city,
+                                state: freshProp.state,
+                                zip: freshProp.zip,
+                                listPrice: freshProp.listPrice,
+                                soldPrice: freshProp.soldPrice,
+                                beds: freshProp.beds,
+                                baths: freshProp.baths,
+                                sqft: freshProp.sqft,
+                                yearBuilt: freshProp.yearBuilt,
+                                status: freshProp.status,
+                                listDate: freshProp.listDate,
+                                soldDate: freshProp.soldDate,
+                                daysOnMarket: freshProp.daysOnMarket,
+                                photos: freshProp.photos,
+                                latitude: freshProp.latitude,
+                                longitude: freshProp.longitude,
+                                description: freshProp.description // Fresh from MLS!
+                              };
+                              
+                              setSelectedProperty(propertyData);
+                              return;
+                            }
+                          }
+                        } catch (error) {
+                          console.error('[Fresh MLS Fetch] Failed:', error);
+                        }
+                        
+                        // Fallback to stored CMA data
                         setSelectedProperty(comp);
                       }}
                     >
@@ -938,20 +972,7 @@ export default function CmaPresentationPage() {
     queryFn: async () => {
       const res = await fetch(`/api/cma/${cmaId}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load CMA");
-      const data = await res.json();
-      
-      console.log('[CMA Data Loaded] Full response:', data);
-      if (data.comparableProperties && data.comparableProperties.length > 0) {
-        console.log('[CMA Data Loaded] First comparable:', {
-          mlsNumber: data.comparableProperties[0].mlsNumber,
-          address: data.comparableProperties[0].address,
-          description: data.comparableProperties[0].description,
-          hasDescription: !!data.comparableProperties[0].description,
-          allKeys: Object.keys(data.comparableProperties[0])
-        });
-      }
-      
-      return data;
+      return res.json();
     },
     enabled: !!cmaId,
   });
