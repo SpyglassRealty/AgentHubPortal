@@ -399,7 +399,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
             <div className="mt-6 mb-6 pt-4 border-t border-gray-200" data-testid="property-description-section">
               <h3 className="text-lg font-semibold mb-3 text-gray-900">About This Home</h3>
               <div className="text-sm text-gray-600 leading-7 space-y-3" data-testid="property-description-text">
-                {property.description.split(/\n\r|\r\r/).map((paragraph, i) => (
+                {property.description.split(/\n\n|\r\n\r\n/).map((paragraph, i) => (
                   <p key={i}>{paragraph.trim()}</p>
                 ))}
               </div>
