@@ -25,6 +25,7 @@ interface PropertyDetailModalProps {
     status: string;
     photos: string[];
     percentOfList?: string;
+    description?: string; // MLS property description ("About This Home")
   };
 }
 
@@ -198,6 +199,20 @@ export function PropertyDetailModal({ isOpen, onClose, property }: PropertyDetai
               <div className="text-xs text-zinc-400">Sq Ft</div>
             </div>
           </div>
+          
+          {property.description && property.description.trim() !== '' && (
+            <div className="mt-6 mb-6 pt-6 border-t border-zinc-700">
+              <h3 className="text-lg font-semibold mb-3 text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+                About This Home
+              </h3>
+              <p 
+                className="text-sm text-zinc-300 leading-relaxed whitespace-pre-line break-words"
+                style={{ fontFamily: "'Poppins', sans-serif" }}
+              >
+                {property.description}
+              </p>
+            </div>
+          )}
           
           <div className="space-y-3">
             <div className="flex justify-between py-2 border-b border-zinc-800">

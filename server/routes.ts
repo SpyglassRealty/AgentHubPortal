@@ -2845,6 +2845,7 @@ Respond with valid JSON in this exact format:
         resultsPerPage: resultsPerPage.toString(),
         pageNum: pageNum.toString(),
         sortBy: 'createdOnDesc',
+        fields: 'details,images,listPrice,soldPrice,closePrice,address,map,status,standardStatus,listDate,soldDate,closeDate,daysOnMarket,dom,bedroomsTotal,bathroomsTotal,livingArea,lot,timestamps,mlsNumber,listingId,propertyType',
       });
 
       // Address search
@@ -3259,6 +3260,7 @@ Respond with valid JSON in this exact format:
           subdivision: listing.address?.neighborhood || listing.address?.area || '',
           latitude: listing.map?.latitude || listing.address?.latitude || null,
           longitude: listing.map?.longitude || listing.address?.longitude || null,
+          description: listing.details?.description || null,
         };
       });
 
