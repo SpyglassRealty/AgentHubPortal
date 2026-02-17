@@ -398,11 +398,11 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
           {property.description && property.description.trim() !== '' && (
             <div className="mt-6 mb-6 pt-4 border-t border-gray-200" data-testid="property-description-section">
               <h3 className="text-lg font-semibold mb-3 text-gray-900">About This Home</h3>
-              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line" 
-                 style={{ overflowWrap: 'anywhere' }} 
-                 data-testid="property-description-text">
-                {property.description}
-              </p>
+              <div className="text-sm text-gray-600 leading-7 space-y-3" data-testid="property-description-text">
+                {property.description.split(/\n\r|\r\r/).map((paragraph, i) => (
+                  <p key={i}>{paragraph.trim()}</p>
+                ))}
+              </div>
             </div>
           )}
         </div>
