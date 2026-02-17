@@ -398,10 +398,27 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
           {property.description && property.description.trim() !== '' && (
             <div className="mt-6 mb-6 pt-4 border-t border-gray-200" data-testid="property-description-section">
               <h3 className="text-lg font-semibold mb-3 text-gray-900">About This Home</h3>
-              <div className="text-sm text-gray-600 leading-7 space-y-3" data-testid="property-description-text">
-                {property.description.split(/\n\n|\r\n\r\n/).map((paragraph, i) => (
-                  <p key={i}>{paragraph.trim()}</p>
-                ))}
+              <div className="text-sm text-gray-600 leading-7 space-y-4" data-testid="property-description-text">
+                {(() => {
+                  const text = property.description.trim();
+                  // First try splitting on actual newlines (some MLS data has them)
+                  const byNewlines = text.split(/\n+|\r\n\r\n+/).filter(p => p.trim());
+                  if (byNewlines.length > 1) {
+                    return byNewlines.map((paragraph, i) => (
+                      <p key={i}>{paragraph.trim()}</p>
+                    ));
+                  }
+                  
+                  // If no newlines found, chunk into ~3-4 sentence paragraphs
+                  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+                  const chunks = [];
+                  for (let i = 0; i < sentences.length; i += 4) {
+                    chunks.push(sentences.slice(i, i + 4).join(' ').trim());
+                  }
+                  return chunks.map((chunk, i) => (
+                    <p key={i}>{chunk}</p>
+                  ));
+                })()}
               </div>
             </div>
           )}
