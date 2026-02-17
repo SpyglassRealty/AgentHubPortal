@@ -451,7 +451,7 @@ function StatusLegend() {
 }
 
 // Side-by-side comparison view component
-function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, mapboxToken, setSelectedProperty }: { comparables: CmaProperty[]; subjectProperty?: CmaProperty; geocodedCoords?: {latitude: number; longitude: number} | null; mapboxToken?: string; setSelectedProperty?: (property: CmaProperty | null) => void }) {
+function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, mapboxToken, onPropertyClick }: { comparables: CmaProperty[]; subjectProperty?: CmaProperty; geocodedCoords?: {latitude: number; longitude: number} | null; mapboxToken?: string; onPropertyClick?: (property: CmaProperty) => void }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   
   // Responsive columns based on screen width
@@ -607,7 +607,7 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
             const soldPctColor = soldPct ? (soldPct >= 100 ? 'text-green-600' : soldPct >= 95 ? 'text-gray-900' : 'text-red-600') : '';
             
             return (
-              <div key={comp.id} className="w-56 flex-shrink-0 border-r border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setSelectedProperty(comp)}>
+              <div key={comp.id} className="w-56 flex-shrink-0 border-r border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => onPropertyClick?.(comp)}>
                 <div className="p-4 space-y-4">
                   {/* Comp Header */}
                   <div className="text-center">
@@ -619,7 +619,7 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                           className="w-full h-full object-cover cursor-pointer hover:opacity-80"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedProperty(comp);
+                            onPropertyClick?.(comp);
                           }}
                         />
                       ) : (
@@ -816,6 +816,71 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
   const [mapboxToken, setMapboxToken] = useState('');
   const [geocodedCoords, setGeocodedCoords] = useState<{latitude: number; longitude: number}|null>(null);
 
+  // Function to fetch fresh MLS data and show modal
+  const handlePropertyClick = async (property: CmaProperty) => {
+    console.log('[CompsWidget] Fetching fresh MLS data for:', property.mlsNumber);
+    
+    // Try to fetch fresh property data from Repliers
+    try {
+      const response = await fetch('/api/cma/search-properties', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          mlsNumbers: [property.mlsNumber],
+          limit: 1
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.listings && data.listings.length > 0) {
+          const freshProp = data.listings[0];
+          console.log('[CompsWidget Fresh MLS] Description check:', {
+            mlsNumber: freshProp.mlsNumber,
+            hasDescription: !!freshProp.description,
+            descriptionPreview: freshProp.description?.substring(0, 100)
+          });
+          
+          // Convert fresh MLS data to CmaProperty format
+          const freshCmaProperty: CmaProperty = {
+            id: freshProp.mlsNumber || property.id,
+            mlsNumber: freshProp.mlsNumber,
+            address: freshProp.address,
+            city: freshProp.city || '',
+            state: freshProp.state || '',
+            zipCode: freshProp.zip || '',
+            price: freshProp.soldPrice || freshProp.listPrice,
+            listPrice: freshProp.listPrice,
+            soldPrice: freshProp.soldPrice || undefined,
+            sqft: freshProp.sqft,
+            beds: freshProp.beds,
+            baths: freshProp.baths,
+            yearBuilt: freshProp.yearBuilt || undefined,
+            status: freshProp.status as any,
+            daysOnMarket: freshProp.daysOnMarket || 0,
+            listDate: freshProp.listDate,
+            soldDate: freshProp.soldDate || undefined,
+            pricePerSqft: freshProp.soldPrice ? Math.round(freshProp.soldPrice / freshProp.sqft) : Math.round(freshProp.listPrice / freshProp.sqft),
+            photos: freshProp.photos || [],
+            latitude: freshProp.latitude || undefined,
+            longitude: freshProp.longitude || undefined,
+            description: freshProp.description || undefined, // Fresh description from MLS!
+          };
+          
+          setSelectedProperty(freshCmaProperty);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('[CompsWidget Fresh MLS Fetch] Failed:', error);
+    }
+    
+    // Fallback to stored CMA data
+    console.log('[CompsWidget] Using fallback stored data');
+    setSelectedProperty(property);
+  };
+
   // Fetch Mapbox token on mount
   useEffect(() => {
     fetch('/api/mapbox-token')
@@ -955,7 +1020,7 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
             subjectProperty={subjectProperty}
             geocodedCoords={geocodedCoords}
             mapboxToken={mapboxToken}
-            setSelectedProperty={setSelectedProperty}
+            onPropertyClick={handlePropertyClick}
           />
         )}
 
