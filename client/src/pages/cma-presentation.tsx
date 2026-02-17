@@ -105,7 +105,14 @@ interface AgentProfile {
 
 // Convert PropertyData to CmaProperty for modal compatibility
 function convertPropertyData(property: PropertyData): CmaProperty {
-  return {
+  console.log('[convertPropertyData] Input property:', {
+    mlsNumber: property.mlsNumber,
+    address: property.address,
+    description: property.description,
+    hasDescription: !!property.description
+  });
+  
+  const converted = {
     id: property.mlsNumber || Math.random().toString(),
     mlsNumber: property.mlsNumber,
     address: property.address,
@@ -129,6 +136,15 @@ function convertPropertyData(property: PropertyData): CmaProperty {
     longitude: property.longitude || undefined,
     description: property.description || undefined,
   };
+  
+  console.log('[convertPropertyData] Output CmaProperty:', {
+    mlsNumber: converted.mlsNumber,
+    address: converted.address,
+    description: converted.description,
+    hasDescription: !!converted.description
+  });
+  
+  return converted;
 }
 
 // Widget definitions - 33 total widgets as mentioned by Daryl
@@ -720,7 +736,15 @@ function SlideshowPlayer({ widgets, cma, agentProfile, activeWidgetId, onClose, 
                     <div 
                       key={index} 
                       className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => setSelectedProperty(comp)}
+                      onClick={() => {
+                        console.log('[Comparable Click] Property data:', {
+                          mlsNumber: comp.mlsNumber,
+                          address: comp.address,
+                          description: comp.description,
+                          hasDescription: !!comp.description
+                        });
+                        setSelectedProperty(comp);
+                      }}
                     >
                       {/* Property Image */}
                       <div className="relative aspect-[4/3]">
@@ -914,7 +938,20 @@ export default function CmaPresentationPage() {
     queryFn: async () => {
       const res = await fetch(`/api/cma/${cmaId}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load CMA");
-      return res.json();
+      const data = await res.json();
+      
+      console.log('[CMA Data Loaded] Full response:', data);
+      if (data.comparableProperties && data.comparableProperties.length > 0) {
+        console.log('[CMA Data Loaded] First comparable:', {
+          mlsNumber: data.comparableProperties[0].mlsNumber,
+          address: data.comparableProperties[0].address,
+          description: data.comparableProperties[0].description,
+          hasDescription: !!data.comparableProperties[0].description,
+          allKeys: Object.keys(data.comparableProperties[0])
+        });
+      }
+      
+      return data;
     },
     enabled: !!cmaId,
   });
