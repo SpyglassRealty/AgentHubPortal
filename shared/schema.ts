@@ -1061,6 +1061,8 @@ export const agentDirectoryProfiles = pgTable("agent_directory_profiles", {
   
   // Custom content
   videoUrl: varchar("video_url", { length: 500 }), // Custom intro video
+  serviceAreas: jsonb("service_areas").$type<string[]>(), // Multi-select cities/areas
+  specialties: jsonb("specialties").$type<string[]>(), // Agent specialties
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

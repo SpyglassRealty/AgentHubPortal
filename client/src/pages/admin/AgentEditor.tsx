@@ -43,8 +43,22 @@ import {
   Heart,
   Loader2,
   AlertCircle,
+  ExternalLink,
+  MapPin,
 } from "lucide-react";
 import type { AgentDirectoryProfile } from "@shared/schema";
+
+// Common Austin metro area cities/communities for service area selection
+const SERVICE_AREA_OPTIONS = [
+  "Austin", "Round Rock", "Cedar Park", "Pflugerville", "Georgetown",
+  "Leander", "Lakeway", "Bee Cave", "Dripping Springs", "Kyle",
+  "Buda", "San Marcos", "Hutto", "Taylor", "Liberty Hill",
+  "Bastrop", "Elgin", "Manor", "Del Valle", "Lago Vista",
+  "Jonestown", "West Lake Hills", "Rollingwood", "Sunset Valley",
+  "Steiner Ranch", "Circle C Ranch", "Barton Creek", "Tarrytown",
+  "Hyde Park", "Mueller", "East Austin", "South Austin", "North Austin",
+  "Northwest Hills", "Great Hills", "Avery Ranch", "Brushy Creek",
+];
 
 interface AgentFormData {
   firstName: string;
@@ -74,6 +88,8 @@ interface AgentFormData {
   indexingDirective: string;
   customSchema: object;
   videoUrl: string;
+  serviceAreas: string[];
+  specialties: string[];
 }
 
 const defaultFormData: AgentFormData = {
@@ -104,6 +120,8 @@ const defaultFormData: AgentFormData = {
   indexingDirective: "index,follow",
   customSchema: {},
   videoUrl: "",
+  serviceAreas: [],
+  specialties: [],
 };
 
 export default function AgentEditorPage() {
@@ -158,6 +176,8 @@ export default function AgentEditorPage() {
         indexingDirective: agent.indexingDirective || "index,follow",
         customSchema: agent.customSchema || {},
         videoUrl: agent.videoUrl || "",
+        serviceAreas: agent.serviceAreas || [],
+        specialties: agent.specialties || [],
       });
     }
   }, [agentData]);
@@ -315,6 +335,15 @@ export default function AgentEditorPage() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Agents
             </Button>
+            {isEditing && formData.subdomain && (
+              <Button
+                variant="outline"
+                onClick={() => window.open(`${PREVIEW_BASE_URL}/agents/${formData.subdomain}`, '_blank')}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Preview Page
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => setPreviewMode(!previewMode)}
@@ -517,6 +546,56 @@ export default function AgentEditorPage() {
                         value={formData.licenseNumber}
                         onChange={(e) => handleInputChange("licenseNumber", e.target.value)}
                       />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Service Areas */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Service Areas</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label>Cities & Communities Served</Label>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Select all areas where this agent is active
+                      </p>
+                      <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto border rounded-lg p-3">
+                        {SERVICE_AREA_OPTIONS.map((area) => (
+                          <label key={area} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded p-1">
+                            <input
+                              type="checkbox"
+                              checked={formData.serviceAreas.includes(area)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  handleInputChange("serviceAreas", [...formData.serviceAreas, area]);
+                                } else {
+                                  handleInputChange("serviceAreas", formData.serviceAreas.filter((a: string) => a !== area));
+                                }
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            {area}
+                          </label>
+                        ))}
+                      </div>
+                      {formData.serviceAreas.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-3">
+                          {formData.serviceAreas.map((area: string) => (
+                            <Badge key={area} variant="secondary" className="text-xs">
+                              {area}
+                              <button
+                                type="button"
+                                onClick={() => handleInputChange("serviceAreas", formData.serviceAreas.filter((a: string) => a !== area))}
+                                className="ml-1 hover:text-destructive"
+                              >
+                                ×
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
