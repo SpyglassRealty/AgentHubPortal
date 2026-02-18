@@ -31,10 +31,10 @@ const navigationSections = [
   {
     title: "TOOLS",
     items: [
-      { name: "Dashboard", href: "/admin", icon: Home, exact: true },
+      { name: "Admin Dashboard", href: "/admin", icon: Home, exact: true },
       { name: "Dashboards", href: "/admin/dashboards", icon: BarChart3 },
       { name: "Beacon", href: "/admin/beacon", icon: Activity },
-      { name: "Site Editor", href: "/admin/site-editor", icon: PenTool },
+      { name: "Homepage Editor", href: "/admin/site-editor", icon: PenTool },
     ]
   },
   {
