@@ -348,7 +348,7 @@ export function RichTextEditor({
     extensions: [
       StarterKit.configure({
         heading: {
-          levels: [1, 2, 3, 4],
+          levels: [1, 2, 3, 4, 5, 6],
         },
       }),
       Underline,
@@ -532,6 +532,24 @@ export function RichTextEditor({
           title="Heading 4"
         >
           <Heading4 className="h-4 w-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() =>
+            editor.chain().focus().toggleHeading({ level: 5 }).run()
+          }
+          active={editor.isActive("heading", { level: 5 })}
+          title="Heading 5"
+        >
+          <span className="h-4 w-4 flex items-center justify-center text-xs font-bold">H5</span>
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() =>
+            editor.chain().focus().toggleHeading({ level: 6 }).run()
+          }
+          active={editor.isActive("heading", { level: 6 })}
+          title="Heading 6"
+        >
+          <span className="h-4 w-4 flex items-center justify-center text-xs font-bold">H6</span>
         </ToolbarButton>
 
         <ToolbarDivider />
