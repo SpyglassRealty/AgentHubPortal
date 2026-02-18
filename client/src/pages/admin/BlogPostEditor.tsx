@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import AdminLayout from "@/components/AdminLayout";
+import AdminLayout from "@/components/admin-layout";
 import { SeoPanel } from "@/components/seo/SeoPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

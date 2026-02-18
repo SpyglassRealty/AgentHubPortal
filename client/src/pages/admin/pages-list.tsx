@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
-import Layout from '@/components/layout';
+import AdminLayout from '@/components/admin-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -155,7 +155,7 @@ export default function PagesListPage() {
   const pages: Page[] = data?.pages || [];
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="p-6 md:p-8 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -362,6 +362,6 @@ export default function PagesListPage() {
           </CardContent>
         </Card>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 }

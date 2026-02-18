@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRoute, useLocation } from 'wouter';
-import Layout from '@/components/layout';
+import AdminLayout from '@/components/admin-layout';
 import { PageBuilder } from '@/components/page-builder';
 import { SeoPanel } from '@/components/seo/SeoPanel';
 import type { BlockData } from '@/components/page-builder/types';
@@ -217,16 +217,16 @@ export default function PageEditorPage() {
 
   if (isLoading) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="flex items-center justify-center h-96">
           <Loader2 className="h-8 w-8 animate-spin text-[#EF4923]" />
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="flex flex-col h-[calc(100vh-4rem)]">
         {/* Top Bar */}
         <div className="flex items-center justify-between px-4 py-3 border-b bg-white dark:bg-card gap-4">
@@ -405,6 +405,6 @@ export default function PageEditorPage() {
           <PageBuilder blocks={page.sections} onChange={handleBlocksChange} />
         </div>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 }

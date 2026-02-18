@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import AdminLayout from "@/components/AdminLayout";
+import AdminLayout from "@/components/admin-layout";
 import { useAdminCommunities } from "@/lib/community-editor";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";

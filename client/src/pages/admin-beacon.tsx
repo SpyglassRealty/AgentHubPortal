@@ -1,4 +1,4 @@
-import Layout from "@/components/layout";
+import AdminLayout from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, RefreshCw, Radar } from "lucide-react";
 import { useRef } from "react";
@@ -13,7 +13,7 @@ export default function AdminBeaconPage() {
   };
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="flex flex-col h-[calc(100vh-4rem)]">
         {/* Toolbar */}
         <div className="flex items-center justify-between px-4 py-2 border-b bg-card">
@@ -48,6 +48,6 @@ export default function AdminBeaconPage() {
           allow="clipboard-write"
         />
       </div>
-    </Layout>
+    </AdminLayout>
   );
 }

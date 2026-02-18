@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import AdminLayout from "@/components/AdminLayout";
+import AdminLayout from "@/components/admin-layout";
 import {
   useAdminCommunity,
   useUpdateCommunity,
