@@ -395,20 +395,10 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
             </div>
           </div>
           
-          {property.description && property.description.trim() !== '' && (
+          {property.description && (
             <div className="p-4 border-t" data-testid="property-description-section">
-              <h3 
-                className="text-lg font-semibold mb-3 text-gray-900" 
-                style={{ fontFamily: "'Playfair Display', serif" }}
-                data-testid="about-this-home-heading"
-              >
-                About This Home
-              </h3>
-              <p 
-                className="text-sm text-gray-600 leading-relaxed whitespace-pre-line break-words" 
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-                data-testid="property-description-text"
-              >
+              <h3 className="text-sm font-medium mb-2 text-gray-600">Property Description</h3>
+              <p className="text-sm text-gray-900 leading-relaxed" data-testid="property-description-text">
                 {property.description}
               </p>
             </div>
