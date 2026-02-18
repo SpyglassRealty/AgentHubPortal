@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { buildPreviewUrl } from "@/lib/preview";
 import {
   Search,
   Plus,
@@ -301,7 +302,7 @@ export default function LandingPageListPage() {
                               </code>
                               {page.isPublished && (
                                 <a 
-                                  href={`https://spyglassrealty.com/${page.slug}`}
+                                  href={buildPreviewUrl(`/${page.slug}`)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
@@ -359,7 +360,7 @@ export default function LandingPageListPage() {
                               </DropdownMenuItem>
                               {page.isPublished && (
                                 <DropdownMenuItem
-                                  onClick={() => window.open(`https://spyglassrealty.com/${page.slug}`, '_blank')}
+                                  onClick={() => window.open(buildPreviewUrl(`/${page.slug}`), '_blank')}
                                 >
                                   <ExternalLink className="h-4 w-4 mr-2" />
                                   View Live

@@ -18,7 +18,7 @@ const createAgentProfileSchema = z.object({
   email: z.string().email("Valid email is required"),
   phone: z.string().optional(),
   fubEmail: z.string().email().optional().or(z.literal('')),
-  officeLocation: z.enum(['Austin', 'Houston', 'Corpus Christi']),
+  officeLocation: z.string().min(1, "Office location is required"),
   bio: z.string().optional(),
   professionalTitle: z.string().optional(),
   licenseNumber: z.string().optional(),

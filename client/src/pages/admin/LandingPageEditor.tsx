@@ -19,6 +19,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { buildPreviewUrl, PREVIEW_BASE_URL } from "@/lib/preview";
 import { SeoPanel } from "@/components/seo/SeoPanel";
 import {
   ArrowLeft,
@@ -344,7 +345,7 @@ export default function LandingPageEditorPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => window.open(`https://spyglassrealty.com/${formData.slug}`, '_blank')}
+                    onClick={() => window.open(buildPreviewUrl(`/${formData.slug}`), '_blank')}
                   >
                     <Globe className="h-4 w-4 mr-2" />
                     View Live
@@ -465,7 +466,7 @@ export default function LandingPageEditorPage() {
                         required
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        Will create: spyglassrealty.com/{formData.slug}
+                        Will create: {PREVIEW_BASE_URL.replace("https://", "")}/{formData.slug}
                       </p>
                     </div>
                   </CardContent>

@@ -1,0 +1,609 @@
+﻿Clawd Site Initial Review
+Vibe Coded Website Review
+https://missioncontrol-tjfm.onrender.com/admin
+https://spyglass-idx.vercel.app/
+Below are the core requirements that Mission Control needs to support if we move forward.
+Link to images for reference - backend setup:
+* Community Pages
+   * Builder in the backend
+   * Elementor drag and drop screenshot for building/editing pages
+* Blog System
+* Agent Pages
+   * Agent backend
+   * Agent front end: With a contact form connected to FUB, listings, and a custom video
+* Landing Pages / Core Pages
+   * For reference: RealtyHack Elementor Page Build (optional to add if we need a drag and drop builder)
+      * Widget section on the left if customization is needed
+* Technical and SEO Infrastructure
+   * Redirects
+   * Tracking Codes
+   * SEO Settings (must be added to blogs and pages)
+   * Social Snippets
+We should have the option to add schema markup to blog posts and pages.
+1. Community Pages
+Community pages drive a large portion of our organic traffic, so these need strong SEO and editing controls.
+Content & Page Editing
+* Editable page content
+* Ability to add and update internal links
+* Drag-and-drop or block-style editor (similar to Elementor or Gutenberg)
+* Optional HTML editing access
+
+SEO Controls (Per Page)
+   * Page title
+   * Meta description
+   * URL slug / permalink
+   * Featured image
+   * Social sharing image
+   * Breadcrumbs (assignable at page level)
+   * SEO panel similar to Rank Math or Yoast
+   * Indexing controls:
+   * Index, follow
+   * Index, no follow
+   * No index, follow
+   * No index, no follow
+Ongoing Optimization
+   * Ability to add or edit content as SEO and GEO strategies evolve
+
+2. Blog System (Primary Traffic Driver)
+Blogs are one of our biggest traffic sources, so this needs to be fully featured and SEO-friendly.
+Core Blog Features
+      * Create and edit blog posts
+      * Add and manage categories
+      * Editable URL slugs
+      * Featured images
+      * HTML editing option
+      * Table of contents support
+      * Author box at the bottom of posts
+      * Call-to-action or form section at the bottom of posts
+
+SEO & Indexing
+         * SEO fields for:
+         * Title tags
+         * Meta descriptions
+         * URL slugs
+         * Indexing options:
+         * Index, follow
+         * Index, no follow
+         * No index, follow
+         * No index, no follow
+
+Accessibility & UX
+            * Ability to add alt text for all images
+            * Structured headings (H1, H2, etc.)
+
+Internal Linking & Migration Safety
+               * Internal links from existing blog content must remain intact after migration
+               * No loss of SEO value or rankings during the move
+
+Editor Experience
+                  * Block-based or drag-and-drop builder for:
+                  * Sections
+                  * CTAs
+                  * Custom content blocks
+
+3. Agent Pages
+We need flexibility since not all agents have complete profiles in Mission Control yet.
+Option A: Auto-Populate from Mission Control
+                     * Agent profile data pulls automatically from Mission Control settings
+
+Option B: Manual Agent Page Management
+                        * Ability to:
+                        * Add agents
+                        * Edit agents
+                        * Hide agent pages
+                        * Remove agents
+
+Required Agent Fields
+                           * First name
+                           * Last name
+                           * Email address
+                           * Phone number
+                           * Follow Up Boss email (for lead routing)
+                           * Office location (dropdown: Austin, Houston, Corpus Christi, etc.)
+                           * Bio
+                           * Professional title
+                           * License number
+                           * Website URL (optional)
+                           * Social links:
+                           * Facebook
+                           * Instagram
+                           * LinkedIn
+                           * Twitter/X
+                           * YouTube
+                           * TikTok
+                           * Headshot upload
+
+Design & Consistency
+                              * Centralized control to ensure:
+                              * Image cropping consistency
+                              * Proper branding
+                              * Correct phone numbers and designations
+
+Subdomains
+                                 * Support agent subdomains like:
+agentname.spyglassrealty.com
+                                 * Subdomain should route directly to the agent profile page
+
+4. Landing Pages & Core Pages
+Examples:
+                                    * Buy
+                                    * Sell
+                                    * Cash Offer
+                                    * Trade-In
+                                    * Relocation
+                                    * Join Our Team
+                                    * Join Real
+                                    * About Spyglass Realty
+                                    * Newsroom
+                                    * Commute Pages
+                                    * Buyer and Seller FAQs
+
+Current setup we have:
+                                       * Full page editing
+                                       * Drag-and-drop or block-based builder
+                                       * HTML editing access to add scripts and schema
+                                       * Image management
+                                       * Ability to add custom sections and CTAs
+
+5. Technical & SEO Infrastructure
+Redirect Management
+                                          * Add, edit, and remove redirects
+                                          * Example: when an agent leaves, redirect their page to the agent team page
+
+New Page Creation
+                                             * Way to add:
+                                             * New communities
+                                             * New condos
+                                             * New landing pages
+
+Tracking & Scripts
+                                                * Global header script support for:
+                                                * Google Analytics
+                                                * Google Tag Manager
+                                                * Meta Pixel
+                                                * Microsoft Clarity
+                                                * Other tracking or widgets
+
+6. Testimonials & Reviews
+                                                   * Ability to create testimonial pages
+                                                   * Ideally, pull live reviews directly from Google
+                                                   * Display reviews on relevant pages (community or downtown pages if possible)
+
+7. Final Notes
+                                                      * More items may come up once full access is available
+                                                      * If we proceed with Vercel and move away from WordPress, these capabilities are important for SEO, content growth, and ongoing marketing performance.
+02/16 Updates
+
+
+02/16 - Backend
+  
+
+
+
+Admin Backend - Content Management 
+The CLAWD admin dashboard has solid foundations (SEO fields, schema support, redirects, and review integrations), but there are several blocking issues that need to be fixed before it is usable for day-to-day content and SEO work.
+Main blockers:
+                                                      * Dashboard shows data (communities, blog posts, agents), but none of it appears in the actual CMS views. This makes content unmanageable.
+                                                      * Global Scripts page is broken (blank screen), which blocks adding tracking like GA, GTM, Meta Pixel, etc.
+                                                      * Review Sources page returns a 404.
+                                                      * Preview redirects to the live site, making QA and staging validation confusing.
+                                                      * Admin navigation changes unexpectedly when editing blogs, which breaks workflow.
+UX and workflow gaps:
+                                                      * We need an image upload button, right now it requires pasting image URLs manually.
+                                                      * Page builder relies heavily on raw HTML and has a confusing split between “main content” and “sections.”
+                                                      * Page type options are unclear and need better explanation.
+Overall:
+The backend is close in terms of features, but stability, data visibility, and CMS usability need to be addressed first. Once these blockers are fixed, we can refine the editor experience and scale content workflows more confidently.
+Detailed Admin Dashboard Review
+This QA focuses on data visibility issues, CMS usability, missing functionality, and editor experience.
+1. Dashboard Data Mismatch
+Issue: Data showing in the dashboard but not accessible in CMS views
+                                                      * Dashboard shows:
+                                                      * 24 communities
+                                                      * 156 blog posts
+                                                      * 50 agents
+
+                                                         * When navigating to:
+                                                         * Communities: Shows “No communities found”
+                                                         * Blog posts: No posts appear, even when searching known recent posts
+                                                         * Agents: Shows “No agents found” despite dashboard count
+Impact
+                                                         * Creates confusion and blocks content management
+                                                         * Suggests possible:
+                                                         * Data sync issue
+                                                         * Permissions issue
+                                                         * API or indexing issue between dashboard summary and actual CMS records
+
+Recommendation
+                                                            * Investigate why records appear in dashboard metrics but not in the content tables
+                                                            * Confirm:
+                                                            * Correct environment (prod vs staging)
+                                                            * Correct user permissions
+                                                            * API/data source being used by dashboard widgets
+2. Navigation & Admin UX Issues
+Sidebar View Switching
+                                                            * When clicking Blog Posts, the left sidebar switches from admin view to an agent-style view
+                                                            * This disrupts workflow and is confusing from a CMS perspective
+Recommendation
+                                                            * Keep admin navigation consistent across all content sections
+
+3. Blog Management
+Categories
+                                                               * Blog categories work as expected
+                                                               * Able to add, edit, and delete categories
+                                                               * No issues here
+Blog Posts
+                                                               * Posts visible in dashboard summary are not visible in content manager
+                                                               * Search returns “No post matches your filters” even for recently updated posts
+Recommendation
+                                                               * Verify:
+                                                               * Where the blog posts are located
+                                                               * Filters applied by default
+                                                               * Environment mismatch
+
+                                                                  * Add:
+                                                                  * Clear empty-state messaging
+                                                                  * Ability to filter by status (draft, published, archived)
+
+4. Landing Pages Builder UX
+Image Management
+                                                                     * Featured images and social images require pasting image URLs
+                                                                     * No direct image upload option from the CMS UI
+Impact
+                                                                     * Adds unnecessary friction
+                                                                     * Slows down page creation and updates
+                                                                     * Error-prone when managing many images
+Recommendation
+                                                                     * Add native image upload support for:
+                                                                     * Featured images
+                                                                     * Social sharing images
+                                                                     * Section images
+5. SEO & Schema
+SEO Fields
+                                                                     * SEO title, description, slug, featured image URL are available
+                                                                     * This is good
+Schema & Custom Scripts
+                                                                     * Schema markup field is present
+                                                                     * Custom script injection is available
+                                                                     * This is a strong foundation for SEO and tracking
+Global Scripts
+                                                                     * Global Scripts page currently loads a blank white screen
+                                                                     * Not functional
+Impact
+                                                                     * Blocks adding sitewide tracking:
+                                                                     * Google Analytics
+                                                                     * Google Tag Manager
+                                                                     * Meta Pixel
+                                                                     * Clarity
+Recommendation
+                                                                     * Fix Global Scripts page rendering
+                                                                     * Confirm ability to add scripts to:
+                                                                     * Head
+                                                                     * Body
+                                                                     * Footer
+6. Review System
+Testimonials
+                                                                     * Reviews can be:
+                                                                     * Pulled from Google, Facebook, Zillow
+                                                                     * Manually added
+                                                                     * This is excellent and meets front-end requirements
+Review Sources
+                                                                     * Review Sources page returns a 404
+Recommendation
+                                                                     * Fix broken route
+                                                                     * Confirm ability to manage:
+                                                                     * Review integrations
+                                                                     * Platform sources
+                                                                     * API keys or sync settings
+7. Redirect Management
+Redirects
+                                                                     * Redirect manager is functional
+                                                                     * Able to set:
+                                                                     * Source URL
+                                                                     * Destination URL
+Status
+                                                                     * No issues here
+                                                                     * This meets technical SEO requirements
+
+8. Landing Page Creation Flow
+Page Types
+                                                                        * Page Type field is unclear
+                                                                        * No explanation of what each page type does
+Editor Experience
+                                                                        * Main content uses raw HTML
+                                                                        * Sections builder is separate and confusing
+                                                                        * Two parallel editing systems (Main Content vs Sections) creates friction
+Preview Behavior
+                                                                        * Preview redirects to live Spyglass site instead of staging or preview environment
+Validation Errors
+                                                                        * Form errors for title, slug, and content are not very user-friendly
+Recommendations
+                                                                        * Clarify what “Page Type” means with helper text or tooltips
+                                                                        * Simplify editor experience:
+                                                                        * Ideally use one unified editor
+                                                                        * Add block-based or drag-and-drop builder
+                                                                        * Optional markdown support
+                                                                        * Improve preview behavior:
+                                                                        * Add true preview environment
+                                                                        * Prevent redirects to live site
+                                                                        * Improve validation messaging for required fields
+
+
+9. Content Creation UX Enhancements (Future Improvements)
+Suggested Enhancements
+                                                                        * Drag-and-drop or block-based content builder
+                                                                        * Markdown editor option
+                                                                        * Prompt templates, AI-assisted content blocks, or prompt fields
+This would speed up content production and improve consistency.
+Summary of Key Issues
+High Priority Fixes
+                                                                        * Dashboard data mismatch (communities, blogs, agents not visible)
+                                                                        * Broken Global Scripts page
+                                                                        * Broken Review Sources page (404)
+                                                                        * Admin sidebar switching unexpectedly
+                                                                        * Preview redirecting to live site
+UX & Workflow Improvements
+                                                                        * Native image uploads
+                                                                        * Simplified page builder (reduce HTML-only editing)
+                                                                        * Clearer page type definitions
+                                                                        * Unified editor experience
+Next Steps
+This backend QA can serve as the baseline for stabilizing the CMS experience. Once the data visibility and broken admin routes are fixed, we can refine the editor UX and content workflows. From there, we can continue iterating on usability, automation, and content scaling features as real usage highlights additional needs.
+02/16 - Frontend
+Front-End QA Review
+Environment: Vercel (front-end hosted on Vercel)
+Scope: Homepage, navigation, key service pages, search, communities, and utility pages
+This QA focuses on usability, content parity with the live site, conversion optimization, and SEO-readiness.
+1. Homepage Feedback
+Hero Section
+                                                                        * Add a strong hero image (current hero feels incomplete without one)
+                                                                        * Search bar is great and functional
+                                                                        * Consider adjusting placeholder copy:
+                                                                        * “Enter your address”
+                                                                        * “Type your property address”
+                                                                        * “Get a free home value” (for sellers)
+Consultation CTA
+                                                                        * “Get a Consultation” should open a pop-up modal instead of redirecting users away from the site
+Accolades Section
+                                                                        * Convert accolades into image-based badges (similar to current REW live site) for visual credibility
+Homepage Content Parity
+                                                                        * Homepage content should closely mirror the live Spyglass site since it is already optimized
+                                                                        * If changes are needed, Direction can guide optimization updates
+
+Buying and Selling CTAs
+                                                                           * On Buying section:
+                                                                           * Consider changing “Free Consultation” to “Search Homes”
+                                                                           * Link directly to IDX search
+                                                                           * Testimonials:
+                                                                           * Decide whether testimonials will be:
+                                                                           * Manually curated, or
+                                                                           * Dynamically pulled from Google Reviews
+                                                                           * Prefer pulling high-rated Google reviews if technically feasible
+Trust Signals
+                                                                           * “700 5-star reviews” appears outdated
+                                                                           * Recommend updating to reflect current totals (example: 800+ or 900+ across platforms)
+                                                                           * “3,000 families served” appears outdated
+                                                                           * Should be updated to current brand messaging (example: thousand families, or current verified number)
+Primary CTAs
+                                                                           * “Start Now” should open a pop-up form instead of redirecting
+                                                                           * Consider dual CTAs:
+                                                                           * Get a Free Consultation (pop-up)
+
+                                                                           * Search Homes (IDX)
+
+2. Navigation & Header UX
+                                                                              * Buying and Selling should be adjacent in the main navigation
+                                                                              * Proposed nav order:
+                                                                              * Buying
+                                                                              * Selling
+                                                                              * About
+                                                                              * Search
+                                                                              * Services
+
+                                                                                 * Add phone number to top right (737 number)
+                                                                                 * Ensure primary CTA (Consultation) is always visible in header
+3. Buying Page QA
+Content Gaps
+ The current Vercel version is missing major content sections that exist on the live site:
+                                                                                 * Full-service solution section
+                                                                                 * Buyer FAQs
+                                                                                 * Relocation content
+                                                                                 * Buyer guides
+                                                                                 * Videos (e.g. “Is it a good time to buy a home in Austin?”)
+                                                                                 * Supporting CTAs and resource links
+The live site version is SEO-optimized and content-rich. The Vercel version should aim for content parity.
+4. Selling Page QA
+Missing Key Sections
+                                                                                 * Reviews and trust elements
+                                                                                 * Buying and selling at the same time
+                                                                                 * Relocation services
+                                                                                 * Downloadable resources:
+                                                                                 * Seller guide
+                                                                                 * Home staging guide
+                                                                                 * Seller FAQ
+                                                                                 * Video content (“Is it a good time to sell your Austin home?”)
+
+UX Improvements
+                                                                                    * “Schedule Consultation” should open a pop-up modal
+                                                                                    * Add mid-page CTAs to avoid forcing users to scroll to top or bottom to convert
+5. Search, Agents, and Communities
+Agent Pages
+                                                                                    * Individual agent profile pages need to be implemented
+Communities
+                                                                                    * Several community pages are missing images
+                                                                                    * Add featured images to improve visual hierarchy and engagement
+ZIP Code Search
+                                                                                    * Footer is missing on ZIP code pages
+                                                                                    * Add CTA section at bottom of ZIP code pages
+                                                                                    * Add map section for Austin and surrounding areas
+6. Services Pages
+Services Overview
+                                                                                    * Section layout could be more visually balanced
+                                                                                    * Improve spacing and layout between service sections
+Mortgage Calculator
+                                                                                    * Page is accessible and functional (no major UX issues noted)
+7. Relocation Page
+Missing Content Compared to Live Site
+                                                                                    * Corporate relocation page
+                                                                                    * Relocate to Texas page
+                                                                                    * Relocation services video
+                                                                                    * CTAs:
+                                                                                    * “I am relocating to or from Austin”
+                                                                                    * “I am a company representative”
+                                                                                    * Leading Real Estate Companies of the World logo
+These missing elements currently reduce both conversion and content depth.
+8. Cash Offer and Trade-In Page
+                                                                                    * Page looks solid overall
+                                                                                    * Add CTAs within sections, especially under:
+                                                                                    * Benefits of Cash Offer Trade-In
+                                                                                    * Add mid-page CTAs to guide users toward conversion
+9. Home Staging Page
+                                                                                    * Page layout looks good
+                                                                                    * Add internal links to related blogs for:
+                                                                                    * SEO
+                                                                                    * User education
+                                                                                    * Content discovery
+10. About Page
+Reviews
+                                                                                    * Ideally pull live Google Reviews dynamically
+                                                                                    * Alternatively, manually curate top reviews
+CTAs
+                                                                                    * Add action buttons within sections
+                                                                                    * Each major section should offer a next step (consultation, learn more, contact)
+                                                                                    * Reduce friction by avoiding forcing users to scroll to top or bottom to convert
+11. Reviews Page
+                                                                                    * Reviews page currently returns a 404
+                                                                                    * Needs to be implemented or redirected properly
+Summary
+At a front-end level, the Vercel site is structurally sound, but it is currently missing a significant amount of optimized content and conversion elements compared to the live site. The main focus areas should be:
+                                                                                    * Content parity with the live website
+                                                                                    * Stronger conversion paths (pop-ups, CTAs, mid-page actions)
+                                                                                    * Updated trust signals (reviews, stats, logos)
+                                                                                    * Improved UX flow (navigation order, header CTAs, phone number visibility)
+                                                                                    * Completing missing pages and sections
+Next Steps
+This QA can serve as the baseline. Once these core gaps are addressed, we can continue refining UX, CRO, and SEO elements as we test and gather real user behavior data. This gives us a strong foundation to move forward while allowing room to polish and iterate as additional needs surface.
+02/17 Updates
+
+
+02/17 - Backend
+Spyglass Admin Content Management – Backend QA Report
+  
+
+Mission Control Pages
+Issue: It is unclear whether the “Pages” section in Mission Control is intended for admin-only use or if non-admin users or agents can access and interact with these pages.
+Recommendation: Please confirm intended access levels and permissions for the “Pages” section, including whether agents should have visibility or editing capabilities.
+  
+
+Site Editor and Homepage Builder
+Issue: It is unclear whether the Site Editor in the left sidebar is exclusively for the Homepage Builder or intended to manage other site templates as well.
+Recommendation: Clarify the scope of the Site Editor and whether it will be expanded to manage additional templates beyond the homepage.
+
+
+Issue: Homepage sections do not allow selecting text formats such as H1, H2, H3, H4, or paragraph, which limits SEO control.
+Recommendation: Add text formatting options to homepage sections to support proper heading hierarchy and SEO structure.
+Landing Pages
+Issue: Live view redirects to the live REW site instead of a development or backend preview environment.
+Recommendation: Implement a backend preview or staging preview so pages can be reviewed safely during development.
+
+
+Issue: Main Content and Sections appear to overlap in purpose, which creates confusion in content management.
+Recommendation: Consolidate Main Content and Sections into a single content system to simplify editing workflows.
+
+
+Issue: The current editor experience is limited and heavily dependent on raw inputs.
+Recommendation: Add a formatting toolbar with HTML option and introduce a drag and drop or visual builder similar to Elementor.
+
+
+Issue: Featured Image and Social Media Image require URL input instead of native file uploads.
+Recommendation: Add native file upload buttons for Featured Image and Social Media Image fields.
+Communities
+Issue: Community pages are not accessible in the backend under Spyglass Admin Content Management, and there is no clear way to create or edit community content.
+
+
+Recommendation: Provide backend access for creating, editing, and managing community pages and document the intended workflow for community content management.
+Blog Posts
+Issue: Featured Image and Social Media Image fields only accept URLs.
+Recommendation: Replace URL-only fields with native file upload functionality.
+
+
+Issue: The blog content editor lacks a formatting toolbar and HTML editing option.
+Recommendation: Add a rich text formatting bar with heading options and an HTML mode for advanced editing.
+
+
+Issue: Creating a blog post from the backend results in a “failed to save blog post” error and shows unsaved changes.
+Recommendation: Investigate and resolve the save error to ensure blog posts can be created and published reliably.
+Agents
+Issue: Agents who serve multiple cities cannot select more than one market in the backend.
+Recommendation: Allow multi-select for agent service areas or cities.
+
+
+Issue: Headshot image field requires a URL instead of supporting native uploads.
+Recommendation: Add native file upload support for agent headshots.
+
+
+Issue: The meaning and function of “sort order” in advanced settings is unclear.
+Recommendation: Clarify what “sort order” controls and default the main agent directory to alphabetical sorting by last name while maintaining First Name Last Name display format.
+
+
+Issue: Editing and saving an agent profile triggers a “Validation File Error.”
+Recommendation: Investigate and resolve validation errors to allow agent profile updates.
+
+
+Issue: There is no way to preview an agent page from the backend.
+Recommendation: Add a preview or open-in-new-tab option for agent profile pages to support QA and verification.
+Global Scripts
+Issue: The Global Scripts section loads a blank page and is not accessible.
+Recommendation: Fix the Global Scripts route and ensure sitewide scripts can be managed from the backend.
+Sitewide UX and Error Handling
+Issue: Error messages such as “failed to save file” or “validation file error” do not indicate which field is causing the problem.
+Recommendation: Improve error messaging by highlighting or indicating the specific fields that require correction.
+Redirects and Migration
+Issue: There is no clear guidance on redirect migration strategy from the existing REW Spyglass website.
+Recommendation: Confirm whether all existing redirects should be migrated or if only recent and high priority redirects should be moved into Mission Control.
+
+
+02/17 - Frontend
+Frontend QA Report - Vercel.app
+Navigation Menu
+Issue: The Blogs link is missing from the main navigation menu.
+Recommendation: Add the Blogs link to the primary navigation so users can easily access blog content from any page.
+Homepage
+Issue: It is unclear whether the homepage content will be updated or if the existing content from the REW homepage will be reused.
+Recommendation: Confirm the content strategy for the homepage and align it with the current optimized REW homepage content if SEO and messaging continuity are required.
+
+
+Issue: Accolades and trust logos (Leading RE, Inc 5000, ABJ, RealTrends) are missing from the homepage.
+Recommendation: Add the missing accolade and trust logos to reinforce brand credibility and trust signals.
+
+
+Issue: The call to action in the “What brings you here” section is not visually prominent and the text is difficult to see.
+Recommendation: Increase contrast and visual prominence of the call to action button to improve visibility and conversion.
+
+
+Issue: Featured Listings currently do not clearly display office listings.
+Recommendation: Configure Featured Listings to surface office listings as intended.
+
+
+Issue: The contact form combines email and phone into a single field.
+Recommendation: Separate email and phone into distinct form fields to improve data quality and usability.
+Buying Page
+Issue: The Buying page is missing significant content compared to the live site.
+Recommendation: Populate the Buying page with the same core content from the live website to maintain content parity and SEO value, or implement a structured way to migrate content from spyglassrealty.com/buy-home-austin.
+Selling Page
+Issue: The Selling page is missing significant content compared to the live site.
+Recommendation: Populate the Selling page with the same core content from the live website to maintain content parity and SEO value, or implement a structured way to migrate content from spyglassrealty.com/sell-home-austin.
+Zip Codes Page
+Issue: The “Austin and Surrounding Area Zip Codes” section is not loading correctly.
+Recommendation: Investigate and fix the loading issue to ensure all zip code content displays properly.
+
+
+Issue: There is no call to action at the bottom of the zip codes page.
+Recommendation: Add a clear call to action at the bottom of the zip codes page to guide users toward next steps.
+
+
+Issue: The zip code pages are missing the site footer.
+Recommendation: Restore the footer on zip code pages to maintain consistent navigation and trust signals across the site.
+Sitewide Content Parity and SEO
+Issue: Core pages, landing pages, and community pages on the Vercel site are missing substantial content that exists on the live spyglassrealty.com website, including internal and external links.
+Recommendation: Migrate or recreate core content and internal and external links from the live site to the Vercel site to preserve SEO equity, content depth, and user experience across all key pages.

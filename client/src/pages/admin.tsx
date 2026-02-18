@@ -267,6 +267,44 @@ export default function AdminPage() {
       .replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
+  // Navigation configuration
+  const navigationSections = [
+    {
+      title: "TOOLS",
+      items: [
+        { name: "Dashboard", href: "/admin", icon: Home, active: location === "/admin" },
+        { name: "Dashboards", href: "/admin/dashboards", icon: BarChart3 },
+        { name: "Beacon", href: "/admin/beacon", icon: Activity },
+        { name: "Site Editor", href: "/admin/site-editor", icon: PenTool },
+      ]
+    },
+    {
+      title: "CONTENT", 
+      items: [
+        { name: "Communities", href: "/admin/communities", icon: Building2 },
+        { name: "Blog Posts", href: "/admin/blog/posts", icon: FileText },
+        { name: "Blog Categories", href: "/admin/blog/categories", icon: FileBarChart },
+        { name: "Landing Pages", href: "/admin/landing-pages", icon: Globe },
+        { name: "Page Builder", href: "/admin/pages", icon: FileText },
+      ]
+    },
+    {
+      title: "PEOPLE",
+      items: [
+        { name: "Agents", href: "/admin/agents", icon: Users },
+        { name: "Testimonials", href: "/admin/testimonials", icon: MessageSquare },
+        { name: "Review Sources", href: "/admin/testimonials/sources", icon: Star },
+      ]
+    },
+    {
+      title: "SEO & TECHNICAL",
+      items: [
+        { name: "Redirects", href: "/admin/redirects", icon: RedirectIcon },
+        { name: "Global Scripts", href: "/admin/global-scripts", icon: Code },
+      ]
+    }
+  ];
+
   const formatTimeAgo = (dateStr: string) => {
     const date = new Date(dateStr);
     const now = new Date();

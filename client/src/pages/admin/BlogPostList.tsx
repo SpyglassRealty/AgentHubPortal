@@ -56,6 +56,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { buildPreviewUrl } from "@/lib/preview";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -533,7 +534,7 @@ export default function BlogPostList() {
                                 </Link>
                                 {post.status === 'published' && (
                                   <DropdownMenuItem
-                                    onClick={() => window.open(`/blog/${post.slug}`, '_blank')}
+                                    onClick={() => window.open(buildPreviewUrl(`/blog/${post.slug}`), '_blank')}
                                   >
                                     <Eye className="h-4 w-4 mr-2" />
                                     View Live

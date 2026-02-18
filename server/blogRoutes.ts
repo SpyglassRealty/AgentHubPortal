@@ -44,9 +44,7 @@ const createBlogPostSchema = z.object({
   }).optional(),
 });
 
-const updateBlogPostSchema = createBlogPostSchema.partial().extend({
-  id: z.string(),
-});
+const updateBlogPostSchema = createBlogPostSchema.partial();
 
 const createBlogCategorySchema = z.object({
   name: z.string().min(1, "Name is required").max(255),

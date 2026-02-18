@@ -45,6 +45,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { buildPreviewUrl, PREVIEW_BASE_URL } from "@/lib/preview";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -247,7 +248,19 @@ export default function BlogPostEditor() {
         }),
       });
       
-      if (!res.ok) throw new Error("Failed to save blog post");
+      if (!res.ok) {
+        const error = await res.json().catch(() => null);
+        const fieldErrors = Array.isArray(error?.details)
+          ? error.details
+              .map((detail: any) => {
+                const path = Array.isArray(detail.path) ? detail.path.join(".") : "";
+                return path ? `${path}: ${detail.message}` : detail.message;
+              })
+              .filter(Boolean)
+              .join(", ")
+          : "";
+        throw new Error(fieldErrors || error?.error || "Failed to save blog post");
+      }
       return res.json();
     },
     onSuccess: (response) => {
@@ -397,7 +410,7 @@ export default function BlogPostEditor() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open(`/blog/${post.slug}`, '_blank')}
+                onClick={() => window.open(buildPreviewUrl(`/blog/${post.slug}`), '_blank')}
               >
                 <Eye className="h-4 w-4 mr-2" />
                 View Live
@@ -443,7 +456,7 @@ export default function BlogPostEditor() {
                     placeholder="url-friendly-slug"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    spyglassrealty.com/blog/{formData.slug || 'your-post-url'}
+                    {PREVIEW_BASE_URL.replace("https://", "")}/blog/{formData.slug || 'your-post-url'}
                   </p>
                 </div>
                 

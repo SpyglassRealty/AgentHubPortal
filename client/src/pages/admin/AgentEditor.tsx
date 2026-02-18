@@ -19,6 +19,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { PREVIEW_BASE_URL } from "@/lib/preview";
 import { SeoPanel } from "@/components/seo/SeoPanel";
 import {
   ArrowLeft,
@@ -192,8 +193,17 @@ export default function AgentEditorPage() {
       });
       
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Failed to save agent");
+        const error = await res.json().catch(() => null);
+        const fieldErrors = Array.isArray(error?.details)
+          ? error.details
+              .map((detail: any) => {
+                const path = Array.isArray(detail.path) ? detail.path.join(".") : "";
+                return path ? `${path}: ${detail.message}` : detail.message;
+              })
+              .filter(Boolean)
+              .join(", ")
+          : "";
+        throw new Error(fieldErrors || error?.error || "Failed to save agent");
       }
       
       return res.json();
@@ -701,7 +711,7 @@ export default function AgentEditorPage() {
                         placeholder="john-smith"
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        Will create: {formData.subdomain}.spyglassrealty.com
+                        Will create: {formData.subdomain}.{PREVIEW_BASE_URL.replace("https://", "")}
                       </p>
                     </div>
                     

@@ -102,7 +102,7 @@ export default function GlobalScriptsList() {
 
   // ── State ────────────────────────────────────────────
   const [filter, setFilter] = useState("all");
-  const [positionFilter, setPositionFilter] = useState("");
+  const [positionFilter, setPositionFilter] = useState("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isTemplateMode, setIsTemplateMode] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState("");
@@ -125,7 +125,7 @@ export default function GlobalScriptsList() {
     queryFn: async () => {
       const params = new URLSearchParams();
       if (filter !== "all") params.append("filter", filter);
-      if (positionFilter) params.append("position", positionFilter);
+      if (positionFilter !== "all") params.append("position", positionFilter);
 
       const res = await fetch(`/api/admin/global-scripts?${params}`, {
         credentials: "include",
@@ -520,7 +520,7 @@ export default function GlobalScriptsList() {
                   <SelectValue placeholder="Position" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Positions</SelectItem>
+                  <SelectItem value="all">All Positions</SelectItem>
                   <SelectItem value="head">Head</SelectItem>
                   <SelectItem value="body">Body</SelectItem>
                 </SelectContent>

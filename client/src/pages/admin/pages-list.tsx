@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { buildPreviewUrl } from '@/lib/preview';
 import {
   Search,
   Plus,
@@ -308,7 +309,7 @@ export default function PagesListPage() {
                             {page.isPublished && (
                               <DropdownMenuItem onClick={(e) => {
                                 e.stopPropagation();
-                                window.open(`/p/${page.slug}`, '_blank');
+                                window.open(buildPreviewUrl(`/p/${page.slug}`), '_blank');
                               }}>
                                 <ExternalLink className="h-4 w-4 mr-2" />
                                 View Live
