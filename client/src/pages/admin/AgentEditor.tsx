@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -633,31 +635,28 @@ export default function AgentEditorPage() {
                   <CardContent className="space-y-4">
                     <div>
                       <Label htmlFor="bio">Biography</Label>
-                      <Textarea
-                        id="bio"
-                        value={formData.bio}
-                        onChange={(e) => handleInputChange("bio", e.target.value)}
-                        rows={6}
+                      <RichTextEditor
+                        content={formData.bio}
+                        onChange={(html) => handleInputChange("bio", html)}
                         placeholder="Tell us about yourself, your experience, and what makes you unique..."
+                        minHeight="150px"
+                        imageCategory="agents"
+                        showSourceToggle={true}
                       />
                       <p className="text-xs text-muted-foreground mt-1">
                         {formData.bio.length} characters (recommended: 300+)
                       </p>
                     </div>
                     
-                    <div>
-                      <Label htmlFor="headshotUrl">Headshot Image URL</Label>
-                      <Input
-                        id="headshotUrl"
-                        type="url"
-                        value={formData.headshotUrl}
-                        onChange={(e) => handleInputChange("headshotUrl", e.target.value)}
-                        placeholder="https://example.com/headshot.jpg"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Professional headshot recommended (square format works best)
-                      </p>
-                    </div>
+                    <ImageUpload
+                      value={formData.headshotUrl}
+                      onChange={(url) => handleInputChange("headshotUrl", url)}
+                      category="agents"
+                      label="Headshot Image"
+                      hint="Professional headshot recommended (square format works best)"
+                      showPreview={true}
+                      aspectRatio="1/1"
+                    />
                     
                     <div>
                       <Label htmlFor="videoUrl">Introduction Video URL</Label>

@@ -19,28 +19,31 @@ const router = Router();
 
 // ── Validation Schemas ──────────────────────────────────────────────────
 
+// Helper: accept URL string, empty string, null, or undefined
+const optionalUrl = z.string().url().optional().or(z.literal('')).or(z.literal(null as any)).transform(v => v || undefined);
+
 const createBlogPostSchema = z.object({
   title: z.string().min(1, "Title is required").max(255),
   slug: z.string().min(1, "Slug is required").max(255).regex(/^[a-z0-9-]+$/, "Slug must be lowercase with dashes"),
   content: z.string().min(1, "Content is required"),
-  excerpt: z.string().optional(),
-  featuredImageUrl: z.string().url().optional().or(z.literal('')),
-  ogImageUrl: z.string().url().optional().or(z.literal('')),
+  excerpt: z.string().optional().or(z.literal('')),
+  featuredImageUrl: optionalUrl,
+  ogImageUrl: optionalUrl,
   authorId: z.string().min(1, "Author is required"),
   status: z.enum(['draft', 'published', 'scheduled']).default('draft'),
   publishedAt: z.string().datetime().optional().nullable(),
   categoryIds: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
-  metaTitle: z.string().max(255).optional(),
-  metaDescription: z.string().optional(),
+  metaTitle: z.string().max(255).optional().or(z.literal('')),
+  metaDescription: z.string().optional().or(z.literal('')),
   indexingDirective: z.string().default('index,follow'),
-  canonicalUrl: z.string().url().optional().or(z.literal('')),
+  canonicalUrl: optionalUrl,
   ctaConfig: z.object({
     enabled: z.boolean(),
-    title: z.string().optional(),
-    description: z.string().optional(),
-    buttonText: z.string().optional(),
-    buttonUrl: z.string().optional(),
+    title: z.string().optional().or(z.literal('')),
+    description: z.string().optional().or(z.literal('')),
+    buttonText: z.string().optional().or(z.literal('')),
+    buttonUrl: z.string().optional().or(z.literal('')),
   }).optional(),
 });
 
@@ -286,7 +289,8 @@ router.post("/admin/blog/posts", async (req, res) => {
 router.put("/admin/blog/posts/:slug", async (req, res) => {
   try {
     const { slug } = req.params;
-    const validatedData = updateBlogPostSchema.parse({ ...req.body, slug });
+    // Don't merge slug from params — the body may have its own slug for rename
+    const validatedData = updateBlogPostSchema.parse(req.body);
     
     // Check if post exists
     const [existingPost] = await db

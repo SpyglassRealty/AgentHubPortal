@@ -3,6 +3,8 @@ import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AdminLayout from "@/components/admin-layout";
 import { SeoPanel } from "@/components/seo/SeoPanel";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -477,16 +479,16 @@ export default function BlogPostEditor() {
                 
                 <div>
                   <Label htmlFor="content">Content</Label>
-                  <Textarea
-                    id="content"
-                    value={formData.content}
-                    onChange={(e) => handleInputChange("content", e.target.value)}
-                    placeholder="Write your blog post content here. You can use HTML tags for formatting..."
-                    rows={20}
-                    className="font-mono"
+                  <RichTextEditor
+                    content={formData.content}
+                    onChange={(html) => handleInputChange("content", html)}
+                    placeholder="Write your blog post content here..."
+                    minHeight="400px"
+                    imageCategory="blogs"
+                    showSourceToggle={true}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    HTML is supported. Use standard HTML tags for formatting.
+                    Use the toolbar for formatting. Toggle HTML source with the code icon.
                   </p>
                 </div>
               </CardContent>
@@ -501,31 +503,23 @@ export default function BlogPostEditor() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="featuredImage">Featured Image URL</Label>
-                  <Input
-                    id="featuredImage"
-                    value={formData.featuredImageUrl}
-                    onChange={(e) => handleInputChange("featuredImageUrl", e.target.value)}
-                    placeholder="https://example.com/image.jpg"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Main image shown in blog lists and at the top of the post
-                  </p>
-                </div>
+                <ImageUpload
+                  value={formData.featuredImageUrl}
+                  onChange={(url) => handleInputChange("featuredImageUrl", url)}
+                  category="blogs"
+                  label="Featured Image"
+                  hint="Main image shown in blog lists and at the top of the post"
+                  aspectRatio="16/9"
+                />
                 
-                <div>
-                  <Label htmlFor="ogImage">Social Media Image URL (Optional)</Label>
-                  <Input
-                    id="ogImage"
-                    value={formData.ogImageUrl}
-                    onChange={(e) => handleInputChange("ogImageUrl", e.target.value)}
-                    placeholder="https://example.com/og-image.jpg"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Separate image for social media sharing (1200x630px recommended)
-                  </p>
-                </div>
+                <ImageUpload
+                  value={formData.ogImageUrl}
+                  onChange={(url) => handleInputChange("ogImageUrl", url)}
+                  category="blogs"
+                  label="Social Media Image (Optional)"
+                  hint="Separate image for social media sharing (1200×630px recommended)"
+                  aspectRatio="1200/630"
+                />
               </CardContent>
             </Card>
 

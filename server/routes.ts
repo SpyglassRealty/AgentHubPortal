@@ -1,4 +1,6 @@
 import type { Express } from "express";
+import express from "express";
+import path from "path";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
@@ -24,6 +26,7 @@ import { registerRedirectsRoutes } from "./redirectsRoutes";
 import { registerGlobalScriptsRoutes } from "./globalScriptsRoutes";
 import { registerSeoRoutes } from "./seoRoutes";
 import blogRoutes from "./blogRoutes";
+import uploadRoutes, { handleMulterError } from "./uploadRoutes";
 import agentRoutes from "./agentRoutes";
 import landingPageRoutes from "./landingPageRoutes";
 import testimonialRoutes from "./testimonialRoutes";
@@ -4700,6 +4703,14 @@ Respond with valid JSON in this exact format:
   registerRedirectsRoutes(app);
   registerGlobalScriptsRoutes(app);
   registerSeoRoutes(app);
+
+  // Register Image Upload routes
+  app.use('/api', uploadRoutes);
+  app.use(handleMulterError);
+  
+  // Serve uploaded files statically
+  const uploadsDir = path.resolve(process.cwd(), "uploads");
+  app.use('/uploads', express.static(uploadsDir));
 
   // Register CMS Enhancement Phase 2 - Blog System
   app.use('/api', blogRoutes);

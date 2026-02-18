@@ -11,6 +11,8 @@ import {
 } from "@/lib/community-editor";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -292,12 +294,13 @@ export default function CommunityEditor() {
             <CardDescription>Main community overview (appears as the intro on the page)</CardDescription>
           </CardHeader>
           <CardContent>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+            <RichTextEditor
+              content={description}
+              onChange={setDescription}
               placeholder="Write about this community — what makes it special, what the homes are like, the lifestyle..."
-              rows={10}
-              className="font-normal"
+              minHeight="250px"
+              imageCategory="communities"
+              showSourceToggle={true}
             />
             <p className="text-xs text-muted-foreground mt-1">
               {description.length.toLocaleString()} characters
@@ -406,11 +409,13 @@ export default function CommunityEditor() {
                   value={section.heading}
                   onChange={(e) => updateSection(idx, "heading", e.target.value)}
                 />
-                <Textarea
+                <RichTextEditor
+                  content={section.content}
+                  onChange={(html) => updateSection(idx, "content", html)}
                   placeholder="Section content..."
-                  value={section.content}
-                  onChange={(e) => updateSection(idx, "content", e.target.value)}
-                  rows={5}
+                  minHeight="120px"
+                  imageCategory="communities"
+                  showSourceToggle={true}
                 />
               </div>
             ))}

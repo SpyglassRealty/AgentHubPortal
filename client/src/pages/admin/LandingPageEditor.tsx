@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import AdminLayout from "@/components/admin-layout";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -474,32 +476,19 @@ export default function LandingPageEditorPage() {
 
                 <Card>
                   <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle>Main Content</CardTitle>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setHtmlEditMode(!htmlEditMode)}
-                      >
-                        <Code className="h-4 w-4 mr-2" />
-                        {htmlEditMode ? "Visual" : "HTML"}
-                      </Button>
-                    </div>
+                    <CardTitle>Main Content</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <Textarea
-                      value={formData.content}
-                      onChange={(e) => handleInputChange("content", e.target.value)}
-                      rows={htmlEditMode ? 15 : 8}
-                      placeholder={htmlEditMode 
-                        ? "<h1>Welcome to our page</h1>\n<p>Your content here...</p>"
-                        : "Enter your page content here..."
-                      }
-                      className="font-mono"
+                    <RichTextEditor
+                      content={formData.content}
+                      onChange={(html) => handleInputChange("content", html)}
+                      placeholder="Enter your page content here..."
+                      minHeight="300px"
+                      imageCategory="pages"
+                      showSourceToggle={true}
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      {htmlEditMode ? "HTML content" : "Rich text content"} • {formData.content.length} characters
+                      Use the toolbar for formatting. Toggle HTML source with the code icon. • {formData.content.length} characters
                     </p>
                   </CardContent>
                 </Card>
@@ -554,23 +543,25 @@ export default function LandingPageEditorPage() {
                               
                               <div>
                                 <Label>Content</Label>
-                                <Textarea
-                                  value={section.content}
-                                  onChange={(e) => updateSection(section.id, { content: e.target.value })}
-                                  rows={4}
+                                <RichTextEditor
+                                  content={section.content}
+                                  onChange={(html) => updateSection(section.id, { content: html })}
                                   placeholder="Section content..."
+                                  minHeight="120px"
+                                  imageCategory="pages"
+                                  showSourceToggle={true}
                                 />
                               </div>
                               
                               <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <Label>Image URL</Label>
-                                  <Input
-                                    value={section.imageUrl || ""}
-                                    onChange={(e) => updateSection(section.id, { imageUrl: e.target.value })}
-                                    placeholder="https://example.com/image.jpg"
-                                  />
-                                </div>
+                                <ImageUpload
+                                  value={section.imageUrl || ""}
+                                  onChange={(url) => updateSection(section.id, { imageUrl: url })}
+                                  category="pages"
+                                  label="Section Image"
+                                  showPreview={true}
+                                  aspectRatio="16/9"
+                                />
                                 <div>
                                   <Label>CTA Button Text</Label>
                                   <Input
@@ -624,19 +615,14 @@ export default function LandingPageEditorPage() {
                     <CardTitle>Social & Media</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div>
-                      <Label htmlFor="ogImageUrl">Open Graph Image URL</Label>
-                      <Input
-                        id="ogImageUrl"
-                        type="url"
-                        value={formData.ogImageUrl}
-                        onChange={(e) => handleInputChange("ogImageUrl", e.target.value)}
-                        placeholder="https://example.com/og-image.jpg"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Recommended: 1200x630px for social sharing
-                      </p>
-                    </div>
+                    <ImageUpload
+                      value={formData.ogImageUrl}
+                      onChange={(url) => handleInputChange("ogImageUrl", url)}
+                      category="pages"
+                      label="Open Graph Image"
+                      hint="Recommended: 1200×630px for social sharing"
+                      aspectRatio="1200/630"
+                    />
                   </CardContent>
                 </Card>
               </TabsContent>
