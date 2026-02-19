@@ -94,6 +94,7 @@ import { registerGmailRoutes } from "./gmailRoutes";
 import { registerXanoRoutes } from "./xanoProxy";
 import { registerRezenDashboardRoutes } from "./rezenDashboardRoutes";
 import { registerCommunityEditorRoutes } from "./communityEditorRoutes";
+import { registerPublicCommunityRoutes } from "./publicCommunityRoutes";
 import { registerRedirectsRoutes } from "./redirectsRoutes";
 import { registerGlobalScriptsRoutes } from "./globalScriptsRoutes";
 import { registerSeoRoutes } from "./seoRoutes";
@@ -4864,6 +4865,9 @@ Respond with valid JSON in this exact format:
 
   // Register Community Editor routes (admin)
   registerCommunityEditorRoutes(app);
+
+  // Register Public Community API routes (for IDX integration)
+  registerPublicCommunityRoutes(app);
 
   // Register CMS Enhancement Phase 1 routes
   registerRedirectsRoutes(app);
