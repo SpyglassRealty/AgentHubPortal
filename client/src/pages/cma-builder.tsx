@@ -50,6 +50,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import PropertyCard from "@/components/cma/PropertyCard";
 
 // Types
 interface PropertyData {
@@ -1769,74 +1770,17 @@ function SearchPropertiesSection({
                 <p className="text-xs mt-1">Try adjusting your search criteria or broadening your filters.</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {searchResults.map((prop, i) => {
                   const isAdded = existingMlsNumbers.has(prop.mlsNumber);
                   return (
-                    <div
+                    <PropertyCard
                       key={i}
-                      className={`flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 rounded-lg border transition-colors ${
-                        isAdded ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800" : "hover:bg-muted/50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 w-full sm:w-auto">
-                        {(prop.photos && prop.photos.length > 0) || prop.photo ? (
-                          <img
-                            src={(prop.photos && prop.photos.length > 0) ? prop.photos[0] : prop.photo!}
-                            alt={prop.address}
-                            className="w-20 h-14 rounded object-cover flex-shrink-0"
-                            loading="lazy"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                              const parent = e.currentTarget.parentElement;
-                              if (parent) {
-                                parent.innerHTML = `<div class="w-20 h-14 rounded bg-muted flex items-center justify-center flex-shrink-0"><svg class="h-6 w-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>`;
-                              }
-                            }}
-                          />
-                        ) : (
-                          <div className="w-20 h-14 rounded bg-muted flex items-center justify-center flex-shrink-0">
-                            <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{prop.address}</p>
-                          {prop.mlsNumber && (
-                            <p className="text-xs text-muted-foreground">MLS# {prop.mlsNumber}</p>
-                          )}
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
-                            <span className="font-semibold text-foreground text-base">
-                              {formatPrice(prop.soldPrice || prop.listPrice)}
-                            </span>
-                            <span>{prop.beds}bd / {prop.baths}ba</span>
-                            <span>{formatNumber(prop.sqft)} sqft</span>
-                            {prop.yearBuilt && <span>Built {prop.yearBuilt}</span>}
-                            {prop.daysOnMarket !== undefined && prop.daysOnMarket > 0 && (
-                              <span>{prop.daysOnMarket} DOM</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between w-full sm:w-auto sm:flex-col sm:items-end gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {prop.status}
-                        </Badge>
-                        <Button
-                          size="sm"
-                          variant={isAdded ? "secondary" : "default"}
-                          className={isAdded ? "" : "bg-[#EF4923] hover:bg-[#d4401f] text-white min-h-[44px] md:min-h-[36px]"}
-                          disabled={isAdded}
-                          onClick={() => onAddComp(prop)}
-                        >
-                          {isAdded ? "✓ Added" : (
-                            <>
-                              <Plus className="h-4 w-4 mr-1" />
-                              Add as Comparable
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
+                      property={prop}
+                      isAdded={isAdded}
+                      onAdd={onAddComp}
+                      variant="search-result"
+                    />
                   );
                 })}
               </div>
