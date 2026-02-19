@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     const contentType = format === 'png' ? 'image/png' : 'image/jpeg'
     const filename = `spyglass-studio-export.${format}`
 
-    return new NextResponse(imageBuffer, {
+    return new NextResponse(imageBuffer as any, {
       headers: {
         'Content-Type': contentType,
         'Content-Disposition': `attachment; filename="${filename}"`,

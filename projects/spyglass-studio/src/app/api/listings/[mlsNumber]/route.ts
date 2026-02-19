@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 const REPLIERS_API_URL = process.env.REPLIERS_API_URL
 const REPLIERS_API_KEY = process.env.REPLIERS_API_KEY
 
