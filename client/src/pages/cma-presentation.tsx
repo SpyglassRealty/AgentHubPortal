@@ -892,7 +892,20 @@ export default function CmaPresentationPage() {
       if (!res.ok) throw new Error('Failed to fetch agent profile');
       const data = await res.json();
       console.log('[CMAPresentation] Agent profile response:', data);
-      return data;
+      
+      // Transform nested API response to flat structure expected by AgentProfile interface
+      const agentProfile: AgentProfile = {
+        firstName: data.user?.firstName || undefined,
+        lastName: data.user?.lastName || undefined,
+        email: data.user?.email || undefined,
+        title: data.profile?.title || undefined,
+        phone: data.profile?.phone || undefined,
+        headshotUrl: data.profile?.headshotUrl || undefined,
+        bio: data.profile?.bio || undefined,
+      };
+      
+      console.log('[CMAPresentation] Flattened agent profile:', agentProfile);
+      return agentProfile;
     },
   });
 
