@@ -3249,12 +3249,13 @@ Respond with valid JSON in this exact format:
           status: listing.standardStatus || listing.status || '',
           listDate: listing.listDate || '',
           soldDate: listing.soldDate || listing.closeDate || null,
-          daysOnMarket: listing.daysOnMarket || 0,
+          daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
           photos,
           stories: listing.details?.numStoreys || null,
           subdivision: listing.address?.neighborhood || listing.address?.area || '',
           latitude: listing.map?.latitude || listing.address?.latitude || null,
           longitude: listing.map?.longitude || listing.address?.longitude || null,
+          description: listing.details?.description || null,
         };
       });
 
