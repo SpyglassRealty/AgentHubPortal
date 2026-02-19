@@ -12,6 +12,9 @@ interface PropertyDetailModalProps {
     city?: string;
     zip?: string;
     price: number;
+    listPrice?: number;           // Current list price
+    soldPrice?: number;           // Sold price for closed properties  
+    originalPrice?: number;       // Original list price
     pricePerSqft?: number;
     beds?: number;
     baths?: number;
@@ -22,6 +25,7 @@ interface PropertyDetailModalProps {
     daysOnMarket?: number;
     closeDate?: string;
     listDate?: string;
+    soldDate?: string;
     status: string;
     photos: string[];
     percentOfList?: string;
@@ -183,6 +187,45 @@ export function PropertyDetailModal({ isOpen, onClose, property }: PropertyDetai
                 ${property.pricePerSqft.toFixed(0)}/sqft
               </div>
             )}
+            
+            {/* Price History & Dates Section */}
+            {(property.originalPrice || property.listDate || property.soldDate) && (
+              <div className="mt-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                <h4 className="text-sm font-medium text-zinc-300 mb-2">Price History & Dates</h4>
+                <div className="space-y-1 text-sm">
+                  {property.listDate && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Listed:</span>
+                      <span className="text-white">{formatDate(property.listDate)}</span>
+                    </div>
+                  )}
+                  {property.originalPrice && property.originalPrice !== property.price && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Original Price:</span>
+                      <span className="text-white">{formatPrice(property.originalPrice)}</span>
+                    </div>
+                  )}
+                  {property.listPrice && property.listPrice !== property.price && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">List Price:</span>
+                      <span className="text-white">{formatPrice(property.listPrice)}</span>
+                    </div>
+                  )}
+                  {property.soldPrice && property.status?.toLowerCase() === 'closed' && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Sold Price:</span>
+                      <span className="text-white font-medium">{formatPrice(property.soldPrice)}</span>
+                    </div>
+                  )}
+                  {property.soldDate && property.status?.toLowerCase() === 'closed' && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Sold:</span>
+                      <span className="text-white">{formatDate(property.soldDate)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="flex items-start gap-2 mb-6">
@@ -244,12 +287,6 @@ export function PropertyDetailModal({ isOpen, onClose, property }: PropertyDetai
                 <span className="text-white">{property.subdivision}</span>
               </div>
             )}
-            {property.listDate && property.status?.toLowerCase() !== 'closed' && (
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="text-zinc-400">List Date</span>
-                <span className="text-white">{formatDate(property.listDate)}</span>
-              </div>
-            )}
             <div className="flex justify-between py-2 border-b border-zinc-800">
               <span className="text-zinc-400">Days on Market</span>
               <span className="text-white">{property.daysOnMarket ?? '—'}</span>
@@ -258,12 +295,6 @@ export function PropertyDetailModal({ isOpen, onClose, property }: PropertyDetai
               <div className="flex justify-between py-2 border-b border-zinc-800">
                 <span className="text-zinc-400">% of List Price</span>
                 <span className="text-white">{property.percentOfList}%</span>
-              </div>
-            )}
-            {property.status?.toLowerCase() === 'closed' && property.closeDate && (
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="text-zinc-400">Close Date</span>
-                <span className="text-white">{formatDate(property.closeDate)}</span>
               </div>
             )}
             {property.mlsNumber && (

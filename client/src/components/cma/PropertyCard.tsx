@@ -30,6 +30,7 @@ interface PropertyData {
   zip?: string;
   listPrice: number;
   soldPrice?: number | null;
+  originalPrice?: number | null;
   beds: number;
   baths: number;
   sqft: number;
@@ -43,6 +44,7 @@ interface PropertyData {
   photos?: string[];
   latitude?: number | null;
   longitude?: number | null;
+  description?: string;
 }
 
 interface PropertyCardProps {
