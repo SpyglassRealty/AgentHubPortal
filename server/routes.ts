@@ -3231,6 +3231,20 @@ Respond with valid JSON in this exact format:
           debugPhotoFields(listing, listing.mlsNumber || listing.listingId);
         }
 
+        // Debug logging for price and thumbnail issues
+        console.log('[CMA Price Debug]', listing.mlsNumber || listing.listingId, { 
+          soldPrice: listing.soldPrice, 
+          closePrice: listing.closePrice, 
+          listPrice: listing.listPrice, 
+          originalPrice: listing.originalPrice, 
+          status: listing.lastStatus 
+        });
+        console.log('[CMA Thumbnail Debug]', listing.mlsNumber || listing.listingId, { 
+          images: listing.images?.length || 0, 
+          photos: listing.photos?.length || 0, 
+          firstImage: listing.images?.[0]?.substring(0, 80) 
+        });
+
         return {
           mlsNumber: listing.mlsNumber || listing.listingId || '',
           address: fullAddress,
@@ -3240,6 +3254,7 @@ Respond with valid JSON in this exact format:
           zip: postalCode,
           listPrice: listing.listPrice || 0,
           soldPrice: listing.soldPrice || listing.closePrice || null,
+          originalPrice: listing.originalPrice || listing.listPrice || null,
           beds: listing.details?.numBedrooms || listing.bedroomsTotal || 0,
           baths: listing.details?.numBathrooms || listing.bathroomsTotal || 0,
           sqft: listing.details?.sqft || listing.livingArea || 0,
