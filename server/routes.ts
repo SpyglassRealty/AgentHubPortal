@@ -8,6 +8,80 @@ import { generateSuggestionsForUser } from "./contextEngine";
 import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema, agentProfiles } from "@shared/schema";
 import { getGoogleCalendarEvents } from "./googleCalendarClient";
 import { extractPhotosFromRepliersList, debugPhotoFields } from "./lib/repliers-photo-utils";
+
+// Enhanced address parsing for CMA search
+function parseAddress(fullAddress: string): { streetNumber?: string; streetName?: string; streetSuffix?: string; city?: string; state?: string; zip?: string } {
+  if (!fullAddress?.trim()) return {};
+  
+  const address = fullAddress.trim();
+  const parts = address.split(',').map(p => p.trim());
+  
+  if (parts.length < 2) {
+    // No commas, try to parse as just street address
+    const streetPart = address;
+    const numberMatch = streetPart.match(/^(\d+[A-Za-z]?)/);
+    const streetNumber = numberMatch ? numberMatch[1] : '';
+    const remaining = streetPart.replace(/^\d+[A-Za-z]?\s*/, '');
+    
+    // Common street suffixes
+    const suffixes = ['St', 'Street', 'Ave', 'Avenue', 'Blvd', 'Boulevard', 'Dr', 'Drive', 'Rd', 'Road', 'Ln', 'Lane', 'Ct', 'Court', 'Pl', 'Place', 'Cir', 'Circle', 'Way'];
+    const suffixPattern = new RegExp(`\\b(${suffixes.join('|')})\\b`, 'i');
+    const suffixMatch = remaining.match(suffixPattern);
+    let streetSuffix = '';
+    let streetName = remaining;
+    
+    if (suffixMatch) {
+      streetSuffix = suffixMatch[1];
+      streetName = remaining.replace(suffixPattern, '').trim();
+    }
+    
+    return { streetNumber, streetName, streetSuffix };
+  }
+  
+  // Extract city, state, zip from last part
+  const cityStateZip = parts[parts.length - 1];
+  const stateZipMatch = cityStateZip.match(/([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/);
+  
+  let city = '', state = '', zip = '';
+  if (stateZipMatch) {
+    state = stateZipMatch[1];
+    zip = stateZipMatch[2];
+    city = cityStateZip.replace(/\s+[A-Z]{2}\s+\d{5}(?:-\d{4})?$/, '').trim();
+  } else {
+    city = cityStateZip;
+  }
+  
+  // Parse street address (first part)
+  const streetPart = parts[0];
+  const numberMatch = streetPart.match(/^(\d+[A-Za-z]?)/);
+  const streetNumber = numberMatch ? numberMatch[1] : '';
+  let remaining = streetPart.replace(/^\d+[A-Za-z]?\s*/, '');
+  
+  const suffixes = ['St', 'Street', 'Ave', 'Avenue', 'Blvd', 'Boulevard', 'Dr', 'Drive', 'Rd', 'Road', 'Ln', 'Lane', 'Ct', 'Court', 'Pl', 'Place', 'Cir', 'Circle', 'Way'];
+  const suffixPattern = new RegExp(`\\b(${suffixes.join('|')})\\b`, 'i');
+  const suffixMatch = remaining.match(suffixPattern);
+  let streetSuffix = '';
+  let streetName = remaining;
+  
+  if (suffixMatch) {
+    streetSuffix = suffixMatch[1];
+    streetName = remaining.replace(suffixPattern, '').trim();
+  }
+  
+  return { streetNumber, streetName, streetSuffix, city, state, zip };
+}
+
+// Helper: Calculate distance between two coordinates in miles
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3959; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+          Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
 import { db, pool } from "./db";
 import { users as usersTable } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
@@ -2832,7 +2906,14 @@ Respond with valid JSON in this exact format:
       } = req.body;
 
       const pageNum = Math.max(1, parseInt(page || '1', 10));
-      const resultsPerPage = Math.min(Math.max(1, parseInt(limit || '25', 10)), 50);
+      // For CMA searches, limit to reasonable number of relevant results
+      let resultsPerPage = Math.min(Math.max(1, parseInt(limit || '25', 10)), 50);
+      
+      // For address searches, default to 25 most relevant properties
+      if (search && !limit) {
+        resultsPerPage = 25;
+        console.log(`[CMA Search ENHANCED] Limited address search to ${resultsPerPage} results for relevance`);
+      }
 
       const baseUrl = 'https://api.repliers.io/listings';
       const params = new URLSearchParams({
@@ -2843,8 +2924,32 @@ Respond with valid JSON in this exact format:
         sortBy: 'createdOnDesc',
       });
 
-      // Address search
-      if (search) params.append('search', search);
+      // Enhanced address search logic
+      let parsed: any = {};
+      if (search && search.trim()) {
+        console.log(`[CMA Search ENHANCED] Address search: "${search}"`);
+        
+        // Try to parse as a full address first
+        parsed = parseAddress(search);
+        console.log(`[CMA Search ENHANCED] Parsed address:`, parsed);
+        
+        // Strategy 1: Use parsed fields if we have street number + name + zip
+        if (parsed.streetNumber && parsed.streetName && parsed.zip) {
+          // Add individual Repliers fields for more precise matching
+          params.append('streetNumber', parsed.streetNumber);
+          params.append('streetName', parsed.streetName);
+          if (parsed.streetSuffix) {
+            params.append('streetSuffix', parsed.streetSuffix);
+          }
+          params.append('zip', parsed.zip);
+          
+          console.log(`[CMA Search ENHANCED] Using parsed fields: ${parsed.streetNumber} ${parsed.streetName} ${parsed.streetSuffix || ''}, ZIP ${parsed.zip}`);
+        } else {
+          // Fallback to original search parameter
+          params.append('search', search);
+          console.log(`[CMA Search ENHANCED] Using fallback search: "${search}"`);
+        }
+      }
 
       // Direct listing ID lookup via mlsNumber param
       if (listingId) params.append('mlsNumber', listingId.trim());
@@ -3065,8 +3170,12 @@ Respond with valid JSON in this exact format:
       if (maxLotAcres) params.append('maxLotWidth', (maxLotAcres * 43560).toString());
 
       // Status handling - support multiple statuses
-      // When doing address search with no explicit statuses, search all statuses
-      const statusArray: string[] = statuses || (search && !city && !zip ? [] : ['Active']);
+      // Default to including sold comps for CMA analysis, especially for address searches
+      const statusArray: string[] = statuses && statuses.length > 0 
+        ? statuses 
+        : (search ? ['Active', 'Closed'] : ['Active']); // Include sold comps for address searches
+      
+      console.log(`[CMA Search ENHANCED] Search statuses:`, statusArray);
       // If includes Closed, we need a separate approach
       const hasActive = statusArray.includes('Active');
       const hasAUC = statusArray.includes('Active Under Contract');
@@ -3384,17 +3493,83 @@ Respond with valid JSON in this exact format:
         console.log(`[CMA Search] Primary bed on main post-filter (${primaryBedOnMain}): ${filteredListings.length} remain`);
       }
 
+      // Enhanced result processing for address searches
+      let finalListings = filteredListings;
+      if (search && parsed?.streetNumber && parsed?.streetName) {
+        console.log(`[CMA Search ENHANCED] Processing ${filteredListings.length} results for relevance`);
+        
+        // Try to find the subject property in results for distance calculation
+        const subjectProperty = filteredListings.find((listing: any) => {
+          const listingStreet = `${listing.streetAddress || ''}`.toLowerCase();
+          const searchStreet = `${parsed.streetNumber} ${parsed.streetName}`.toLowerCase();
+          return listingStreet.includes(searchStreet) || searchStreet.includes(listingStreet);
+        });
+        
+        if (subjectProperty && subjectProperty.latitude && subjectProperty.longitude) {
+          console.log(`[CMA Search ENHANCED] Found subject property for distance calculation:`, subjectProperty.address);
+          
+          // Calculate distance and add relevance scores
+          filteredListings.forEach((listing: any) => {
+            if (listing.latitude && listing.longitude) {
+              const distance = calculateDistance(
+                subjectProperty.latitude, subjectProperty.longitude,
+                listing.latitude, listing.longitude
+              );
+              listing.distanceFromSubject = Math.round(distance * 100) / 100; // Round to 2 decimals
+              
+              // Simple relevance score
+              let relevance = 100;
+              if (distance <= 0.5) relevance += 50;
+              else if (distance <= 1) relevance += 30;
+              else if (distance <= 2) relevance += 10;
+              else if (distance > 5) relevance -= 20;
+              
+              // Bonus for sold properties (better for CMA analysis)
+              if (listing.status === 'Closed' || listing.soldPrice) {
+                relevance += 20;
+              }
+              
+              // Similar beds/baths bonus
+              if (subjectProperty.beds && Math.abs(listing.beds - subjectProperty.beds) <= 1) {
+                relevance += 15;
+              }
+              if (subjectProperty.baths && Math.abs(listing.baths - subjectProperty.baths) <= 1) {
+                relevance += 15;
+              }
+              
+              // Similar sqft bonus (within 30%)
+              if (subjectProperty.sqft && listing.sqft) {
+                const sqftDiff = Math.abs(listing.sqft - subjectProperty.sqft) / subjectProperty.sqft;
+                if (sqftDiff <= 0.3) relevance += 20;
+                else if (sqftDiff <= 0.5) relevance += 10;
+              }
+              
+              listing.relevanceScore = relevance;
+            } else {
+              listing.relevanceScore = 50; // Low score for properties without coordinates
+            }
+          });
+          
+          // Sort by relevance and limit results
+          filteredListings.sort((a: any, b: any) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
+          finalListings = filteredListings.slice(0, resultsPerPage);
+          
+          console.log(`[CMA Search ENHANCED] Sorted by relevance, returning top ${finalListings.length} results`);
+        }
+      }
+      
       const total = subdivisionFilter ? filteredListings.length : (data.count || data.numResults || listings.length);
       const totalPages = subdivisionFilter ? 1 : Math.ceil(total / resultsPerPage);
 
-      console.log(`[CMA Search] Returning ${filteredListings.length} of ${total} results`);
+      console.log(`[CMA Search] Returning ${finalListings.length} of ${total} results`);
 
       res.json({
-        listings: subdivisionFilter ? filteredListings : filteredListings.slice(0, resultsPerPage),
+        listings: subdivisionFilter ? filteredListings : finalListings,
         total,
         page: subdivisionFilter ? 1 : pageNum,
         totalPages,
         resultsPerPage: subdivisionFilter ? filteredListings.length : resultsPerPage,
+        enhanced: search && parsed?.streetNumber ? true : false, // Flag indicating enhanced search was used
       });
     } catch (error) {
       console.error('[CMA Search] Error:', error);
