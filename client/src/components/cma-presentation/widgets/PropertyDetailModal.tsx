@@ -58,6 +58,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
   const [loadedPhotos, setLoadedPhotos] = useState<string[]>([]);
   const [photosLoading, setPhotosLoading] = useState(false);
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
+  const [fetchedDescription, setFetchedDescription] = useState<string | null>(null);
 
   useEffect(() => {
     if (property.mlsNumber && (!property.photos || property.photos.length <= 1)) {
@@ -87,6 +88,29 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
       .then(data => setMapboxToken(data.token))
       .catch(err => console.error('Failed to fetch Mapbox token:', err));
   }, []);
+
+  // Fetch description on-demand for existing CMAs that don't have it
+  useEffect(() => {
+    const fetchDescription = async () => {
+      if (!property.description && property.mlsNumber && !fetchedDescription) {
+        try {
+          console.log('[PropertyDetailModal] Fetching description for MLS:', property.mlsNumber);
+          const response = await fetch(`/api/listings/${property.mlsNumber}`);
+          if (response.ok) {
+            const listingData = await response.json();
+            const description = listingData.details?.description || listingData.description;
+            if (description) {
+              setFetchedDescription(description);
+              console.log('[PropertyDetailModal] Fetched description successfully');
+            }
+          }
+        } catch (error) {
+          console.error('[PropertyDetailModal] Failed to fetch description:', error);
+        }
+      }
+    };
+    fetchDescription();
+  }, [property.mlsNumber, property.description, fetchedDescription]);
 
   const photos = loadedPhotos.length > 0 ? loadedPhotos : (property.photos || []);
   
@@ -395,11 +419,11 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
             </div>
           </div>
           
-          {property.description && (
+          {(property.description || fetchedDescription) && (
             <div className="p-4 border-t" data-testid="property-description-section">
-              <h3 className="text-sm font-medium mb-2 text-gray-600">Property Description</h3>
+              <h3 className="text-sm font-medium mb-2 text-gray-600">About This Home</h3>
               <p className="text-sm text-gray-900 leading-relaxed" data-testid="property-description-text">
-                {property.description}
+                {property.description || fetchedDescription}
               </p>
             </div>
           )}

@@ -362,11 +362,25 @@ export default function CMAPresentation() {
             });
           }
           
+          // DEBUG: Log photo data as requested
+          console.log('PHOTO DEBUG:', comp.imageUrl, comp.photos);
+          
           // PRIMARY: Database 'imageUrl' field (every property has one!)
           if (comp.imageUrl && typeof comp.imageUrl === 'string' && comp.imageUrl.trim().length > 0) {
             const result = [comp.imageUrl];
-            if (index === 0) console.log('[CMA Debug] Using DB imageUrl (primary):', result);
+            console.log('[CMA Debug] Using DB imageUrl (primary):', result);
             return result;
+          }
+          
+          // SECONDARY: Database 'photos' array (fallback)
+          if (comp.photos && Array.isArray(comp.photos) && comp.photos.length > 0) {
+            const validPhotos = comp.photos.filter((url: string) => 
+              url && typeof url === 'string' && url.trim().length > 0
+            );
+            if (validPhotos.length > 0) {
+              console.log('[CMA Debug] Using DB photos[0]:', validPhotos);
+              return validPhotos;
+            }
           }
           
           // SECONDARY: API returns 'photo' field (singular string, full CDN URL)
