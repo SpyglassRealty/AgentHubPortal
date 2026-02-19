@@ -46,65 +46,6 @@ async function getDbUser(req: any): Promise<User | undefined> {
   return user;
 }
 
-/**
- * Calculate days on market dynamically from dates
- * DO NOT rely on static daysOnMarket field from MLS - compute in real-time
- * For Active listings: Math.floor((today - listDate) / (1000 * 60 * 60 * 24))
- * For Closed/Sold listings: Math.floor((soldDate - listDate) / (1000 * 60 * 60 * 24))
- */
-function calculateDaysOnMarket(listing: any): number {
-  const status = (listing.standardStatus || listing.status || '').toLowerCase();
-  const isClosedOrSold = status.includes('closed') || status === 'sold' || status === 'sld';
-  
-  // Extract listDate with fallback chain
-  const listDateString = listing.listDate || listing.timestamps?.listDate || listing.timestamps?.originalEntryTimestamp;
-  if (!listDateString) {
-    console.warn('[DOM Calc] No listDate available for listing', listing.mlsNumber || listing.listingId);
-    return 0;
-  }
-  
-  const listDate = new Date(listDateString);
-  if (isNaN(listDate.getTime())) {
-    console.warn('[DOM Calc] Invalid listDate:', listDateString, 'for listing', listing.mlsNumber || listing.listingId);
-    return 0;
-  }
-  
-  let endDate: Date;
-  
-  if (isClosedOrSold) {
-    // For closed/sold listings, use soldDate
-    const soldDateString = listing.soldDate || listing.closeDate || listing.timestamps?.soldDate || listing.timestamps?.closedDate;
-    if (!soldDateString) {
-      console.warn('[DOM Calc] Closed listing missing soldDate, using today for listing', listing.mlsNumber || listing.listingId);
-      endDate = new Date();
-    } else {
-      endDate = new Date(soldDateString);
-      if (isNaN(endDate.getTime())) {
-        console.warn('[DOM Calc] Invalid soldDate:', soldDateString, 'using today for listing', listing.mlsNumber || listing.listingId);
-        endDate = new Date();
-      }
-    }
-  } else {
-    // For active listings, use today
-    endDate = new Date();
-  }
-  
-  const timeDiff = endDate.getTime() - listDate.getTime();
-  const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-  
-  // Sanity check: DOM should be >= 0 and reasonable (< 10 years)
-  if (daysDiff < 0 || daysDiff > 3650) {
-    console.warn('[DOM Calc] Unreasonable DOM calculated:', daysDiff, 'for listing', listing.mlsNumber || listing.listingId, {
-      listDate: listDateString,
-      endDate: isClosedOrSold ? (listing.soldDate || listing.closeDate) : 'today',
-      status
-    });
-    return 0;
-  }
-  
-  return daysDiff;
-}
-
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -1341,12 +1282,10 @@ export async function registerRoutes(
           mlsNumber: listing.mlsNumber,
           status: listing.standardStatus || listing.status || status,
           listPrice: listing.listPrice,
-          closePrice: listing.closePrice || listing.soldPrice || null,
-          closeDate: listing.closeDate || listing.soldDate || listing.timestamps?.closedDate || null,
-          soldPrice: listing.soldPrice || listing.closePrice || null,
-          soldDate: listing.soldDate || listing.closeDate || listing.timestamps?.soldDate || listing.timestamps?.closedDate || null,
-          listDate: listing.listDate || listing.timestamps?.listDate || listing.timestamps?.originalEntryTimestamp || '',
-          daysOnMarket: calculateDaysOnMarket(listing),
+          closePrice: listing.closePrice || listing.soldPrice,
+          closeDate: listing.closeDate || listing.soldDate,
+          listDate: listing.listDate,
+          daysOnMarket: listing.daysOnMarket || listing.dom || 0,
           address: {
             streetNumber,
             streetName,
@@ -1517,10 +1456,8 @@ export async function registerRoutes(
           mlsNumber: listing.mlsNumber,
           status: listing.standardStatus || listing.status || status,
           listPrice: listing.listPrice,
-          soldPrice: listing.soldPrice || listing.closePrice || null,
-          soldDate: listing.soldDate || listing.closeDate || listing.timestamps?.soldDate || listing.timestamps?.closedDate || null,
-          listDate: listing.listDate || listing.timestamps?.listDate || listing.timestamps?.originalEntryTimestamp || '',
-          daysOnMarket: calculateDaysOnMarket(listing),
+          listDate: listing.listDate,
+          daysOnMarket: listing.daysOnMarket || listing.dom || 0,
           address: {
             streetNumber,
             streetName,
@@ -2842,7 +2779,6 @@ Respond with valid JSON in this exact format:
         return res.status(400).json({ message: "No coordinates found in subject property data" });
       }
       
-<<<<<<< HEAD
       // Update the subjectProperty JSON with top-level coordinates
       const updatedSubjectProperty = {
         ...subjectProperty,
@@ -2852,12 +2788,6 @@ Respond with valid JSON in this exact format:
       
       const updated = await storage.updateCma(req.params.id, user.id, {
         subjectProperty: updatedSubjectProperty
-=======
-      // Update the CMA with extracted coordinates
-      const updated = await storage.updateCma(req.params.id, user.id, {
-        latitude,
-        longitude
->>>>>>> 7ee830d4 (Fix: Extract latitude/longitude from subjectProperty on CMA save/update)
       });
       
       res.json({ 
@@ -2911,7 +2841,6 @@ Respond with valid JSON in this exact format:
         resultsPerPage: resultsPerPage.toString(),
         pageNum: pageNum.toString(),
         sortBy: 'createdOnDesc',
-        fields: 'details,images,listPrice,soldPrice,closePrice,address,map,status,standardStatus,listDate,soldDate,closeDate,daysOnMarket,dom,bedroomsTotal,bathroomsTotal,livingArea,lot,timestamps,mlsNumber,listingId,propertyType',
       });
 
       // Address search
@@ -3079,9 +3008,9 @@ Respond with valid JSON in this exact format:
             yearBuilt: listing.details?.yearBuilt || null,
             propertyType: listing.details?.propertyType || listing.propertyType || '',
             status: listing.standardStatus || listing.status || '',
-            listDate: listing.listDate || listing.timestamps?.listDate || listing.timestamps?.originalEntryTimestamp || '',
-            soldDate: listing.soldDate || listing.closeDate || listing.timestamps?.soldDate || listing.timestamps?.closedDate || null,
-            daysOnMarket: calculateDaysOnMarket(listing),
+            listDate: listing.listDate || '',
+            soldDate: listing.soldDate || listing.closeDate || null,
+            daysOnMarket: listing.daysOnMarket || 0,
             photos,
             stories: listing.details?.numStoreys || null,
             subdivision: listing.address?.area || listing.address?.neighborhood || '',
@@ -3318,56 +3247,16 @@ Respond with valid JSON in this exact format:
           yearBuilt: listing.details?.yearBuilt || null,
           propertyType: listing.details?.style || listing.details?.propertyType || listing.propertyType || '',
           status: listing.standardStatus || listing.status || '',
-          listDate: listing.listDate || listing.timestamps?.listDate || listing.timestamps?.originalEntryTimestamp || '',
-          soldDate: listing.soldDate || listing.closeDate || listing.timestamps?.soldDate || listing.timestamps?.closedDate || null,
-          daysOnMarket: calculateDaysOnMarket(listing),
+          listDate: listing.listDate || '',
+          soldDate: listing.soldDate || listing.closeDate || null,
+          daysOnMarket: listing.daysOnMarket || 0,
           photos,
           stories: listing.details?.numStoreys || null,
           subdivision: listing.address?.neighborhood || listing.address?.area || '',
           latitude: listing.map?.latitude || listing.address?.latitude || null,
           longitude: listing.map?.longitude || listing.address?.longitude || null,
-          description: listing.details?.description || null,
         };
       });
-
-      // Debug logging for first listing date fields (Enhanced per Daryl's request)
-      if (data.listings && data.listings.length > 0) {
-        const sample = data.listings[0];
-        console.log('[CMA Search] Sample listing date fields (ALL AVAILABLE):', JSON.stringify({
-          // Primary date fields
-          listDate: sample.listDate,
-          soldDate: sample.soldDate,
-          closeDate: sample.closeDate,
-          listingDate: sample.listingDate,
-          
-          // Static DOM fields (showing "0 Days" issue)
-          daysOnMarket: sample.daysOnMarket,
-          dom: sample.dom,
-          
-          // Timestamps object with fallbacks
-          timestamps: sample.timestamps,
-          
-          // Status info
-          status: sample.status,
-          standardStatus: sample.standardStatus,
-          lastStatus: sample.lastStatus,
-          
-          // Calculated DOM (using new dynamic function)
-          calculatedDOM: calculateDaysOnMarket(sample),
-          
-          // MLS identifiers for tracking
-          mlsNumber: sample.mlsNumber,
-          listingId: sample.listingId,
-        }, null, 2));
-        
-        console.log(`[CMA Search] Static DOM vs Calculated DOM comparison:
-          - Static daysOnMarket field: ${sample.daysOnMarket || 0}
-          - Static dom field: ${sample.dom || 0}
-          - Dynamic calculated DOM: ${calculateDaysOnMarket(sample)}
-          - Status: ${sample.standardStatus || sample.status}
-          - List Date: ${sample.listDate || sample.timestamps?.listDate || 'N/A'}
-          - Sold Date: ${sample.soldDate || sample.closeDate || 'N/A'}`);
-      }
 
       // Post-filter by subdivision if provided (substring match, like MLS)
       let filteredListings = listings;
