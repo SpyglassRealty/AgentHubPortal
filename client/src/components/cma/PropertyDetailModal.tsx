@@ -229,6 +229,12 @@ export function PropertyDetailModal({ isOpen, onClose, property }: PropertyDetai
                 <span className="text-white">{property.subdivision}</span>
               </div>
             )}
+            {property.listDate && property.status?.toLowerCase() !== 'closed' && (
+              <div className="flex justify-between py-2 border-b border-zinc-800">
+                <span className="text-zinc-400">List Date</span>
+                <span className="text-white">{formatDate(property.listDate)}</span>
+              </div>
+            )}
             <div className="flex justify-between py-2 border-b border-zinc-800">
               <span className="text-zinc-400">Days on Market</span>
               <span className="text-white">{property.daysOnMarket ?? '—'}</span>
@@ -243,12 +249,6 @@ export function PropertyDetailModal({ isOpen, onClose, property }: PropertyDetai
               <div className="flex justify-between py-2 border-b border-zinc-800">
                 <span className="text-zinc-400">Close Date</span>
                 <span className="text-white">{formatDate(property.closeDate)}</span>
-              </div>
-            )}
-            {property.status?.toLowerCase() === 'active' && property.listDate && (
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="text-zinc-400">List Date</span>
-                <span className="text-white">{formatDate(property.listDate)}</span>
               </div>
             )}
             {property.mlsNumber && (

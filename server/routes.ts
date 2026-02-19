@@ -3122,6 +3122,7 @@ Respond with valid JSON in this exact format:
             subdivision: listing.address?.area || listing.address?.neighborhood || '',
             latitude: listing.map?.latitude || listing.address?.latitude || null,
             longitude: listing.map?.longitude || listing.address?.longitude || null,
+            description: listing.remarks || listing.publicRemarks || null,
           };
         });
 
@@ -3380,7 +3381,7 @@ Respond with valid JSON in this exact format:
           subdivision: listing.address?.neighborhood || listing.address?.area || '',
           latitude: listing.map?.latitude || listing.address?.latitude || null,
           longitude: listing.map?.longitude || listing.address?.longitude || null,
-          description: listing.details?.description || null,
+          description: listing.remarks || listing.publicRemarks || null,
         };
       });
 
