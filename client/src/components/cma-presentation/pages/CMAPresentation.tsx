@@ -361,11 +361,17 @@ export default function CMAPresentation() {
             });
           }
           
-          // PRIMARY: API returns 'photo' field (singular string, full CDN URL)
-          // Based on Daryl's live API analysis: comp.photo = "https://cdn.repliers.io/..."
+          // PRIMARY: Database 'imageUrl' field (every property has one!)
+          if (comp.imageUrl && typeof comp.imageUrl === 'string' && comp.imageUrl.trim().length > 0) {
+            const result = [comp.imageUrl];
+            if (index === 0) console.log('[CMA Debug] Using DB imageUrl (primary):', result);
+            return result;
+          }
+          
+          // SECONDARY: API returns 'photo' field (singular string, full CDN URL)
           if (comp.photo && typeof comp.photo === 'string' && comp.photo.trim().length > 0) {
             const result = [comp.photo];
-            if (index === 0) console.log('[CMA Debug] Using API comp.photo (actual field):', result);
+            if (index === 0) console.log('[CMA Debug] Using API comp.photo (secondary):', result);
             return result;
           }
           
@@ -388,7 +394,7 @@ export default function CMAPresentation() {
           }
           
           // FALLBACK: Other single photo fields
-          const otherPhotoFields = ['imageUrl', 'primaryPhoto', 'coverPhoto'];
+          const otherPhotoFields = ['primaryPhoto', 'coverPhoto'];
           for (const field of otherPhotoFields) {
             if (comp[field] && typeof comp[field] === 'string' && comp[field].trim().length > 0) {
               const result = [comp[field]];
