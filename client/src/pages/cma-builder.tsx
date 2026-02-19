@@ -1352,30 +1352,30 @@ function SearchPropertiesSection({
                       </SelectContent>
                     </Select>
                     <Select
-                      value={filters.minBeds || "any"}
-                      onValueChange={(v) => updateFilter("minBeds", v === "any" ? "" : v)}
+                      value={filters.minBeds || ""}
+                      onValueChange={(v) => updateFilter("minBeds", v)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Min Beds" />
                       </SelectTrigger>
                       <SelectContent>
                         {BED_BATH_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value || "any"} value={opt.value || "any"}>
+                          <SelectItem key={opt.value || "any"} value={opt.value || ""}>
                             {opt.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     <Select
-                      value={filters.minBaths || "any"}
-                      onValueChange={(v) => updateFilter("minBaths", v === "any" ? "" : v)}
+                      value={filters.minBaths || ""}
+                      onValueChange={(v) => updateFilter("minBaths", v)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Min Baths" />
                       </SelectTrigger>
                       <SelectContent>
                         {BED_BATH_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value || "any"} value={opt.value || "any"}>
+                          <SelectItem key={opt.value || "any"} value={opt.value || ""}>
                             {opt.label}
                           </SelectItem>
                         ))}
