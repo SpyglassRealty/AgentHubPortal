@@ -32,6 +32,21 @@ interface PropertyDetailModalProps {
 export function PropertyDetailModal({ isOpen, onClose, property }: PropertyDetailModalProps) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   
+  // ===== DIAGNOSTIC LOGGING FOR QA DEBUGGING =====
+  console.log('[MODAL DEBUG] Property data received:', JSON.stringify({
+    mlsNumber: property.mlsNumber,
+    address: property.address,
+    hasDescription: !!property.description,
+    description: property.description,
+    descriptionLength: (property.description || '').length,
+    descriptionPreview: (property.description || '').substring(0, 100),
+    hasListDate: !!property.listDate,
+    listDate: property.listDate,
+    daysOnMarket: property.daysOnMarket,
+    allPropertyKeys: Object.keys(property),
+  }, null, 2));
+  // ===== END DIAGNOSTIC LOGGING =====
+  
   const photos = property.photos?.length > 0 
     ? property.photos 
     : [];

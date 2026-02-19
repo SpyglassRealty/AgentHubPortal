@@ -3267,6 +3267,53 @@ Respond with valid JSON in this exact format:
 
       let data = await response.json();
 
+      // ===== DIAGNOSTIC LOGGING FOR QA DEBUGGING =====
+      console.log('[REPLIERS DEBUG] API Response Summary:', {
+        totalCount: data.count || 0,
+        listingsCount: (data.listings || []).length,
+        sampleListingExists: !!(data.listings?.[0])
+      });
+
+      // Log first 3 listings to diagnose missing fields
+      if (data.listings && data.listings.length > 0) {
+        data.listings.slice(0, 3).forEach((listing: any, index: number) => {
+          console.log(`[REPLIERS DEBUG] Listing ${index + 1}/${Math.min(3, data.listings.length)} - ${listing.mlsNumber || listing.listingId}:`, {
+            // ISSUE B - Description fields
+            hasDescription: !!listing.description,
+            hasRemarks: !!listing.remarks,
+            hasPublicRemarks: !!listing.publicRemarks,
+            descriptionLength: (listing.description || '').length,
+            remarksLength: (listing.remarks || '').length,
+            publicRemarksLength: (listing.publicRemarks || '').length,
+            descriptionPreview: (listing.remarks || listing.publicRemarks || listing.description || '').substring(0, 100),
+            
+            // ISSUE C - List date fields  
+            hasListDate: !!listing.listDate,
+            listDate: listing.listDate,
+            listDateType: typeof listing.listDate,
+            
+            // ISSUE D - Price fields
+            listPrice: listing.listPrice,
+            originalPrice: listing.originalPrice,
+            hasOriginalPrice: !!listing.originalPrice,
+            pricesDifferent: listing.originalPrice && listing.listPrice && listing.originalPrice !== listing.listPrice,
+            hasListPriceLog: !!listing.listPriceLog,
+            listPriceLogLength: Array.isArray(listing.listPriceLog) ? listing.listPriceLog.length : 0,
+            
+            // ISSUE E - Days on Market fields
+            daysOnMarket: listing.daysOnMarket,
+            simpleDaysOnMarket: listing.simpleDaysOnMarket,
+            hasDom: listing.daysOnMarket !== undefined && listing.daysOnMarket !== null,
+            hasSimpleDom: listing.simpleDaysOnMarket !== undefined && listing.simpleDaysOnMarket !== null,
+            
+            // General status
+            status: listing.standardStatus || listing.status,
+            lastStatus: listing.lastStatus,
+          });
+        });
+      }
+      // ===== END DIAGNOSTIC LOGGING =====
+
       // If we need merged search (active + closed), make a second API call for closed listings
       if (needsMergedSearch) {
         try {
