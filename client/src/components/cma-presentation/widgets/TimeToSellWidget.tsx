@@ -152,7 +152,7 @@ function PropertySidebarItem({ property, showPercentOfList = false, isSelected =
 function TimeToSellInfoModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl [&>button]:hidden">
         <div className="space-y-4">
           <h2 className="text-xl font-bold">TIME TO SELL SCATTER CHART</h2>
           <p className="text-muted-foreground">
