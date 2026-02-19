@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Camera, Palette, Mail, FileImage, Zap } from 'lucide-react'
+import { Camera, Palette, Mail, FileImage, Zap, Home } from 'lucide-react'
+import { HomeValueWidget } from '../components/HomeValueWidget'
 
 export default function StudioHome() {
   return (
@@ -135,12 +136,31 @@ export default function StudioHome() {
           </div>
         </div>
 
+        {/* Home Value Tool */}
+        <div className="mb-16">
+          <div className="text-center mb-8">
+            <h3 className="text-2xl font-semibold text-gray-900 mb-4">
+              🏠 Real-Time Home Value Estimator
+            </h3>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Get instant property valuations using live MLS data + enhanced Austin market metrics. 
+              Perfect for agent prospecting and client consultations.
+            </p>
+          </div>
+          <HomeValueWidget />
+        </div>
+
         {/* Quick Actions */}
         <div className="bg-white rounded-lg shadow-md p-8 border border-gray-200">
           <h3 className="text-2xl font-semibold text-gray-900 mb-6 text-center">
             Ready to Create?
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-6 border-2 border-dashed border-green-300 rounded-lg text-center hover:border-green-500 transition-colors cursor-pointer bg-green-50">
+              <Home className="h-12 w-12 text-green-600 mx-auto mb-4" />
+              <h4 className="text-lg font-semibold text-gray-900 mb-2">Home Value Reports</h4>
+              <p className="text-gray-600">Real MLS + Pulse data for instant valuations</p>
+            </div>
             <div className="p-6 border-2 border-dashed border-blue-300 rounded-lg text-center hover:border-blue-500 transition-colors cursor-pointer">
               <FileImage className="h-12 w-12 text-blue-600 mx-auto mb-4" />
               <h4 className="text-lg font-semibold text-gray-900 mb-2">Create Listing Flyer</h4>
