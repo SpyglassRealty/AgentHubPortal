@@ -1,0 +1,4 @@
+{
+  "/api/export/image/route": "app/api/export/image/route.js",
+  "/api/listings/search/route": "app/api/listings/search/route.js"
+}
