@@ -2925,6 +2925,19 @@ Respond with valid JSON in this exact format:
         sortBy: 'createdOnDesc',
       });
 
+      // CRITICAL: Explicitly request all fields we need for CMA display
+      // Without this, Repliers API may not return description/price history fields
+      params.append('fields', [
+        'mlsNumber', 'listingId', 'address', 'map', 'details', 'images', 'photos',
+        'listPrice', 'soldPrice', 'originalPrice', 'listPriceLog',
+        'remarks', 'publicRemarks', 'description', 
+        'listDate', 'soldDate', 'closeDate',
+        'daysOnMarket', 'simpleDaysOnMarket', 'dom',
+        'standardStatus', 'status', 'lastStatus',
+        'bedroomsTotal', 'bathroomsTotal', 'livingArea', 'lotSizeArea',
+        'lot', 'timestamps'
+      ].join(','));
+
       // Enhanced address search logic
       let parsed: any = {};
       if (search && search.trim()) {
@@ -3116,7 +3129,7 @@ Respond with valid JSON in this exact format:
             status: listing.standardStatus || listing.status || '',
             listDate: listing.listDate || '',
             soldDate: listing.soldDate || listing.closeDate || null,
-            daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
+            daysOnMarket: listing.simpleDaysOnMarket || listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
             photos,
             stories: listing.details?.numStoreys || null,
             subdivision: listing.address?.area || listing.address?.neighborhood || '',
@@ -3422,7 +3435,7 @@ Respond with valid JSON in this exact format:
           status: listing.standardStatus || listing.status || '',
           listDate: listing.listDate || '',
           soldDate: listing.soldDate || listing.closeDate || null,
-          daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
+          daysOnMarket: listing.simpleDaysOnMarket || listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
           photos,
           stories: listing.details?.numStoreys || null,
           subdivision: listing.address?.neighborhood || listing.address?.area || '',
