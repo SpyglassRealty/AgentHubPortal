@@ -63,6 +63,7 @@ export default function CMAPresentation() {
       return res.json();
     },
     retry: false, // Don't retry on 404 — CMA doesn't exist
+    enabled: !!id, // Only run query when ID exists
   });
 
   // REMOVED: savedCma query - using cmaData instead
@@ -476,6 +477,20 @@ export default function CMAPresentation() {
     }, 0);
     return Math.round(total / compsWithAcres.length);
   }, [presentationComparables]);
+
+  if (!id) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center max-w-md">
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">Invalid CMA URL</h1>
+          <p className="text-gray-600 mb-6">The CMA presentation URL is missing a valid ID parameter.</p>
+          <a href="/" className="inline-block px-6 py-3 bg-[#EF4923] text-white rounded-lg hover:bg-[#d94420] transition-colors min-h-[44px]">
+            Return to Dashboard
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading || profileLoading) {
     return (
