@@ -1285,7 +1285,7 @@ export async function registerRoutes(
           closePrice: listing.closePrice || listing.soldPrice,
           closeDate: listing.closeDate || listing.soldDate,
           listDate: listing.listDate,
-          daysOnMarket: listing.daysOnMarket || listing.dom || 0,
+          daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
           address: {
             streetNumber,
             streetName,
@@ -1457,7 +1457,7 @@ export async function registerRoutes(
           status: listing.standardStatus || listing.status || status,
           listPrice: listing.listPrice,
           listDate: listing.listDate,
-          daysOnMarket: listing.daysOnMarket || listing.dom || 0,
+          daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
           address: {
             streetNumber,
             streetName,
@@ -3010,7 +3010,7 @@ Respond with valid JSON in this exact format:
             status: listing.standardStatus || listing.status || '',
             listDate: listing.listDate || '',
             soldDate: listing.soldDate || listing.closeDate || null,
-            daysOnMarket: listing.daysOnMarket || 0,
+            daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
             photos,
             stories: listing.details?.numStoreys || null,
             subdivision: listing.address?.area || listing.address?.neighborhood || '',
