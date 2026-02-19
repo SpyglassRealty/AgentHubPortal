@@ -63,7 +63,6 @@ export default function CMAPresentation() {
       return res.json();
     },
     retry: false, // Don't retry on 404 — CMA doesn't exist
-    enabled: !!id, // Only run query when ID exists
   });
 
   // REMOVED: savedCma query - using cmaData instead
@@ -362,25 +361,11 @@ export default function CMAPresentation() {
             });
           }
           
-          // DEBUG: Log photo data as requested
-          console.log('PHOTO DEBUG:', comp.imageUrl, comp.photos);
-          
           // PRIMARY: Database 'imageUrl' field (every property has one!)
           if (comp.imageUrl && typeof comp.imageUrl === 'string' && comp.imageUrl.trim().length > 0) {
             const result = [comp.imageUrl];
-            console.log('[CMA Debug] Using DB imageUrl (primary):', result);
+            if (index === 0) console.log('[CMA Debug] Using DB imageUrl (primary):', result);
             return result;
-          }
-          
-          // SECONDARY: Database 'photos' array (fallback)
-          if (comp.photos && Array.isArray(comp.photos) && comp.photos.length > 0) {
-            const validPhotos = comp.photos.filter((url: string) => 
-              url && typeof url === 'string' && url.trim().length > 0
-            );
-            if (validPhotos.length > 0) {
-              console.log('[CMA Debug] Using DB photos[0]:', validPhotos);
-              return validPhotos;
-            }
           }
           
           // SECONDARY: API returns 'photo' field (singular string, full CDN URL)
@@ -491,20 +476,6 @@ export default function CMAPresentation() {
     }, 0);
     return Math.round(total / compsWithAcres.length);
   }, [presentationComparables]);
-
-  if (!id) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center max-w-md">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Invalid CMA URL</h1>
-          <p className="text-gray-600 mb-6">The CMA presentation URL is missing a valid ID parameter.</p>
-          <a href="/" className="inline-block px-6 py-3 bg-[#EF4923] text-white rounded-lg hover:bg-[#d94420] transition-colors min-h-[44px]">
-            Return to Dashboard
-          </a>
-        </div>
-      </div>
-    );
-  }
 
   if (isLoading || profileLoading) {
     return (
