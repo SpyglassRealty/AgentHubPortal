@@ -95,13 +95,27 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
       if (!property.description && property.mlsNumber && !fetchedDescription) {
         try {
           console.log('[PropertyDetailModal] Fetching description for MLS:', property.mlsNumber);
-          const response = await fetch(`/api/listings/${property.mlsNumber}`);
+          const response = await fetch('/api/cma/search-properties', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              mlsNumbers: [property.mlsNumber],
+              limit: 1
+            })
+          });
+          
           if (response.ok) {
-            const listingData = await response.json();
-            const description = listingData.details?.description || listingData.description;
-            if (description) {
-              setFetchedDescription(description);
-              console.log('[PropertyDetailModal] Fetched description successfully');
+            const data = await response.json();
+            if (data.listings && data.listings.length > 0) {
+              const listing = data.listings[0];
+              const description = listing.details?.description || listing.description;
+              if (description) {
+                setFetchedDescription(description);
+                console.log('[PropertyDetailModal] Fetched description successfully:', description.substring(0, 100) + '...');
+              } else {
+                console.log('[PropertyDetailModal] No description found in listing data');
+              }
             }
           }
         } catch (error) {
