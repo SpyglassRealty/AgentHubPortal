@@ -361,34 +361,43 @@ export default function CMAPresentation() {
             });
           }
           
-          // PRIMARY: API returns 'photo' field (singular string, full CDN URL)
-          // Based on Daryl's live API analysis: comp.photo = "https://cdn.repliers.io/..."
-          if (comp.photo && typeof comp.photo === 'string' && comp.photo.trim().length > 0) {
-            const result = [comp.photo];
-            if (index === 0) console.log('[CMA Debug] Using API comp.photo (actual field):', result);
+          // PRIMARY: Database 'imageUrl' field (every property has one!)
+          if (comp.imageUrl && typeof comp.imageUrl === 'string' && comp.imageUrl.trim().length > 0) {
+            const result = [comp.imageUrl];
+            if (index === 0) console.log('[CMA Debug] Using DB imageUrl (primary):', result);
             return result;
           }
           
-          // FALLBACK: Repliers 'images' field (if exists)
-          if (comp.images && Array.isArray(comp.images) && comp.images.length > 0) {
-            const validImages = comp.images.filter((url: string) => 
-              url && typeof url === 'string' && url.trim().length > 0
-            );
-            if (index === 0) console.log('[CMA Debug] Using comp.images fallback:', validImages);
-            return validImages;
-          }
-          
-          // FALLBACK: Legacy 'photos' field (if exists)
+          // SECONDARY: Database 'photos' array (2-10 URLs each)
           if (comp.photos && Array.isArray(comp.photos) && comp.photos.length > 0) {
             const validPhotos = comp.photos.filter((url: string) => 
               url && typeof url === 'string' && url.trim().length > 0
             );
-            if (index === 0) console.log('[CMA Debug] Using legacy comp.photos:', validPhotos);
-            return validPhotos;
+            if (validPhotos.length > 0) {
+              if (index === 0) console.log('[CMA Debug] Using DB photos array:', validPhotos);
+              return validPhotos;
+            }
           }
           
-          // FALLBACK: Other single photo fields
-          const otherPhotoFields = ['imageUrl', 'primaryPhoto', 'coverPhoto'];
+          // FALLBACK: Legacy API fields (for compatibility)
+          if (comp.photo && typeof comp.photo === 'string' && comp.photo.trim().length > 0) {
+            const result = [comp.photo];
+            if (index === 0) console.log('[CMA Debug] Using legacy photo field:', result);
+            return result;
+          }
+          
+          if (comp.images && Array.isArray(comp.images) && comp.images.length > 0) {
+            const validImages = comp.images.filter((url: string) => 
+              url && typeof url === 'string' && url.trim().length > 0
+            );
+            if (validImages.length > 0) {
+              if (index === 0) console.log('[CMA Debug] Using legacy images array:', validImages);
+              return validImages;
+            }
+          }
+          
+          // FINAL FALLBACK: Other single photo fields
+          const otherPhotoFields = ['primaryPhoto', 'coverPhoto'];
           for (const field of otherPhotoFields) {
             if (comp[field] && typeof comp[field] === 'string' && comp[field].trim().length > 0) {
               const result = [comp[field]];
