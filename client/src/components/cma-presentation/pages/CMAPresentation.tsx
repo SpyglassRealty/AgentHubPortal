@@ -55,13 +55,14 @@ export default function CMAPresentation() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSlide, sidebarOpen, drawingMode, handleClose]);
 
-  const { data: cmaData } = useQuery({
+  const { data: cmaData, isError, isLoading } = useQuery({
     queryKey: ['/api/cma', id],
     queryFn: async () => {
       const res = await fetch('/api/cma/' + id);
       if (!res.ok) throw new Error('Failed to fetch CMA');
       return res.json();
     },
+    retry: false, // Don't retry on 404 — CMA doesn't exist
   });
 
   // REMOVED: savedCma query - using cmaData instead
@@ -470,24 +471,26 @@ export default function CMAPresentation() {
     return Math.round(total / compsWithAcres.length);
   }, [presentationComparables]);
 
-  const isLoading = profileLoading;
-
-  if (isLoading) {
+  if (isLoading || profileLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
-          <p className="text-muted-foreground">Loading presentation...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading CMA Presentation...</p>
         </div>
       </div>
     );
   }
 
-  if (!cmaData) {
+  if (isError || !cmaData) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
-        <div className="text-center">
-          <p className="text-muted-foreground">CMA not found</p>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center max-w-md">
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">CMA Not Found</h1>
+          <p className="text-gray-600 mb-6">The CMA presentation you're looking for doesn't exist or has been removed.</p>
+          <a href="/" className="inline-block px-6 py-3 bg-[#EF4923] text-white rounded-lg hover:bg-[#d94420] transition-colors min-h-[44px]">
+            Return to Dashboard
+          </a>
         </div>
       </div>
     );
