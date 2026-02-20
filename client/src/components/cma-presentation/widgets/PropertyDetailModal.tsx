@@ -44,13 +44,17 @@ function DetailItem({ label, value, icon }: { label: string; value: string; icon
 }
 
 export function PropertyDetailModal({ property, onClose }: PropertyDetailModalProps) {
-  // Debug logging for description data
-  console.log('[PropertyDetailModal] Property data:', {
-    mlsNumber: property.mlsNumber,
+  // Debug logging for description and other fields
+  console.log('🔍 PropertyDetailModal DEBUG:', {
     address: property.address,
+    originalPrice: property.originalPrice,
+    listDate: property.listDate,
     description: property.description,
     descriptionLength: property.description?.length || 0,
     hasDescription: !!property.description,
+    publicRemarks: (property as any).publicRemarks,
+    remarks: (property as any).remarks,
+    allFields: Object.keys(property)
   });
   
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
@@ -248,12 +252,13 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
                 <p className="text-sm font-medium mb-2">Price History & Dates</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div className="space-y-2">
-                    {property.originalPrice && property.originalPrice !== property.listPrice && (
-                      <div>
-                        <span className="text-gray-600">Original Price: </span>
-                        <span className="line-through text-gray-900">{formatCurrency(property.originalPrice)}</span>
-                      </div>
-                    )}
+                    {/* Always show Original Price */}
+                    <div>
+                      <span className="text-gray-600">Original Price: </span>
+                      <span className={property.originalPrice !== property.listPrice ? "line-through text-gray-900" : "text-gray-900"}>
+                        {property.originalPrice ? formatCurrency(property.originalPrice) : 'N/A'}
+                      </span>
+                    </div>
                     {property.listPrice && (
                       <div>
                         <span className="text-gray-600">List Price: </span>
@@ -268,30 +273,43 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
                     )}
                   </div>
                   <div className="space-y-2">
-                    {property.listDate && (
-                      <div>
-                        <span className="text-gray-600">List Date: </span>
-                        <span className="text-gray-900">
-                          {new Date(property.listDate).toLocaleDateString('en-US', { 
-                            month: 'short', 
-                            day: 'numeric', 
-                            year: 'numeric' 
-                          })}
-                        </span>
-                      </div>
-                    )}
-                    {property.soldDate && (
-                      <div>
-                        <span className="text-gray-600">Sold Date: </span>
-                        <span className="text-gray-900">
-                          {new Date(property.soldDate).toLocaleDateString('en-US', { 
-                            month: 'short', 
-                            day: 'numeric', 
-                            year: 'numeric' 
-                          })}
-                        </span>
-                      </div>
-                    )}
+                    {/* Safe Listing Date formatting */}
+                    {(() => {
+                      if (!property.listDate) return null;
+                      const date = new Date(property.listDate);
+                      if (isNaN(date.getTime())) return null;
+                      return (
+                        <div>
+                          <span className="text-gray-600">Listing Date: </span>
+                          <span className="text-gray-900">
+                            {date.toLocaleDateString('en-US', { 
+                              month: '2-digit', 
+                              day: '2-digit', 
+                              year: 'numeric' 
+                            })}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                    
+                    {/* Safe Sold Date formatting */}
+                    {(() => {
+                      if (!property.soldDate) return null;
+                      const date = new Date(property.soldDate);
+                      if (isNaN(date.getTime())) return null;
+                      return (
+                        <div>
+                          <span className="text-gray-600">Sold Date: </span>
+                          <span className="text-gray-900">
+                            {date.toLocaleDateString('en-US', { 
+                              month: '2-digit', 
+                              day: '2-digit', 
+                              year: 'numeric' 
+                            })}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -368,16 +386,21 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
                 icon={<Car className="w-3 h-3" />}
               />
             )}
-            {property.soldDate && (
-              <DetailItem 
-                label="Sold Date" 
-                value={new Date(property.soldDate).toLocaleDateString('en-US', { 
-                  month: 'short', 
-                  day: 'numeric', 
-                  year: 'numeric' 
-                })} 
-              />
-            )}
+            {(() => {
+              if (!property.soldDate) return null;
+              const date = new Date(property.soldDate);
+              if (isNaN(date.getTime())) return null;
+              return (
+                <DetailItem 
+                  label="Sold Date" 
+                  value={date.toLocaleDateString('en-US', { 
+                    month: '2-digit', 
+                    day: '2-digit', 
+                    year: 'numeric' 
+                  })} 
+                />
+              );
+            })()}
             {property.lotSize && (
               <DetailItem 
                 label="Lot Size" 
@@ -395,14 +418,20 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
             </div>
           </div>
           
-          {property.description && (
-            <div className="p-4 border-t" data-testid="property-description-section">
-              <h3 className="text-sm font-medium mb-2 text-gray-600">Property Description</h3>
-              <p className="text-sm text-gray-900 leading-relaxed" data-testid="property-description-text">
-                {property.description}
-              </p>
-            </div>
-          )}
+          {(() => {
+            const description = property.description || 
+                               (property as any).publicRemarks || 
+                               (property as any).remarks;
+            if (!description) return null;
+            return (
+              <div className="p-4 border-t" data-testid="property-description-section">
+                <h3 className="text-sm font-medium mb-2 text-gray-600">About This Home</h3>
+                <p className="text-sm text-gray-900 leading-relaxed" data-testid="property-description-text">
+                  {description}
+                </p>
+              </div>
+            );
+          })()}
         </div>
       </div>
       
