@@ -172,14 +172,24 @@ const RESO_PROPERTY_TYPES = [
 ];
 
 // Bed/Bath dropdown options
-const BED_BATH_OPTIONS = [
-  { label: "Any", value: "any" },
-  { label: "1", value: "1" },
-  { label: "2", value: "2" },
-  { label: "3", value: "3" },
-  { label: "4", value: "4" },
-  { label: "5", value: "5" },
-  { label: "6+", value: "6" },
+const BED_OPTIONS = [
+  { label: "Any Beds", value: "any" },
+  { label: "1 Bed", value: "1" },
+  { label: "2 Beds", value: "2" },
+  { label: "3 Beds", value: "3" },
+  { label: "4 Beds", value: "4" },
+  { label: "5 Beds", value: "5" },
+  { label: "6+ Beds", value: "6" },
+];
+
+const BATH_OPTIONS = [
+  { label: "Any Baths", value: "any" },
+  { label: "1 Bath", value: "1" },
+  { label: "2 Baths", value: "2" },
+  { label: "3 Baths", value: "3" },
+  { label: "4 Baths", value: "4" },
+  { label: "5 Baths", value: "5" },
+  { label: "6+ Baths", value: "6" },
 ];
 
 // Date Sold dropdown options
@@ -1359,7 +1369,7 @@ function SearchPropertiesSection({
                         <SelectValue placeholder="Min Beds" />
                       </SelectTrigger>
                       <SelectContent>
-                        {BED_BATH_OPTIONS.map((opt, index) => (
+                        {BED_OPTIONS.map((opt, index) => (
                           <SelectItem key={`minbeds-${index}`} value={opt.value}>
                             {opt.label}
                           </SelectItem>
@@ -1374,7 +1384,7 @@ function SearchPropertiesSection({
                         <SelectValue placeholder="Min Baths" />
                       </SelectTrigger>
                       <SelectContent>
-                        {BED_BATH_OPTIONS.map((opt, index) => (
+                        {BATH_OPTIONS.map((opt, index) => (
                           <SelectItem key={`minbaths-${index}`} value={opt.value}>
                             {opt.label}
                           </SelectItem>
