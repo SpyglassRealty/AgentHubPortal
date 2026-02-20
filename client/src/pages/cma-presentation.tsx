@@ -741,12 +741,18 @@ function SlideshowPlayer({ widgets, cma, agentProfile, activeWidgetId, onClose, 
                           {comp.daysOnMarket && comp.daysOnMarket > 0 && (
                             <div>{comp.daysOnMarket} days on market</div>
                           )}
-                          {comp.soldDate && (
-                            <div>Sold: {new Date(comp.soldDate).toLocaleDateString()}</div>
-                          )}
-                          {comp.listDate && !comp.soldDate && (
-                            <div>Listed: {new Date(comp.listDate).toLocaleDateString()}</div>
-                          )}
+                          {(() => {
+                            if (!comp.soldDate) return null;
+                            const date = new Date(comp.soldDate);
+                            if (isNaN(date.getTime())) return null;
+                            return <div>Sold: {date.toLocaleDateString()}</div>;
+                          })()}
+                          {(() => {
+                            if (!comp.listDate || comp.soldDate) return null;
+                            const date = new Date(comp.listDate);
+                            if (isNaN(date.getTime())) return null;
+                            return <div>Listed: {date.toLocaleDateString()}</div>;
+                          })()}
                         </div>
                       </div>
                     </div>
