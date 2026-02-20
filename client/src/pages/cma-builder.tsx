@@ -135,8 +135,8 @@ const defaultFilters: SearchFilters = {
   elementarySchool: "",
   middleSchool: "",
   highSchool: "",
-  minBeds: "",
-  minBaths: "",
+  minBeds: "any",
+  minBaths: "any",
   fullBaths: "",
   halfBaths: "",
   minPrice: "",
@@ -151,12 +151,12 @@ const defaultFilters: SearchFilters = {
   minYearBuilt: "",
   maxYearBuilt: "",
   dateSoldDays: "180",
-  garageSpaces: "",
+  garageSpaces: "any",
   parkingSpaces: "",
-  privatePool: "",
-  waterfront: "",
-  hoa: "",
-  primaryBedOnMain: "",
+  privatePool: "any",
+  waterfront: "any",
+  hoa: "any",
+  primaryBedOnMain: "any",
 };
 
 // RESO Standard Property Types
@@ -172,14 +172,34 @@ const RESO_PROPERTY_TYPES = [
 ];
 
 // Bed/Bath dropdown options
-const BED_BATH_OPTIONS = [
-  { label: "Any", value: "" },
-  { label: "1", value: "1" },
-  { label: "2", value: "2" },
-  { label: "3", value: "3" },
-  { label: "4", value: "4" },
-  { label: "5", value: "5" },
-  { label: "6+", value: "6" },
+const BED_OPTIONS = [
+  { label: "Any Beds", value: "any" },
+  { label: "1 Bed", value: "1" },
+  { label: "2 Beds", value: "2" },
+  { label: "3 Beds", value: "3" },
+  { label: "4 Beds", value: "4" },
+  { label: "5 Beds", value: "5" },
+  { label: "6+ Beds", value: "6" },
+];
+
+const BATH_OPTIONS = [
+  { label: "Any Baths", value: "any" },
+  { label: "1 Bath", value: "1" },
+  { label: "2 Baths", value: "2" },
+  { label: "3 Baths", value: "3" },
+  { label: "4 Baths", value: "4" },
+  { label: "5 Baths", value: "5" },
+  { label: "6+ Baths", value: "6" },
+];
+
+// Garage dropdown options
+const GARAGE_OPTIONS = [
+  { label: "Any Garage", value: "any" },
+  { label: "No Garage", value: "0" },
+  { label: "1 Car Garage", value: "1" },
+  { label: "2 Car Garage", value: "2" },
+  { label: "3 Car Garage", value: "3" },
+  { label: "4+ Car Garage", value: "4" },
 ];
 
 // Date Sold dropdown options
@@ -788,7 +808,7 @@ function SearchPropertiesSection({
     // Validate: need at least one search criterion
     if (!filters.quickSearch) {
       const hasLocation = filters.city || filters.subdivision || filters.zip || filters.county || filters.area || filters.schoolDistrict || filters.elementarySchool || filters.middleSchool || filters.highSchool;
-      if (!hasLocation && !filters.propertyType && !filters.minBeds && !filters.minBaths && !filters.minPrice && !filters.maxPrice) {
+      if (!hasLocation && !filters.propertyType && (!filters.minBeds || filters.minBeds === "any") && (!filters.minBaths || filters.minBaths === "any") && !filters.minPrice && !filters.maxPrice) {
         toast({ title: "Enter search criteria", description: "Please enter at least one filter (address, MLS#, location, etc.) before searching.", variant: "destructive" });
         return;
       }
@@ -820,8 +840,8 @@ function SearchPropertiesSection({
       if (filters.elementarySchool) body.elementarySchool = filters.elementarySchool;
       if (filters.middleSchool) body.middleSchool = filters.middleSchool;
       if (filters.highSchool) body.highSchool = filters.highSchool;
-      if (filters.minBeds) body.minBeds = parseInt(filters.minBeds);
-      if (filters.minBaths) body.minBaths = parseInt(filters.minBaths);
+      if (filters.minBeds && filters.minBeds !== "any") body.minBeds = parseInt(filters.minBeds);
+      if (filters.minBaths && filters.minBaths !== "any") body.minBaths = parseInt(filters.minBaths);
       if (filters.fullBaths) body.fullBaths = parseInt(filters.fullBaths);
       if (filters.halfBaths) body.halfBaths = parseInt(filters.halfBaths);
       if (filters.minPrice) body.minPrice = parseInt(filters.minPrice);
@@ -1352,30 +1372,30 @@ function SearchPropertiesSection({
                       </SelectContent>
                     </Select>
                     <Select
-                      value={filters.minBeds || ""}
+                      value={filters.minBeds || "any"}
                       onValueChange={(v) => updateFilter("minBeds", v)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Min Beds" />
                       </SelectTrigger>
                       <SelectContent>
-                        {BED_BATH_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value || "any"} value={opt.value || ""}>
+                        {BED_OPTIONS.map((opt, index) => (
+                          <SelectItem key={`minbeds-${index}`} value={opt.value}>
                             {opt.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     <Select
-                      value={filters.minBaths || ""}
+                      value={filters.minBaths || "any"}
                       onValueChange={(v) => updateFilter("minBaths", v)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Min Baths" />
                       </SelectTrigger>
                       <SelectContent>
-                        {BED_BATH_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value || "any"} value={opt.value || ""}>
+                        {BATH_OPTIONS.map((opt, index) => (
+                          <SelectItem key={`minbaths-${index}`} value={opt.value}>
                             {opt.label}
                           </SelectItem>
                         ))}
@@ -1503,12 +1523,21 @@ function SearchPropertiesSection({
                       value={filters.maxLotAcres}
                       onChange={(e) => updateFilter("maxLotAcres", e.target.value)}
                     />
-                    <Input
-                      type="number"
-                      placeholder="Garage"
-                      value={filters.garageSpaces}
-                      onChange={(e) => updateFilter("garageSpaces", e.target.value)}
-                    />
+                    <Select
+                      value={filters.garageSpaces || "any"}
+                      onValueChange={(v) => updateFilter("garageSpaces", v === "any" ? "" : v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Garage" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GARAGE_OPTIONS.map((opt, index) => (
+                          <SelectItem key={`garage-${index}`} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Input
                       type="number"
                       placeholder="Parking"
@@ -1523,7 +1552,7 @@ function SearchPropertiesSection({
                         <SelectValue placeholder="Pool?" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="any">Any Pool</SelectItem>
                         <SelectItem value="yes">Yes</SelectItem>
                         <SelectItem value="no">No</SelectItem>
                       </SelectContent>
@@ -1536,7 +1565,7 @@ function SearchPropertiesSection({
                         <SelectValue placeholder="Waterfront?" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="any">Any Waterfront</SelectItem>
                         <SelectItem value="yes">Yes</SelectItem>
                         <SelectItem value="no">No</SelectItem>
                       </SelectContent>
@@ -1549,7 +1578,7 @@ function SearchPropertiesSection({
                         <SelectValue placeholder="HOA?" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="any">Any HOA</SelectItem>
                         <SelectItem value="yes">Yes</SelectItem>
                         <SelectItem value="no">No</SelectItem>
                       </SelectContent>
@@ -1584,7 +1613,7 @@ function SearchPropertiesSection({
                         <SelectValue placeholder="Primary Bed on Main" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="any">Any Primary Bed</SelectItem>
                         <SelectItem value="yes">Yes</SelectItem>
                         <SelectItem value="no">No</SelectItem>
                       </SelectContent>

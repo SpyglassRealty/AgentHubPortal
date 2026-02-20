@@ -57,7 +57,7 @@ export function extractSqft(comp: any): number | null {
 export function extractDOM(comp: any): number | null {
   if (!comp) return null;
   
-  const fields = ['daysOnMarket', 'dom', 'cumulativeDom', 'DOM'];
+  const fields = ['simpleDaysOnMarket', 'daysOnMarket', 'dom', 'cumulativeDom', 'DOM'];
   
   for (const field of fields) {
     const value = comp?.[field];
