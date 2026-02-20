@@ -151,7 +151,7 @@ const defaultFilters: SearchFilters = {
   minYearBuilt: "",
   maxYearBuilt: "",
   dateSoldDays: "180",
-  garageSpaces: "",
+  garageSpaces: "any",
   parkingSpaces: "",
   privatePool: "any",
   waterfront: "any",
@@ -190,6 +190,16 @@ const BATH_OPTIONS = [
   { label: "4 Baths", value: "4" },
   { label: "5 Baths", value: "5" },
   { label: "6+ Baths", value: "6" },
+];
+
+// Garage dropdown options
+const GARAGE_OPTIONS = [
+  { label: "Any Garage", value: "any" },
+  { label: "No Garage", value: "0" },
+  { label: "1 Car Garage", value: "1" },
+  { label: "2 Car Garage", value: "2" },
+  { label: "3 Car Garage", value: "3" },
+  { label: "4+ Car Garage", value: "4" },
 ];
 
 // Date Sold dropdown options
@@ -1513,12 +1523,21 @@ function SearchPropertiesSection({
                       value={filters.maxLotAcres}
                       onChange={(e) => updateFilter("maxLotAcres", e.target.value)}
                     />
-                    <Input
-                      type="number"
-                      placeholder="Garage"
-                      value={filters.garageSpaces}
-                      onChange={(e) => updateFilter("garageSpaces", e.target.value)}
-                    />
+                    <Select
+                      value={filters.garageSpaces || "any"}
+                      onValueChange={(v) => updateFilter("garageSpaces", v === "any" ? "" : v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Garage" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GARAGE_OPTIONS.map((opt, index) => (
+                          <SelectItem key={`garage-${index}`} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Input
                       type="number"
                       placeholder="Parking"
