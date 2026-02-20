@@ -461,13 +461,22 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
     const updateColumns = () => {
       const width = typeof window !== 'undefined' ? window.innerWidth : 1200;
       const totalComps = comparables.length;
-      // Show all comparables if 5 or fewer, otherwise use responsive breakpoints
-      if (totalComps <= 5 && width >= 1200) {
+      
+      // Calculate optimal columns based on available width (each column needs ~240px including subject)
+      const availableWidth = width - 240; // Subject column width
+      const maxPossibleColumns = Math.floor(availableWidth / 240);
+      
+      // Show all comparables if they fit on screen, otherwise use responsive breakpoints
+      if (totalComps <= maxPossibleColumns && width >= 1000) {
         setVisibleColumns(totalComps);
+      } else if (width >= 1600) {
+        setVisibleColumns(Math.min(6, totalComps));
       } else if (width >= 1400) {
-        setVisibleColumns(5);
+        setVisibleColumns(Math.min(5, totalComps));
       } else if (width >= 1200) {
-        setVisibleColumns(4);
+        setVisibleColumns(Math.min(4, totalComps));
+      } else if (width >= 1000) {
+        setVisibleColumns(Math.min(3, totalComps));
       } else if (width >= 768) {
         setVisibleColumns(2);
       } else {

@@ -134,6 +134,40 @@ async function createPulseDataTables() {
     
     // Create all missing tables based on schema
     const missingTables = [
+      // CRITICAL: Sessions table for authentication
+      {
+        name: 'sessions',
+        sql: `
+          CREATE TABLE IF NOT EXISTS sessions (
+            sid varchar PRIMARY KEY,
+            sess jsonb NOT NULL,
+            expire timestamp NOT NULL
+          )
+        `
+      },
+      // Agent profiles table
+      {
+        name: 'agent_profiles',
+        sql: `
+          CREATE TABLE IF NOT EXISTS agent_profiles (
+            id varchar PRIMARY KEY,
+            user_id text NOT NULL,
+            title text,
+            headshot_url text,
+            bio text,
+            default_cover_letter text,
+            facebook_url text,
+            instagram_url text,
+            linkedin_url text,
+            twitter_url text,
+            website_url text,
+            marketing_company text,
+            phone text,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
       // CMA tables
       {
         name: 'cmas',
@@ -518,6 +552,7 @@ async function createPulseDataTables() {
     
     // Create indexes for better performance
     const indexes = [
+      'CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON sessions(expire)',
       'CREATE INDEX IF NOT EXISTS idx_cmas_user_id ON cmas(user_id)',
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_zillow_zip_date ON pulse_zillow_data(zip, date)',
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_census_zip_year ON pulse_census_data(zip, year)',

@@ -259,16 +259,13 @@ export function PropertyDetailModal({ isOpen, onClose, property }: PropertyDetai
           </div>
           
           {property.description && property.description.trim() !== '' && (
-            <div className="mt-6 mb-6 pt-6 border-t border-zinc-700">
-              <h3 className="text-lg font-semibold mb-3 text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
-                About This Home
-              </h3>
-              <p 
-                className="text-sm text-zinc-300 leading-relaxed whitespace-pre-line break-words"
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-              >
-                {property.description}
-              </p>
+            <div className="mt-6 mb-6 pt-4 border-t border-zinc-700">
+              <h3 className="text-lg font-semibold mb-3 text-white">About This Home</h3>
+              <div className="text-sm text-zinc-300 leading-7 space-y-3">
+                {property.description.split(/\n\n|\r\n\r\n/).map((paragraph, i) => (
+                  <p key={i}>{paragraph.trim()}</p>
+                ))}
+              </div>
             </div>
           )}
           
