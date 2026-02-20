@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- White background -->
+  <rect width="32" height="32" fill="white"/>
+  
+  <!-- Spyglass icon optimized for 32x32 -->
+  <g transform="translate(16,16)">
+    <!-- Outer arc (orange) -->
+    <path d="M -10,-7 A 12 12 0 0 1 -10,7" stroke="#E8762D" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <!-- Inner arc (black) -->  
+    <path d="M -6,-4 A 7 7 0 0 1 -6,4" stroke="#2D2D2D" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <!-- Right accent arc (orange) -->
+    <path d="M 6,-4 A 7 7 0 0 1 6,4" stroke="#E8762D" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>
