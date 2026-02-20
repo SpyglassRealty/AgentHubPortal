@@ -282,7 +282,7 @@ function PropertyCard({ property, isSubject = false, onClick }: { property: CmaP
           </span>
         </div>
         <p className="text-xs text-gray-600 mt-2 flex items-center gap-1" data-testid={`property-dom-${property.id}`}>
-          <Clock className="w-3 h-3" /> {property.daysOnMarket} days on market
+          <Clock className="w-3 h-3" /> {extractDOM(property) || 0} days on market
         </p>
       </div>
     </Card>
@@ -338,7 +338,7 @@ function PropertyListItem({ property, isSubject = false, onClick }: { property: 
           <span>{property.beds} beds</span>
           <span>{property.baths} baths</span>
           <span>{property.sqft.toLocaleString()} sqft</span>
-          <span>{property.daysOnMarket} DOM</span>
+          <span>{extractDOM(property) || 0} DOM</span>
         </div>
       </div>
     </Card>
@@ -389,7 +389,7 @@ function PropertyTable({ comparables, subjectProperty, onPropertyClick }: { comp
               <td className="text-center p-3" data-testid={`table-beds-${index}`}>{property.beds}</td>
               <td className="text-center p-3" data-testid={`table-baths-${index}`}>{property.baths}</td>
               <td className="text-right p-3" data-testid={`table-sqft-${index}`}>{property.sqft.toLocaleString()}</td>
-              <td className="text-right p-3" data-testid={`table-dom-${index}`}>{property.daysOnMarket}</td>
+              <td className="text-right p-3" data-testid={`table-dom-${index}`}>{extractDOM(property) || 0}</td>
             </tr>
           ))}
         </tbody>
@@ -708,25 +708,54 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                   {/* Listing Details */}
                   <div className="pt-4 border-t border-gray-200 space-y-1 text-xs">
                     <div className="font-medium">Listing Details</div>
-                    {comp.originalPrice && (
-                      <div>Orig: ${comp.originalPrice.toLocaleString()}</div>
-                    )}
+                    
+                    {/* Original Price - always show, use N/A if missing */}
+                    <div>
+                      Original Price: {comp.originalPrice ? `$${comp.originalPrice.toLocaleString()}` : 'N/A'}
+                    </div>
+                    
+                    {/* Current List Price */}
                     {listPrice && (
                       <div>List: ${listPrice.toLocaleString()}</div>
                     )}
-                    {soldPct && (
-                      <div className={soldPctColor}>
-                        Sold: {soldPct.toFixed(1)}%
+                    
+                    {/* Listing Date - format as MM/DD/YYYY */}
+                    {comp.listDate && (
+                      <div>
+                        Listing Date: {new Date(comp.listDate).toLocaleDateString('en-US', {
+                          month: '2-digit',
+                          day: '2-digit', 
+                          year: 'numeric'
+                        })}
                       </div>
                     )}
+                    
+                    {/* Price per square foot */}
                     {compPrice && compSqft && (
                       <div>$/Sqft: ${Math.round(compPrice / compSqft)}</div>
                     )}
-                    {comp.soldDate && (
-                      <div>Sold: {new Date(comp.soldDate).toLocaleDateString()}</div>
+                    
+                    {/* Days on Market - use extractDOM utility to get simpleDaysOnMarket */}
+                    {(() => {
+                      const dom = extractDOM(comp);
+                      return dom !== null && (
+                        <div>DOM: {dom}</div>
+                      );
+                    })()}
+                    
+                    {/* For Closed/Sold comps - add sold price and sold date */}
+                    {comp.soldPrice && (
+                      <div>Sold Price: ${comp.soldPrice.toLocaleString()}</div>
                     )}
-                    {comp.daysOnMarket && (
-                      <div>DOM: {comp.daysOnMarket}</div>
+                    
+                    {comp.soldDate && (
+                      <div>
+                        Sold Date: {new Date(comp.soldDate).toLocaleDateString('en-US', {
+                          month: '2-digit',
+                          day: '2-digit',
+                          year: 'numeric'
+                        })}
+                      </div>
                     )}
                   </div>
                 </div>

@@ -3,7 +3,7 @@ import { X, ChevronLeft, ChevronRight, Bed, Bath, Square, Clock, Calendar, Maxim
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SafeImage } from '@/components/ui/safe-image';
-import { extractPrice, extractSqft, calculatePricePerSqft } from '@/lib/cma-data-utils';
+import { extractPrice, extractSqft, calculatePricePerSqft, extractDOM } from '@/lib/cma-data-utils';
 import type { CmaProperty } from '../types';
 
 interface PropertyDetailModalProps {
@@ -345,7 +345,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
             />
             <DetailItem 
               label="Days on Market" 
-              value={property.daysOnMarket.toString()} 
+              value={extractDOM(property)?.toString() || 'N/A'} 
               icon={<Clock className="w-3 h-3" />}
             />
             <div data-testid="detail-status">
