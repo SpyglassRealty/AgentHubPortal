@@ -1552,7 +1552,7 @@ function SearchPropertiesSection({
                         <SelectValue placeholder="Pool?" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="any">Any Pool</SelectItem>
                         <SelectItem value="yes">Yes</SelectItem>
                         <SelectItem value="no">No</SelectItem>
                       </SelectContent>
@@ -1565,7 +1565,7 @@ function SearchPropertiesSection({
                         <SelectValue placeholder="Waterfront?" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="any">Any Waterfront</SelectItem>
                         <SelectItem value="yes">Yes</SelectItem>
                         <SelectItem value="no">No</SelectItem>
                       </SelectContent>
@@ -1578,7 +1578,7 @@ function SearchPropertiesSection({
                         <SelectValue placeholder="HOA?" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="any">Any HOA</SelectItem>
                         <SelectItem value="yes">Yes</SelectItem>
                         <SelectItem value="no">No</SelectItem>
                       </SelectContent>
@@ -1613,7 +1613,7 @@ function SearchPropertiesSection({
                         <SelectValue placeholder="Primary Bed on Main" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="any">Any Primary Bed</SelectItem>
                         <SelectItem value="yes">Yes</SelectItem>
                         <SelectItem value="no">No</SelectItem>
                       </SelectContent>
