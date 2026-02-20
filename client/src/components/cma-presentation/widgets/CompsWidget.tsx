@@ -709,6 +709,17 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                   <div className="pt-4 border-t border-gray-200 space-y-1 text-xs">
                     <div className="font-medium">Listing Details</div>
                     
+                    {/* DEBUG: Log this specific comp data */}
+                    {(() => {
+                      console.log(`🔍 Comp ${comp.id} DEBUG:`, {
+                        originalPrice: comp.originalPrice,
+                        listDate: comp.listDate,
+                        simpleDaysOnMarket: comp.simpleDaysOnMarket,
+                        daysOnMarket: comp.daysOnMarket
+                      });
+                      return null;
+                    })()}
+                    
                     {/* Original Price - always show, use N/A if missing */}
                     <div>
                       Original Price: {comp.originalPrice ? `$${comp.originalPrice.toLocaleString()}` : 'N/A'}
@@ -840,6 +851,20 @@ function CompsMapView({ comparables, subjectProperty }: { comparables: CmaProper
 }
 
 export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }: CompsWidgetProps) {
+  // DEBUG: Log actual data structure
+  console.log('🔍 CompsWidget DEBUG - Data received:', {
+    comparablesCount: comparables?.length || 0,
+    sampleComp: comparables?.[0] ? {
+      id: comparables[0].id,
+      address: comparables[0].address,
+      originalPrice: comparables[0].originalPrice,
+      listDate: comparables[0].listDate,
+      simpleDaysOnMarket: comparables[0].simpleDaysOnMarket,
+      daysOnMarket: comparables[0].daysOnMarket,
+      allFields: Object.keys(comparables[0])
+    } : null
+  });
+  
   // Handle empty comparables
   if (!comparables || comparables.length === 0) {
     return (
