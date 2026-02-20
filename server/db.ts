@@ -335,6 +335,179 @@ async function createPulseDataTables() {
             updated_at timestamp DEFAULT NOW()
           )
         `
+      },
+      // CRITICAL MISSING TABLES - Adding to fix production issues
+      {
+        name: 'context_suggestions',
+        sql: `
+          CREATE TABLE IF NOT EXISTS context_suggestions (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            suggestion_type varchar NOT NULL,
+            title varchar NOT NULL,
+            description text,
+            priority integer DEFAULT 0,
+            payload jsonb,
+            recommended_app_id varchar,
+            status varchar DEFAULT 'active',
+            expires_at timestamp,
+            created_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'app_usage',
+        sql: `
+          CREATE TABLE IF NOT EXISTS app_usage (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            app_id varchar NOT NULL,
+            page varchar NOT NULL,
+            click_count integer DEFAULT 1,
+            last_used_at timestamp DEFAULT NOW(),
+            created_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'user_notification_settings',
+        sql: `
+          CREATE TABLE IF NOT EXISTS user_notification_settings (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL UNIQUE,
+            notifications_enabled boolean DEFAULT false,
+            lead_assigned_enabled boolean DEFAULT true,
+            appointment_reminder_enabled boolean DEFAULT true,
+            deal_update_enabled boolean DEFAULT true,
+            task_due_enabled boolean DEFAULT true,
+            system_enabled boolean DEFAULT true,
+            appointment_reminder_times jsonb DEFAULT '[1440, 60, 15]'::jsonb,
+            quiet_hours_enabled boolean DEFAULT false,
+            quiet_hours_start varchar DEFAULT '22:00',
+            quiet_hours_end varchar DEFAULT '07:00',
+            email_notifications_enabled boolean DEFAULT false,
+            notification_email varchar,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'saved_content_ideas',
+        sql: `
+          CREATE TABLE IF NOT EXISTS saved_content_ideas (
+            id serial PRIMARY KEY,
+            user_id varchar NOT NULL,
+            month varchar(20) NOT NULL,
+            year integer NOT NULL,
+            week integer NOT NULL,
+            theme varchar(100),
+            platform varchar(50) NOT NULL,
+            content_type varchar(50) NOT NULL,
+            best_time varchar(50),
+            content text NOT NULL,
+            hashtags text,
+            status varchar(20) DEFAULT 'saved',
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'cma_report_configs',
+        sql: `
+          CREATE TABLE IF NOT EXISTS cma_report_configs (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            cma_id varchar NOT NULL UNIQUE,
+            included_sections jsonb,
+            section_order jsonb,
+            cover_letter_override text,
+            layout text DEFAULT 'two_photos',
+            template text DEFAULT 'default',
+            theme text DEFAULT 'spyglass',
+            photo_layout text DEFAULT 'first_dozen',
+            map_style text DEFAULT 'streets',
+            show_map_polygon boolean DEFAULT true,
+            include_agent_footer boolean DEFAULT true,
+            cover_page_config jsonb,
+            custom_photo_selections jsonb,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'cma_report_templates',
+        sql: `
+          CREATE TABLE IF NOT EXISTS cma_report_templates (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            name text NOT NULL,
+            is_default boolean DEFAULT false,
+            included_sections jsonb,
+            section_order jsonb,
+            cover_letter_override text,
+            layout text DEFAULT 'two_photos',
+            theme text DEFAULT 'spyglass',
+            photo_layout text DEFAULT 'first_dozen',
+            map_style text DEFAULT 'streets',
+            show_map_polygon boolean DEFAULT true,
+            include_agent_footer boolean DEFAULT true,
+            cover_page_config jsonb,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'agent_resources',
+        sql: `
+          CREATE TABLE IF NOT EXISTS agent_resources (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id text NOT NULL,
+            name text NOT NULL,
+            type text NOT NULL,
+            url text,
+            file_url text,
+            file_name text,
+            file_data text,
+            file_mime_type text,
+            is_active boolean DEFAULT true,
+            display_order integer DEFAULT 0,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'integration_configs',
+        sql: `
+          CREATE TABLE IF NOT EXISTS integration_configs (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            name varchar(100) NOT NULL UNIQUE,
+            display_name varchar(255) NOT NULL,
+            api_key text NOT NULL,
+            additional_config jsonb,
+            is_active boolean DEFAULT true,
+            last_tested_at timestamp,
+            last_test_result varchar(50),
+            last_test_message text,
+            created_by varchar,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'app_visibility',
+        sql: `
+          CREATE TABLE IF NOT EXISTS app_visibility (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            app_id varchar UNIQUE NOT NULL,
+            hidden boolean DEFAULT false,
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
       }
     ];
     
