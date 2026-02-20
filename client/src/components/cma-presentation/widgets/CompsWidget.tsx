@@ -720,15 +720,20 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                     )}
                     
                     {/* Listing Date - format as MM/DD/YYYY */}
-                    {comp.listDate && (
-                      <div>
-                        Listing Date: {new Date(comp.listDate).toLocaleDateString('en-US', {
-                          month: '2-digit',
-                          day: '2-digit', 
-                          year: 'numeric'
-                        })}
-                      </div>
-                    )}
+                    {(() => {
+                      if (!comp.listDate) return null;
+                      const date = new Date(comp.listDate);
+                      if (isNaN(date.getTime())) return null;
+                      return (
+                        <div>
+                          Listing Date: {date.toLocaleDateString('en-US', {
+                            month: '2-digit',
+                            day: '2-digit', 
+                            year: 'numeric'
+                          })}
+                        </div>
+                      );
+                    })()}
                     
                     {/* Price per square foot */}
                     {compPrice && compSqft && (
@@ -748,15 +753,20 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                       <div>Sold Price: ${comp.soldPrice.toLocaleString()}</div>
                     )}
                     
-                    {comp.soldDate && (
-                      <div>
-                        Sold Date: {new Date(comp.soldDate).toLocaleDateString('en-US', {
-                          month: '2-digit',
-                          day: '2-digit',
-                          year: 'numeric'
-                        })}
-                      </div>
-                    )}
+                    {(() => {
+                      if (!comp.soldDate) return null;
+                      const date = new Date(comp.soldDate);
+                      if (isNaN(date.getTime())) return null;
+                      return (
+                        <div>
+                          Sold Date: {date.toLocaleDateString('en-US', {
+                            month: '2-digit',
+                            day: '2-digit',
+                            year: 'numeric'
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
