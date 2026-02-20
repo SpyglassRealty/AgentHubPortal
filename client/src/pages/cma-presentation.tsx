@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SafeImage } from "@/components/ui/safe-image";
+import { extractPrice, extractDOM } from "@/lib/cma-data-utils";
 import { toast } from "sonner";
 import {
   Home,
@@ -65,6 +66,7 @@ interface PropertyData {
   state?: string;
   zip?: string;
   listPrice: number;
+  originalPrice?: number;
   soldPrice?: number | null;
   beds: number;
   baths: number;
@@ -76,6 +78,7 @@ interface PropertyData {
   listDate?: string;
   soldDate?: string | null;
   daysOnMarket?: number;
+  simpleDaysOnMarket?: number;
   photos?: string[];
   latitude?: number | null;
   longitude?: number | null;
@@ -733,26 +736,78 @@ function SlideshowPlayer({ widgets, cma, agentProfile, activeWidgetId, onClose, 
                           </div>
                         </div>
                         
-                        {/* Additional Info */}
-                        <div className="space-y-1 text-sm text-muted-foreground">
-                          {comp.mlsNumber && (
-                            <div>MLS# {comp.mlsNumber}</div>
+                        {/* Listing Details */}
+                        <div className="space-y-1 text-xs">
+                          <div className="font-medium text-gray-900">Listing Details</div>
+                          
+                          {/* Original Price - always show, use N/A if missing */}
+                          <div>
+                            Original Price: {comp.originalPrice ? `$${comp.originalPrice.toLocaleString()}` : 'N/A'}
+                          </div>
+                          
+                          {/* Current List Price */}
+                          {comp.listPrice && (
+                            <div>List: ${comp.listPrice.toLocaleString()}</div>
                           )}
-                          {comp.daysOnMarket && comp.daysOnMarket > 0 && (
-                            <div>{comp.daysOnMarket} days on market</div>
+                          
+                          {/* Listing Date - format as MM/DD/YYYY */}
+                          {(() => {
+                            if (!comp.listDate) return null;
+                            const date = new Date(comp.listDate);
+                            if (isNaN(date.getTime())) return null;
+                            return (
+                              <div>
+                                Listing Date: {date.toLocaleDateString('en-US', {
+                                  month: '2-digit',
+                                  day: '2-digit', 
+                                  year: 'numeric'
+                                })}
+                              </div>
+                            );
+                          })()}
+                          
+                          {/* Price per square foot */}
+                          {(() => {
+                            const price = extractPrice(comp);
+                            const sqft = comp.sqft;
+                            if (price && sqft && sqft > 0) {
+                              return <div>$/Sqft: ${Math.round(price / sqft)}</div>;
+                            }
+                            return null;
+                          })()}
+                          
+                          {/* Days on Market - use extractDOM utility to get simpleDaysOnMarket */}
+                          {(() => {
+                            const dom = extractDOM(comp);
+                            return dom !== null && (
+                              <div>DOM: {dom}</div>
+                            );
+                          })()}
+                          
+                          {/* For Closed/Sold comps - add sold price and sold date */}
+                          {comp.soldPrice && (
+                            <div>Sold Price: ${comp.soldPrice.toLocaleString()}</div>
                           )}
+                          
                           {(() => {
                             if (!comp.soldDate) return null;
                             const date = new Date(comp.soldDate);
                             if (isNaN(date.getTime())) return null;
-                            return <div>Sold: {date.toLocaleDateString()}</div>;
+                            return (
+                              <div>
+                                Sold Date: {date.toLocaleDateString('en-US', {
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  year: 'numeric'
+                                })}
+                              </div>
+                            );
                           })()}
-                          {(() => {
-                            if (!comp.listDate || comp.soldDate) return null;
-                            const date = new Date(comp.listDate);
-                            if (isNaN(date.getTime())) return null;
-                            return <div>Listed: {date.toLocaleDateString()}</div>;
-                          })()}
+                          
+                          {/* MLS Number */}
+                          {comp.mlsNumber && (
+                            <div className="text-muted-foreground">MLS# {comp.mlsNumber}</div>
+                          )}
                         </div>
                       </div>
                     </div>
