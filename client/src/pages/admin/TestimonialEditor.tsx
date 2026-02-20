@@ -85,8 +85,8 @@ export default function TestimonialEditor({ params }: { params: { id: string } }
     rating: 5,
     source: "manual",
     sourceUrl: "",
-    agentId: "",
-    communitySlug: "",
+    agentId: "none",
+    communitySlug: "none",
     photoUrl: "",
     isApproved: false,
     isFeatured: false,
@@ -130,8 +130,8 @@ export default function TestimonialEditor({ params }: { params: { id: string } }
         rating: testimonial.rating,
         source: testimonial.source,
         sourceUrl: testimonial.sourceUrl || "",
-        agentId: testimonial.agentId || "",
-        communitySlug: testimonial.communitySlug || "",
+        agentId: testimonial.agentId || "none",
+        communitySlug: testimonial.communitySlug || "none",
         photoUrl: testimonial.photoUrl || "",
         isApproved: testimonial.isApproved,
         isFeatured: testimonial.isFeatured,
@@ -146,11 +146,18 @@ export default function TestimonialEditor({ params }: { params: { id: string } }
         ? "/api/admin/testimonials"
         : `/api/admin/testimonials/${params.id}`;
       
+      // Transform "none" values back to empty strings for API
+      const apiData = {
+        ...data,
+        agentId: data.agentId === "none" ? "" : data.agentId,
+        communitySlug: data.communitySlug === "none" ? "" : data.communitySlug,
+      };
+      
       const response = await fetch(url, {
         method: isNew ? "POST" : "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(data),
+        body: JSON.stringify(apiData),
       });
       
       if (!response.ok) {
@@ -539,7 +546,7 @@ export default function TestimonialEditor({ params }: { params: { id: string } }
                           <SelectValue placeholder="Select an agent..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">No agent</SelectItem>
+                          <SelectItem value="none">No agent</SelectItem>
                           {options?.agents.map((agent) => (
                             <SelectItem key={agent.id} value={agent.id}>
                               {agent.name}
@@ -561,7 +568,7 @@ export default function TestimonialEditor({ params }: { params: { id: string } }
                           <SelectValue placeholder="Select a community..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">No community</SelectItem>
+                          <SelectItem value="none">No community</SelectItem>
                           {options?.communities.map((community) => (
                             <SelectItem key={community.slug} value={community.slug}>
                               {community.name}

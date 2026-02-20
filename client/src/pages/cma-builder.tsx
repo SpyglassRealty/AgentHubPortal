@@ -135,8 +135,8 @@ const defaultFilters: SearchFilters = {
   elementarySchool: "",
   middleSchool: "",
   highSchool: "",
-  minBeds: "",
-  minBaths: "",
+  minBeds: "any",
+  minBaths: "any",
   fullBaths: "",
   halfBaths: "",
   minPrice: "",
@@ -153,10 +153,10 @@ const defaultFilters: SearchFilters = {
   dateSoldDays: "180",
   garageSpaces: "",
   parkingSpaces: "",
-  privatePool: "",
-  waterfront: "",
-  hoa: "",
-  primaryBedOnMain: "",
+  privatePool: "any",
+  waterfront: "any",
+  hoa: "any",
+  primaryBedOnMain: "any",
 };
 
 // RESO Standard Property Types
@@ -173,7 +173,7 @@ const RESO_PROPERTY_TYPES = [
 
 // Bed/Bath dropdown options
 const BED_BATH_OPTIONS = [
-  { label: "Any", value: "" },
+  { label: "Any", value: "any" },
   { label: "1", value: "1" },
   { label: "2", value: "2" },
   { label: "3", value: "3" },
@@ -788,7 +788,7 @@ function SearchPropertiesSection({
     // Validate: need at least one search criterion
     if (!filters.quickSearch) {
       const hasLocation = filters.city || filters.subdivision || filters.zip || filters.county || filters.area || filters.schoolDistrict || filters.elementarySchool || filters.middleSchool || filters.highSchool;
-      if (!hasLocation && !filters.propertyType && !filters.minBeds && !filters.minBaths && !filters.minPrice && !filters.maxPrice) {
+      if (!hasLocation && !filters.propertyType && (!filters.minBeds || filters.minBeds === "any") && (!filters.minBaths || filters.minBaths === "any") && !filters.minPrice && !filters.maxPrice) {
         toast({ title: "Enter search criteria", description: "Please enter at least one filter (address, MLS#, location, etc.) before searching.", variant: "destructive" });
         return;
       }
@@ -820,8 +820,8 @@ function SearchPropertiesSection({
       if (filters.elementarySchool) body.elementarySchool = filters.elementarySchool;
       if (filters.middleSchool) body.middleSchool = filters.middleSchool;
       if (filters.highSchool) body.highSchool = filters.highSchool;
-      if (filters.minBeds) body.minBeds = parseInt(filters.minBeds);
-      if (filters.minBaths) body.minBaths = parseInt(filters.minBaths);
+      if (filters.minBeds && filters.minBeds !== "any") body.minBeds = parseInt(filters.minBeds);
+      if (filters.minBaths && filters.minBaths !== "any") body.minBaths = parseInt(filters.minBaths);
       if (filters.fullBaths) body.fullBaths = parseInt(filters.fullBaths);
       if (filters.halfBaths) body.halfBaths = parseInt(filters.halfBaths);
       if (filters.minPrice) body.minPrice = parseInt(filters.minPrice);
@@ -1352,7 +1352,7 @@ function SearchPropertiesSection({
                       </SelectContent>
                     </Select>
                     <Select
-                      value={filters.minBeds || ""}
+                      value={filters.minBeds || "any"}
                       onValueChange={(v) => updateFilter("minBeds", v)}
                     >
                       <SelectTrigger>
@@ -1367,7 +1367,7 @@ function SearchPropertiesSection({
                       </SelectContent>
                     </Select>
                     <Select
-                      value={filters.minBaths || ""}
+                      value={filters.minBaths || "any"}
                       onValueChange={(v) => updateFilter("minBaths", v)}
                     >
                       <SelectTrigger>
