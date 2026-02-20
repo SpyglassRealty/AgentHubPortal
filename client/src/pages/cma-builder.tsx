@@ -1359,8 +1359,8 @@ function SearchPropertiesSection({
                         <SelectValue placeholder="Min Beds" />
                       </SelectTrigger>
                       <SelectContent>
-                        {BED_BATH_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value || "any"} value={opt.value || ""}>
+                        {BED_BATH_OPTIONS.map((opt, index) => (
+                          <SelectItem key={`minbeds-${index}`} value={opt.value}>
                             {opt.label}
                           </SelectItem>
                         ))}
@@ -1374,8 +1374,8 @@ function SearchPropertiesSection({
                         <SelectValue placeholder="Min Baths" />
                       </SelectTrigger>
                       <SelectContent>
-                        {BED_BATH_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value || "any"} value={opt.value || ""}>
+                        {BED_BATH_OPTIONS.map((opt, index) => (
+                          <SelectItem key={`minbaths-${index}`} value={opt.value}>
                             {opt.label}
                           </SelectItem>
                         ))}
