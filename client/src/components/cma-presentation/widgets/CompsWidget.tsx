@@ -709,14 +709,10 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                   <div className="pt-4 border-t border-gray-200 space-y-1 text-xs">
                     <div className="font-medium">Listing Details</div>
                     
-                    {/* DEBUG: Log this specific comp data */}
+                    {/* DEBUG: Log full comp object for Phase 1 analysis */}
                     {(() => {
-                      console.log(`🔍 Comp ${comp.id} DEBUG:`, {
-                        originalPrice: comp.originalPrice,
-                        listDate: comp.listDate,
-                        simpleDaysOnMarket: comp.simpleDaysOnMarket,
-                        daysOnMarket: comp.daysOnMarket
-                      });
+                      console.log(`🔍 PHASE 1 - Full comp object:`, comp);
+                      console.log(`🔍 PHASE 1 - Available fields:`, Object.keys(comp));
                       return null;
                     })()}
                     
