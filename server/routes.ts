@@ -2625,6 +2625,220 @@ Respond with valid JSON in this exact format:
   });
 
   // ============================================
+  // AGENT RESOURCES ENDPOINTS
+  // ============================================
+
+  // GET /api/settings/resources - list resources for logged-in user
+  app.get('/api/settings/resources', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      const resources = await storage.getAgentResources(user.id);
+      res.json({ resources });
+    } catch (error) {
+      console.error('Error fetching agent resources:', error);
+      res.status(500).json({ message: 'Failed to fetch resources' });
+    }
+  });
+
+  // POST /api/settings/resources/upload - multipart file upload
+  app.post('/api/settings/resources/upload', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      // Check current resource count (max 10 resources per agent)
+      const existing = await storage.getAgentResources(user.id);
+      if (existing.length >= 10) {
+        return res.status(400).json({ message: 'Maximum of 10 resources allowed per agent' });
+      }
+
+      const { title, fileData, fileName, mimeType } = req.body;
+
+      if (!title || !fileData || !fileName || !mimeType) {
+        return res.status(400).json({ message: 'Missing required fields: title, fileData, fileName, mimeType' });
+      }
+
+      // Validate file type
+      const allowedTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+        'image/webp'
+      ];
+      
+      if (!allowedTypes.includes(mimeType)) {
+        return res.status(400).json({ message: 'Invalid file type. Allowed: PDF, DOC, DOCX, JPG, PNG, WEBP' });
+      }
+
+      // Basic validation - check if it's a data URL
+      if (!fileData.startsWith('data:')) {
+        return res.status(400).json({ message: 'Invalid file format' });
+      }
+
+      // Check file size (rough estimate: base64 is ~33% larger than binary)
+      const sizeEstimate = (fileData.length * 3) / 4;
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (sizeEstimate > maxSize) {
+        return res.status(400).json({ message: 'File too large. Maximum size is 5MB.' });
+      }
+
+      // Determine resource type based on mime type
+      let type = 'doc';
+      if (mimeType === 'application/pdf') type = 'pdf';
+      else if (mimeType.startsWith('image/')) type = 'image';
+
+      // Convert base64 to Buffer for bytea storage
+      const base64Data = fileData.split(',')[1];
+      const fileBuffer = Buffer.from(base64Data, 'base64');
+
+      const resource = await storage.createAgentResource({
+        userId: user.id,
+        title,
+        type,
+        fileData: fileBuffer,
+        fileName,
+        fileSize: fileBuffer.length,
+        mimeType,
+        redirectUrl: null
+      });
+
+      res.json({ success: true, resource });
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      res.status(500).json({ message: 'Failed to upload file' });
+    }
+  });
+
+  // POST /api/settings/resources/link - add redirect link
+  app.post('/api/settings/resources/link', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      // Check current resource count (max 10 resources per agent)
+      const existing = await storage.getAgentResources(user.id);
+      if (existing.length >= 10) {
+        return res.status(400).json({ message: 'Maximum of 10 resources allowed per agent' });
+      }
+
+      const { title, url } = req.body;
+
+      if (!title || !url) {
+        return res.status(400).json({ message: 'Missing required fields: title, url' });
+      }
+
+      // Validate URL format
+      try {
+        new URL(url);
+      } catch {
+        return res.status(400).json({ message: 'Invalid URL format' });
+      }
+
+      const resource = await storage.createAgentResource({
+        userId: user.id,
+        title,
+        type: 'link',
+        fileData: null,
+        fileName: null,
+        fileSize: null,
+        mimeType: null,
+        redirectUrl: url
+      });
+
+      res.json({ success: true, resource });
+    } catch (error) {
+      console.error('Error creating link resource:', error);
+      res.status(500).json({ message: 'Failed to create link' });
+    }
+  });
+
+  // PUT /api/settings/resources/:id/reorder - update sort_order
+  app.put('/api/settings/resources/:id/reorder', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      const { id } = req.params;
+      const { sortOrder } = req.body;
+
+      if (typeof sortOrder !== 'number') {
+        return res.status(400).json({ message: 'Invalid sortOrder value' });
+      }
+
+      // Verify resource belongs to user
+      const resource = await storage.getAgentResource(id);
+      if (!resource || resource.userId !== user.id) {
+        return res.status(404).json({ message: 'Resource not found' });
+      }
+
+      const updated = await storage.updateAgentResource(id, { sortOrder });
+      res.json({ success: true, resource: updated });
+    } catch (error) {
+      console.error('Error reordering resource:', error);
+      res.status(500).json({ message: 'Failed to reorder resource' });
+    }
+  });
+
+  // DELETE /api/settings/resources/:id - delete resource
+  app.delete('/api/settings/resources/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      const { id } = req.params;
+
+      // Verify resource belongs to user
+      const resource = await storage.getAgentResource(id);
+      if (!resource || resource.userId !== user.id) {
+        return res.status(404).json({ message: 'Resource not found' });
+      }
+
+      await storage.deleteAgentResource(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting resource:', error);
+      res.status(500).json({ message: 'Failed to delete resource' });
+    }
+  });
+
+  // GET /api/resources/:id/download - public file download (no auth)
+  app.get('/api/resources/:id/download', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      const resource = await storage.getAgentResource(id);
+      if (!resource || !resource.fileData) {
+        return res.status(404).json({ message: 'File not found' });
+      }
+
+      // Set proper headers for file download
+      res.set('Content-Type', resource.mimeType || 'application/octet-stream');
+      res.set('Content-Disposition', `attachment; filename="${resource.fileName}"`);
+      res.set('Content-Length', resource.fileSize?.toString() || '0');
+
+      // Send the file data
+      res.send(resource.fileData);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      res.status(500).json({ message: 'Failed to download file' });
+    }
+  });
+
+  // ============================================
   // SYNC STATUS & REFRESH ENDPOINTS
   // ============================================
 

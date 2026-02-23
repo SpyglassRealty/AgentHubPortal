@@ -809,7 +809,7 @@ export class DatabaseStorage implements IStorage {
   async getAgentResources(userId: string): Promise<AgentResource[]> {
     return db.select().from(agentResources)
       .where(eq(agentResources.userId, userId))
-      .orderBy(agentResources.displayOrder);
+      .orderBy(agentResources.sortOrder);
   }
 
   async getAgentResource(id: string): Promise<AgentResource | undefined> {
@@ -820,11 +820,11 @@ export class DatabaseStorage implements IStorage {
   async createAgentResource(resource: InsertAgentResource): Promise<AgentResource> {
     const existing = await this.getAgentResources(resource.userId);
     const maxOrder = existing.length > 0
-      ? Math.max(...existing.map(r => r.displayOrder ?? 0)) + 1
+      ? Math.max(...existing.map(r => r.sortOrder ?? 0)) + 1
       : 0;
     const [created] = await db
       .insert(agentResources)
-      .values({ ...resource, displayOrder: maxOrder })
+      .values({ ...resource, sortOrder: maxOrder })
       .returning();
     return created;
   }
@@ -847,7 +847,7 @@ export class DatabaseStorage implements IStorage {
     for (let i = 0; i < orderedIds.length; i++) {
       await db
         .update(agentResources)
-        .set({ displayOrder: i, updatedAt: new Date() })
+        .set({ sortOrder: i, updatedAt: new Date() })
         .where(and(
           eq(agentResources.id, orderedIds[i]),
           eq(agentResources.userId, userId)
