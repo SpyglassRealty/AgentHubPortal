@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Building2, Search, X, ChevronLeft, ChevronRight, ChevronDown,
@@ -6,6 +6,8 @@ import {
   RotateCcw, MapPin, ExternalLink
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 type ViewMode = 'grid' | 'list' | 'table';
 
@@ -864,6 +866,54 @@ function GridListingCard({ listing, isDark, onClick, formatPrice }: any) {
   );
 }
 
+// Interactive Mapbox Map Component
+function PropertyMapPreview({ latitude, longitude, isDark }: { latitude: number; longitude: number; isDark: boolean; }) {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+
+  useEffect(() => {
+    if (!mapContainer.current || !latitude || !longitude) return;
+
+    // Fetch Mapbox token
+    fetch('/api/mapbox-token')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.token) return;
+        
+        mapboxgl.accessToken = data.token;
+
+        map.current = new mapboxgl.Map({
+          container: mapContainer.current!,
+          style: isDark ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12',
+          center: [longitude, latitude],
+          zoom: 15,
+          interactive: false,
+          attributionControl: false,
+        });
+
+        // Create custom Spyglass marker
+        const marker = document.createElement('div');
+        marker.style.width = '24px';
+        marker.style.height = '24px';
+        marker.style.borderRadius = '50%';
+        marker.style.backgroundColor = '#EF4923';
+        marker.style.border = '3px solid white';
+        marker.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+
+        new mapboxgl.Marker({ element: marker })
+          .setLngLat([longitude, latitude])
+          .addTo(map.current);
+      })
+      .catch(err => console.error('Failed to load Mapbox token:', err));
+
+    return () => {
+      map.current?.remove();
+    };
+  }, [latitude, longitude, isDark]);
+
+  return <div ref={mapContainer} className="w-full h-48 rounded-lg overflow-hidden" />;
+}
+
 function ListListingCard({ listing, isDark, onClick, formatPrice }: any) {
   const cardBg = isDark ? 'bg-[#333333]' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
@@ -934,7 +984,6 @@ function ListListingCard({ listing, isDark, onClick, formatPrice }: any) {
 
 function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-  const [mapboxToken, setMapboxToken] = useState<string | null>(null);
   
   // Debug logging for data pipeline
   console.log('Properties ListingDetailModal debug:', {
@@ -944,15 +993,10 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
     hasRemarks: !!listing.remarks,
     descriptionSource: listing.details?.description ? 'details.description' : listing.description ? 'description' : listing.remarks ? 'remarks' : 'NONE',
     hasCoordinates: !!(listing.latitude || listing.longitude),
+    propertyType: listing.propertyType,
+    transactionType: listing.type,
+    detailsPropertyType: listing.details?.propertyType,
   });
-
-  // Fetch Mapbox token
-  useEffect(() => {
-    fetch('/api/mapbox-token')
-      .then(res => res.json())
-      .then(data => setMapboxToken(data.token))
-      .catch(err => console.error('Failed to fetch Mapbox token:', err));
-  }, []);
   
   const cardBg = isDark ? 'bg-[#222222]' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
@@ -1083,7 +1127,7 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
                 </div>
                 <div>
                   <span className={textSecondary}>Property Type:</span>
-                  <span className={`ml-2 ${textPrimary}`}>{listing.propertyType || '-'}</span>
+                  <span className={`ml-2 ${textPrimary}`}>{listing.propertyType || listing.details?.propertyType || listing.class || 'N/A'}</span>
                 </div>
                 {listing.subdivision && (
                   <div className="col-span-2">
@@ -1100,39 +1144,6 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
               </div>
             </div>
 
-            {/* Address with Mapbox */}
-            <div className={`p-4 rounded-lg border ${borderColor}`}>
-              <div className="flex items-start gap-3 mb-3">
-                <MapPin className={`w-5 h-5 ${textSecondary} mt-0.5`} />
-                <div>
-                  <p className={`font-medium ${textPrimary}`}>{listing.address?.full}</p>
-                </div>
-              </div>
-              {mapboxToken && listing.latitude && listing.longitude ? (
-                <div className="w-full h-48 bg-gray-200 rounded-lg overflow-hidden">
-                  <img
-                    src={`https://api.mapbox.com/styles/v1/mapbox/${isDark ? 'dark-v11' : 'streets-v12'}/static/pin-s+EF4923(${listing.longitude},${listing.latitude})/${listing.longitude},${listing.latitude},15,0/400x300@2x?access_token=${mapboxToken}`}
-                    alt={`Map showing ${listing.address?.full}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ) : listing.latitude && listing.longitude ? (
-                <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <div className="text-center text-gray-500">
-                    <MapPin className="w-8 h-8 mx-auto mb-2" />
-                    <p>Loading map...</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <div className="text-center text-gray-500">
-                    <MapPin className="w-8 h-8 mx-auto mb-2" />
-                    <p className="italic">Location not available</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* About This Home - ALWAYS VISIBLE */}
             <div className={`p-4 rounded-lg border ${borderColor} mt-4`}>
               <h4 className={`font-semibold ${textPrimary} mb-3 pb-2 border-b-2 ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
@@ -1147,6 +1158,28 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
                   : <p className="italic">No description available</p>
                 }
               </div>
+            </div>
+
+            {/* Location with Interactive Mapbox */}
+            <div className={`p-4 rounded-lg border ${borderColor}`}>
+              <h4 className={`font-semibold ${textPrimary} mb-3`}>Location</h4>
+              <div className="flex items-start gap-3 mb-3">
+                <MapPin className={`w-5 h-5 ${textSecondary} mt-0.5`} />
+                <div>
+                  <p className={`font-medium ${textPrimary}`}>{listing.address?.full}</p>
+                </div>
+              </div>
+              {(listing.map?.latitude || listing.latitude) && (listing.map?.longitude || listing.longitude) ? (
+                <PropertyMapPreview 
+                  latitude={listing.map?.latitude || listing.latitude} 
+                  longitude={listing.map?.longitude || listing.longitude} 
+                  isDark={isDark} 
+                />
+              ) : (
+                <div className="w-full h-48 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                  <span className="text-gray-400 text-sm">Location not available</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
