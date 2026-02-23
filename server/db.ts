@@ -73,6 +73,9 @@ async function runDirectMigrations() {
     // Create pulse data tables for Market Pulse functionality
     await createPulseDataTables();
     
+    // CRITICAL: Create agent_resources table
+    await createAgentResourcesTable();
+    
   } catch (error) {
     console.error("[Database] Direct migration error:", error);
     throw error;
@@ -498,16 +501,15 @@ async function createPulseDataTables() {
         sql: `
           CREATE TABLE IF NOT EXISTS agent_resources (
             id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
-            user_id text NOT NULL,
-            name text NOT NULL,
-            type text NOT NULL,
-            url text,
-            file_url text,
-            file_name text,
-            file_data text,
-            file_mime_type text,
-            is_active boolean DEFAULT true,
-            display_order integer DEFAULT 0,
+            user_id varchar NOT NULL,
+            title varchar(255) NOT NULL,
+            type varchar(50) NOT NULL,
+            file_data bytea,
+            file_name varchar(255),
+            file_size integer,
+            mime_type varchar(100),
+            redirect_url text,
+            sort_order integer NOT NULL DEFAULT 0,
             created_at timestamp DEFAULT NOW(),
             updated_at timestamp DEFAULT NOW()
           )
@@ -609,6 +611,46 @@ async function createPulseDataTables() {
   } catch (error) {
     console.error("[Database] Tables creation error:", error);
     // Don't throw - some features can work without all tables
+  }
+}
+
+// CRITICAL: Create agent_resources table with correct schema
+async function createAgentResourcesTable() {
+  try {
+    console.log('[Database] Creating/fixing agent_resources table...');
+    
+    // Drop table if it exists with wrong schema, then recreate
+    await pool.query('DROP TABLE IF EXISTS agent_resources CASCADE');
+    
+    // Create table with correct schema matching shared/schema.ts
+    const createTableSQL = `
+      CREATE TABLE IF NOT EXISTS agent_resources (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id varchar NOT NULL,
+        title varchar(255) NOT NULL,
+        type varchar(50) NOT NULL,
+        file_data bytea,
+        file_name varchar(255),
+        file_size integer,
+        mime_type varchar(100),
+        redirect_url text,
+        sort_order integer NOT NULL DEFAULT 0,
+        created_at timestamp DEFAULT NOW(),
+        updated_at timestamp DEFAULT NOW()
+      )
+    `;
+    
+    await pool.query(createTableSQL);
+    
+    // Add indexes for performance
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_agent_resources_user_id ON agent_resources (user_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_agent_resources_sort_order ON agent_resources (user_id, sort_order)');
+    
+    console.log('[Database] ✅ agent_resources table created successfully');
+    
+  } catch (error) {
+    console.error('[Database] ❌ Error creating agent_resources table:', error);
+    throw error;
   }
 }
 

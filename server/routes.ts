@@ -2645,7 +2645,32 @@ Respond with valid JSON in this exact format:
   });
 
   // POST /api/settings/resources/upload - multipart file upload
-  app.post('/api/settings/resources/upload', isAuthenticated, async (req: any, res) => {
+  const multer = require('multer');
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 25 * 1024 * 1024, // 25MB limit
+      files: 1
+    },
+    fileFilter: (req: any, file: any, cb: any) => {
+      const allowedTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+        'image/webp'
+      ];
+      
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Allowed: PDF, DOC, DOCX, JPG, PNG, WEBP'), false);
+      }
+    }
+  });
+
+  app.post('/api/settings/resources/upload', isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
       const user = await getDbUser(req);
       if (!user) {
@@ -2658,55 +2683,26 @@ Respond with valid JSON in this exact format:
         return res.status(400).json({ message: 'Maximum of 10 resources allowed per agent' });
       }
 
-      const { title, fileData, fileName, mimeType } = req.body;
-
-      if (!title || !fileData || !fileName || !mimeType) {
-        return res.status(400).json({ message: 'Missing required fields: title, fileData, fileName, mimeType' });
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
       }
 
-      // Validate file type
-      const allowedTypes = [
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'image/jpeg',
-        'image/png',
-        'image/webp'
-      ];
-      
-      if (!allowedTypes.includes(mimeType)) {
-        return res.status(400).json({ message: 'Invalid file type. Allowed: PDF, DOC, DOCX, JPG, PNG, WEBP' });
-      }
-
-      // Basic validation - check if it's a data URL
-      if (!fileData.startsWith('data:')) {
-        return res.status(400).json({ message: 'Invalid file format' });
-      }
-
-      // Check file size (rough estimate: base64 is ~33% larger than binary)
-      const sizeEstimate = (fileData.length * 3) / 4;
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      if (sizeEstimate > maxSize) {
-        return res.status(400).json({ message: 'File too large. Maximum size is 5MB.' });
-      }
+      const file = req.file;
+      const title = file.originalname.split('.')[0]; // Use filename as title
 
       // Determine resource type based on mime type
       let type = 'doc';
-      if (mimeType === 'application/pdf') type = 'pdf';
-      else if (mimeType.startsWith('image/')) type = 'image';
-
-      // Convert base64 to Buffer for bytea storage
-      const base64Data = fileData.split(',')[1];
-      const fileBuffer = Buffer.from(base64Data, 'base64');
+      if (file.mimetype === 'application/pdf') type = 'pdf';
+      else if (file.mimetype.startsWith('image/')) type = 'image';
 
       const resource = await storage.createAgentResource({
         userId: user.id,
         title,
         type,
-        fileData: fileBuffer,
-        fileName,
-        fileSize: fileBuffer.length,
-        mimeType,
+        fileData: file.buffer,
+        fileName: file.originalname,
+        fileSize: file.size,
+        mimeType: file.mimetype,
         redirectUrl: null
       });
 
@@ -5095,10 +5091,10 @@ Respond with valid JSON in this exact format:
 
       // Check file size (rough estimate: base64 is ~33% larger than binary)
       const sizeEstimate = (imageData.length * 3) / 4;
-      const maxSize = 5 * 1024 * 1024; // 5MB
+      const maxSize = 25 * 1024 * 1024; // 25MB
       if (sizeEstimate > maxSize) {
         console.log(`[Photo Upload] ERROR: Image too large:`, Math.round(sizeEstimate / 1024), 'KB');
-        return res.status(400).json({ message: "Image too large. Maximum size is 5MB." });
+        return res.status(400).json({ message: "Image too large. Maximum size is 25MB." });
       }
 
       console.log(`[Photo Upload] Image validation passed, size estimate: ${Math.round(sizeEstimate / 1024)}KB`);
