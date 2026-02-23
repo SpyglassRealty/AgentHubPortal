@@ -434,11 +434,13 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
             </div>
           </div>
           
-          {/* About This Home */}
-          <div className="mt-6 pt-4 border-t">
-            <h3 className="font-semibold text-gray-800 mb-2">About This Home</h3>
-            <p className="text-gray-600 text-sm whitespace-pre-wrap">
-              {property.description || property.remarks || property.publicRemarks || 'No description available'}
+          {/* About This Home - IMPROVED STYLING */}
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-gray-300">
+              About This Home
+            </h3>
+            <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
+              {property.description || 'No description available'}
             </p>
           </div>
         </div>
