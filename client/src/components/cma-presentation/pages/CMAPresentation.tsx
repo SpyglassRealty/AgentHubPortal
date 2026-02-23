@@ -27,7 +27,13 @@ export default function CMAPresentation() {
   };
 
   const handleClose = useCallback(() => {
-    navigate(`/cma/${id}`);
+    // If user navigated directly to this URL, there might not be a history stack
+    // Try to go back first, then fallback to CMA dashboard
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      navigate(`/cma/${id}`);
+    }
   }, [navigate, id]);
 
   useEffect(() => {
@@ -55,14 +61,31 @@ export default function CMAPresentation() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSlide, sidebarOpen, drawingMode, handleClose]);
 
-  const { data: cmaData, isError, isLoading } = useQuery({
+  const { data: cmaData, isError, isLoading, error } = useQuery({
     queryKey: ['/api/cma', id],
     queryFn: async () => {
+      console.log('[CMA Debug] Fetching CMA data for ID:', id);
       const res = await fetch('/api/cma/' + id);
-      if (!res.ok) throw new Error('Failed to fetch CMA');
-      return res.json();
+      console.log('[CMA Debug] CMA fetch response:', res.status, res.statusText);
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('[CMA Debug] CMA fetch error:', errorText);
+        throw new Error(`Failed to fetch CMA: ${res.status} ${errorText}`);
+      }
+      const data = await res.json();
+      console.log('[CMA Debug] CMA data received:', {
+        id: data.id,
+        name: data.name,
+        hasSubjectProperty: !!data.subjectProperty,
+        comparablesCount: data.comparableProperties?.length || 0,
+        firstCompFields: data.comparableProperties?.[0] ? Object.keys(data.comparableProperties[0]) : []
+      });
+      return data;
     },
     retry: false, // Don't retry on 404 — CMA doesn't exist
+    onError: (err) => {
+      console.error('[CMA Debug] Query error:', err);
+    }
   });
 
   // REMOVED: savedCma query - using cmaData instead
@@ -517,9 +540,18 @@ export default function CMAPresentation() {
         <div className="text-center max-w-md">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">CMA Not Found</h1>
           <p className="text-gray-600 mb-6">The CMA presentation you're looking for doesn't exist or has been removed.</p>
-          <a href="/" className="inline-block px-6 py-3 bg-[#EF4923] text-white rounded-lg hover:bg-[#d94420] transition-colors min-h-[44px]">
-            Return to Dashboard
-          </a>
+          <button 
+            onClick={() => {
+              if (window.history.length > 1) {
+                window.history.back();
+              } else {
+                navigate('/cma');
+              }
+            }}
+            className="inline-block px-6 py-3 bg-[#EF4923] text-white rounded-lg hover:bg-[#d94420] transition-colors min-h-[44px]"
+          >
+            Go Back
+          </button>
         </div>
       </div>
     );
