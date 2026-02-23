@@ -767,10 +767,10 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                     })()}
                   </div>
 
-                  {/* About This Home - Description Section */}
+                  {/* About This Home - Description Section (CDP styling) */}
                   {comp.description && (
                     <div className="pt-3 border-t border-gray-200">
-                      <div className="font-medium text-xs text-gray-900 mb-1">About This Home</div>
+                      <div className="font-medium text-xs text-gray-900 mb-2 pb-1 border-b border-gray-300">About This Home</div>
                       <div className="text-xs text-gray-600 leading-relaxed">
                         {comp.description.length > 200 
                           ? `${comp.description.substring(0, 200)}...`
