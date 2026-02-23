@@ -934,6 +934,25 @@ function ListListingCard({ listing, isDark, onClick, formatPrice }: any) {
 
 function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [mapboxToken, setMapboxToken] = useState<string | null>(null);
+  
+  // Debug logging for data pipeline
+  console.log('Properties ListingDetailModal debug:', {
+    mlsNumber: listing.mlsNumber,
+    hasDescription: !!listing.description,
+    hasDetailsDescription: !!(listing.details?.description),
+    hasRemarks: !!listing.remarks,
+    descriptionSource: listing.details?.description ? 'details.description' : listing.description ? 'description' : listing.remarks ? 'remarks' : 'NONE',
+    hasCoordinates: !!(listing.latitude || listing.longitude),
+  });
+
+  // Fetch Mapbox token
+  useEffect(() => {
+    fetch('/api/mapbox-token')
+      .then(res => res.json())
+      .then(data => setMapboxToken(data.token))
+      .catch(err => console.error('Failed to fetch Mapbox token:', err));
+  }, []);
   
   const cardBg = isDark ? 'bg-[#222222]' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
@@ -1081,42 +1100,54 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
               </div>
             </div>
 
-            {/* Address */}
+            {/* Address with Mapbox */}
             <div className={`p-4 rounded-lg border ${borderColor}`}>
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 mb-3">
                 <MapPin className={`w-5 h-5 ${textSecondary} mt-0.5`} />
                 <div>
                   <p className={`font-medium ${textPrimary}`}>{listing.address?.full}</p>
-                  {listing.latitude && listing.longitude && (
-                    <a 
-                      href={`https://www.google.com/maps?q=${listing.latitude},${listing.longitude}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#EF4923] text-sm flex items-center gap-1 mt-1 hover:underline"
-                    >
-                      View on Google Maps <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
                 </div>
               </div>
+              {mapboxToken && listing.latitude && listing.longitude ? (
+                <div className="w-full h-48 bg-gray-200 rounded-lg overflow-hidden">
+                  <img
+                    src={`https://api.mapbox.com/styles/v1/mapbox/${isDark ? 'dark-v11' : 'streets-v12'}/static/pin-s+EF4923(${listing.longitude},${listing.latitude})/${listing.longitude},${listing.latitude},15,0/400x300@2x?access_token=${mapboxToken}`}
+                    alt={`Map showing ${listing.address?.full}`}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : listing.latitude && listing.longitude ? (
+                <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <div className="text-center text-gray-500">
+                    <MapPin className="w-8 h-8 mx-auto mb-2" />
+                    <p>Loading map...</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <div className="text-center text-gray-500">
+                    <MapPin className="w-8 h-8 mx-auto mb-2" />
+                    <p className="italic">Location not available</p>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* About This Home - Description Section */}
-            {listing.description && (
-              <div className={`p-4 rounded-lg border ${borderColor} mt-4`}>
-                <h4 className={`font-semibold ${textPrimary} mb-3 pb-2 border-b-2 ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
-                  About This Home
-                </h4>
-                <div className={`text-sm ${textSecondary} leading-relaxed text-justify space-y-4`}>
-                  {listing.description
-                    .split(/\n\n|\r\n\r\n/)
-                    .filter(paragraph => paragraph.trim())
-                    .map((paragraph, index) => (
-                      <p key={index}>{paragraph.trim()}</p>
-                    ))}
-                </div>
+            {/* About This Home - ALWAYS VISIBLE */}
+            <div className={`p-4 rounded-lg border ${borderColor} mt-4`}>
+              <h4 className={`font-semibold ${textPrimary} mb-3 pb-2 border-b-2 ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                About This Home
+              </h4>
+              <div className={`text-sm ${textSecondary} leading-relaxed text-justify space-y-4`}>
+                {(listing.description || listing.details?.description || listing.remarks || listing.publicRemarks)
+                  ? (listing.description || listing.details?.description || listing.remarks || listing.publicRemarks)
+                      .split(/\n\n|\r\n\r\n/)
+                      .filter(p => p.trim())
+                      .map((p, i) => <p key={i}>{p.trim()}</p>)
+                  : <p className="italic">No description available</p>
+                }
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
