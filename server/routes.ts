@@ -3135,7 +3135,7 @@ Respond with valid JSON in this exact format:
             subdivision: listing.address?.area || listing.address?.neighborhood || '',
             latitude: listing.map?.latitude || listing.address?.latitude || null,
             longitude: listing.map?.longitude || listing.address?.longitude || null,
-            description: listing.remarks || listing.publicRemarks || null,
+            description: listing.details?.description || listing.remarks || listing.publicRemarks || null,
           };
         });
 
@@ -3291,14 +3291,16 @@ Respond with valid JSON in this exact format:
       if (data.listings && data.listings.length > 0) {
         data.listings.slice(0, 3).forEach((listing: any, index: number) => {
           console.log(`[REPLIERS DEBUG] Listing ${index + 1}/${Math.min(3, data.listings.length)} - ${listing.mlsNumber || listing.listingId}:`, {
-            // ISSUE B - Description fields
+            // ISSUE B - Description fields  
+            hasDetailsDescription: !!listing.details?.description,
             hasDescription: !!listing.description,
             hasRemarks: !!listing.remarks,
             hasPublicRemarks: !!listing.publicRemarks,
+            detailsDescriptionLength: (listing.details?.description || '').length,
             descriptionLength: (listing.description || '').length,
             remarksLength: (listing.remarks || '').length,
             publicRemarksLength: (listing.publicRemarks || '').length,
-            descriptionPreview: (listing.remarks || listing.publicRemarks || listing.description || '').substring(0, 100),
+            descriptionPreview: (listing.details?.description || listing.remarks || listing.publicRemarks || listing.description || '').substring(0, 100),
             
             // ISSUE C - List date fields  
             hasListDate: !!listing.listDate,
@@ -3441,7 +3443,7 @@ Respond with valid JSON in this exact format:
           subdivision: listing.address?.neighborhood || listing.address?.area || '',
           latitude: listing.map?.latitude || listing.address?.latitude || null,
           longitude: listing.map?.longitude || listing.address?.longitude || null,
-          description: listing.remarks || listing.publicRemarks || null,
+          description: listing.details?.description || listing.remarks || listing.publicRemarks || null,
         };
       });
 
