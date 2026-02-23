@@ -27,7 +27,7 @@ export const SITE_CONTENT_DEFAULTS: Record<string, any> = {
       },
       {
         value: "3% Higher",
-        description: "Sale Price",
+        description: "Close Price",
         subtext: "On average compared to other agents",
       },
       {

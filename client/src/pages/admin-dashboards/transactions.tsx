@@ -143,7 +143,7 @@ export default function TransactionsPage() {
       "Agent",
       "Type",
       "Side",
-      "Sale Price",
+      "Close Price",
       "Gross Commission",
       "Net Payout",
       "Status",

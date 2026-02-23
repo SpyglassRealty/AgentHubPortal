@@ -1826,7 +1826,7 @@ export function CMAReport({
                             <XAxis 
                               type="number" 
                               dataKey="sqft" 
-                              name="Square Feet"
+                              name="Living Area"
                               tickFormatter={(value) => value.toLocaleString()}
                               label={{ value: 'Square feet', position: 'bottom', offset: 20 }}
                             />
