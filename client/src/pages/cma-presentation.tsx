@@ -1019,6 +1019,26 @@ export default function CmaPresentationPage() {
     );
   }
 
+  // Add error handling for failed fetch
+  if (!isLoading && !cma) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">CMA Not Found</h1>
+          <p className="text-muted-foreground">The requested CMA could not be loaded.</p>
+          <Button
+            variant="outline"
+            onClick={() => window.history.back()}
+            className="mt-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background p-6">
@@ -1035,6 +1055,7 @@ export default function CmaPresentationPage() {
   }
 
   const cmaForDisplay: CmaData = cma || {
+    id: cmaId,
     name: "",
     subjectProperty: null,
     comparableProperties: [],
@@ -1106,18 +1127,20 @@ export default function CmaPresentationPage() {
         </div>
       </div>
 
-      {/* Slideshow Player */}
-      <SlideshowPlayer
-        widgets={CMA_WIDGETS}
-        cma={cmaForDisplay}
-        agentProfile={agentProfile}
-        activeWidgetId={activeWidgetId}
-        onClose={handleCloseSlideshow}
-        onNext={handleNextWidget}
-        onPrevious={handlePreviousWidget}
-        onEditBio={() => setIsBioModalOpen(true)}
-        isAgentProfileLoading={isAgentProfileLoading}
-      />
+      {/* Slideshow Player - Only render if we have data or are not loading */}
+      {(!isLoading && activeWidgetId) && (
+        <SlideshowPlayer
+          widgets={CMA_WIDGETS}
+          cma={cmaForDisplay}
+          agentProfile={agentProfile}
+          activeWidgetId={activeWidgetId}
+          onClose={handleCloseSlideshow}
+          onNext={handleNextWidget}
+          onPrevious={handlePreviousWidget}
+          onEditBio={() => setIsBioModalOpen(true)}
+          isAgentProfileLoading={isAgentProfileLoading}
+        />
+      )}
 
       {/* Bio Edit Modal */}
       <BioEditModal
