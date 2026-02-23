@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
-  bytea,
+  customType,
   date,
   index,
   integer,
@@ -14,6 +14,12 @@ import {
   uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
+
+const bytea = customType<{ data: Buffer }>({
+  dataType() {
+    return 'bytea';
+  },
+});
 import { z } from "zod";
 
 export const sessions = pgTable(
