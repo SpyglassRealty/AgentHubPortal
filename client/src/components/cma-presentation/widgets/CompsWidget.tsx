@@ -715,22 +715,26 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                       return null;
                     })()}
                     
-                    {/* Original Price - always show, use N/A if missing */}
+                    {/* Original List Price - RESO compliant label */}
                     <div>
-                      Original Price: {comp.originalPrice ? `$${comp.originalPrice.toLocaleString()}` : 'N/A'}
+                      Original List Price: {comp.originalPrice ? `$${comp.originalPrice.toLocaleString()}` : 'N/A'}
                     </div>
                     
                     {/* Current List Price */}
                     {listPrice && (
-                      <div>List: ${listPrice.toLocaleString()}</div>
+                      <div>List Price: ${listPrice.toLocaleString()}</div>
                     )}
                     
-                    {/* Listing Date */}
-                    <div className="flex justify-between py-1">
-                      <span className="text-gray-500 text-sm">Listing Date:</span>
-                      <span className="font-medium text-sm">
-                        {comp.listDate ? new Date(comp.listDate).toLocaleDateString('en-US') : 'N/A'}
-                      </span>
+                    {/* Listing Date - RESO compliant MM/DD/YYYY format */}
+                    <div>
+                      Listing Date: {comp.listDate ? (() => {
+                        const date = new Date(comp.listDate);
+                        if (isNaN(date.getTime())) return 'N/A';
+                        const mm = String(date.getMonth() + 1).padStart(2, '0');
+                        const dd = String(date.getDate()).padStart(2, '0');
+                        const yyyy = date.getFullYear();
+                        return `${mm}/${dd}/${yyyy}`;
+                      })() : 'N/A'}
                     </div>
                     
                     {/* Price per square foot */}
@@ -746,23 +750,68 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                       );
                     })()}
                     
+                    {/* Lot Size - check multiple sources */}
+                    {(() => {
+                      let lotSizeText = 'N/A';
+                      
+                      // Priority 1: lot.acres if available
+                      if (comp.lot?.acres && comp.lot.acres > 0) {
+                        lotSizeText = `${comp.lot.acres.toFixed(2)} acres`;
+                      }
+                      // Priority 2: lot.squareFeet if available  
+                      else if (comp.lot?.squareFeet && comp.lot.squareFeet > 0) {
+                        lotSizeText = `${comp.lot.squareFeet.toLocaleString()} sqft`;
+                      }
+                      // Priority 3: lotSizeAcres field
+                      else if (comp.lotSizeAcres && comp.lotSizeAcres > 0) {
+                        lotSizeText = `${comp.lotSizeAcres.toFixed(2)} acres`;
+                      }
+                      // Priority 4: lotSizeSquareFeet field  
+                      else if (comp.lotSizeSquareFeet && comp.lotSizeSquareFeet > 0) {
+                        lotSizeText = `${comp.lotSizeSquareFeet.toLocaleString()} sqft`;
+                      }
+                      // Priority 5: lotSize field (legacy)
+                      else if (comp.lotSize && comp.lotSize > 0) {
+                        lotSizeText = `${comp.lotSize.toLocaleString()} sqft`;
+                      }
+                      
+                      return (
+                        <div>Lot Size: {lotSizeText}</div>
+                      );
+                    })()}
+                    
+                    {/* Garage - check multiple sources */}
+                    {(() => {
+                      let garageText = 'N/A';
+                      
+                      // Check garageSpaces field first
+                      if (comp.garageSpaces && comp.garageSpaces > 0) {
+                        garageText = `${comp.garageSpaces} spaces`;
+                      }
+                      // Check if there's a details.numGarageSpaces (from raw data)
+                      else if ((comp as any).details?.numGarageSpaces && (comp as any).details.numGarageSpaces > 0) {
+                        garageText = `${(comp as any).details.numGarageSpaces} spaces`;
+                      }
+                      
+                      return (
+                        <div>Garage: {garageText}</div>
+                      );
+                    })()}
+                    
                     {/* For Closed/Sold comps - add sold price and sold date */}
                     {comp.soldPrice && (
-                      <div>Sold Price: ${comp.soldPrice.toLocaleString()}</div>
+                      <div>Close Price: ${comp.soldPrice.toLocaleString()}</div>
                     )}
                     
                     {(() => {
                       if (!comp.soldDate) return null;
                       const date = new Date(comp.soldDate);
                       if (isNaN(date.getTime())) return null;
+                      const mm = String(date.getMonth() + 1).padStart(2, '0');
+                      const dd = String(date.getDate()).padStart(2, '0');
+                      const yyyy = date.getFullYear();
                       return (
-                        <div>
-                          Sold Date: {date.toLocaleDateString('en-US', {
-                            month: '2-digit',
-                            day: '2-digit',
-                            year: 'numeric'
-                          })}
-                        </div>
+                        <div>Close Date: {mm}/{dd}/{yyyy}</div>
                       );
                     })()}
                   </div>
