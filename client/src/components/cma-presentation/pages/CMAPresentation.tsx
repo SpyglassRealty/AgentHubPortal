@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Header } from '@/components/cma-presentation/components/Header';
@@ -12,7 +12,58 @@ import { Loader2 } from 'lucide-react';
 import { useRef } from 'react';
 import type { Transaction, Cma, AgentProfile } from '@shared/schema';
 
-export default function CMAPresentation() {
+// Error Boundary Component
+class CMAErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error('[CMA Presentation] Uncaught error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-gray-50">
+          <div className="text-center max-w-md p-8">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h1>
+            <p className="text-gray-600 mb-4">
+              The CMA presentation encountered an error and couldn't load properly.
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              Error: {this.state.error?.message || 'Unknown error'}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-3 bg-[#EF4923] text-white rounded-lg hover:bg-[#d94420] transition-colors mr-4"
+            >
+              Reload Page
+            </button>
+            <button
+              onClick={() => window.history.back()}
+              className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Go Back
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+function CMAPresentation() {
   const [, params] = useRoute('/cma/:id/cma-presentation');
   const [, navigate] = useLocation();
   const id = params?.id;
@@ -476,8 +527,8 @@ export default function CMAPresentation() {
         livingArea: 0,
         standardStatus: 'Active',
         mlsNumber: '',
-        listPrice: suggestedListPrice || 0,
-        price: suggestedListPrice || 0,
+        listPrice: 0, // Remove circular dependency - will be set later
+        price: 0, // Remove circular dependency - will be set later
       } as any;
     }
     
@@ -667,5 +718,14 @@ export default function CMAPresentation() {
       
       <DrawingCanvas ref={drawingCanvasRef} isActive={drawingMode} onClose={() => setDrawingMode(false)} />
     </div>
+  );
+}
+
+// Export wrapped with ErrorBoundary
+export default function CMAPresentationWithErrorBoundary() {
+  return (
+    <CMAErrorBoundary>
+      <CMAPresentation />
+    </CMAErrorBoundary>
   );
 }
