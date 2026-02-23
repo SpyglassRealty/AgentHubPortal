@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  bytea,
   date,
   index,
   integer,
@@ -124,6 +125,24 @@ export const agentProfiles = pgTable("agent_profiles", {
 
 export type AgentProfile = typeof agentProfiles.$inferSelect;
 export type InsertAgentProfile = typeof agentProfiles.$inferInsert;
+
+export const agentResources = pgTable("agent_resources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: varchar("title", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // 'pdf', 'doc', 'image', 'link'
+  fileData: bytea("file_data"), // file stored as binary (for uploaded files)
+  fileName: varchar("file_name", { length: 255 }), // original filename
+  fileSize: integer("file_size"), // size in bytes
+  mimeType: varchar("mime_type", { length: 100 }), // e.g. 'application/pdf'
+  redirectUrl: text("redirect_url"), // for link-type resources
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type AgentResource = typeof agentResources.$inferSelect;
+export type InsertAgentResource = typeof agentResources.$inferInsert;
 
 export const contextSuggestions = pgTable("context_suggestions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
