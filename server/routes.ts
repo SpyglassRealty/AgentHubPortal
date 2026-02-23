@@ -1375,7 +1375,7 @@ export async function registerRoutes(
           livingArea: sqft,
           lotSize: listing.lotSize || details.lotSize,
           yearBuilt: listing.yearBuilt || details.yearBuilt,
-          propertyType: listing.propertyType || listing.details?.propertyType || listing.class || null,
+          propertyType: listing.details?.style || listing.details?.propertyType || listing.class || 'N/A',
           subdivision: listing.subdivision || listing.area,
           latitude: listing.map?.latitude || listing.latitude,
           longitude: listing.map?.longitude || listing.longitude,
