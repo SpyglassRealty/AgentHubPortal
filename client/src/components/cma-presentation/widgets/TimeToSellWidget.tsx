@@ -152,7 +152,7 @@ function PropertySidebarItem({ property, showPercentOfList = false, isSelected =
 function TimeToSellInfoModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl [&>button]:hidden">
+      <DialogContent className="max-w-2xl">
         <div className="space-y-4">
           <h2 className="text-xl font-bold">TIME TO SELL SCATTER CHART</h2>
           <p className="text-muted-foreground">
@@ -846,7 +846,7 @@ export function TimeToSellWidget({
                       
                       {/* Hollow circles for original list price */}
                       <Scatter
-                        name="Original Price"
+                        name="Original List Price"
                         data={originalPriceData}
                         dataKey="originalPrice"
                         shape={<HollowCircle />}

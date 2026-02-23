@@ -1136,7 +1136,7 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
               <h4 className={`font-semibold ${textPrimary} mb-3`}>Price History & Dates</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className={textSecondary}>Original Price:</span>
+                  <span className={textSecondary}>Original List Price:</span>
                   <span className={`ml-2 ${textPrimary} font-medium`}>
                     {listing.originalPrice ? formatPrice(listing.originalPrice) : 'N/A'}
                   </span>
