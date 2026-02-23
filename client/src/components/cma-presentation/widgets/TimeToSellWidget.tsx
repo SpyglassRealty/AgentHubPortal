@@ -229,6 +229,15 @@ function PropertyCardPanel({ property, subjectProperty, onClose, onViewClick }: 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '—';
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    return `${mm}/${dd}/${yyyy}`;
+  };
+
   const displayPrice = property.soldPrice || property.listPrice || property.price;
   const currentListPrice = property.listPrice || property.price;
   const soldPercent = property.soldPrice && property.originalPrice
@@ -344,32 +353,36 @@ function PropertyCardPanel({ property, subjectProperty, onClose, onViewClick }: 
               {property.sqft?.toLocaleString() ?? 'N/A'}
             </span>
           </div>
-          <div className="flex justify-between px-3 sm:px-4 py-2">
-            <span className="text-xs sm:text-sm text-muted-foreground">
-              Lot Size
-              {lotSizeDiff && (
-                <span className={`ml-1 text-[10px] sm:text-xs ${lotSizeDiff.isPositive ? 'text-green-500' : 'text-red-500'}`}>
-                  {lotSizeDiff.text}
-                </span>
-              )}
-            </span>
-            <span className="text-xs sm:text-sm font-medium text-foreground">
-              {property.lotSize?.toLocaleString() ?? 'N/A'}
-            </span>
-          </div>
-          <div className="flex justify-between px-3 sm:px-4 py-2">
-            <span className="text-xs sm:text-sm text-muted-foreground">
-              Garage
-              {garageDiff && (
-                <span className={`ml-1 text-[10px] sm:text-xs ${garageDiff.isPositive ? 'text-green-500' : 'text-red-500'}`}>
-                  {garageDiff.text}
-                </span>
-              )}
-            </span>
-            <span className="text-xs sm:text-sm font-medium text-foreground">
-              {property.garageSpaces ?? 'N/A'}
-            </span>
-          </div>
+          {(property.lotSizeArea || property.lotSizeSquareFeet || property.lot?.acres || property.lotSize) && (
+            <div className="flex justify-between px-3 sm:px-4 py-2">
+              <span className="text-xs sm:text-sm text-muted-foreground">
+                Lot Size
+                {lotSizeDiff && (
+                  <span className={`ml-1 text-[10px] sm:text-xs ${lotSizeDiff.isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                    {lotSizeDiff.text}
+                  </span>
+                )}
+              </span>
+              <span className="text-xs sm:text-sm font-medium text-foreground">
+                {property.lotSize?.toLocaleString() ?? property.lotSizeSquareFeet?.toLocaleString() ?? (property.lot?.acres ? `${property.lot.acres} acres` : 'N/A')}
+              </span>
+            </div>
+          )}
+          {(property.garageSpaces || (property as any).details?.numGarageSpaces) && (
+            <div className="flex justify-between px-3 sm:px-4 py-2">
+              <span className="text-xs sm:text-sm text-muted-foreground">
+                Garage
+                {garageDiff && (
+                  <span className={`ml-1 text-[10px] sm:text-xs ${garageDiff.isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                    {garageDiff.text}
+                  </span>
+                )}
+              </span>
+              <span className="text-xs sm:text-sm font-medium text-foreground">
+                {property.garageSpaces || (property as any).details?.numGarageSpaces}
+              </span>
+            </div>
+          )}
         </div>
         
         <div className="px-3 sm:px-4 py-2 bg-muted/50 border-y">
@@ -377,54 +390,52 @@ function PropertyCardPanel({ property, subjectProperty, onClose, onViewClick }: 
         </div>
         
         <div className="divide-y divide-muted">
-          {property.originalPrice && property.originalPrice !== currentListPrice && (
-            <div className="flex justify-between px-3 sm:px-4 py-2">
-              <span className="text-xs sm:text-sm text-muted-foreground">Orig. Price</span>
-              <span className="text-xs sm:text-sm font-medium text-foreground">
-                {formatCurrency(property.originalPrice)}
-              </span>
-            </div>
-          )}
           <div className="flex justify-between px-3 sm:px-4 py-2">
             <span className="text-xs sm:text-sm text-muted-foreground">List Price</span>
             <span className="text-xs sm:text-sm font-medium text-foreground">
               {formatCurrency(currentListPrice)}
             </span>
           </div>
+          <div className="flex justify-between px-3 sm:px-4 py-2">
+            <span className="text-xs sm:text-sm text-muted-foreground">Original List Price</span>
+            <span className="text-xs sm:text-sm font-medium text-foreground">
+              {property.originalPrice ? formatCurrency(property.originalPrice) : '—'}
+            </span>
+          </div>
+          <div className="flex justify-between px-3 sm:px-4 py-2">
+            <span className="text-xs sm:text-sm text-muted-foreground">Listing Date</span>
+            <span className="text-xs sm:text-sm font-medium text-foreground">
+              {property.listDate ? formatDate(property.listDate) : '—'}
+            </span>
+          </div>
+          <div className="flex justify-between px-3 sm:px-4 py-2">
+            <span className="text-xs sm:text-sm text-muted-foreground">$/Sqft</span>
+            <span className="text-xs sm:text-sm font-medium text-foreground">
+              {property.sqft ? formatCurrency(Math.round((property.listPrice || property.price || 0) / property.sqft)) : '—'}
+            </span>
+          </div>
+          <div className="flex justify-between px-3 sm:px-4 py-2">
+            <span className="text-xs sm:text-sm text-muted-foreground">Days on Market</span>
+            <span className="text-xs sm:text-sm font-medium text-foreground">
+              {(property as any).simpleDaysOnMarket ?? property.daysOnMarket}
+            </span>
+          </div>
           {property.soldPrice && (
             <div className="flex justify-between px-3 sm:px-4 py-2">
-              <span className="text-xs sm:text-sm text-muted-foreground">
-                Close Price {soldPercent && (
-                  <span className="text-muted-foreground/60">{soldPercent}%</span>
-                )}
-              </span>
+              <span className="text-xs sm:text-sm text-muted-foreground">Close Price</span>
               <span className="text-xs sm:text-sm font-medium text-foreground">
                 {formatCurrency(property.soldPrice)}
               </span>
             </div>
           )}
-          {property.pricePerSqft > 0 && (
-            <div className="flex justify-between px-3 sm:px-4 py-2">
-              <span className="text-xs sm:text-sm text-muted-foreground">$/Sq. Ft.</span>
-              <span className="text-xs sm:text-sm font-medium text-foreground">
-                ${property.pricePerSqft.toLocaleString()}
-              </span>
-            </div>
-          )}
           {property.soldDate && (
             <div className="flex justify-between px-3 sm:px-4 py-2">
-              <span className="text-xs sm:text-sm text-muted-foreground">Sold Date</span>
+              <span className="text-xs sm:text-sm text-muted-foreground">Close Date</span>
               <span className="text-xs sm:text-sm font-medium text-foreground">
-                {new Date(property.soldDate).toLocaleDateString()}
+                {formatDate(property.soldDate)}
               </span>
             </div>
           )}
-          <div className="flex justify-between px-3 sm:px-4 py-2">
-            <span className="text-xs sm:text-sm text-muted-foreground">DOM</span>
-            <span className="text-xs sm:text-sm font-medium text-foreground">
-              {property.daysOnMarket}
-            </span>
-          </div>
         </div>
         
         <div className="p-3 sm:p-4">
@@ -846,7 +857,7 @@ export function TimeToSellWidget({
                       
                       {/* Hollow circles for original list price */}
                       <Scatter
-                        name="Original List Price"
+                        name="Original Price"
                         data={originalPriceData}
                         dataKey="originalPrice"
                         shape={<HollowCircle />}
