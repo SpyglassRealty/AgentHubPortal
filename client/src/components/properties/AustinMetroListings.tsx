@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Building2, Search, X, ChevronLeft, ChevronRight, ChevronDown,
@@ -6,6 +6,8 @@ import {
   RotateCcw, MapPin, ExternalLink
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 type ViewMode = 'grid' | 'list' | 'table';
 
@@ -932,27 +934,102 @@ function ListListingCard({ listing, isDark, onClick, formatPrice }: any) {
   );
 }
 
+// Interactive Mapbox Map Component
+function PropertyMapPreview({ latitude, longitude, isDark }: { latitude: number; longitude: number; isDark: boolean; }) {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+
+  useEffect(() => {
+    if (!mapContainer.current || !latitude || !longitude) return;
+
+    // Fetch Mapbox token
+    fetch('/api/mapbox-token')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.token) return;
+        
+        mapboxgl.accessToken = data.token;
+
+        map.current = new mapboxgl.Map({
+          container: mapContainer.current!,
+          style: isDark ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12',
+          center: [longitude, latitude],
+          zoom: 15,
+          interactive: false,
+          attributionControl: false,
+        });
+
+        // Create custom Spyglass marker
+        const marker = document.createElement('div');
+        marker.style.width = '24px';
+        marker.style.height = '24px';
+        marker.style.borderRadius = '50%';
+        marker.style.backgroundColor = '#EF4923';
+        marker.style.border = '3px solid white';
+        marker.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+
+        new mapboxgl.Marker({ element: marker })
+          .setLngLat([longitude, latitude])
+          .addTo(map.current);
+      })
+      .catch(err => console.error('Failed to load Mapbox token:', err));
+
+    return () => {
+      map.current?.remove();
+    };
+  }, [latitude, longitude, isDark]);
+
+  return <div ref={mapContainer} className="w-full h-48 rounded-lg overflow-hidden" />;
+}
+
+// Status badge color helper
+const getStatusColor = (status: string) => {
+  const s = status?.toLowerCase() || '';
+  if (s.includes('active') && !s.includes('under')) return 'bg-green-500';
+  if (s.includes('active under') || s.includes('under contract')) return 'bg-orange-500';
+  if (s.includes('closed') || s.includes('sold')) return 'bg-red-500';
+  if (s.includes('pending')) return 'bg-gray-500';
+  return 'bg-gray-400';
+};
+
+// Price per sqft helper
+const calculatePricePerSqft = (price: number, sqft: number) => {
+  if (!price || !sqft) return null;
+  return Math.round(price / sqft);
+};
+
+// Standard date formatter - RESO compliant MM/DD/YYYY format
+const formatDate = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return 'N/A';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return 'N/A';
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${mm}/${dd}/${yyyy}`;
+};
+
 function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-  const [mapboxToken, setMapboxToken] = useState<string | null>(null);
   
   // Debug logging for data pipeline
-  console.log('Properties ListingDetailModal debug:', {
+  console.log('[Properties Modal] Full listing data:', {
     mlsNumber: listing.mlsNumber,
+    type: listing.type, // Should be "Sale" (transaction)
+    propertyType: listing.propertyType, // Should be "Single Family Residence" etc
+    class: listing.class,
     hasDescription: !!listing.description,
     hasDetailsDescription: !!(listing.details?.description),
     hasRemarks: !!listing.remarks,
     descriptionSource: listing.details?.description ? 'details.description' : listing.description ? 'description' : listing.remarks ? 'remarks' : 'NONE',
-    hasCoordinates: !!(listing.latitude || listing.longitude),
+    hasMapCoords: !!(listing.map?.latitude),
+    latitude: listing.map?.latitude || listing.latitude,
+    longitude: listing.map?.longitude || listing.longitude,
+    hasOriginalPrice: !!listing.originalPrice,
+    hasListingDate: !!listing.listingDate,
+    hasYearBuilt: !!(listing.details?.yearBuilt || listing.yearBuilt),
+    hasSqft: !!listing.livingArea,
   });
-
-  // Fetch Mapbox token
-  useEffect(() => {
-    fetch('/api/mapbox-token')
-      .then(res => res.json())
-      .then(data => setMapboxToken(data.token))
-      .catch(err => console.error('Failed to fetch Mapbox token:', err));
-  }, []);
   
   const cardBg = isDark ? 'bg-[#222222]' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
@@ -977,11 +1054,21 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
         className={`${cardBg} rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className={`flex items-center justify-between p-4 border-b ${borderColor}`}>
-          <div>
-            <h3 className={`text-xl font-bold ${textPrimary}`}>{formatPrice(listing.listPrice)}</h3>
-            <p className={`text-sm ${textSecondary}`}>{streetAddress}, {listing.address?.city}</p>
+        {/* Header - Full Address with MLS# */}
+        <div className={`flex items-start justify-between p-4 border-b ${borderColor}`}>
+          <div className="flex-1">
+            <div className="flex items-baseline gap-4">
+              <h3 className={`text-2xl font-bold ${textPrimary}`}>{formatPrice(listing.listPrice)}</h3>
+              {calculatePricePerSqft(listing.listPrice, listing.livingArea) && (
+                <span className={`text-lg font-semibold ${textPrimary}`}>
+                  ${calculatePricePerSqft(listing.listPrice, listing.livingArea)}/sqft
+                </span>
+              )}
+            </div>
+            <h4 className={`text-lg font-medium ${textPrimary} mb-1`}>
+              {listing.address?.full || `${streetAddress}, ${listing.address?.city}`}
+            </h4>
+            <p className={`text-sm ${textSecondary}`}>MLS# {listing.mlsNumber}</p>
           </div>
           <button
             onClick={onClose}
@@ -1065,6 +1152,35 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
               </div>
             </div>
 
+            {/* Price History & Dates */}
+            <div className={`p-4 rounded-lg border ${borderColor}`}>
+              <h4 className={`font-semibold ${textPrimary} mb-3`}>Price History & Dates</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className={textSecondary}>Original Price:</span>
+                  <span className={`ml-2 ${textPrimary} font-medium`}>
+                    {listing.originalPrice ? formatPrice(listing.originalPrice) : 'N/A'}
+                  </span>
+                </div>
+                <div>
+                  <span className={textSecondary}>Listing Date:</span>
+                  <span className={`ml-2 ${textPrimary} font-medium`}>
+                    {formatDate(listing.listDate)}
+                  </span>
+                </div>
+                <div>
+                  <span className={textSecondary}>List Price:</span>
+                  <span className={`ml-2 ${textPrimary} font-medium`}>{formatPrice(listing.listPrice)}</span>
+                </div>
+                <div>
+                  <span className={textSecondary}>Status:</span>
+                  <span className={`inline-flex px-2 py-1 text-xs font-medium text-white rounded-full ml-2 ${getStatusColor(listing.status)}`}>
+                    {listing.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Property Info */}
             <div className={`p-4 rounded-lg border ${borderColor}`}>
               <h4 className={`font-semibold ${textPrimary} mb-3`}>Property Details</h4>
@@ -1075,7 +1191,9 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
                 </div>
                 <div>
                   <span className={textSecondary}>Status:</span>
-                  <span className={`ml-2 ${textPrimary}`}>{listing.status}</span>
+                  <span className={`inline-flex px-2 py-1 text-xs font-medium text-white rounded-full ml-2 ${getStatusColor(listing.status)}`}>
+                    {listing.status}
+                  </span>
                 </div>
                 <div>
                   <span className={textSecondary}>Year Built:</span>
@@ -1124,27 +1242,15 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
                   <p className={`font-medium ${textPrimary}`}>{listing.address?.full}</p>
                 </div>
               </div>
-              {mapboxToken && listing.latitude && listing.longitude ? (
-                <div className="w-full h-48 bg-gray-200 rounded-lg overflow-hidden">
-                  <img
-                    src={`https://api.mapbox.com/styles/v1/mapbox/${isDark ? 'dark-v11' : 'streets-v12'}/static/pin-s+EF4923(${listing.longitude},${listing.latitude})/${listing.longitude},${listing.latitude},15,0/400x300@2x?access_token=${mapboxToken}`}
-                    alt={`Map showing ${listing.address?.full}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ) : listing.latitude && listing.longitude ? (
-                <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <div className="text-center text-gray-500">
-                    <MapPin className="w-8 h-8 mx-auto mb-2" />
-                    <p>Loading map...</p>
-                  </div>
-                </div>
+{(listing.map?.latitude || listing.latitude) && (listing.map?.longitude || listing.longitude) ? (
+                <PropertyMapPreview 
+                  latitude={listing.map?.latitude || listing.latitude} 
+                  longitude={listing.map?.longitude || listing.longitude} 
+                  isDark={isDark} 
+                />
               ) : (
-                <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <div className="text-center text-gray-500">
-                    <MapPin className="w-8 h-8 mx-auto mb-2" />
-                    <p className="italic">Location not available</p>
-                  </div>
+                <div className="w-full h-48 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                  <span className="text-gray-400 text-sm">Location not available</span>
                 </div>
               )}
             </div>
