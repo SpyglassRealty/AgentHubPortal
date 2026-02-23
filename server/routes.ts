@@ -1381,6 +1381,7 @@ export async function registerRoutes(
           longitude: listing.map?.longitude || listing.longitude,
           photos,
           listOfficeName: listing.office?.brokerageName || listing.listOfficeName,
+          description: listing.details?.description || null,
         };
       });
 
