@@ -334,6 +334,13 @@ export default function CMAPresentation() {
         sqft: parsedSqft,
         lotSizeAcres: lotAcres,
         daysOnMarket: comp.daysOnMarket || comp.dom || 0,
+        
+        // CRITICAL: Add missing fields that were being dropped during transformation
+        description: comp.description || comp.remarks || comp.publicRemarks || null,
+        listDate: comp.listDate || null,
+        soldDate: comp.soldDate || null, 
+        originalPrice: comp.originalPrice || null,
+        
         photos: (() => {
           // Based on official Repliers API reference:
           // 1. Photos come from 'images' field as fully qualified URLs
@@ -411,6 +418,22 @@ export default function CMAPresentation() {
         latitude: lat,
         longitude: lng,
       };
+    }).map((transformedComp, index) => {
+      // DEBUG: Log first comp to verify fields are preserved
+      if (index === 0) {
+        console.log('🔍 FRONTEND TRANSFORMATION DEBUG - First comp after transformation:', {
+          mlsNumber: transformedComp.mlsNumber,
+          originalPrice: transformedComp.originalPrice,
+          listDate: transformedComp.listDate, 
+          description: transformedComp.description,
+          hasFields: {
+            originalPrice: !!transformedComp.originalPrice,
+            listDate: !!transformedComp.listDate,
+            description: !!transformedComp.description,
+          }
+        });
+      }
+      return transformedComp;
     });
   }, [cmaData?.comparableProperties, normalizeStatusWithLastStatus]);
 
