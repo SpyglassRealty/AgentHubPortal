@@ -1100,6 +1100,23 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
                 </div>
               </div>
             </div>
+
+            {/* About This Home - Description Section */}
+            {listing.description && (
+              <div className={`p-4 rounded-lg border ${borderColor} mt-4`}>
+                <h4 className={`font-semibold ${textPrimary} mb-3 pb-2 border-b-2 ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  About This Home
+                </h4>
+                <div className={`text-sm ${textSecondary} leading-relaxed text-justify space-y-4`}>
+                  {listing.description
+                    .split(/\n\n|\r\n\r\n/)
+                    .filter(paragraph => paragraph.trim())
+                    .map((paragraph, index) => (
+                      <p key={index}>{paragraph.trim()}</p>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
