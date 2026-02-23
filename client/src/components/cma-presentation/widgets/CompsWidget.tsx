@@ -451,7 +451,7 @@ function StatusLegend() {
 }
 
 // Side-by-side comparison view component
-function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, mapboxToken, setSelectedProperty }: { comparables: CmaProperty[]; subjectProperty?: CmaProperty; geocodedCoords?: {latitude: number; longitude: number} | null; mapboxToken?: string; setSelectedProperty?: (property: CmaProperty | null) => void }) {
+function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, mapboxToken, handlePropertyClick }: { comparables: CmaProperty[]; subjectProperty?: CmaProperty; geocodedCoords?: {latitude: number; longitude: number} | null; mapboxToken?: string; handlePropertyClick?: (comp: CmaProperty) => Promise<void> }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   
   // Responsive columns based on screen width
@@ -616,7 +616,7 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
             const soldPctColor = soldPct ? (soldPct >= 100 ? 'text-green-600' : soldPct >= 95 ? 'text-gray-900' : 'text-red-600') : '';
             
             return (
-              <div key={comp.id} className="w-56 flex-shrink-0 border-r border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setSelectedProperty(comp)}>
+              <div key={comp.id} className="w-56 flex-shrink-0 border-r border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => handlePropertyClick?.(comp)}>
                 <div className="p-4 space-y-4">
                   {/* Comp Header */}
                   <div className="text-center">
@@ -628,7 +628,7 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                           className="w-full h-full object-cover cursor-pointer hover:opacity-80"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedProperty(comp);
+                            handlePropertyClick?.(comp);
                           }}
                         />
                       ) : (
@@ -889,6 +889,45 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
   const [mapboxToken, setMapboxToken] = useState('');
   const [geocodedCoords, setGeocodedCoords] = useState<{latitude: number; longitude: number}|null>(null);
 
+  // Fresh MLS fetch handler - ensures complete property data for modal
+  const handlePropertyClick = async (comp: CmaProperty) => {
+    try {
+      console.log(`🔍 FRESH MLS FETCH - ${comp.address} (${comp.mlsNumber})`);
+      
+      // Fetch fresh MLS data instead of using stored data
+      const response = await fetch(`/api/cma/search-properties`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mlsNumbers: [comp.mlsNumber]
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.listings && data.listings.length > 0) {
+          const freshProperty = data.listings[0];
+          console.log('🔍 FRESH MLS SUCCESS - Complete property data:', {
+            hasDescription: !!freshProperty.description,
+            descriptionPreview: freshProperty.description?.substring(0, 100),
+            hasListDate: !!freshProperty.listDate,
+            listDate: freshProperty.listDate,
+            hasOriginalPrice: !!freshProperty.originalPrice,
+            originalPrice: freshProperty.originalPrice,
+          });
+          setSelectedProperty(freshProperty);
+          return;
+        }
+      }
+      
+      console.log('🔍 FRESH MLS FALLBACK - Using stored data');
+      setSelectedProperty(comp);
+    } catch (error) {
+      console.error('🔍 FRESH MLS ERROR - Using stored data fallback:', error);
+      setSelectedProperty(comp);
+    }
+  };
+
   // Fetch Mapbox token on mount
   useEffect(() => {
     fetch('/api/mapbox-token')
@@ -1028,7 +1067,7 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
             subjectProperty={subjectProperty}
             geocodedCoords={geocodedCoords}
             mapboxToken={mapboxToken}
-            setSelectedProperty={setSelectedProperty}
+            handlePropertyClick={handlePropertyClick}
           />
         )}
 
