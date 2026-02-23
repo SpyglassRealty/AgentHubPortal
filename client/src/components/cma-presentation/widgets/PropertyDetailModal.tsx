@@ -250,7 +250,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
                   <div className="space-y-2">
                     {property.originalPrice && property.originalPrice !== property.listPrice && (
                       <div>
-                        <span className="text-gray-600">Original List Price: </span>
+                        <span className="text-gray-600">Original Price: </span>
                         <span className="line-through text-gray-900">{formatCurrency(property.originalPrice)}</span>
                       </div>
                     )}

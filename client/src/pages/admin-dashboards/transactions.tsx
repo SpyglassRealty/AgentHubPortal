@@ -359,7 +359,7 @@ export default function TransactionsPage() {
                       onClick={() => handleSort("price")}
                     >
                       <div className="flex items-center justify-end">
-                        Sale Price
+                        Close Price
                         <SortIcon field="price" />
                       </div>
                     </TableHead>
