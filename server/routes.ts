@@ -1375,13 +1375,18 @@ export async function registerRoutes(
           livingArea: sqft,
           lotSize: listing.lotSize || details.lotSize,
           yearBuilt: listing.yearBuilt || details.yearBuilt,
-          propertyType: listing.propertyType || listing.type || details.propertyType,
+          propertyType: listing.propertyType || listing.details?.propertyType || listing.class || null,
           subdivision: listing.subdivision || listing.area,
           latitude: listing.map?.latitude || listing.latitude,
           longitude: listing.map?.longitude || listing.longitude,
           photos,
           listOfficeName: listing.office?.brokerageName || listing.listOfficeName,
-          description: listing.details?.description || null,
+          description: listing.details?.description || listing.remarks || listing.publicRemarks || null,
+          originalPrice: listing.originalPrice || listing.details?.originalPrice || null,
+          map: {
+            latitude: listing.map?.latitude || listing.latitude || null,
+            longitude: listing.map?.longitude || listing.longitude || null,
+          },
         };
       });
 
