@@ -639,26 +639,6 @@ export interface Property {
   rawData?: Record<string, any>;
 }
 
-// Agent resources for CMA presentations
-export const agentResources = pgTable("agent_resources", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: text("user_id").notNull(),
-  name: text("name").notNull(),
-  type: text("type").notNull(), // 'link' or 'file'
-  url: text("url"), // For external links
-  fileUrl: text("file_url"), // For uploaded files (object storage URL)
-  fileName: text("file_name"), // Original file name
-  fileData: text("file_data"), // Base64 encoded file content (for database storage)
-  fileMimeType: text("file_mime_type"), // MIME type of uploaded file
-  isActive: boolean("is_active").default(true),
-  displayOrder: integer("display_order").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export type AgentResource = typeof agentResources.$inferSelect;
-export type InsertAgentResource = typeof agentResources.$inferInsert;
-
 // Helper schema for optional URLs that auto-prepends https:// if missing
 const optionalUrlSchema = z
   .string()
