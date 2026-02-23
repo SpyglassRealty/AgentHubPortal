@@ -44,18 +44,8 @@ function DetailItem({ label, value, icon }: { label: string; value: string; icon
 }
 
 export function PropertyDetailModal({ property, onClose }: PropertyDetailModalProps) {
-  // Debug logging for description and other fields
-  console.log('🔍 PropertyDetailModal DEBUG:', {
-    address: property.address,
-    originalPrice: property.originalPrice,
-    listDate: property.listDate,
-    description: property.description,
-    descriptionLength: property.description?.length || 0,
-    hasDescription: !!property.description,
-    publicRemarks: (property as any).publicRemarks,
-    remarks: (property as any).remarks,
-    allFields: Object.keys(property)
-  });
+  // Debug logging - log full property object
+  console.log('🔍 FULL PROPERTY OBJECT:', property);
   
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [fullscreenPhoto, setFullscreenPhoto] = useState(false);
@@ -383,6 +373,15 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
               value={extractDOM(property)?.toString() || 'N/A'} 
               icon={<Clock className="w-3 h-3" />}
             />
+            
+            {/* Listing Date */}
+            <div className="flex justify-between py-1">
+              <span className="text-gray-500">Listing Date:</span>
+              <span className="font-medium">
+                {property.listDate ? new Date(property.listDate).toLocaleDateString('en-US') : 'N/A'}
+              </span>
+            </div>
+            
             <div data-testid="detail-status">
               <p className="text-sm text-gray-600">Status</p>
               <Badge className={`${getStatusColor(property.status, property.isSubject)} text-white mt-1`}>
@@ -435,34 +434,13 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
             </div>
           </div>
           
-          {(() => {
-            const description = property.description || 
-                               (property as any).publicRemarks || 
-                               (property as any).remarks;
-            console.log(`🔍 MODAL DESCRIPTION DEBUG - ${property.address}:`, { 
-              description: property.description, 
-              publicRemarks: (property as any).publicRemarks, 
-              remarks: (property as any).remarks,
-              selected: description,
-              hasDescription: !!description
-            });
-            if (!description) return (
-              <div className="p-4 border-t" data-testid="property-description-section">
-                <h3 className="text-sm font-medium mb-2 text-gray-600">About This Home</h3>
-                <p className="text-sm text-gray-500 italic" data-testid="property-description-text">
-                  No description available
-                </p>
-              </div>
-            );
-            return (
-              <div className="p-4 border-t" data-testid="property-description-section">
-                <h3 className="text-sm font-medium mb-2 text-gray-600">About This Home</h3>
-                <p className="text-sm text-gray-900 leading-relaxed" data-testid="property-description-text">
-                  {description}
-                </p>
-              </div>
-            );
-          })()}
+          {/* About This Home */}
+          <div className="mt-6 pt-4 border-t">
+            <h3 className="font-semibold text-gray-800 mb-2">About This Home</h3>
+            <p className="text-gray-600 text-sm whitespace-pre-wrap">
+              {property.description || property.remarks || property.publicRemarks || 'No description available'}
+            </p>
+          </div>
         </div>
       </div>
       

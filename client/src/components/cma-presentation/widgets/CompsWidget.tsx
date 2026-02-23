@@ -709,14 +709,9 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                   <div className="pt-4 border-t border-gray-200 space-y-1 text-xs">
                     <div className="font-medium">Listing Details</div>
                     
-                    {/* DEBUG: Log comp data for debugging */}
+                    {/* DEBUG: Log full comp object */}
                     {(() => {
-                      console.log(`🔍 COMP DEBUG - ${comp.address}:`, {
-                        originalPrice: comp.originalPrice,
-                        listDate: comp.listDate,
-                        description: comp.description,
-                        allFields: Object.keys(comp)
-                      });
+                      console.log(`🔍 FULL COMP OBJECT - ${comp.address}:`, comp);
                       return null;
                     })()}
                     
@@ -730,32 +725,13 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                       <div>List: ${listPrice.toLocaleString()}</div>
                     )}
                     
-                    {/* Listing Date - format as MM/DD/YYYY */}
-                    {(() => {
-                      const listDate = comp.listDate || comp.listingDate || comp.list_date;
-                      console.log(`🔍 LISTING DATE DEBUG - ${comp.address}:`, { 
-                        listDate: comp.listDate, 
-                        listingDate: comp.listingDate, 
-                        list_date: comp.list_date,
-                        selected: listDate 
-                      });
-                      if (!listDate) return (
-                        <div>Listing Date: N/A</div>
-                      );
-                      const date = new Date(listDate);
-                      if (isNaN(date.getTime())) return (
-                        <div>Listing Date: Invalid Date</div>
-                      );
-                      return (
-                        <div>
-                          Listing Date: {date.toLocaleDateString('en-US', {
-                            month: '2-digit',
-                            day: '2-digit', 
-                            year: 'numeric'
-                          })}
-                        </div>
-                      );
-                    })()}
+                    {/* Listing Date */}
+                    <div className="flex justify-between py-1">
+                      <span className="text-gray-500 text-sm">Listing Date:</span>
+                      <span className="font-medium text-sm">
+                        {comp.listDate ? new Date(comp.listDate).toLocaleDateString('en-US') : 'N/A'}
+                      </span>
+                    </div>
                     
                     {/* Price per square foot */}
                     {compPrice && compSqft && (
