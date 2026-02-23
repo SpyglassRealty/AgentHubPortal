@@ -439,9 +439,14 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
             <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-gray-300">
               About This Home
             </h3>
-            <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
-              {property.description || 'No description available'}
-            </p>
+            <div className="text-sm text-gray-600 leading-relaxed text-justify space-y-4">
+              {(property.description || 'No description available')
+                .split(/\n\n|\r\n\r\n/)
+                .filter(paragraph => paragraph.trim())
+                .map((paragraph, index) => (
+                  <p key={index}>{paragraph.trim()}</p>
+                ))}
+            </div>
           </div>
         </div>
       </div>
