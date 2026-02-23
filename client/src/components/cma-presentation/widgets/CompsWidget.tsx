@@ -709,10 +709,14 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                   <div className="pt-4 border-t border-gray-200 space-y-1 text-xs">
                     <div className="font-medium">Listing Details</div>
                     
-                    {/* DEBUG: Log full comp object for Phase 1 analysis */}
+                    {/* DEBUG: Log comp data for debugging */}
                     {(() => {
-                      console.log(`🔍 PHASE 1 - Full comp object:`, comp);
-                      console.log(`🔍 PHASE 1 - Available fields:`, Object.keys(comp));
+                      console.log(`🔍 COMP DEBUG - ${comp.address}:`, {
+                        originalPrice: comp.originalPrice,
+                        listDate: comp.listDate,
+                        description: comp.description,
+                        allFields: Object.keys(comp)
+                      });
                       return null;
                     })()}
                     
@@ -728,9 +732,20 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                     
                     {/* Listing Date - format as MM/DD/YYYY */}
                     {(() => {
-                      if (!comp.listDate) return null;
-                      const date = new Date(comp.listDate);
-                      if (isNaN(date.getTime())) return null;
+                      const listDate = comp.listDate || comp.listingDate || comp.list_date;
+                      console.log(`🔍 LISTING DATE DEBUG - ${comp.address}:`, { 
+                        listDate: comp.listDate, 
+                        listingDate: comp.listingDate, 
+                        list_date: comp.list_date,
+                        selected: listDate 
+                      });
+                      if (!listDate) return (
+                        <div>Listing Date: N/A</div>
+                      );
+                      const date = new Date(listDate);
+                      if (isNaN(date.getTime())) return (
+                        <div>Listing Date: Invalid Date</div>
+                      );
                       return (
                         <div>
                           Listing Date: {date.toLocaleDateString('en-US', {

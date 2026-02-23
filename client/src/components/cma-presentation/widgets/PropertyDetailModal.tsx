@@ -275,9 +275,26 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
                   <div className="space-y-2">
                     {/* Safe Listing Date formatting */}
                     {(() => {
-                      if (!property.listDate) return null;
-                      const date = new Date(property.listDate);
-                      if (isNaN(date.getTime())) return null;
+                      const listDate = property.listDate || property.listingDate || property.list_date;
+                      console.log(`🔍 MODAL LISTING DATE DEBUG - ${property.address}:`, { 
+                        listDate: property.listDate, 
+                        listingDate: property.listingDate, 
+                        list_date: property.list_date,
+                        selected: listDate 
+                      });
+                      if (!listDate) return (
+                        <div>
+                          <span className="text-gray-600">Listing Date: </span>
+                          <span className="text-gray-900">N/A</span>
+                        </div>
+                      );
+                      const date = new Date(listDate);
+                      if (isNaN(date.getTime())) return (
+                        <div>
+                          <span className="text-gray-600">Listing Date: </span>
+                          <span className="text-gray-900">Invalid Date</span>
+                        </div>
+                      );
                       return (
                         <div>
                           <span className="text-gray-600">Listing Date: </span>
@@ -422,7 +439,21 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
             const description = property.description || 
                                (property as any).publicRemarks || 
                                (property as any).remarks;
-            if (!description) return null;
+            console.log(`🔍 MODAL DESCRIPTION DEBUG - ${property.address}:`, { 
+              description: property.description, 
+              publicRemarks: (property as any).publicRemarks, 
+              remarks: (property as any).remarks,
+              selected: description,
+              hasDescription: !!description
+            });
+            if (!description) return (
+              <div className="p-4 border-t" data-testid="property-description-section">
+                <h3 className="text-sm font-medium mb-2 text-gray-600">About This Home</h3>
+                <p className="text-sm text-gray-500 italic" data-testid="property-description-text">
+                  No description available
+                </p>
+              </div>
+            );
             return (
               <div className="p-4 border-t" data-testid="property-description-section">
                 <h3 className="text-sm font-medium mb-2 text-gray-600">About This Home</h3>
