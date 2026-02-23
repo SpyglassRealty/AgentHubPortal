@@ -266,42 +266,17 @@ export function AveragePriceAcreWidget({
 
   // Include all properties with acreage data (CloudCMA-style - no exclusions)
   const propertiesWithAcreage = useMemo<PropertyWithAcreage[]>(() => {
-    console.log('[AveragePriceAcreWidget] DEBUG - Processing comparables:', {
-      totalComparables: comparables.length,
-      sampleComparable: comparables[0]
-    });
-    
     const withAcreage = comparables
       .filter(p => {
         if (p.type === 'Lease') return false;
         const acres = getAcres(p);
-        const hasAcres = acres > 0;
-        
-        if (!hasAcres) {
-          console.log('[AveragePriceAcreWidget] DEBUG - Property filtered out (no acres):', {
-            address: p.address,
-            acres,
-            lotSize: p.lotSize,
-            lot: p.lot,
-            lotSizeAcres: p.lotSizeAcres
-          });
-        }
-        
-        return hasAcres;
+        return acres > 0;
       })
       .map(p => {
         const acres = getAcres(p);
         const price = getPrice(p);
         // Always calculate fresh price per acre from current data (don't use stale p.pricePerAcre)
         const pricePerAcre = acres > 0 && price > 0 ? Math.round(price / acres) : 0;
-        
-        console.log('[AveragePriceAcreWidget] DEBUG - Property mapped:', {
-          address: p.address,
-          acres,
-          price,
-          pricePerAcre,
-          status: p.status
-        });
         
         return {
           ...p,
@@ -310,26 +285,7 @@ export function AveragePriceAcreWidget({
         };
       })
       // Filter out properties with zero price per acre
-      .filter(p => {
-        const hasValidPrice = p.pricePerAcre > 0;
-        if (!hasValidPrice) {
-          console.log('[AveragePriceAcreWidget] DEBUG - Property filtered out (no price per acre):', {
-            address: p.address,
-            pricePerAcre: p.pricePerAcre
-          });
-        }
-        return hasValidPrice;
-      });
-    
-    console.log('[AveragePriceAcreWidget] DEBUG - Final properties with acreage:', {
-      count: withAcreage.length,
-      properties: withAcreage.map(p => ({
-        address: p.address,
-        acres: p.lotSizeAcres,
-        pricePerAcre: p.pricePerAcre,
-        status: p.status
-      }))
-    });
+      .filter(p => p.pricePerAcre > 0);
     
     return withAcreage;
   }, [comparables]);
@@ -368,22 +324,33 @@ export function AveragePriceAcreWidget({
     };
   }, [subjectProperty, avgPricePerAcre]);
 
-  const chartData = useMemo(() => {
-    const data = propertiesWithAcreage.map(p => ({
-      ...p,
-      x: p.lotSizeAcres,
-      y: p.soldPrice || p.price,
-    }));
+  // Group chart data by status for separate Scatter components
+  const chartDataByStatus = useMemo(() => {
+    const closed: any[] = [];
+    const pending: any[] = [];
+    const active: any[] = [];
     
-    console.log('[AveragePriceAcreWidget] DEBUG - Chart data:', {
-      propertiesWithAcreageCount: propertiesWithAcreage.length,
-      chartDataCount: data.length,
-      sampleChartData: data.slice(0, 3),
-      comparablesCount: comparables.length
+    propertiesWithAcreage.forEach(p => {
+      const dataPoint = {
+        ...p,
+        x: p.lotSizeAcres,
+        y: p.soldPrice || p.price,
+        fill: getStatusColor(p.status),
+      };
+      
+      const category = getStatusCategory(p.status);
+      if (category === 'closed') closed.push(dataPoint);
+      else if (category === 'pending') pending.push(dataPoint);
+      else active.push(dataPoint);
     });
     
-    return data;
+    return { closed, pending, active };
   }, [propertiesWithAcreage, comparables]);
+  
+  // For backward compatibility
+  const chartData = useMemo(() => {
+    return [...chartDataByStatus.closed, ...chartDataByStatus.pending, ...chartDataByStatus.active];
+  }, [chartDataByStatus]);
 
   const subjectChartData = useMemo(() => {
     if (!subjectWithAcreage || !showSubject) return [];
@@ -391,6 +358,7 @@ export function AveragePriceAcreWidget({
       ...subjectWithAcreage,
       x: subjectWithAcreage.lotSizeAcres,
       y: subjectWithAcreage.soldPrice || subjectWithAcreage.price || (avgPricePerAcre * subjectWithAcreage.lotSizeAcres),
+      fill: STATUS_COLORS.subject,
     }];
   }, [subjectWithAcreage, showSubject, avgPricePerAcre]);
 
@@ -410,13 +378,6 @@ export function AveragePriceAcreWidget({
       allAcres.push(subjectChartData[0].x);
       allPrices.push(subjectChartData[0].y);
     }
-    
-    console.log('[AveragePriceAcreWidget] DEBUG - Domain calculation:', {
-      allAcres,
-      allPrices,
-      chartDataLength: chartData.length,
-      subjectChartDataLength: subjectChartData.length
-    });
     
     if (allAcres.length === 0) {
       return { minAcres: 0, maxAcres: 1, minPrice: 0, maxPrice: 1, trendlineData: [] };
@@ -446,14 +407,6 @@ export function AveragePriceAcreWidget({
       { x: minA, y: Math.max(0, trendMinY) },
       { x: maxA, y: Math.max(0, trendMaxY) },
     ] : [];
-    
-    console.log('[AveragePriceAcreWidget] DEBUG - Final domains:', {
-      minAcres: minA,
-      maxAcres: maxA,
-      minPrice: minP,
-      maxPrice: maxP,
-      trendlineData: trendline
-    });
     
     return {
       minAcres: minA,
@@ -598,36 +551,82 @@ export function AveragePriceAcreWidget({
                     />
                   )}
 
-                  {chartData.length > 0 && (
+                  {/* Alternative 1: Single Scatter with custom shape */}
+                  {false && chartData.length > 0 && (
                     <Scatter 
                       name="Properties" 
                       data={chartData} 
                       cursor="pointer"
                       onClick={(data) => handleScatterClick(data)}
-                      fill="#8884d8"
-                      r={8}
-                    >
-                      {chartData.map((entry, index) => {
-                        const color = getStatusColor(entry.status);
-                        console.log('[AveragePriceAcreWidget] DEBUG - Rendering cell:', {
-                          index,
-                          address: entry.address,
-                          x: entry.x,
-                          y: entry.y,
-                          color,
-                          status: entry.status
+                      shape={(props: any) => {
+                        const { cx, cy, payload } = props;
+                        
+                        console.log('[AveragePriceAcreWidget] DEBUG - Custom shape rendering:', {
+                          cx, cy,
+                          payload: payload ? {
+                            address: payload.address,
+                            x: payload.x,
+                            y: payload.y,
+                            fill: payload.fill,
+                            status: payload.status
+                          } : 'no payload'
                         });
                         
+                        if (cx === undefined || cy === undefined) return null;
+                        
                         return (
-                          <Cell 
-                            key={`cell-${index}`}
-                            fill={color}
+                          <circle
+                            cx={cx}
+                            cy={cy}
+                            r={8}
+                            fill={payload?.fill || '#8884d8'}
                             stroke="white"
                             strokeWidth={2}
+                            style={{ cursor: 'pointer' }}
                           />
                         );
-                      })}
-                    </Scatter>
+                      }}
+                    />
+                  )}
+                  
+                  {/* Alternative 2: Separate Scatter components by status */}
+                  {chartDataByStatus.closed.length > 0 && (
+                    <Scatter
+                      name="Closed"
+                      data={chartDataByStatus.closed}
+                      fill={STATUS_COLORS.closed}
+                      cursor="pointer"
+                      onClick={(data) => handleScatterClick(data)}
+                      r={8}
+                      stroke="white"
+                      strokeWidth={2}
+                    />
+                  )}
+                  
+                  {chartDataByStatus.pending.length > 0 && (
+                    <Scatter
+                      name="Pending"
+                      data={chartDataByStatus.pending}
+                      fill={STATUS_COLORS.pending}
+                      cursor="pointer"
+                      onClick={(data) => handleScatterClick(data)}
+                      r={8}
+                      stroke="white"
+                      strokeWidth={2}
+                    />
+                  )}
+                  
+                  {chartDataByStatus.active.length > 0 && (
+                    <Scatter
+                      name="Active"
+                      data={chartDataByStatus.active}
+                      fill={STATUS_COLORS.active}
+                      cursor="pointer"
+                      onClick={(data) => handleScatterClick(data)}
+                      r={8}
+                      stroke="white"
+                      strokeWidth={2}
+                    />
                   )}
 
                   {subjectChartData.length > 0 && (
