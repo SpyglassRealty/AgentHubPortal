@@ -104,12 +104,12 @@ function CmaPresentationPage() {
   }
 
   // Only render inner component AFTER data is confirmed available
-  return <CmaPresentationInner cmaData={cmaData} />;
+  return <CmaPresentationInner cmaData={cmaData} id={id} />;
 }
 
 // INNER - has all the useMemo, useState, useEffect hooks
 // cmaData is GUARANTEED to exist here
-function CmaPresentationInner({ cmaData }: { cmaData: any }) {
+function CmaPresentationInner({ cmaData, id }: { cmaData: any; id: string }) {
   const [, navigate] = useLocation();
 
   // Now it's safe to use other hooks since we have guaranteed data
