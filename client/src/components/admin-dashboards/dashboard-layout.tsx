@@ -22,6 +22,8 @@ import {
   Radar,
   ExternalLink,
   UserCog,
+  CalendarDays,
+  Activity,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Overview", href: "/admin/dashboards", icon: LayoutDashboard, section: "DASHBOARD" },
+  { label: "Weekly Scorecard", href: "/admin/dashboards/weekly-scorecard", icon: CalendarDays, section: "DASHBOARD" },
   { label: "Insights", href: "/admin/dashboards/insights", icon: Lightbulb, section: "DASHBOARD" },
   { label: "Leads", href: "/admin/dashboards/leads", icon: Target, section: "DASHBOARD" },
   { label: "Transactions", href: "/admin/dashboards/transactions", icon: FileText, section: "PRODUCTION" },
@@ -46,6 +49,7 @@ const navItems: NavItem[] = [
   { label: "Trends", href: "/admin/dashboards/network/trends", icon: TrendingUp, section: "NETWORK" },
   { label: "RevShare", href: "/admin/dashboards/network/revshare", icon: Share2, section: "NETWORK" },
   { label: "Members", href: "/admin/dashboards/network/members", icon: Users, section: "NETWORK" },
+  { label: "Activity Heatmap", href: "/admin/dashboards/activity-heatmap", icon: Activity, section: "TEAM" },
   { label: "Agent Insights", href: "/admin/dashboards/agent-insights", icon: Target, section: "TEAM" },
   { label: "Member Mgmt", href: "/admin/dashboards/member-management", icon: UserCog, section: "TEAM" },
   { label: "Team Tasks", href: "/admin/dashboards/team-tasks", icon: ListTodo, section: "TEAM" },
