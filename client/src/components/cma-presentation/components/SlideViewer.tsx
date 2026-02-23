@@ -102,7 +102,7 @@ export function SlideViewer({
       case 'listing_action_plan':
         return <ListingActionPlanWidget />;
       case 'spyglass_resources':
-        return <SpyglassResourcesWidget cmaToken={cmaToken} />;
+        return <SpyglassResourcesWidget agent={agent} cmaToken={cmaToken} />;
       case 'average_price_acre':
         return <AveragePriceAcreWidget comparables={comparables} subjectProperty={subjectProperty} />;
       default:
