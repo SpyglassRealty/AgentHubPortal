@@ -726,11 +726,11 @@ export default function SettingsPage() {
       return;
     }
 
-    // Check file size (5MB limit)
-    if (file.size > 5 * 1024 * 1024) {
+    // Check file size (25MB limit)
+    if (file.size > 25 * 1024 * 1024) {
       toast({ 
         title: "File too large", 
-        description: "Please select an image under 5MB.", 
+        description: "Please select an image under 25MB.", 
         variant: "destructive" 
       });
       return;
@@ -783,11 +783,11 @@ export default function SettingsPage() {
       return;
     }
 
-    // Check file size (5MB limit)
-    if (file.size > 5 * 1024 * 1024) {
+    // Check file size (25MB limit)
+    if (file.size > 25 * 1024 * 1024) {
       toast({ 
         title: "File too large", 
-        description: "Please select a file under 5MB.", 
+        description: "Please select a file under 25MB.", 
         variant: "destructive" 
       });
       return;
@@ -962,7 +962,7 @@ export default function SettingsPage() {
                       )}
                     </Button>
                     <p className="text-xs text-muted-foreground mt-1">
-                      JPG, PNG, or WEBP. Max 5MB.
+                      JPG, PNG, or WEBP. Max 25MB.
                     </p>
                   </div>
                 </div>
@@ -1201,7 +1201,7 @@ export default function SettingsPage() {
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  Accepts PDF, DOC, DOCX, JPG, PNG, WEBP files. Max 5MB per file.
+                  Accepts PDF, DOC, DOCX, JPG, PNG, WEBP files. Max 25MB per file.
                 </p>
 
                 {/* Add Link Form */}
