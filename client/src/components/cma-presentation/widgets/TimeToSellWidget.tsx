@@ -394,7 +394,7 @@ function PropertyCardPanel({ property, subjectProperty, onClose, onViewClick }: 
           {property.soldPrice && (
             <div className="flex justify-between px-3 sm:px-4 py-2">
               <span className="text-xs sm:text-sm text-muted-foreground">
-                Sold Price {soldPercent && (
+                Close Price {soldPercent && (
                   <span className="text-muted-foreground/60">{soldPercent}%</span>
                 )}
               </span>

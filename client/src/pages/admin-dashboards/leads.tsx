@@ -49,7 +49,7 @@ const MOCK_PIPELINE = [
   { stage: "Qualified", count: 156, value: 62000000 },
   { stage: "Showing", count: 89, value: 38000000 },
   { stage: "Offer", count: 45, value: 21000000 },
-  { stage: "Under Contract", count: 28, value: 14000000 },
+  { stage: "Active Under Contract", count: 28, value: 14000000 },
   { stage: "Closed", count: 18, value: 8500000 },
 ];
 
@@ -111,7 +111,7 @@ export default function LeadsPage() {
       Qualified: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
       Showing: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
       Offer: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-      "Under Contract": "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+      "Active Under Contract": "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
       Closed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
     };
     return <Badge className={styles[status] || ""}>{status}</Badge>;
