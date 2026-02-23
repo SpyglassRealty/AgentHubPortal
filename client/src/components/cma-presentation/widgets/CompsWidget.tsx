@@ -715,12 +715,7 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                       return null;
                     })()}
                     
-                    {/* Original List Price - RESO compliant label */}
-                    <div>
-                      Original List Price: {comp.originalPrice ? `$${comp.originalPrice.toLocaleString()}` : 'N/A'}
-                    </div>
-                    
-                    {/* Current List Price */}
+                    {/* List Price */}
                     {listPrice && (
                       <div>List Price: ${listPrice.toLocaleString()}</div>
                     )}
@@ -729,12 +724,12 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                     <div>
                       Listing Date: {comp.listDate ? (() => {
                         const date = new Date(comp.listDate);
-                        if (isNaN(date.getTime())) return 'N/A';
+                        if (isNaN(date.getTime())) return '—';
                         const mm = String(date.getMonth() + 1).padStart(2, '0');
                         const dd = String(date.getDate()).padStart(2, '0');
                         const yyyy = date.getFullYear();
                         return `${mm}/${dd}/${yyyy}`;
-                      })() : 'N/A'}
+                      })() : '—'}
                     </div>
                     
                     {/* Price per square foot */}
@@ -742,17 +737,24 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                       <div>$/Sqft: ${Math.round(compPrice / compSqft)}</div>
                     )}
                     
-                    {/* Days on Market - use extractDOM utility to get simpleDaysOnMarket */}
+                    {/* Days on Market - use extractDOM utility prioritizing simpleDaysOnMarket */}
                     {(() => {
                       const dom = extractDOM(comp);
                       return dom !== null && (
-                        <div>DOM: {dom}</div>
+                        <div>Days on Market: {dom}</div>
                       );
                     })()}
                     
-                    {/* Lot Size - check multiple sources */}
+                    {/* Original List Price - RESO compliant label, show only if different from list price */}
+                    {comp.originalPrice && comp.originalPrice !== listPrice && (
+                      <div>
+                        Original List Price: ${comp.originalPrice.toLocaleString()}
+                      </div>
+                    )}
+                    
+                    {/* Lot Size - HIDE ROW if no data (per Daryl's requirement) */}
                     {(() => {
-                      let lotSizeText = 'N/A';
+                      let lotSizeText = null;
                       
                       // Priority 1: lot.acres if available
                       if (comp.lot?.acres && comp.lot.acres > 0) {
@@ -775,30 +777,32 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                         lotSizeText = `${comp.lotSize.toLocaleString()} sqft`;
                       }
                       
-                      return (
+                      // ONLY show row if we have data - HIDE entirely if null/undefined/0
+                      return lotSizeText ? (
                         <div>Lot Size: {lotSizeText}</div>
-                      );
+                      ) : null;
                     })()}
                     
-                    {/* Garage - check multiple sources */}
+                    {/* Garage - HIDE ROW if no data (per Daryl's requirement) */}
                     {(() => {
-                      let garageText = 'N/A';
+                      let garageSpaces = 0;
                       
                       // Check garageSpaces field first
                       if (comp.garageSpaces && comp.garageSpaces > 0) {
-                        garageText = `${comp.garageSpaces} spaces`;
+                        garageSpaces = comp.garageSpaces;
                       }
                       // Check if there's a details.numGarageSpaces (from raw data)
                       else if ((comp as any).details?.numGarageSpaces && (comp as any).details.numGarageSpaces > 0) {
-                        garageText = `${(comp as any).details.numGarageSpaces} spaces`;
+                        garageSpaces = (comp as any).details.numGarageSpaces;
                       }
                       
-                      return (
-                        <div>Garage: {garageText}</div>
-                      );
+                      // ONLY show row if we have garage spaces - HIDE entirely if null/undefined/0
+                      return garageSpaces > 0 ? (
+                        <div>Garage: {garageSpaces} spaces</div>
+                      ) : null;
                     })()}
                     
-                    {/* For Closed/Sold comps - add sold price and sold date */}
+                    {/* For Closed/Sold comps - RESO compliant labels */}
                     {comp.soldPrice && (
                       <div>Close Price: ${comp.soldPrice.toLocaleString()}</div>
                     )}
