@@ -63,49 +63,54 @@ class CMAErrorBoundary extends React.Component<
   }
 }
 
-function CMAPresentation() {
+// WRAPPER - handles data fetching and guards
+function CmaPresentationPage() {
   const [, params] = useRoute('/cma/:id/cma-presentation');
-  const [, navigate] = useLocation();
   const id = params?.id;
 
-  // STEP 1: Standalone fetch - works on F5 refresh AND in-app navigation
-  const { data: fetchedCma, isLoading, error } = useQuery({
+  const { data: cmaData, isLoading, error } = useQuery({
     queryKey: ['cma-presentation', id],
     queryFn: async () => {
       const res = await fetch(`/api/cma/${id}`);
-      if (!res.ok) throw new Error('CMA not found');
+      if (!res.ok) throw new Error('Failed to load CMA');
       return res.json();
     },
     enabled: !!id,
   });
 
-  // STEP 2: Loading/error guard BEFORE any other hooks or data access
+  // SAFE to early return here - no hooks below
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+        <Loader2 className="h-8 w-8 animate-spin" />
         <span className="ml-3">Loading presentation...</span>
       </div>
     );
   }
 
-  if (error || !fetchedCma) {
+  if (error || !cmaData) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
-        <h2 className="text-xl font-semibold">CMA Not Found</h2>
-        <p>This presentation could not be loaded.</p>
+        <h2 className="text-xl font-semibold text-red-600">CMA Not Found</h2>
+        <p>Could not load presentation data.</p>
         <button 
-          onClick={() => navigate('/cma')}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          onClick={() => window.location.href = '/cma'}
+          className="px-4 py-2 bg-[#EF4923] text-white rounded hover:bg-[#d94420]"
         >
-          Back to CMA Dashboard
+          Back to CMA
         </button>
       </div>
     );
   }
 
-  // STEP 3: Use fetchedCma as the data source
-  const cma = fetchedCma;
+  // Only render inner component AFTER data is confirmed available
+  return <CmaPresentationInner cmaData={cmaData} />;
+}
+
+// INNER - has all the useMemo, useState, useEffect hooks
+// cmaData is GUARANTEED to exist here
+function CmaPresentationInner({ cmaData }: { cmaData: any }) {
+  const [, navigate] = useLocation();
 
   // Now it's safe to use other hooks since we have guaranteed data
   const [currentSlide, setCurrentSlide] = useState<number | null>(null);
@@ -152,10 +157,7 @@ function CMAPresentation() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSlide, sidebarOpen, drawingMode, handleClose]);
 
-  // Remove the old useQuery since we moved it to the top
-  const cmaData = cma; // For compatibility with existing code
-
-  // Agent profile query - now safe to use after loading guard
+  // Agent profile query
   const { data: agentProfileData, isLoading: profileLoading, error: profileError } = useQuery<{
     profile: {
       id?: string;
@@ -708,7 +710,7 @@ function CMAPresentation() {
 export default function CMAPresentationWithErrorBoundary() {
   return (
     <CMAErrorBoundary>
-      <CMAPresentation />
+      <CmaPresentationPage />
     </CMAErrorBoundary>
   );
 }
