@@ -998,6 +998,17 @@ const calculatePricePerSqft = (price: number, sqft: number) => {
   return Math.round(price / sqft);
 };
 
+// Standard date formatter - RESO compliant MM/DD/YYYY format
+const formatDate = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return 'N/A';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return 'N/A';
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${mm}/${dd}/${yyyy}`;
+};
+
 function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   
@@ -1131,9 +1142,9 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
                   </span>
                 </div>
                 <div>
-                  <span className={textSecondary}>Listing:</span>
+                  <span className={textSecondary}>Listing Date:</span>
                   <span className={`ml-2 ${textPrimary} font-medium`}>
-                    {listing.listDate ? new Date(listing.listDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) : 'N/A'}
+                    {formatDate(listing.listDate)}
                   </span>
                 </div>
                 <div>
@@ -1191,9 +1202,9 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
                       <span className={textPrimary}>{listing.daysOnMarket}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className={textSecondary}>Listed:</span>
+                      <span className={textSecondary}>Listing Date:</span>
                       <span className={textPrimary}>
-                        {listing.listDate ? new Date(listing.listDate).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }) : 'N/A'}
+                        {formatDate(listing.listDate)}
                       </span>
                     </div>
                     <div className="flex justify-between">
