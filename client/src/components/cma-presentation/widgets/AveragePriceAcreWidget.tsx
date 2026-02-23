@@ -421,7 +421,7 @@ export function AveragePriceAcreWidget({
               onSelect={handlePropertyClick}
             />
             <StatusGroup 
-              title="Under Contract" 
+              title="Active Under Contract" 
               items={groupedProperties.pending} 
               color={STATUS_COLORS.pending}
               selectedId={selectedProperty?.id || null}
