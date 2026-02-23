@@ -68,6 +68,46 @@ function CMAPresentation() {
   const [, navigate] = useLocation();
   const id = params?.id;
 
+  // STEP 1: Standalone fetch - works on F5 refresh AND in-app navigation
+  const { data: fetchedCma, isLoading, error } = useQuery({
+    queryKey: ['cma-presentation', id],
+    queryFn: async () => {
+      const res = await fetch(`/api/cma/${id}`);
+      if (!res.ok) throw new Error('CMA not found');
+      return res.json();
+    },
+    enabled: !!id,
+  });
+
+  // STEP 2: Loading/error guard BEFORE any other hooks or data access
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+        <span className="ml-3">Loading presentation...</span>
+      </div>
+    );
+  }
+
+  if (error || !fetchedCma) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <h2 className="text-xl font-semibold">CMA Not Found</h2>
+        <p>This presentation could not be loaded.</p>
+        <button 
+          onClick={() => navigate('/cma')}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Back to CMA Dashboard
+        </button>
+      </div>
+    );
+  }
+
+  // STEP 3: Use fetchedCma as the data source
+  const cma = fetchedCma;
+
+  // Now it's safe to use other hooks since we have guaranteed data
   const [currentSlide, setCurrentSlide] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [drawingMode, setDrawingMode] = useState(false);
@@ -112,35 +152,10 @@ function CMAPresentation() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSlide, sidebarOpen, drawingMode, handleClose]);
 
-  const { data: cmaData, isError, isLoading, error } = useQuery({
-    queryKey: ['/api/cma', id],
-    queryFn: async () => {
-      console.log('[CMA Debug] Fetching CMA data for ID:', id);
-      const res = await fetch('/api/cma/' + id);
-      console.log('[CMA Debug] CMA fetch response:', res.status, res.statusText);
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('[CMA Debug] CMA fetch error:', errorText);
-        throw new Error(`Failed to fetch CMA: ${res.status} ${errorText}`);
-      }
-      const data = await res.json();
-      console.log('[CMA Debug] CMA data received:', {
-        id: data.id,
-        name: data.name,
-        hasSubjectProperty: !!data.subjectProperty,
-        comparablesCount: data.comparableProperties?.length || 0,
-        firstCompFields: data.comparableProperties?.[0] ? Object.keys(data.comparableProperties[0]) : []
-      });
-      return data;
-    },
-    retry: false, // Don't retry on 404 — CMA doesn't exist
-    onError: (err) => {
-      console.error('[CMA Debug] Query error:', err);
-    }
-  });
+  // Remove the old useQuery since we moved it to the top
+  const cmaData = cma; // For compatibility with existing code
 
-  // REMOVED: savedCma query - using cmaData instead
-
+  // Agent profile query - now safe to use after loading guard
   const { data: agentProfileData, isLoading: profileLoading, error: profileError } = useQuery<{
     profile: {
       id?: string;
@@ -574,39 +589,7 @@ function CMAPresentation() {
     return Math.round(total / compsWithAcres.length);
   }, [presentationComparables]);
 
-  if (isLoading || profileLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading CMA Presentation...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isError || !cmaData) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center max-w-md">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">CMA Not Found</h1>
-          <p className="text-gray-600 mb-6">The CMA presentation you're looking for doesn't exist or has been removed.</p>
-          <button 
-            onClick={() => {
-              if (window.history.length > 1) {
-                window.history.back();
-              } else {
-                navigate('/cma');
-              }
-            }}
-            className="inline-block px-6 py-3 bg-[#EF4923] text-white rounded-lg hover:bg-[#d94420] transition-colors min-h-[44px]"
-          >
-            Go Back
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Agent profile loading is handled separately - we can show the CMA even if profile is still loading
 
   if (currentSlide !== null) {
     const prevTitle = currentSlide > 0 ? WIDGETS[currentSlide - 1].title : null;
