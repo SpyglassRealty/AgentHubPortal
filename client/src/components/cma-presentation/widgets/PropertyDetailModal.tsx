@@ -435,7 +435,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
           </div>
           
           {/* About This Home - IMPROVED STYLING */}
-          <div className="mt-6 pt-4 border-t border-gray-200">
+          <div className="mt-6 pt-4 border-t border-gray-200 px-2">
             <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-gray-300">
               About This Home
             </h3>
