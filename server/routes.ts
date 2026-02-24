@@ -38,17 +38,29 @@ function parseAddress(fullAddress: string): { streetNumber?: string; streetName?
     return { streetNumber, streetName, streetSuffix };
   }
   
-  // Extract city, state, zip from last part
-  const cityStateZip = parts[parts.length - 1];
-  const stateZipMatch = cityStateZip.match(/([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/);
-  
+  // Extract city, state, zip from parts
   let city = '', state = '', zip = '';
-  if (stateZipMatch) {
+  
+  // Check if last part has state and zip (e.g., "TX 78703")
+  const lastPart = parts[parts.length - 1];
+  const stateZipMatch = lastPart.match(/^([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/);
+  
+  if (stateZipMatch && parts.length >= 3) {
+    // Format: "street, city, TX 78703"
     state = stateZipMatch[1];
     zip = stateZipMatch[2];
-    city = cityStateZip.replace(/\s+[A-Z]{2}\s+\d{5}(?:-\d{4})?$/, '').trim();
+    city = parts[parts.length - 2].trim(); // City is the second-to-last part
   } else {
-    city = cityStateZip;
+    // Try to extract state/zip from the end of the last part (e.g., "Austin TX 78703")
+    const combinedStateZipMatch = lastPart.match(/^(.+?)\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/);
+    if (combinedStateZipMatch) {
+      city = combinedStateZipMatch[1].trim();
+      state = combinedStateZipMatch[2];
+      zip = combinedStateZipMatch[3];
+    } else {
+      // No state/zip found, treat last part as city
+      city = lastPart.trim();
+    }
   }
   
   // Parse street address (first part)
@@ -3501,9 +3513,9 @@ Respond with valid JSON in this exact format:
       if (maxLotAcres) params.append('maxLotWidth', (maxLotAcres * 43560).toString());
 
       // Status handling - support multiple statuses
-      // For MLS# searches, skip status filtering to find the exact listing regardless of status
       const trimmedSearch = search?.trim();
       const isMlsNumber = trimmedSearch && /^[A-Za-z]{1,5}\d{4,}$/.test(trimmedSearch);
+      const isAddressSearch = search && search.trim() && !isMlsNumber;
       
       let hasActive = false;
       let hasAUC = false;
@@ -3511,28 +3523,25 @@ Respond with valid JSON in this exact format:
       let hasClosed = false;
       let hasAnyActive = false;
       
-      if (!isMlsNumber) {
-        // Default to including sold comps for CMA analysis, especially for address searches
+      if (isMlsNumber) {
+        console.log('[CMA Search] MLS# search - skipping status filters to find exact listing');
+      } else if (isAddressSearch) {
+        console.log('[CMA Search] Address search - skipping status filters to find subject property in any status');
+        // For subject property address searches, do NOT add any status filters
+        // Subject property can be Active, Pending, Sold, Withdrawn, etc.
+      } else {
+        // Regular search (not MLS# or address) - apply normal status filtering
         const statusArray: string[] = statuses && statuses.length > 0 
           ? statuses 
-          : (search ? ['Active', 'Closed'] : ['Active']); // Include sold comps for address searches
+          : ['Active']; // Default to Active only for regular searches
         
         console.log(`[CMA Search ENHANCED] Search statuses:`, statusArray);
-        // If includes Closed, we need a separate approach
         hasActive = statusArray.includes('Active') || statusArray.includes('A');
         hasAUC = statusArray.includes('Active Under Contract');
         hasPending = statusArray.includes('Pending');
         hasClosed = statusArray.includes('Closed') || statusArray.includes('U');
         hasAnyActive = hasActive || hasAUC || hasPending;
-      } else {
-        console.log('[CMA Search] MLS# search - skipping status filters to find exact listing');
-      }
-
-      if (!isMlsNumber) {
-        const statusArray: string[] = statuses && statuses.length > 0 
-          ? statuses 
-          : (search ? ['Active', 'Closed'] : ['Active']); // Include sold comps for address searches
-          
+        
         if (statusArray.length === 0) {
           // No status filter - search all listings (useful for address lookups)
         } else if (hasClosed && !hasAnyActive) {
@@ -3553,8 +3562,8 @@ Respond with valid JSON in this exact format:
         }
       }
 
-      // Flag for merged search (active + closed) - skip for MLS# searches
-      const needsMergedSearch = !isMlsNumber && hasClosed && hasAnyActive;
+      // Flag for merged search (active + closed) - skip for MLS# and address searches
+      const needsMergedSearch = !isMlsNumber && !isAddressSearch && hasClosed && hasAnyActive;
 
       const fullUrl = `${baseUrl}?${params.toString()}`;
       console.log(`[CMA Search] Searching properties: ${fullUrl}`);
