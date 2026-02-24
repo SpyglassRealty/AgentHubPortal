@@ -246,13 +246,16 @@ function SubjectPropertyPanel({
     sqft: "",
   });
 
-  const handleAddressSearch = async () => {
-    if (!addressSearch.trim()) return;
+  const handleAddressSearch = async (query?: string) => {
+    const searchQuery = query || addressSearch;
+    if (!searchQuery.trim()) return;
     setSearching(true);
     try {
       const res = await apiRequest("POST", "/api/cma/search-properties", {
-        search: addressSearch,
-        limit: 10,
+        search: searchQuery,
+        limit: 5,
+        fuzzySearch: true,
+        statuses: ["A", "U"], // Include active AND sold/unavailable (subject may be sold)
       });
       const data = await res.json();
       setSearchResults(data.listings || []);
@@ -262,6 +265,18 @@ function SubjectPropertyPanel({
       setSearching(false);
     }
   };
+
+  // Debounced autocomplete effect
+  useEffect(() => {
+    if (addressSearch.length >= 3) {
+      const timeoutId = setTimeout(() => {
+        handleAddressSearch(addressSearch);
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    } else {
+      setSearchResults([]);
+    }
+  }, [addressSearch]);
 
   const handleManualSave = () => {
     const prop: PropertyData = {
