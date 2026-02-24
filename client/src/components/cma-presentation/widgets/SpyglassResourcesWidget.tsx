@@ -49,7 +49,7 @@ export function SpyglassResourcesWidget({ agent, cmaToken }: SpyglassResourcesWi
       if (!res.ok) throw new Error("Failed to fetch resources");
       return res.json();
     },
-    staleTime: 60000,
+    staleTime: 0, // Always refetch on mount to ensure fresh data after page refresh
     retry: false,
   });
 

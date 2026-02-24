@@ -393,6 +393,7 @@ export default function SettingsPage() {
       if (!res.ok) throw new Error("Failed to fetch resources");
       return res.json();
     },
+    staleTime: 0, // Always refetch on mount
   });
 
   const resources = resourcesData?.resources || [];
