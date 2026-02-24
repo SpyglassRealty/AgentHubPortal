@@ -255,6 +255,9 @@ export function AveragePriceAcreWidget({
 
   // Helper to calculate acres using the improved utility function
   const getAcres = (p: CmaProperty): number => {
+    // Use pre-processed lotSizeAcres from CMA search (same as sidebar)
+    if (p.lotSizeAcres && p.lotSizeAcres > 0) return p.lotSizeAcres;
+    // Fallback to extraction utility
     const acres = extractLotAcres(p);
     return acres ?? 0;
   };
