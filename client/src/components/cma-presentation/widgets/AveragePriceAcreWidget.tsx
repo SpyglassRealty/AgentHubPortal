@@ -390,10 +390,19 @@ export function AveragePriceAcreWidget({
   const { minAcres, maxAcres, minPrice, maxPrice, trendlineData } = useMemo(() => {
     const allAcres = chartData.map(d => d.x);
     const allPrices = chartData.map(d => d.y);
-    if (subjectChartData.length > 0) {
+    if (subjectChartData.length > 0 && showSubject) {
       allAcres.push(subjectChartData[0].x);
       allPrices.push(subjectChartData[0].y);
     }
+    
+    console.log('[AveragePriceAcreWidget] Trendline Domain Debug:', {
+      closedAcres: chartData.filter(d => getStatusCategory(d.status) === 'closed').map(d => d.x),
+      subjectAcres: subjectChartData.map(d => d.x),
+      showSubject,
+      subjectDataLength: subjectChartData.length,
+      allAcres,
+      hasRegression: !!regressionData
+    });
     
     if (allAcres.length === 0) {
       return { minAcres: 0, maxAcres: 1, minPrice: 0, maxPrice: 1, trendlineData: [] };
@@ -407,6 +416,13 @@ export function AveragePriceAcreWidget({
     if (regressionData) {
       trendMinY = regressionData.slope * minA + regressionData.intercept;
       trendMaxY = regressionData.slope * maxA + regressionData.intercept;
+      
+      console.log('[AveragePriceAcreWidget] Trendline Calculation:', {
+        minA, maxA,
+        slope: regressionData.slope,
+        intercept: regressionData.intercept,
+        trendMinY, trendMaxY
+      });
     }
     
     // Include trendline endpoints in price range calculation (if positive)
@@ -431,7 +447,7 @@ export function AveragePriceAcreWidget({
       maxPrice: maxP,
       trendlineData: trendline,
     };
-  }, [chartData, subjectChartData, regressionData]);
+  }, [chartData, subjectChartData, regressionData, showSubject]);
 
   const handlePropertyClick = (property: CmaProperty) => {
     setSelectedProperty(property);
