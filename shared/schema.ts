@@ -1283,6 +1283,59 @@ export const reviewSources = pgTable("review_sources", {
 export type ReviewSource = typeof reviewSources.$inferSelect;
 export type InsertReviewSource = typeof reviewSources.$inferInsert;
 
+// ── Agent Onboarding System ──────────────────────────────
+export const onboardingTemplates = pgTable("onboarding_templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  office: text("office").default("all"),
+  agentType: text("agent_type").default("experienced"),
+  phases: jsonb("phases").notNull().default([]),
+  welcomeSequence: jsonb("welcome_sequence").default([]),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+export const agentOnboardings = pgTable("agent_onboardings", {
+  id: serial("id").primaryKey(),
+  agentName: text("agent_name").notNull(),
+  agentEmail: text("agent_email").notNull(),
+  agentPhone: text("agent_phone"),
+  office: text("office").notNull().default("austin"),
+  licenseNumber: text("license_number"),
+  startDate: timestamp("start_date", { mode: "date" }),
+  templateId: integer("template_id").references(() => onboardingTemplates.id),
+  status: text("status").default("in_progress"),
+  checklistState: jsonb("checklist_state").notNull().default({}),
+  progressPct: integer("progress_pct").default(0),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  createdBy: text("created_by"),
+  recruitingSource: text("recruiting_source"),
+  notes: text("notes"),
+  metadata: jsonb("metadata").default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+export const onboardingActivity = pgTable("onboarding_activity", {
+  id: serial("id").primaryKey(),
+  onboardingId: integer("onboarding_id").notNull().references(() => agentOnboardings.id, { onDelete: "cascade" }),
+  action: text("action").notNull(),
+  phaseId: text("phase_id"),
+  stepId: text("step_id"),
+  performedBy: text("performed_by").default("system"),
+  details: jsonb("details").default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export type OnboardingTemplate = typeof onboardingTemplates.$inferSelect;
+export type InsertOnboardingTemplate = typeof onboardingTemplates.$inferInsert;
+export type AgentOnboarding = typeof agentOnboardings.$inferSelect;
+export type InsertAgentOnboarding = typeof agentOnboardings.$inferInsert;
+export type OnboardingActivityEntry = typeof onboardingActivity.$inferSelect;
+export type InsertOnboardingActivity = typeof onboardingActivity.$inferInsert;
+
 export const INTEGRATION_DEFINITIONS = [
   {
     name: 'fub',

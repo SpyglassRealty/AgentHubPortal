@@ -17,6 +17,7 @@ import TeamTasksPage from "./team-tasks";
 import DirectoryPage from "./directory";
 import LinksPage from "./links";
 import ReportsPage from "./reports";
+import OnboardingPage from "./onboarding";
 
 export default function AdminDashboardsRouter() {
   return (
@@ -40,6 +41,7 @@ export default function AdminDashboardsRouter() {
         <Route path="/admin/dashboards/directory" component={DirectoryPage} />
         <Route path="/admin/dashboards/links" component={LinksPage} />
         <Route path="/admin/dashboards/reports" component={ReportsPage} />
+        <Route path="/admin/dashboards/onboarding" component={OnboardingPage} />
         <Route>
           <AdminDashboardOverview />
         </Route>

@@ -53,6 +53,7 @@ const navItems: NavItem[] = [
   { label: "Directory", href: "/admin/dashboards/directory", icon: BookUser, section: "TEAM" },
   { label: "Links", href: "/admin/dashboards/links", icon: LinkIcon, section: "RESOURCES" },
   { label: "Reports", href: "/admin/dashboards/reports", icon: FileBarChart, section: "RESOURCES" },
+  { label: "Onboarding", href: "/admin/dashboards/onboarding", icon: UserCheck, section: "OPERATIONS" },
 ];
 
 const externalTools: NavItem[] = [
