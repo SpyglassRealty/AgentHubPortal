@@ -1,0 +1,11 @@
+Subject Property Fix Notes:
+
+1. Remove debugging code
+2. Ensure subject property marker is clearly visible (blue circle, white outline)
+3. Ensure toggle functionality works
+4. Make sure subject property data is calculated correctly
+
+Current issues:
+- Debug code needs to be removed
+- Subject property marker needs to be more visible
+- Toggle needs to work properly

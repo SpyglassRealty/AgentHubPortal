@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SafeImage } from '@/components/ui/safe-image';
@@ -252,6 +252,21 @@ export function AveragePriceAcreWidget({
   const [selectedProperty, setSelectedProperty] = useState<CmaProperty | null>(null);
   const [showSubject, setShowSubject] = useState(true);
   const [showTrendline, setShowTrendline] = useState(true);
+
+  // Debug: Check if subject property is provided
+  React.useEffect(() => {
+    console.log('[SUBJECT DEBUG] Widget props:', {
+      hasComparables: comparables?.length || 0,
+      hasSubjectProperty: !!subjectProperty,
+      subjectProperty: subjectProperty ? {
+        address: subjectProperty.address,
+        lotSizeAcres: subjectProperty.lotSizeAcres,
+        closePrice: subjectProperty.closePrice,
+        listPrice: subjectProperty.listPrice
+      } : null,
+      averagePricePerAcre
+    });
+  }, [comparables, subjectProperty, averagePricePerAcre]);
 
   // Helper to calculate acres using the improved utility function
   const getAcres = (p: CmaProperty): number => {
