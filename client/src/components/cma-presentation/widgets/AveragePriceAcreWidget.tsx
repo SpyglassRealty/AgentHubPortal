@@ -313,18 +313,35 @@ export function AveragePriceAcreWidget({
   }, [propertiesWithAcreage, averagePricePerAcre]);
 
   const subjectWithAcreage = useMemo<PropertyWithAcreage | null>(() => {
-    if (!subjectProperty) return null;
+    if (!subjectProperty) {
+      console.log('[SUBJECT DEBUG] No subjectProperty provided');
+      return null;
+    }
     const acres = getAcres(subjectProperty);
-    if (!acres || acres <= 0) return null;
+    if (!acres || acres <= 0) {
+      console.log('[SUBJECT DEBUG] No acres for subject property:', { acres, subjectProperty });
+      return null;
+    }
     const price = subjectProperty.closePrice || subjectProperty.listPrice || (avgPricePerAcre * acres);
     // Always calculate fresh price per acre from current data
     const pricePerAcre = price > 0 && acres > 0 ? Math.round(price / acres) : 0;
-    return {
+    
+    const result = {
       ...subjectProperty,
       lotSizeAcres: acres,
       pricePerAcre: pricePerAcre,
       isSubject: true,
     };
+    
+    console.log('[SUBJECT DEBUG] Subject property calculated:', {
+      acres,
+      price,
+      pricePerAcre,
+      address: subjectProperty.address,
+      result
+    });
+    
+    return result;
   }, [subjectProperty, avgPricePerAcre]);
 
   // Group chart data by status for separate Scatter components
@@ -356,13 +373,29 @@ export function AveragePriceAcreWidget({
   }, [chartDataByStatus]);
 
   const subjectChartData = useMemo(() => {
-    if (!subjectWithAcreage || !showSubject) return [];
-    return [{
+    console.log('[SUBJECT DEBUG] subjectChartData calculation:', {
+      subjectWithAcreage: !!subjectWithAcreage,
+      showSubject,
+      subjectData: subjectWithAcreage
+    });
+    
+    if (!subjectWithAcreage || !showSubject) {
+      console.log('[SUBJECT DEBUG] Returning empty subjectChartData:', { 
+        hasSubject: !!subjectWithAcreage,
+        showSubject
+      });
+      return [];
+    }
+    
+    const result = [{
       ...subjectWithAcreage,
       x: subjectWithAcreage.lotSizeAcres,
       y: subjectWithAcreage.pricePerAcre,
       fill: STATUS_COLORS.subject,
     }];
+    
+    console.log('[SUBJECT DEBUG] subjectChartData result:', result);
+    return result;
   }, [subjectWithAcreage, showSubject, avgPricePerAcre]);
 
   // Calculate linear regression from CLOSED/SOLD listings only (CloudCMA-style)
@@ -636,9 +669,12 @@ export function AveragePriceAcreWidget({
                     <Scatter
                       name="Subject"
                       data={subjectChartData}
-                      shape={<SubjectHouse />}
+                      fill={STATUS_COLORS.subject}
                       cursor="pointer"
                       onClick={(data) => handleScatterClick(data)}
+                      r={10}
+                      stroke="white"
+                      strokeWidth={3}
                     />
                   )}
                 </ScatterChart>
