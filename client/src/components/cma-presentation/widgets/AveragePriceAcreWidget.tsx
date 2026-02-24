@@ -266,6 +266,20 @@ export function AveragePriceAcreWidget({
 
   // Include all properties with acreage data (CloudCMA-style - no exclusions)
   const propertiesWithAcreage = useMemo<PropertyWithAcreage[]>(() => {
+    // Debug logging: Raw comparable data BEFORE filtering
+    console.log('[SCATTER DEBUG] Raw comparables count:', comparables.length);
+    comparables.forEach((p, i) => {
+      console.log(`[SCATTER DEBUG] Property ${i}:`, {
+        address: p.address?.streetName || p.streetName,
+        lotAcres: extractLotAcres(p),
+        price: extractPrice(p),
+        rawLot: p.lot,
+        rawLotSize: p.lotSize,
+        rawLotSizeArea: p.lotSizeArea,
+        status: p.status
+      });
+    });
+    
     const withAcreage = comparables
       .filter(p => {
         if (p.type === 'Lease') return false;
@@ -342,6 +356,14 @@ export function AveragePriceAcreWidget({
       if (category === 'closed') closed.push(dataPoint);
       else if (category === 'pending') pending.push(dataPoint);
       else active.push(dataPoint);
+    });
+    
+    // Debug logging: Chart data arrays by status
+    console.log('[SCATTER DEBUG] After filter - with acreage:', propertiesWithAcreage.length);
+    console.log('[SCATTER DEBUG] Chart data by status:', {
+      closed: closed.length,
+      pending: pending.length,
+      active: active.length
     });
     
     return { closed, pending, active };
