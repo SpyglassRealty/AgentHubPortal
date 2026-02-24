@@ -3630,6 +3630,75 @@ Respond with valid JSON in this exact format:
 
       console.log('[CMA Search] Results count:', (data.listings || []).length);
 
+      // FALLBACK: If structured address search returns 0 results, retry with generic search
+      if (isAddressSearch && (data.listings || []).length === 0) {
+        console.log('[CMA Search] Structured address returned 0, falling back to generic search');
+        
+        // Build fallback params without streetNumber/streetName/streetSuffix but keeping other base params
+        const fallbackParams = new URLSearchParams({
+          listings: 'true',
+          type: 'Sale',
+          resultsPerPage: resultsPerPage.toString(),
+          pageNum: pageNum.toString(),
+          sortBy: 'createdOnDesc',
+        });
+        
+        // Add the fields parameter
+        fallbackParams.append('fields', [
+          'mlsNumber', 'listingId', 'address', 'map', 'details', 'images', 'photos',
+          'listPrice', 'soldPrice', 'originalPrice', 'listPriceLog',
+          'remarks', 'publicRemarks', 'description', 
+          'listDate', 'soldDate', 'closeDate',
+          'daysOnMarket', 'simpleDaysOnMarket', 'dom',
+          'standardStatus', 'status', 'lastStatus',
+          'bedroomsTotal', 'bathroomsTotal', 'livingArea', 'lotSizeArea',
+          'lot', 'timestamps'
+        ].join(','));
+        
+        // Add generic search parameter
+        fallbackParams.append('search', trimmedSearch);
+        
+        // Copy over other non-address filters that were applied
+        if (city && !parsed.city) fallbackParams.append('city', city);
+        if (zip && !parsed.zip) fallbackParams.append('zip', zip);
+        if (county) fallbackParams.append('county', county);
+        if (area) fallbackParams.append('area', area);
+        if (subdivision) fallbackParams.append('subdivision', subdivision);
+        if (minBeds && minBeds !== 'any') fallbackParams.append('minBeds', minBeds.toString());
+        if (minBaths && minBaths !== 'any') fallbackParams.append('minBaths', minBaths.toString());
+        if (minPrice) fallbackParams.append('minPrice', minPrice.toString());
+        if (maxPrice) fallbackParams.append('maxPrice', maxPrice.toString());
+        if (minSqft) fallbackParams.append('minSqft', minSqft.toString());
+        if (maxSqft) fallbackParams.append('maxSqft', maxSqft.toString());
+        if (propertyType) fallbackParams.append('style', propertyType);
+        if (minYearBuilt) fallbackParams.append('minYearBuilt', minYearBuilt.toString());
+        if (maxYearBuilt) fallbackParams.append('maxYearBuilt', maxYearBuilt.toString());
+        
+        const fallbackUrl = `${baseUrl}?${fallbackParams.toString()}`;
+        console.log('[CMA Search] Fallback URL:', fallbackUrl);
+        
+        try {
+          const fallbackResponse = await fetch(fallbackUrl, {
+            headers: {
+              'Accept': 'application/json',
+              'REPLIERS-API-KEY': apiKey
+            }
+          });
+          
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
+            console.log('[CMA Search] Fallback generic search results:', (fallbackData.listings || []).length);
+            if ((fallbackData.listings || []).length > 0) {
+              data = fallbackData; // Use fallback results
+              console.log('[CMA Search] Using fallback results');
+            }
+          }
+        } catch (err) {
+          console.error('[CMA Search] Fallback search failed:', err);
+          // Continue with original empty results
+        }
+      }
+
       // ===== DIAGNOSTIC LOGGING FOR QA DEBUGGING =====
       console.log('[REPLIERS DEBUG] API Response Summary:', {
         totalCount: data.count || 0,
@@ -3983,6 +4052,19 @@ Respond with valid JSON in this exact format:
       const totalPages = subdivisionFilter ? 1 : Math.ceil(total / resultsPerPage);
 
       console.log(`[CMA Search] Returning ${finalListings.length} of ${total} results`);
+
+      // Debug logging for MLS# search results
+      if (isMlsNumber && finalListings.length > 0) {
+        console.log('[CMA Search] MLS# result address:', JSON.stringify({
+          streetNumber: data.listings?.[0]?.address?.streetNumber,
+          streetName: data.listings?.[0]?.address?.streetName,
+          streetSuffix: data.listings?.[0]?.address?.streetSuffix,
+          city: data.listings?.[0]?.address?.city,
+          state: data.listings?.[0]?.address?.state,
+          zip: data.listings?.[0]?.address?.zip,
+          fullAddress: finalListings[0]?.address
+        }));
+      }
 
       res.json({
         listings: subdivisionFilter ? filteredListings : finalListings,
