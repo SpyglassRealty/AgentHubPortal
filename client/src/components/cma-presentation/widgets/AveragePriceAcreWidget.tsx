@@ -173,7 +173,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
       <div className="mt-1.5 space-y-0.5 text-xs">
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Price:</span>
-          <span className="font-medium">{formatFullPrice(data.soldPrice || data.price)}</span>
+          <span className="font-medium">{formatFullPrice(extractPrice(data) || 0)}</span>
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Acres:</span>
@@ -334,7 +334,7 @@ export function AveragePriceAcreWidget({
       const dataPoint = {
         ...p,
         x: p.lotSizeAcres,
-        y: p.soldPrice || p.price,
+        y: getPrice(p),
         fill: getStatusColor(p.status),
       };
       
@@ -357,7 +357,7 @@ export function AveragePriceAcreWidget({
     return [{
       ...subjectWithAcreage,
       x: subjectWithAcreage.lotSizeAcres,
-      y: subjectWithAcreage.soldPrice || subjectWithAcreage.price || (avgPricePerAcre * subjectWithAcreage.lotSizeAcres),
+      y: getPrice(subjectWithAcreage) || (avgPricePerAcre * subjectWithAcreage.lotSizeAcres),
       fill: STATUS_COLORS.subject,
     }];
   }, [subjectWithAcreage, showSubject, avgPricePerAcre]);
