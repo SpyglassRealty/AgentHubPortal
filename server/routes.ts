@@ -3256,16 +3256,17 @@ Respond with valid JSON in this exact format:
             
             console.log(`[CMA Search ENHANCED] Using parsed fields: ${parsed.streetNumber} ${parsed.streetName} ${parsed.streetSuffix || ''}, ZIP ${parsed.zip}`);
           } else {
-            // Fallback to original search parameter
+            // Fallback to original search parameter with address-focused search
             params.append('search', search);
-            console.log(`[CMA Search ENHANCED] Using fallback search: "${search}"`);
+            // Limit search to address fields only for better precision
+            params.append('searchFields', 'address.streetNumber,address.streetName,address.city,address.zip');
+            console.log(`[CMA Search ENHANCED] Using address-focused search: "${search}" with searchFields`);
           }
           
-          // Add fuzzy search for better autocomplete results
-          if (fuzzySearch) {
-            params.append('fuzzySearch', 'true');
-            console.log(`[CMA Search ENHANCED] Enabled fuzzy search for better matching`);
-          }
+          // Do NOT use fuzzy search on initial attempt — exact match first
+          // Fuzzy search will be used as fallback if exact search returns 0 results
+          console.log(`[CMA Search ENHANCED] Using exact search first (no fuzzy)`);
+        }
         }
       }
 
@@ -3608,6 +3609,41 @@ Respond with valid JSON in this exact format:
       let data = await response.json();
 
       console.log('[CMA Search] Results count:', (data.listings || []).length);
+
+      // FALLBACK: If exact address search returns 0 results, retry with fuzzy search
+      const trimmedSearchCheck = search?.trim();
+      const isAddressSearch = trimmedSearchCheck && !(/^[A-Za-z]{1,5}\d{4,}$/.test(trimmedSearchCheck));
+      if (isAddressSearch && (data.listings || []).length === 0) {
+        console.log('[CMA Search] Exact address search returned 0 results, retrying with fuzzy search...');
+        
+        // Build fallback params with fuzzy search enabled
+        const fallbackParams = new URLSearchParams(params.toString());
+        fallbackParams.delete('searchFields'); // Remove address field restriction
+        fallbackParams.set('fuzzySearch', 'true'); // Enable fuzzy search
+        
+        const fallbackUrl = `${baseUrl}?${fallbackParams.toString()}`;
+        console.log('[CMA Search] Fallback URL:', fallbackUrl);
+        
+        try {
+          const fallbackResponse = await fetch(fallbackUrl, {
+            headers: {
+              'Accept': 'application/json',
+              'REPLIERS-API-KEY': apiKey
+            }
+          });
+          
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
+            console.log('[CMA Search] Fallback fuzzy search results:', (fallbackData.listings || []).length);
+            if ((fallbackData.listings || []).length > 0) {
+              data = fallbackData; // Use fallback results
+            }
+          }
+        } catch (err) {
+          console.error('[CMA Search] Fallback search failed:', err);
+          // Continue with original empty results
+        }
+      }
 
       // ===== DIAGNOSTIC LOGGING FOR QA DEBUGGING =====
       console.log('[REPLIERS DEBUG] API Response Summary:', {
