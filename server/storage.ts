@@ -807,9 +807,12 @@ export class DatabaseStorage implements IStorage {
 
   // Agent Resource methods
   async getAgentResources(userId: string): Promise<AgentResource[]> {
-    return db.select().from(agentResources)
+    console.log(`[STORAGE DEBUG] getAgentResources called for user: ${userId}`);
+    const results = await db.select().from(agentResources)
       .where(eq(agentResources.userId, userId))
       .orderBy(agentResources.sortOrder);
+    console.log(`[STORAGE DEBUG] getAgentResources query returned ${results.length} results:`, results);
+    return results;
   }
 
   async getAgentResource(id: string): Promise<AgentResource | undefined> {
@@ -818,14 +821,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAgentResource(resource: InsertAgentResource): Promise<AgentResource> {
+    console.log(`[STORAGE DEBUG] createAgentResource called with:`, resource);
     const existing = await this.getAgentResources(resource.userId);
+    console.log(`[STORAGE DEBUG] Found ${existing.length} existing resources for user ${resource.userId}`);
+    
     const maxOrder = existing.length > 0
       ? Math.max(...existing.map(r => r.sortOrder ?? 0)) + 1
       : 0;
+    
+    console.log(`[STORAGE DEBUG] Inserting resource with sortOrder: ${maxOrder}`);
+    
     const [created] = await db
       .insert(agentResources)
       .values({ ...resource, sortOrder: maxOrder })
       .returning();
+      
+    console.log(`[STORAGE DEBUG] Resource created in database:`, created);
     return created;
   }
 
