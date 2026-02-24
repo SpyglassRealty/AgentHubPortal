@@ -2628,6 +2628,56 @@ Respond with valid JSON in this exact format:
   // AGENT RESOURCES ENDPOINTS
   // ============================================
 
+  // DEBUG ENDPOINT: Check agent_resources table status
+  app.get('/api/debug/agent-resources-table', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user?.isSuperAdmin) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      // Check if table exists
+      const tableExists = await pool.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'agent_resources'
+        )
+      `);
+
+      // Get table structure
+      const tableStructure = await pool.query(`
+        SELECT column_name, data_type, is_nullable, column_default
+        FROM information_schema.columns 
+        WHERE table_name = 'agent_resources'
+        ORDER BY ordinal_position
+      `);
+
+      // Get row count and sample data
+      let rowCount = 0;
+      let sampleData = [];
+      if (tableExists.rows[0].exists) {
+        const countResult = await pool.query('SELECT COUNT(*) FROM agent_resources');
+        rowCount = parseInt(countResult.rows[0].count);
+        
+        if (rowCount > 0) {
+          const sampleResult = await pool.query('SELECT * FROM agent_resources LIMIT 5');
+          sampleData = sampleResult.rows;
+        }
+      }
+
+      res.json({
+        tableExists: tableExists.rows[0].exists,
+        rowCount,
+        tableStructure: tableStructure.rows,
+        sampleData
+      });
+    } catch (error) {
+      console.error('Error checking agent_resources table:', error);
+      res.status(500).json({ message: 'Failed to check table status', error: error.message });
+    }
+  });
+
   // GET /api/settings/resources - list resources for logged-in user
   app.get('/api/settings/resources', isAuthenticated, async (req: any, res) => {
     try {
