@@ -529,7 +529,7 @@ export function AveragePriceAcreWidget({
                   <YAxis 
                     type="number" 
                     dataKey="y" 
-                    name="Price"
+                    name="Price Per Acre"
                     domain={[minPrice, maxPrice]}
                     tickFormatter={formatPrice}
                     tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
