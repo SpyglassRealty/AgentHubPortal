@@ -1823,7 +1823,7 @@ function SearchPropertiesSection({
                       property={prop}
                       isAdded={isAdded}
                       onAdd={onAddComp}
-                      variant="search-result"
+                      variant="dropdown"
                     />
                   );
                 })}

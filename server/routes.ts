@@ -3230,31 +3230,42 @@ Respond with valid JSON in this exact format:
       if (search && search.trim()) {
         console.log(`[CMA Search ENHANCED] Address search: "${search}"`);
         
-        // Try to parse as a full address first
-        parsed = parseAddress(search);
-        console.log(`[CMA Search ENHANCED] Parsed address:`, parsed);
+        const trimmedSearch = search.trim();
+        const isMlsNumber = /^[A-Za-z]{1,5}\d{4,}$/.test(trimmedSearch);
         
-        // Strategy 1: Use parsed fields if we have street number + name + zip
-        if (parsed.streetNumber && parsed.streetName && parsed.zip) {
-          // Add individual Repliers fields for more precise matching
-          params.append('streetNumber', parsed.streetNumber);
-          params.append('streetName', parsed.streetName);
-          if (parsed.streetSuffix) {
-            params.append('streetSuffix', parsed.streetSuffix);
-          }
-          params.append('zip', parsed.zip);
-          
-          console.log(`[CMA Search ENHANCED] Using parsed fields: ${parsed.streetNumber} ${parsed.streetName} ${parsed.streetSuffix || ''}, ZIP ${parsed.zip}`);
+        if (isMlsNumber) {
+          // Direct MLS lookup — exact match, no fuzzy, all statuses
+          params.append('mlsNumber', trimmedSearch);
+          // Do NOT append fuzzySearch for MLS lookups
+          // Do NOT filter by status — listing could be active, sold, pending
+          console.log('[CMA Search] MLS# detected, using mlsNumber param:', trimmedSearch);
         } else {
-          // Fallback to original search parameter
-          params.append('search', search);
-          console.log(`[CMA Search ENHANCED] Using fallback search: "${search}"`);
-        }
-        
-        // Add fuzzy search for better autocomplete results
-        if (fuzzySearch) {
-          params.append('fuzzySearch', 'true');
-          console.log(`[CMA Search ENHANCED] Enabled fuzzy search for better matching`);
+          // Try to parse as a full address first
+          parsed = parseAddress(search);
+          console.log(`[CMA Search ENHANCED] Parsed address:`, parsed);
+          
+          // Strategy 1: Use parsed fields if we have street number + name + zip
+          if (parsed.streetNumber && parsed.streetName && parsed.zip) {
+            // Add individual Repliers fields for more precise matching
+            params.append('streetNumber', parsed.streetNumber);
+            params.append('streetName', parsed.streetName);
+            if (parsed.streetSuffix) {
+              params.append('streetSuffix', parsed.streetSuffix);
+            }
+            params.append('zip', parsed.zip);
+            
+            console.log(`[CMA Search ENHANCED] Using parsed fields: ${parsed.streetNumber} ${parsed.streetName} ${parsed.streetSuffix || ''}, ZIP ${parsed.zip}`);
+          } else {
+            // Fallback to original search parameter
+            params.append('search', search);
+            console.log(`[CMA Search ENHANCED] Using fallback search: "${search}"`);
+          }
+          
+          // Add fuzzy search for better autocomplete results
+          if (fuzzySearch) {
+            params.append('fuzzySearch', 'true');
+            console.log(`[CMA Search ENHANCED] Enabled fuzzy search for better matching`);
+          }
         }
       }
 
@@ -3478,40 +3489,60 @@ Respond with valid JSON in this exact format:
       if (maxLotAcres) params.append('maxLotWidth', (maxLotAcres * 43560).toString());
 
       // Status handling - support multiple statuses
-      // Default to including sold comps for CMA analysis, especially for address searches
-      const statusArray: string[] = statuses && statuses.length > 0 
-        ? statuses 
-        : (search ? ['Active', 'Closed'] : ['Active']); // Include sold comps for address searches
+      // For MLS# searches, skip status filtering to find the exact listing regardless of status
+      const trimmedSearch = search?.trim();
+      const isMlsNumber = trimmedSearch && /^[A-Za-z]{1,5}\d{4,}$/.test(trimmedSearch);
       
-      console.log(`[CMA Search ENHANCED] Search statuses:`, statusArray);
-      // If includes Closed, we need a separate approach
-      const hasActive = statusArray.includes('Active') || statusArray.includes('A');
-      const hasAUC = statusArray.includes('Active Under Contract');
-      const hasPending = statusArray.includes('Pending');
-      const hasClosed = statusArray.includes('Closed') || statusArray.includes('U');
-      const hasAnyActive = hasActive || hasAUC || hasPending;
-
-      if (statusArray.length === 0) {
-        // No status filter - search all listings (useful for address lookups)
-      } else if (hasClosed && !hasAnyActive) {
-        // Only closed - use dateSoldDays if provided, otherwise default to 365
-        const soldDays = dateSoldDays ? parseInt(dateSoldDays.toString(), 10) : 365;
-        const minDate = new Date();
-        minDate.setDate(minDate.getDate() - soldDays);
-        params.append('status', 'U');
-        params.append('lastStatus', 'Sld');
-        params.append('minClosedDate', minDate.toISOString().split('T')[0]);
-      } else if (!hasClosed) {
-        // Only active statuses
-        statusArray.forEach(s => params.append('standardStatus', s));
+      let hasActive = false;
+      let hasAUC = false;
+      let hasPending = false;
+      let hasClosed = false;
+      let hasAnyActive = false;
+      
+      if (!isMlsNumber) {
+        // Default to including sold comps for CMA analysis, especially for address searches
+        const statusArray: string[] = statuses && statuses.length > 0 
+          ? statuses 
+          : (search ? ['Active', 'Closed'] : ['Active']); // Include sold comps for address searches
+        
+        console.log(`[CMA Search ENHANCED] Search statuses:`, statusArray);
+        // If includes Closed, we need a separate approach
+        hasActive = statusArray.includes('Active') || statusArray.includes('A');
+        hasAUC = statusArray.includes('Active Under Contract');
+        hasPending = statusArray.includes('Pending');
+        hasClosed = statusArray.includes('Closed') || statusArray.includes('U');
+        hasAnyActive = hasActive || hasAUC || hasPending;
       } else {
-        // Mix of active and closed - search active statuses first, then merge closed results after
-        const activeStatuses = statusArray.filter(s => s !== 'Closed');
-        activeStatuses.forEach(s => params.append('standardStatus', s));
+        console.log('[CMA Search] MLS# search - skipping status filters to find exact listing');
       }
 
-      // Flag for merged search (active + closed)
-      const needsMergedSearch = hasClosed && hasAnyActive;
+      if (!isMlsNumber) {
+        const statusArray: string[] = statuses && statuses.length > 0 
+          ? statuses 
+          : (search ? ['Active', 'Closed'] : ['Active']); // Include sold comps for address searches
+          
+        if (statusArray.length === 0) {
+          // No status filter - search all listings (useful for address lookups)
+        } else if (hasClosed && !hasAnyActive) {
+          // Only closed - use dateSoldDays if provided, otherwise default to 365
+          const soldDays = dateSoldDays ? parseInt(dateSoldDays.toString(), 10) : 365;
+          const minDate = new Date();
+          minDate.setDate(minDate.getDate() - soldDays);
+          params.append('status', 'U');
+          params.append('lastStatus', 'Sld');
+          params.append('minClosedDate', minDate.toISOString().split('T')[0]);
+        } else if (!hasClosed) {
+          // Only active statuses
+          statusArray.forEach(s => params.append('standardStatus', s));
+        } else {
+          // Mix of active and closed - search active statuses first, then merge closed results after
+          const activeStatuses = statusArray.filter(s => s !== 'Closed');
+          activeStatuses.forEach(s => params.append('standardStatus', s));
+        }
+      }
+
+      // Flag for merged search (active + closed) - skip for MLS# searches
+      const needsMergedSearch = !isMlsNumber && hasClosed && hasAnyActive;
 
       const fullUrl = `${baseUrl}?${params.toString()}`;
       console.log(`[CMA Search] Searching properties: ${fullUrl}`);

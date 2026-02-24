@@ -51,7 +51,7 @@ interface PropertyCardProps {
   property: PropertyData;
   isAdded: boolean;
   onAdd: (property: PropertyData) => void;
-  variant?: 'search-result' | 'compact';
+  variant?: 'search-result' | 'compact' | 'dropdown';
 }
 
 // Utility: Format price with commas
@@ -112,6 +112,63 @@ function PropertyImage({
 
 export function PropertyCard({ property, isAdded, onAdd, variant = 'search-result' }: PropertyCardProps) {
   const price = property.soldPrice || property.listPrice;
+  const displayPrice = property.status === 'Closed' || property.status === 'Sold' ? property.soldPrice : property.listPrice;
+  
+  if (variant === 'dropdown') {
+    return (
+      <div className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer">
+        <div className="flex-1 min-w-0">
+          {/* Line 1: MLS# (bold) */}
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-sm font-bold text-foreground">
+              MLS# {property.mlsNumber}
+            </p>
+            <Badge 
+              variant="outline" 
+              className={`text-xs ml-2 ${
+                property.status === 'Closed' || property.status === 'Sold' 
+                  ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400'
+                  : property.status === 'Pending' || property.status === 'Active Under Contract'
+                  ? 'border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                  : 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400'
+              }`}
+            >
+              {property.status === 'Closed' ? 'Sold' : property.status}
+            </Badge>
+          </div>
+          
+          {/* Line 2: Full address */}
+          <p className="text-sm text-foreground truncate mb-1" title={property.address}>
+            {property.address}
+          </p>
+          
+          {/* Line 3: Price | Beds/Baths | Sqft */}
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <span className="font-semibold text-[#EF4923]">
+              {formatPrice(displayPrice)}
+            </span>
+            <span>|</span>
+            <span>{property.beds}bd/{property.baths}ba</span>
+            <span>|</span>
+            <span>{formatNumber(property.sqft)} sqft</span>
+          </div>
+        </div>
+        
+        <Button
+          size="sm"
+          variant={isAdded ? "secondary" : "default"}
+          className={isAdded ? "" : "bg-[#EF4923] hover:bg-[#d4401f] text-white"}
+          disabled={isAdded}
+          onClick={(e) => {
+            e.stopPropagation();
+            onAdd(property);
+          }}
+        >
+          {isAdded ? "✓ Added" : <Plus className="h-4 w-4" />}
+        </Button>
+      </div>
+    );
+  }
   
   if (variant === 'compact') {
     return (
