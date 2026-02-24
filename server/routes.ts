@@ -3267,7 +3267,6 @@ Respond with valid JSON in this exact format:
           // Fuzzy search will be used as fallback if exact search returns 0 results
           console.log(`[CMA Search ENHANCED] Using exact search first (no fuzzy)`);
         }
-        }
       }
 
       // Direct listing ID lookup via mlsNumber param
