@@ -227,6 +227,32 @@ export function registerEnhancedCmaSearchRoutes(app: Express) {
         const rawListings = bestResults.listings;
         console.log(`[CMA Enhanced Search] Found ${rawListings.length} total listings`);
         
+        // Debug: Log first 2 raw listings to see actual Repliers data structure
+        if (rawListings.length > 0) {
+          console.log('[SCATTER DEBUG] Raw Repliers listing #0:', JSON.stringify({
+            mlsNumber: rawListings[0].mlsNumber,
+            address: rawListings[0].address,
+            listPrice: rawListings[0].listPrice,
+            lot: rawListings[0].lot,
+            lotSize: rawListings[0].lotSize,
+            lotSizeArea: rawListings[0].lotSizeArea,
+            lotSizeAcres: rawListings[0].lotSizeAcres,
+            details: rawListings[0].details
+          }, null, 2));
+        }
+        if (rawListings.length > 1) {
+          console.log('[SCATTER DEBUG] Raw Repliers listing #1:', JSON.stringify({
+            mlsNumber: rawListings[1].mlsNumber,
+            address: rawListings[1].address,
+            listPrice: rawListings[1].listPrice,
+            lot: rawListings[1].lot,
+            lotSize: rawListings[1].lotSize,
+            lotSizeArea: rawListings[1].lotSizeArea,
+            lotSizeAcres: rawListings[1].lotSizeAcres,
+            details: rawListings[1].details
+          }, null, 2));
+        }
+        
         // === GEO-SPATIAL FILTERING & RELEVANCE SCORING ===
         const processedListings = rawListings.map((listing: any, index: number) => {
           // Transform listing to standard format
