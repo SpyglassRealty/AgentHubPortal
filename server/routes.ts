@@ -3485,10 +3485,10 @@ Respond with valid JSON in this exact format:
       
       console.log(`[CMA Search ENHANCED] Search statuses:`, statusArray);
       // If includes Closed, we need a separate approach
-      const hasActive = statusArray.includes('Active');
+      const hasActive = statusArray.includes('Active') || statusArray.includes('A');
       const hasAUC = statusArray.includes('Active Under Contract');
       const hasPending = statusArray.includes('Pending');
-      const hasClosed = statusArray.includes('Closed');
+      const hasClosed = statusArray.includes('Closed') || statusArray.includes('U');
       const hasAnyActive = hasActive || hasAUC || hasPending;
 
       if (statusArray.length === 0) {
