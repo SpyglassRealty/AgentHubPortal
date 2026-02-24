@@ -2628,55 +2628,7 @@ Respond with valid JSON in this exact format:
   // AGENT RESOURCES ENDPOINTS
   // ============================================
 
-  // DEBUG ENDPOINT: Check agent_resources table status
-  app.get('/api/debug/agent-resources-table', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await getDbUser(req);
-      if (!user?.isSuperAdmin) {
-        return res.status(403).json({ message: 'Admin access required' });
-      }
-
-      // Check if table exists
-      const tableExists = await pool.query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'public' 
-          AND table_name = 'agent_resources'
-        )
-      `);
-
-      // Get table structure
-      const tableStructure = await pool.query(`
-        SELECT column_name, data_type, is_nullable, column_default
-        FROM information_schema.columns 
-        WHERE table_name = 'agent_resources'
-        ORDER BY ordinal_position
-      `);
-
-      // Get row count and sample data
-      let rowCount = 0;
-      let sampleData = [];
-      if (tableExists.rows[0].exists) {
-        const countResult = await pool.query('SELECT COUNT(*) FROM agent_resources');
-        rowCount = parseInt(countResult.rows[0].count);
-        
-        if (rowCount > 0) {
-          const sampleResult = await pool.query('SELECT * FROM agent_resources LIMIT 5');
-          sampleData = sampleResult.rows;
-        }
-      }
-
-      res.json({
-        tableExists: tableExists.rows[0].exists,
-        rowCount,
-        tableStructure: tableStructure.rows,
-        sampleData
-      });
-    } catch (error) {
-      console.error('Error checking agent_resources table:', error);
-      res.status(500).json({ message: 'Failed to check table status', error: error.message });
-    }
-  });
+  // Resources endpoints
 
   // GET /api/settings/resources - list resources for logged-in user
   app.get('/api/settings/resources', isAuthenticated, async (req: any, res) => {
@@ -2686,9 +2638,7 @@ Respond with valid JSON in this exact format:
         return res.status(401).json({ message: 'Not authenticated' });
       }
 
-      console.log(`[RESOURCES DEBUG] GET request for user ${user.id}`);
       const resources = await storage.getAgentResources(user.id);
-      console.log(`[RESOURCES DEBUG] Found ${resources.length} resources for user ${user.id}:`, resources);
       res.json({ resources });
     } catch (error) {
       console.error('Error fetching agent resources:', error);
@@ -2729,11 +2679,8 @@ Respond with valid JSON in this exact format:
         return res.status(401).json({ message: 'Not authenticated' });
       }
 
-      console.log(`[RESOURCES DEBUG] File upload request from user ${user.id}`);
-
       // Check current resource count (max 10 resources per agent)
       const existing = await storage.getAgentResources(user.id);
-      console.log(`[RESOURCES DEBUG] User ${user.id} has ${existing.length} existing resources`);
       
       if (existing.length >= 10) {
         return res.status(400).json({ message: 'Maximum of 10 resources allowed per agent' });
@@ -2751,8 +2698,6 @@ Respond with valid JSON in this exact format:
       if (file.mimetype === 'application/pdf') type = 'pdf';
       else if (file.mimetype.startsWith('image/')) type = 'image';
 
-      console.log(`[RESOURCES DEBUG] Creating resource: title="${title}", type="${type}", fileSize=${file.size}`);
-
       const resource = await storage.createAgentResource({
         userId: user.id,
         title,
@@ -2763,8 +2708,6 @@ Respond with valid JSON in this exact format:
         mimeType: file.mimetype,
         redirectUrl: null
       });
-
-      console.log(`[RESOURCES DEBUG] Resource created successfully:`, resource);
       res.json({ success: true, resource });
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -2780,18 +2723,14 @@ Respond with valid JSON in this exact format:
         return res.status(401).json({ message: 'Not authenticated' });
       }
 
-      console.log(`[RESOURCES DEBUG] Link creation request from user ${user.id}`);
-
       // Check current resource count (max 10 resources per agent)
       const existing = await storage.getAgentResources(user.id);
-      console.log(`[RESOURCES DEBUG] User ${user.id} has ${existing.length} existing resources`);
       
       if (existing.length >= 10) {
         return res.status(400).json({ message: 'Maximum of 10 resources allowed per agent' });
       }
 
       const { title, url } = req.body;
-      console.log(`[RESOURCES DEBUG] Creating link: title="${title}", url="${url}"`);
 
       if (!title || !url) {
         return res.status(400).json({ message: 'Missing required fields: title, url' });
@@ -2815,7 +2754,6 @@ Respond with valid JSON in this exact format:
         redirectUrl: url
       });
 
-      console.log(`[RESOURCES DEBUG] Link created successfully:`, resource);
       res.json({ success: true, resource });
     } catch (error) {
       console.error('Error creating link resource:', error);
