@@ -637,7 +637,7 @@ export default function SettingsPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ sort_order: sortOrder }),
+        body: JSON.stringify({ sortOrder }),
       });
       if (!res.ok) throw new Error("Failed to reorder resource");
       return res.json();
