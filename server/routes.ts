@@ -3185,6 +3185,7 @@ Respond with valid JSON in this exact format:
         garageSpaces, parkingSpaces,
         privatePool, waterfront, hoa, primaryBedOnMain,
         search, // address search
+        fuzzySearch, // enable fuzzy matching for address search
         page, limit,
         mapBounds, // { sw: { lat, lng }, ne: { lat, lng } } for map search
         polygon, // array of [lng, lat] coordinate pairs for polygon map search
@@ -3248,6 +3249,12 @@ Respond with valid JSON in this exact format:
           // Fallback to original search parameter
           params.append('search', search);
           console.log(`[CMA Search ENHANCED] Using fallback search: "${search}"`);
+        }
+        
+        // Add fuzzy search for better autocomplete results
+        if (fuzzySearch) {
+          params.append('fuzzySearch', 'true');
+          console.log(`[CMA Search ENHANCED] Enabled fuzzy search for better matching`);
         }
       }
 
@@ -3558,6 +3565,9 @@ Respond with valid JSON in this exact format:
         });
       }
 
+      console.log('[CMA Search] Repliers URL:', fullUrl);
+      console.log('[CMA Search] Repliers response status:', response.status);
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('[CMA Search] Repliers API error:', response.status, errorText);
@@ -3565,6 +3575,8 @@ Respond with valid JSON in this exact format:
       }
 
       let data = await response.json();
+
+      console.log('[CMA Search] Results count:', (data.listings || []).length);
 
       // ===== DIAGNOSTIC LOGGING FOR QA DEBUGGING =====
       console.log('[REPLIERS DEBUG] API Response Summary:', {
