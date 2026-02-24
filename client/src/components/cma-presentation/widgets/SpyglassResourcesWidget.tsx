@@ -67,22 +67,22 @@ export function SpyglassResourcesWidget({ agent, cmaToken }: SpyglassResourcesWi
   };
 
   return (
-    <div className="h-full w-full flex flex-col bg-gradient-to-br from-gray-900 to-black" data-testid="spyglass-resources-widget">
+    <div className="h-full w-full flex flex-col bg-white" data-testid="spyglass-resources-widget">
       <div className="flex-1 flex items-center justify-center p-8">
         {isLoading ? (
           <div className="text-center">
-            <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
-            <p className="text-gray-400 text-sm mt-4">Loading resources...</p>
+            <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-gray-600 text-sm mt-4">Loading resources...</p>
           </div>
         ) : isError ? (
           <div className="text-center max-w-md">
-            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <FileText className="w-8 h-8 text-red-400" />
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <FileText className="w-8 h-8 text-red-600" />
             </div>
-            <h3 className="text-xl font-semibold text-white mb-3">
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">
               Resources Unavailable
             </h3>
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-600 text-sm">
               Resources could not be loaded at this time.
             </p>
           </div>
@@ -98,7 +98,7 @@ export function SpyglassResourcesWidget({ agent, cmaToken }: SpyglassResourcesWi
                   return (
                     <div
                       key={resource.id}
-                      className="group cursor-pointer transition-all duration-200 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg p-4"
+                      className="group cursor-pointer transition-all duration-200 bg-white hover:shadow-md border border-gray-200 hover:border-gray-300 rounded-lg p-4"
                       onClick={(e) => handleResourceClick(resource, e)}
                       data-testid={`resource-item-${resource.id}`}
                     >
@@ -107,12 +107,12 @@ export function SpyglassResourcesWidget({ agent, cmaToken }: SpyglassResourcesWi
                         <div className={`
                           flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center
                           ${resource.type === 'link' 
-                            ? 'bg-blue-500/20 text-blue-400' 
+                            ? 'bg-blue-100 text-blue-600' 
                             : resource.type === 'pdf'
-                            ? 'bg-red-500/20 text-red-400'
+                            ? 'bg-red-100 text-red-600'
                             : resource.type === 'doc'
-                            ? 'bg-blue-600/20 text-blue-400' 
-                            : 'bg-green-500/20 text-green-400'
+                            ? 'bg-blue-100 text-blue-600' 
+                            : 'bg-green-100 text-green-600'
                           }
                         `}>
                           <ResourceIcon className="w-6 h-6" />
@@ -120,10 +120,10 @@ export function SpyglassResourcesWidget({ agent, cmaToken }: SpyglassResourcesWi
                         
                         {/* Resource Info */}
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-white text-lg truncate">
+                          <h4 className="font-medium text-gray-900 text-lg truncate">
                             {resource.title}
                           </h4>
-                          <p className="text-gray-400 text-sm">
+                          <p className="text-gray-600 text-sm">
                             {resource.type === 'link' 
                               ? 'Link' 
                               : resource.fileSize 
@@ -136,9 +136,9 @@ export function SpyglassResourcesWidget({ agent, cmaToken }: SpyglassResourcesWi
                         {/* Action Icon */}
                         <div className="flex-shrink-0">
                           {resource.type === 'link' ? (
-                            <ExternalLink className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
+                            <ExternalLink className="w-5 h-5 text-gray-500 group-hover:text-gray-700 transition-colors" />
                           ) : (
-                            <Download className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
+                            <Download className="w-5 h-5 text-gray-500 group-hover:text-gray-700 transition-colors" />
                           )}
                         </div>
                       </div>
@@ -150,13 +150,13 @@ export function SpyglassResourcesWidget({ agent, cmaToken }: SpyglassResourcesWi
           </div>
         ) : (
           <div className="text-center max-w-md">
-            <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <FileText className="w-8 h-8 text-gray-400" />
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <FileText className="w-8 h-8 text-gray-500" />
             </div>
-            <h3 className="text-xl font-semibold text-white mb-3">
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">
               No Resources Available
             </h3>
-            <p className="text-gray-400 text-sm leading-relaxed">
+            <p className="text-gray-600 text-sm leading-relaxed">
               {cmaToken
                 ? "This agent has not added any resources to share."
                 : "Add helpful documents and links for your clients in Settings."}
