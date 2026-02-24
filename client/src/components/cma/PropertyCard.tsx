@@ -117,6 +117,13 @@ export function PropertyCard({ property, isAdded, onAdd, variant = 'search-resul
   if (variant === 'dropdown') {
     return (
       <div className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer">
+        {/* Property thumbnail - matches skeleton loading state */}
+        <PropertyImage 
+          photos={property.photos}
+          address={property.address}
+          className="w-20 h-14 rounded flex-shrink-0"
+        />
+        
         <div className="flex-1 min-w-0">
           {/* Line 1: MLS# (bold) */}
           <p className="text-sm font-bold text-foreground mb-1">
