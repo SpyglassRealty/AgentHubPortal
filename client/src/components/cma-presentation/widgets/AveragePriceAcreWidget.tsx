@@ -368,10 +368,23 @@ export function AveragePriceAcreWidget({
   // Calculate linear regression from CLOSED/SOLD listings only (CloudCMA-style)
   const regressionData = useMemo(() => {
     const closedData = chartData.filter(d => getStatusCategory(d.status) === 'closed');
-    if (closedData.length < 2) return null;
+    console.log('[AveragePriceAcreWidget] Trendline Debug - Closed listings count:', closedData.length);
+    console.log('[AveragePriceAcreWidget] Trendline Debug - Closed data points:', closedData.map(d => ({ 
+      address: d.address, 
+      status: d.status, 
+      acres: d.x, 
+      pricePerAcre: d.y 
+    })));
+    
+    if (closedData.length < 2) {
+      console.log('[AveragePriceAcreWidget] Trendline Debug - Insufficient closed data for trendline');
+      return null;
+    }
     
     const points = closedData.map(d => ({ x: d.x, y: d.y }));
-    return calculateLinearRegression(points);
+    const result = calculateLinearRegression(points);
+    console.log('[AveragePriceAcreWidget] Trendline Debug - Regression result:', result);
+    return result;
   }, [chartData]);
 
   const { minAcres, maxAcres, minPrice, maxPrice, trendlineData } = useMemo(() => {
@@ -695,9 +708,15 @@ export function AveragePriceAcreWidget({
                 checked={showTrendline} 
                 onCheckedChange={(checked) => setShowTrendline(checked === true)}
                 data-testid="checkbox-show-trendline"
+                disabled={!regressionData}
               />
               <span className="w-6 h-0.5 bg-muted-foreground border-t border-dashed" />
-              <span className="text-muted-foreground">Trendline represents average price per acre of SOLD listings.</span>
+              <span className={`text-muted-foreground ${!regressionData ? 'opacity-50' : ''}`}>
+                {regressionData 
+                  ? 'Trendline represents average price per acre of SOLD listings.'
+                  : 'No sold data available for trendline (minimum 2 sold listings required).'
+                }
+              </span>
             </label>
             <div className="flex items-center gap-4 ml-auto">
               <div className="flex items-center gap-1.5">

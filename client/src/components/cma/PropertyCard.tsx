@@ -119,23 +119,9 @@ export function PropertyCard({ property, isAdded, onAdd, variant = 'search-resul
       <div className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer">
         <div className="flex-1 min-w-0">
           {/* Line 1: MLS# (bold) */}
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-sm font-bold text-foreground">
-              MLS# {property.mlsNumber}
-            </p>
-            <Badge 
-              variant="outline" 
-              className={`text-xs ml-2 ${
-                property.status === 'Closed' || property.status === 'Sold' 
-                  ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400'
-                  : property.status === 'Pending' || property.status === 'Active Under Contract'
-                  ? 'border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-                  : 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400'
-              }`}
-            >
-              {property.status === 'Closed' ? 'Sold' : property.status}
-            </Badge>
-          </div>
+          <p className="text-sm font-bold text-foreground mb-1">
+            MLS# {property.mlsNumber}
+          </p>
           
           {/* Line 2: Full address */}
           <p className="text-sm text-foreground truncate mb-1" title={property.address}>
@@ -154,18 +140,34 @@ export function PropertyCard({ property, isAdded, onAdd, variant = 'search-resul
           </div>
         </div>
         
-        <Button
-          size="sm"
-          variant={isAdded ? "secondary" : "default"}
-          className={isAdded ? "" : "bg-[#EF4923] hover:bg-[#d4401f] text-white"}
-          disabled={isAdded}
-          onClick={(e) => {
-            e.stopPropagation();
-            onAdd(property);
-          }}
-        >
-          {isAdded ? "✓ Added" : <Plus className="h-4 w-4" />}
-        </Button>
+        {/* Right side: Status badge and button */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Badge 
+            variant="outline" 
+            className={`text-xs ${
+              property.status === 'Closed' || property.status === 'Sold' 
+                ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400'
+                : property.status === 'Pending' || property.status === 'Active Under Contract'
+                ? 'border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                : 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400'
+            }`}
+          >
+            {property.status === 'Closed' ? 'Sold' : property.status}
+          </Badge>
+          
+          <Button
+            size="sm"
+            variant={isAdded ? "secondary" : "default"}
+            className={isAdded ? "" : "bg-[#EF4923] hover:bg-[#d4401f] text-white"}
+            disabled={isAdded}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAdd(property);
+            }}
+          >
+            {isAdded ? "✓ Added" : <Plus className="h-4 w-4" />}
+          </Button>
+        </div>
       </div>
     );
   }
