@@ -5520,6 +5520,38 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // Image proxy for PDF generation - fetches external images as base64 for React-PDF
+  app.get("/api/proxy-image", async (req: any, res: any) => {
+    try {
+      const { url } = req.query;
+      
+      if (!url || typeof url !== "string") {
+        return res.status(400).json({ error: "url parameter required" });
+      }
+      
+      // Only allow cdn.repliers.io to prevent abuse
+      if (!url.startsWith("https://cdn.repliers.io/")) {
+        return res.status(403).json({ error: "Only cdn.repliers.io URLs allowed" });
+      }
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+      
+      const buffer = await response.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString("base64");
+      const contentType = response.headers.get("content-type") || "image/jpeg";
+      
+      res.json({
+        base64: `data:${contentType};base64,${base64}`
+      });
+    } catch (error) {
+      console.error("[ImageProxy] Error:", error);
+      res.status(500).json({ error: "Failed to proxy image" });
+    }
+  });
+  
   // GET /api/mapbox-token - Get Mapbox access token for maps
   app.get('/api/mapbox-token', async (req: any, res) => {
     try {
