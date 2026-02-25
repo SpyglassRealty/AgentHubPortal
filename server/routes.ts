@@ -110,6 +110,7 @@ import { registerPublicCommunityRoutes } from "./publicCommunityRoutes";
 import { registerRedirectsRoutes } from "./redirectsRoutes";
 import { registerGlobalScriptsRoutes } from "./globalScriptsRoutes";
 import { registerSeoRoutes } from "./seoRoutes";
+import { setupDeveloperRoutes } from "./developerRoutes";
 import blogRoutes from "./blogRoutes";
 import agentRoutes from "./agentRoutes";
 import landingPageRoutes from "./landingPageRoutes";
@@ -5355,6 +5356,9 @@ Respond with valid JSON in this exact format:
 
   // Register admin routes (integration settings, etc.)
   registerAdminRoutes(app);
+
+  // Register developer routes (developer dashboard, activity logs, etc.)
+  setupDeveloperRoutes(app);
 
   // Register Gmail routes
   registerGmailRoutes(app);
