@@ -7,6 +7,43 @@ import { devChangelog, developerActivityLogs } from "@shared/developerSchema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count } from "drizzle-orm";
 
+// Fetch recent commits from GitHub API
+async function fetchGitHubCommits() {
+  try {
+    const headers: Record<string, string> = {
+      'Accept': 'application/vnd.github.v3+json',
+      'User-Agent': 'AgentHubPortal'
+    };
+    
+    const token = process.env.GITHUB_TOKEN;
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    
+    const response = await fetch(
+      'https://api.github.com/repos/SpyglassRealty/AgentHubPortal/commits?sha=main&per_page=50',
+      { headers }
+    );
+    
+    if (!response.ok) return [];
+    
+    const commits = await response.json();
+    
+    return commits.map((c: any) => ({
+      id: c.sha,
+      description: c.commit.message,
+      developerName: c.commit.author?.name || 'Unknown',
+      developerEmail: c.commit.author?.email || '',
+      commitHash: c.sha.substring(0, 7),
+      category: 'deployment',
+      status: 'deployed',
+      createdAt: c.commit.author?.date,
+      source: 'github'
+    }));
+  } catch (e) {
+    console.error('[Changelog] GitHub fetch error:', e);
+    return [];
+  }
+}
+
 // Helper function to get the actual database user from request
 async function getDbUser(req: any): Promise<User | undefined> {
   const sessionUserId = req.user?.claims?.sub;
@@ -409,18 +446,21 @@ export function setupDeveloperRoutes(app: Express) {
       const limitNum = parseInt(limit as string);
       const offset = (pageNum - 1) * limitNum;
       
-      // Build WHERE conditions
+      // Fetch GitHub commits
+      const githubCommits = await fetchGitHubCommits();
+      
+      // Build WHERE conditions for database entries
       const conditions: any[] = [];
       
-      if (category) {
+      if (category && category !== "all") {
         conditions.push(sql`category = ${category}`);
       }
       
-      if (status) {
+      if (status && status !== "all") {
         conditions.push(sql`status = ${status}`);
       }
       
-      if (developer_email) {
+      if (developer_email && developer_email !== "all") {
         conditions.push(sql`developer_email = ${developer_email}`);
       }
       
@@ -434,24 +474,51 @@ export function setupDeveloperRoutes(app: Express) {
       
       const whereClause = conditions.length > 0 ? sql`WHERE ${sql.join(conditions, sql` AND `)}` : sql``;
       
-      // Get total count
-      const countResult = await db.execute(sql`
-        SELECT COUNT(*) as count 
-        FROM dev_changelog 
-        ${whereClause}
-      `);
-      const totalCount = parseInt(countResult.rows[0]?.count || "0");
-      
-      // Get changelog entries
+      // Get database changelog entries
       const changelogResult = await db.execute(sql`
-        SELECT * FROM dev_changelog 
+        SELECT *, 'database' as source FROM dev_changelog 
         ${whereClause}
-        ORDER BY created_at DESC 
-        LIMIT ${limitNum} OFFSET ${offset}
+        ORDER BY created_at DESC
       `);
+      
+      // Merge GitHub commits with database entries
+      const allEntries = [
+        ...githubCommits,
+        ...changelogResult.rows.map(row => ({
+          ...row,
+          createdAt: row.created_at,
+          developerName: row.developer_name,
+          developerEmail: row.developer_email,
+          requestedBy: row.requested_by,
+          commitHash: row.commit_hash,
+          source: 'database'
+        }))
+      ];
+      
+      // Apply filters to merged results
+      let filteredEntries = allEntries;
+      
+      if (category && category !== "all") {
+        filteredEntries = filteredEntries.filter(entry => entry.category === category);
+      }
+      
+      if (status && status !== "all") {
+        filteredEntries = filteredEntries.filter(entry => entry.status === status);
+      }
+      
+      if (developer_email && developer_email !== "all") {
+        filteredEntries = filteredEntries.filter(entry => entry.developerEmail === developer_email);
+      }
+      
+      // Sort by date descending
+      filteredEntries.sort((a, b) => new Date(b.createdAt || b.created_at).getTime() - new Date(a.createdAt || a.created_at).getTime());
+      
+      // Apply pagination
+      const totalCount = filteredEntries.length;
+      const paginatedEntries = filteredEntries.slice(offset, offset + limitNum);
       
       res.json({
-        changelog: changelogResult.rows,
+        changelog: paginatedEntries,
         pagination: {
           page: pageNum,
           limit: limitNum,
