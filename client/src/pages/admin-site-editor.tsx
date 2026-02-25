@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import Layout from "@/components/layout";
+import ContentManagementLayout from "@/components/ContentManagementLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -877,7 +877,7 @@ export default function AdminSiteEditorPage() {
   }
 
   return (
-    <Layout>
+    <ContentManagementLayout>
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between">
@@ -980,6 +980,6 @@ export default function AdminSiteEditorPage() {
           </Accordion>
         )}
       </div>
-    </Layout>
+    </ContentManagementLayout>
   );
 }
