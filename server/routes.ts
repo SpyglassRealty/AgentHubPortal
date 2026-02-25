@@ -110,6 +110,7 @@ import { registerPublicCommunityRoutes } from "./publicCommunityRoutes";
 import { registerRedirectsRoutes } from "./redirectsRoutes";
 import { registerGlobalScriptsRoutes } from "./globalScriptsRoutes";
 import { registerSeoRoutes } from "./seoRoutes";
+import { registerDeveloperRoutes } from "./developerRoutes";
 import blogRoutes from "./blogRoutes";
 import agentRoutes from "./agentRoutes";
 import landingPageRoutes from "./landingPageRoutes";
@@ -5375,6 +5376,14 @@ Respond with valid JSON in this exact format:
   registerRedirectsRoutes(app);
   registerGlobalScriptsRoutes(app);
   registerSeoRoutes(app);
+  
+  // Register Developer Dashboard routes with error handling
+  try {
+    registerDeveloperRoutes(app);
+    console.log("[Developer Routes] ✅ Registered successfully");
+  } catch (err) {
+    console.error("[Developer Routes] ❌ Failed to register:", err);
+  }
 
   // Register CMS Enhancement Phase 2 - Blog System
   app.use('/api', blogRoutes);
