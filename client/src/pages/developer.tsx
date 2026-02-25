@@ -259,7 +259,7 @@ export default function DeveloperPage() {
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Activity logs API error:", res.status, errorText);
-        throw new Error(`Failed to fetch activity logs: ${res.status} ${errorText}`);
+        return { logs: [], pagination: {} };
       }
       return res.json();
     },
@@ -274,7 +274,7 @@ export default function DeveloperPage() {
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Users API error:", res.status, errorText);
-        throw new Error(`Failed to fetch users: ${res.status} ${errorText}`);
+        return { users: [] };
       }
       return res.json();
     },
@@ -296,7 +296,7 @@ export default function DeveloperPage() {
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Changelog API error:", res.status, errorText);
-        throw new Error(`Failed to fetch changelog: ${res.status} ${errorText}`);
+        return { changelog: [], pagination: {} };
       }
       return res.json();
     },
@@ -311,7 +311,7 @@ export default function DeveloperPage() {
       if (!res.ok) {
         const errorText = await res.text();
         console.error("System health API error:", res.status, errorText);
-        throw new Error(`Failed to fetch system health: ${res.status} ${errorText}`);
+        return { status: 'error', integrations: [], uptime: 0, database_stats: {}, deployment: {}, recent_errors: [] };
       }
       return res.json();
     },
