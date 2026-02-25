@@ -18,6 +18,7 @@ import DirectoryPage from "./directory";
 import LinksPage from "./links";
 import ReportsPage from "./reports";
 import RetentionRiskPage from "./retention-risk";
+import RecruitingBattlecardsPage from "./recruiting-battlecards";
 
 export default function AdminDashboardsRouter() {
   return (
@@ -25,6 +26,7 @@ export default function AdminDashboardsRouter() {
       <Switch>
         <Route path="/admin/dashboards" component={AdminDashboardOverview} />
         <Route path="/admin/dashboards/retention-risk" component={RetentionRiskPage} />
+        <Route path="/admin/dashboards/recruiting-battlecards" component={RecruitingBattlecardsPage} />
         <Route path="/admin/dashboards/insights" component={InsightsPage} />
         <Route path="/admin/dashboards/leads" component={LeadsPage} />
         <Route path="/admin/dashboards/transactions" component={TransactionsPage} />
