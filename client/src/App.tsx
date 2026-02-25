@@ -27,6 +27,7 @@ import SharedCmaPage from "@/pages/shared-cma";
 import PulsePage from "@/pages/pulse";
 import AdminSettingsPage from "@/pages/admin-settings";
 import AdminPage from "@/pages/admin";
+import DeveloperPage from "@/pages/developer";
 import AdminDashboardsRouter from "@/pages/admin-dashboards";
 import AdminBeaconPage from "@/pages/admin-beacon";
 import CommunityListPage from "@/pages/admin/CommunityList";
@@ -105,6 +106,7 @@ function Router() {
       <Route path="/training" component={TrainingPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/admin" component={AdminPage} />
+      <Route path="/developer" component={DeveloperPage} />
       <Route path="/admin/settings" component={AdminSettingsPage} />
       <Route path="/admin/beacon" component={AdminBeaconPage} />
       <Route path="/admin/communities/:slug" component={CommunityEditorPage} />

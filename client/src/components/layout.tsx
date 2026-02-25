@@ -114,7 +114,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </div>
 
       <div className="flex-1 px-3 py-6 space-y-1">
-        {navItems.map((item) => {
+        {navItems.filter((item) => {
+          // Hide Developer link for non-developers
+          if (item.href === "/developer" && user?.role !== 'developer') {
+            return false;
+          }
+          return true;
+        }).map((item) => {
           const isActive = location === item.href;
           const itemId = item.href.replace("/", "") || "home";
           return (
