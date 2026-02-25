@@ -53,7 +53,7 @@ interface SiteContentResponse {
 
 const SECTION_META: { key: string; label: string; icon: any; description: string }[] = [
   { key: "hero", label: "Hero Section", icon: Home, description: "Main headline, background, CTA" },
-  { key: "navigation", label: "Navigation Bar", icon: Globe, description: "Header navigation, logo, menu items, CTA button" },
+  { key: "navigation", label: "Navigation Bar", icon: Globe, description: "Header navigation, logo, menu items, and CTA button" },
   { key: "stats", label: "Stats Bar", icon: BarChart3, description: "3 stat items below hero" },
   { key: "awards", label: "Awards Section", icon: Award, description: "Award badges and review platforms" },
   { key: "seller", label: "Seller Section", icon: Users, description: "Seller-focused content block" },
