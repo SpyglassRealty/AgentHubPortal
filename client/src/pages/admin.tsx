@@ -1,6 +1,28 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, Switch, Route } from "wouter";
+
+// Import all admin sub-components
+import SiteEditorContent from "@/components/SiteEditorContent";
+import CommunityListPage from "./admin/CommunityList";
+import CommunityEditorPage from "./admin/CommunityEditor";
+import BlogPostListPage from "./admin/BlogPostList";
+import BlogPostEditorPage from "./admin/BlogPostEditor";
+import BlogCategoryListPage from "./admin/BlogCategoryList";
+import AgentListPage from "./admin/AgentList";
+import AgentEditorPage from "./admin/AgentEditor";
+import TestimonialListPage from "./admin/TestimonialList";
+import TestimonialEditorPage from "./admin/TestimonialEditor";
+import ReviewSourceManagerPage from "./admin/ReviewSourceManager";
+import PagesListPage from "./admin/pages-list";
+import PageEditorPage from "./admin/page-editor";
+import LandingPageListPage from "./admin/LandingPageList";
+import LandingPageEditorPage from "./admin/LandingPageEditor";
+import RedirectsListPage from "./admin/RedirectsList";
+import GlobalScriptsListPage from "./admin/GlobalScriptsList";
+import AdminBeaconPage from "./admin-beacon";
+import AdminSettingsPage from "./admin-settings";
+import AdminDashboardsRouter from "./admin-dashboards";
 import { apps, type AppDefinition } from "@/lib/apps";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -118,7 +140,137 @@ interface ActivityLogsResponse {
   logs: ActivityLog[];
 }
 
-// ── Component ──────────────────────────────────────
+// ── Helper Components ──────────────────────────────
+
+// Site Editor content without layout wrapper
+function AdminSiteEditorContent() {
+  return (
+    <div className="p-6">
+      <SiteEditorContent />
+    </div>
+  );
+}
+
+// Original dashboard content
+function DashboardContent({ statsLoading, allUsers }: { statsLoading: boolean; allUsers: User[] }) {
+  return (
+    <div className="p-6">
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100 text-sm font-medium">Total Communities</p>
+                <p className="text-3xl font-bold">
+                  {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "24"}
+                </p>
+              </div>
+              <div className="p-3 bg-white/20 rounded-full">
+                <Building2 className="h-6 w-6" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white border-0 shadow-lg">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-100 text-sm font-medium">Blog Posts</p>
+                <p className="text-3xl font-bold">
+                  {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "156"}
+                </p>
+              </div>
+              <div className="p-3 bg-white/20 rounded-full">
+                <FileText className="h-6 w-6" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white border-0 shadow-lg">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100 text-sm font-medium">Agents</p>
+                <p className="text-3xl font-bold">
+                  {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : allUsers.length}
+                </p>
+              </div>
+              <div className="p-3 bg-white/20 rounded-full">
+                <Users className="h-6 w-6" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white border-0 shadow-lg">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-orange-100 text-sm font-medium">Reviews</p>
+                <p className="text-3xl font-bold">
+                  {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "2,847"}
+                </p>
+              </div>
+              <div className="p-3 bg-white/20 rounded-full">
+                <Star className="h-6 w-6" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Activity Section */}
+      <div className="mb-8">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Recent Activity
+        </h3>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <div className="flex-1">
+                  <span className="text-gray-900 font-medium">New blog post published</span>
+                  <p className="text-sm text-gray-600">"Market Trends in Austin Real Estate"</p>
+                </div>
+                <span className="text-gray-400 text-sm">2m ago</span>
+              </div>
+              <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <div className="flex-1">
+                  <span className="text-gray-900 font-medium">Community page updated</span>
+                  <p className="text-sm text-gray-600">Westlake community information refreshed</p>
+                </div>
+                <span className="text-gray-400 text-sm">1h ago</span>
+              </div>
+              <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                <div className="flex-1">
+                  <span className="text-gray-900 font-medium">New agent added</span>
+                  <p className="text-sm text-gray-600">Sarah Johnson joined the team</p>
+                </div>
+                <span className="text-gray-400 text-sm">3h ago</span>
+              </div>
+              <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                <div className="flex-1">
+                  <span className="text-gray-900 font-medium">Testimonial approved</span>
+                  <p className="text-sm text-gray-600">5-star review from satisfied client</p>
+                </div>
+                <span className="text-gray-400 text-sm">6h ago</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Component ──────────────────────────────────────
 export default function AdminPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -409,119 +561,43 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Dashboard Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-blue-100 text-sm font-medium">Total Communities</p>
-                    <p className="text-3xl font-bold">
-                      {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "24"}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-white/20 rounded-full">
-                    <Building2 className="h-6 w-6" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        {/* Content Area - Shows different components based on route */}
+        <div className="flex-1 overflow-y-auto">
+          <Switch>
+            {/* Sub-routes */}
+            <Route path="/admin/site-editor">
+              <AdminSiteEditorContent />
+            </Route>
+            <Route path="/admin/beacon" component={AdminBeaconPage} />
+            <Route path="/admin/settings" component={AdminSettingsPage} />
+            <Route path="/admin/communities/:slug" component={CommunityEditorPage} />
+            <Route path="/admin/communities" component={CommunityListPage} />
+            <Route path="/admin/redirects" component={RedirectsListPage} />
+            <Route path="/admin/global-scripts" component={GlobalScriptsListPage} />
+            <Route path="/admin/blog/posts/:slug" component={BlogPostEditorPage} />
+            <Route path="/admin/blog/posts" component={BlogPostListPage} />
+            <Route path="/admin/blog/categories" component={BlogCategoryListPage} />
+            <Route path="/admin/agents/:id" component={AgentEditorPage} />
+            <Route path="/admin/agents" component={AgentListPage} />
+            <Route path="/admin/pages/new" component={PageEditorPage} />
+            <Route path="/admin/pages/:id/edit" component={PageEditorPage} />
+            <Route path="/admin/pages" component={PagesListPage} />
+            <Route path="/admin/landing-pages/:id" component={LandingPageEditorPage} />
+            <Route path="/admin/landing-pages" component={LandingPageListPage} />
+            <Route path="/admin/testimonials/sources" component={ReviewSourceManagerPage} />
+            <Route path="/admin/testimonials/:id" component={TestimonialEditorPage} />
+            <Route path="/admin/testimonials" component={TestimonialListPage} />
+            <Route path="/admin/dashboards/:rest*" component={AdminDashboardsRouter} />
+            <Route path="/admin/dashboards" component={AdminDashboardsRouter} />
             
-            <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white border-0 shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-green-100 text-sm font-medium">Blog Posts</p>
-                    <p className="text-3xl font-bold">
-                      {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "156"}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-white/20 rounded-full">
-                    <FileText className="h-6 w-6" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white border-0 shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-purple-100 text-sm font-medium">Agents</p>
-                    <p className="text-3xl font-bold">
-                      {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : allUsers.length}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-white/20 rounded-full">
-                    <Users className="h-6 w-6" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white border-0 shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-orange-100 text-sm font-medium">Reviews</p>
-                    <p className="text-3xl font-bold">
-                      {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "2,847"}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-white/20 rounded-full">
-                    <Star className="h-6 w-6" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Recent Activity Section */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Recent Activity
-            </h3>
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <div className="flex-1">
-                      <span className="text-gray-900 font-medium">New blog post published</span>
-                      <p className="text-sm text-gray-600">"Market Trends in Austin Real Estate"</p>
-                    </div>
-                    <span className="text-gray-400 text-sm">2m ago</span>
-                  </div>
-                  <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <div className="flex-1">
-                      <span className="text-gray-900 font-medium">Community page updated</span>
-                      <p className="text-sm text-gray-600">Westlake community information refreshed</p>
-                    </div>
-                    <span className="text-gray-400 text-sm">1h ago</span>
-                  </div>
-                  <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                    <div className="flex-1">
-                      <span className="text-gray-900 font-medium">New agent added</span>
-                      <p className="text-sm text-gray-600">Sarah Johnson joined the team</p>
-                    </div>
-                    <span className="text-gray-400 text-sm">3h ago</span>
-                  </div>
-                  <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                    <div className="flex-1">
-                      <span className="text-gray-900 font-medium">Testimonial approved</span>
-                      <p className="text-sm text-gray-600">5-star review from satisfied client</p>
-                    </div>
-                    <span className="text-gray-400 text-sm">6h ago</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+            {/* Default dashboard content */}
+            <Route path="/admin">
+              <DashboardContent 
+                statsLoading={statsLoading} 
+                allUsers={allUsers} 
+              />
+            </Route>
+          </Switch>
         </div>
       </div>
     </div>
