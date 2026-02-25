@@ -158,6 +158,66 @@ export async function registerRoutes(
     }
   })();
 
+  // Developer Dashboard tables migration
+  (async () => {
+    try {
+      // Create dev_changelog table
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS dev_changelog (
+          id SERIAL PRIMARY KEY,
+          description TEXT NOT NULL,
+          developer_name VARCHAR(255),
+          developer_email VARCHAR(255),
+          requested_by VARCHAR(255),
+          commit_hash VARCHAR(100),
+          category VARCHAR(50),
+          status VARCHAR(50) DEFAULT 'deployed',
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      
+      // Create developer_activity_logs table
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS developer_activity_logs (
+          id SERIAL PRIMARY KEY,
+          user_id VARCHAR REFERENCES users(id) ON DELETE SET NULL,
+          user_email VARCHAR(255),
+          user_name VARCHAR(255),
+          action_type VARCHAR(100),
+          description TEXT,
+          metadata JSONB,
+          ip_address VARCHAR(45),
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      
+      // Create indexes
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_dev_changelog_status ON dev_changelog(status)
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_dev_changelog_category ON dev_changelog(category)
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_dev_changelog_created_at ON dev_changelog(created_at)
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_developer_activity_logs_user_id ON developer_activity_logs(user_id)
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_developer_activity_logs_action_type ON developer_activity_logs(action_type)
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_developer_activity_logs_created_at ON developer_activity_logs(created_at)
+      `);
+      
+      console.log('[Migration] ✅ Developer Dashboard tables created successfully');
+    } catch (e) {
+      console.warn('[Migration] Developer tables creation skipped:', e.message);
+    }
+  })();
+
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

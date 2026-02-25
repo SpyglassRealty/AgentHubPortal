@@ -591,5 +591,5 @@ export function setupDeveloperRoutes(app: Express) {
 
 export function registerDeveloperRoutes(app: Express) {
   console.log('[Developer Routes] Registering developer dashboard routes...');
-  developerRoutes(app);
+  setupDeveloperRoutes(app);
 }
