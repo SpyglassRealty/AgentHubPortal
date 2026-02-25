@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import AdminLayout from "@/components/AdminLayout";
+// AdminLayout removed - component now renders within admin interface
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -863,10 +863,6 @@ export default function AdminSiteEditorPage() {
   };
 
   return (
-    <AdminLayout 
-      title="Homepage Editor"
-      description="Edit every section of the Spyglass IDX homepage. Changes are saved per-section."
-    >
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header Actions */}
         <div className="flex justify-end">
@@ -960,6 +956,5 @@ export default function AdminSiteEditorPage() {
           </Accordion>
         )}
       </div>
-    </AdminLayout>
   );
 }
