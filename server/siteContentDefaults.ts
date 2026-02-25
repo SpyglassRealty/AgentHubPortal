@@ -18,6 +18,75 @@ export const SITE_CONTENT_DEFAULTS: Record<string, any> = {
     ],
   },
 
+  navigation: {
+    logo: {
+      src: "/spyglass-logo-white.svg",
+      alt: "Spyglass Realty",
+      href: "/",
+    },
+    mainItems: [
+      {
+        label: "Buying",
+        href: "/buy",
+        type: "link"
+      },
+      {
+        label: "Selling",
+        type: "dropdown",
+        items: [
+          { href: "/sell", label: "Selling" },
+          { href: "/home-staging", label: "Home Staging" },
+        ]
+      },
+      {
+        label: "Search",
+        type: "dropdown",
+        items: [
+          { href: "/featured-listings", label: "Featured Listings" },
+          { href: "/commercial", label: "Commercial Space" },
+          { href: "/agents", label: "Agents" },
+          { href: "/communities", label: "Communities" },
+          { href: "/zip-codes", label: "Search by Zip Code" },
+          { href: "/?mapView=true", label: "Search by Maps" },
+        ]
+      },
+      {
+        label: "Services",
+        type: "dropdown",
+        items: [
+          { href: "/services", label: "Services" },
+          { href: "/home-value", label: "What's My Home Worth?" },
+          { href: "/mortgage-calculator", label: "Mortgage Calculator" },
+          { href: "/relocation", label: "Relocation" },
+          { href: "/cash-offer", label: "Cash Offer Trade In" },
+        ]
+      },
+      {
+        label: "About Us",
+        type: "dropdown",
+        items: [
+          { href: "/about", label: "About Us" },
+          { href: "/agents", label: "Our Team" },
+          { href: "/reviews", label: "Reviews" },
+        ]
+      },
+      {
+        label: "Blog",
+        href: "/blog",
+        type: "link"
+      },
+      {
+        label: "Sign In",
+        href: "/sign-in",
+        type: "link"
+      }
+    ],
+    ctaButton: {
+      text: "Free Consultation",
+      href: "/contact"
+    }
+  },
+
   stats: {
     items: [
       {
