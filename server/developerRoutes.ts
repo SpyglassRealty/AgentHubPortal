@@ -2,8 +2,9 @@ import type { Express } from "express";
 import { storage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
 import type { User } from "@shared/schema";
+import { devChangelog, developerActivityLogs, users } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, sql } from "drizzle-orm";
+import { eq, desc, and, or, sql, count } from "drizzle-orm";
 
 // Helper function to get the actual database user from request
 async function getDbUser(req: any): Promise<User | undefined> {
@@ -35,10 +36,15 @@ async function requireDeveloper(req: any, res: any, next: any) {
 // Log activity function
 async function logActivity(userId: string, userEmail: string, userName: string, actionType: string, description: string, metadata?: any, ipAddress?: string) {
   try {
-    await db.execute(sql`
-      INSERT INTO developer_activity_logs (user_id, user_email, user_name, action_type, description, metadata, ip_address)
-      VALUES (${userId}, ${userEmail}, ${userName}, ${actionType}, ${description}, ${JSON.stringify(metadata || {})}, ${ipAddress})
-    `);
+    await db.insert(developerActivityLogs).values({
+      userId,
+      userEmail,
+      userName,
+      actionType,
+      description,
+      metadata: metadata || {},
+      ipAddress,
+    });
   } catch (error) {
     console.error("Failed to log activity:", error);
   }
