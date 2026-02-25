@@ -227,7 +227,7 @@ export default function DeveloperPage() {
   }
 
   // Hardcoded developer check until role migration is complete
-  if (user.email !== 'daryl@spyglassrealty.com' && !user.isSuperAdmin) {
+  if (!user || (user.email !== 'daryl@spyglassrealty.com' && !user.isSuperAdmin)) {
     return (
       <Layout>
         <div className="max-w-2xl mx-auto py-12 text-center">
@@ -235,8 +235,8 @@ export default function DeveloperPage() {
           <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
           <p className="text-muted-foreground">You need developer privileges to access this page.</p>
           <div className="mt-4 text-xs text-muted-foreground">
-            <p>Is super admin: {user.isSuperAdmin ? 'yes' : 'no'}</p>
-            <p>Email: {user.email}</p>
+            <p>Is super admin: {user?.isSuperAdmin ? 'yes' : 'no'}</p>
+            <p>Email: {user?.email}</p>
             <p>Expected: daryl@spyglassrealty.com or super admin</p>
           </div>
         </div>
