@@ -1,4 +1,5 @@
 // Default homepage section content — matches what's currently hardcoded in IDX components
+// Updated: 2026-02-25 - Navigation section included
 
 export const SITE_CONTENT_DEFAULTS: Record<string, any> = {
   hero: {
