@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import ContentManagementLayout from "@/components/ContentManagementLayout";
+import AdminLayout from "@/components/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,6 @@ import {
   Plus,
   Trash2,
   GripVertical,
-  Shield,
   Star,
   Home,
   Users,
@@ -863,33 +862,14 @@ export default function AdminSiteEditorPage() {
     }
   };
 
-  // Guard: admin only
-  if (!user?.isSuperAdmin) {
-    return (
-      <Layout>
-        <div className="max-w-2xl mx-auto py-12 text-center">
-          <Shield className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
-          <p className="text-muted-foreground">You need administrator privileges to access this page.</p>
-        </div>
-      </Layout>
-    );
-  }
-
   return (
-    <ContentManagementLayout>
+    <AdminLayout 
+      title="Homepage Editor"
+      description="Edit every section of the Spyglass IDX homepage. Changes are saved per-section."
+    >
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-display font-bold flex items-center gap-3">
-              <Globe className="h-8 w-8 text-[#EF4923]" />
-              Homepage Editor
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Edit every section of the Spyglass IDX homepage. Changes are saved per-section.
-            </p>
-          </div>
+        {/* Header Actions */}
+        <div className="flex justify-end">
           <Button
             variant="outline"
             size="sm"
@@ -980,6 +960,6 @@ export default function AdminSiteEditorPage() {
           </Accordion>
         )}
       </div>
-    </ContentManagementLayout>
+    </AdminLayout>
   );
 }
