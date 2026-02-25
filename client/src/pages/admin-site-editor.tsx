@@ -53,6 +53,7 @@ interface SiteContentResponse {
 
 const SECTION_META: { key: string; label: string; icon: any; description: string }[] = [
   { key: "hero", label: "Hero Section", icon: Home, description: "Main headline, background, CTA" },
+  { key: "navigation", label: "Navigation Bar", icon: Globe, description: "Header navigation, logo, menu items, CTA button" },
   { key: "stats", label: "Stats Bar", icon: BarChart3, description: "3 stat items below hero" },
   { key: "awards", label: "Awards Section", icon: Award, description: "Award badges and review platforms" },
   { key: "seller", label: "Seller Section", icon: Users, description: "Seller-focused content block" },
@@ -208,6 +209,150 @@ function HeroEditor({ data, onChange }: { data: any; onChange: (data: any) => vo
       <FieldGroup label="Search Placeholder">
         <Input value={data.searchPlaceholder || ""} onChange={(e) => onChange({ ...data, searchPlaceholder: e.target.value })} />
       </FieldGroup>
+    </div>
+  );
+}
+
+function NavigationEditor({ data, onChange }: { data: any; onChange: (data: any) => void }) {
+  const mainItems = data.mainItems || [];
+  const logo = data.logo || { src: "", alt: "", href: "/" };
+  const ctaButton = data.ctaButton || { text: "", href: "" };
+
+  const updateMainItems = (items: any[]) => onChange({ ...data, mainItems: items });
+  const updateLogo = (field: string, value: string) => onChange({ ...data, logo: { ...logo, [field]: value } });
+  const updateCTAButton = (field: string, value: string) => onChange({ ...data, ctaButton: { ...ctaButton, [field]: value } });
+
+  return (
+    <div className="space-y-6">
+      {/* Logo Settings */}
+      <div className="border rounded-lg p-4">
+        <h4 className="font-medium mb-3 flex items-center gap-2">
+          <Globe className="h-4 w-4" />
+          Logo Settings
+        </h4>
+        <div className="space-y-3">
+          <FieldGroup label="Logo Image URL">
+            <Input 
+              value={logo.src || ""} 
+              onChange={(e) => updateLogo("src", e.target.value)} 
+              placeholder="/spyglass-logo-white.svg"
+            />
+          </FieldGroup>
+          <FieldGroup label="Logo Alt Text">
+            <Input 
+              value={logo.alt || ""} 
+              onChange={(e) => updateLogo("alt", e.target.value)} 
+              placeholder="Spyglass Realty"
+            />
+          </FieldGroup>
+          <FieldGroup label="Logo Link URL">
+            <Input 
+              value={logo.href || ""} 
+              onChange={(e) => updateLogo("href", e.target.value)} 
+              placeholder="/"
+            />
+          </FieldGroup>
+        </div>
+      </div>
+
+      {/* CTA Button Settings */}
+      <div className="border rounded-lg p-4">
+        <h4 className="font-medium mb-3 flex items-center gap-2">
+          <Megaphone className="h-4 w-4" />
+          CTA Button
+        </h4>
+        <div className="space-y-3">
+          <FieldGroup label="Button Text">
+            <Input 
+              value={ctaButton.text || ""} 
+              onChange={(e) => updateCTAButton("text", e.target.value)} 
+              placeholder="Free Consultation"
+            />
+          </FieldGroup>
+          <FieldGroup label="Button Link URL">
+            <Input 
+              value={ctaButton.href || ""} 
+              onChange={(e) => updateCTAButton("href", e.target.value)} 
+              placeholder="/contact"
+            />
+          </FieldGroup>
+        </div>
+      </div>
+
+      {/* Main Navigation Items */}
+      <div className="border rounded-lg p-4">
+        <h4 className="font-medium mb-3 flex items-center gap-2">
+          <ListChecks className="h-4 w-4" />
+          Navigation Menu
+        </h4>
+        <ArrayEditor
+          items={mainItems}
+          onUpdate={updateMainItems}
+          newItem={() => ({ label: "", href: "", type: "link" })}
+          label="Navigation Items"
+          renderItem={(item, index, onFieldChange) => (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <Input 
+                  value={item.label || ""} 
+                  onChange={(e) => onFieldChange("label", e.target.value)} 
+                  placeholder="Menu Label" 
+                />
+                <select 
+                  value={item.type || "link"}
+                  onChange={(e) => {
+                    const newType = e.target.value;
+                    onFieldChange("type", newType);
+                    if (newType === "link" && item.items) {
+                      onFieldChange("items", undefined);
+                    } else if (newType === "dropdown" && !item.items) {
+                      onFieldChange("items", []);
+                      onFieldChange("href", undefined);
+                    }
+                  }}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                >
+                  <option value="link">Link</option>
+                  <option value="dropdown">Dropdown</option>
+                </select>
+              </div>
+              
+              {item.type === "link" && (
+                <Input 
+                  value={item.href || ""} 
+                  onChange={(e) => onFieldChange("href", e.target.value)} 
+                  placeholder="Link URL" 
+                />
+              )}
+              
+              {item.type === "dropdown" && (
+                <div className="pl-4 border-l-2 border-gray-200">
+                  <ArrayEditor
+                    items={item.items || []}
+                    onUpdate={(items) => onFieldChange("items", items)}
+                    newItem={() => ({ href: "", label: "" })}
+                    label="Dropdown Items"
+                    renderItem={(dropdownItem, dropdownIndex, onDropdownChange) => (
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input 
+                          value={dropdownItem.label || ""} 
+                          onChange={(e) => onDropdownChange("label", e.target.value)} 
+                          placeholder="Dropdown Label" 
+                        />
+                        <Input 
+                          value={dropdownItem.href || ""} 
+                          onChange={(e) => onDropdownChange("href", e.target.value)} 
+                          placeholder="Dropdown URL" 
+                        />
+                      </div>
+                    )}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        />
+      </div>
     </div>
   );
 }
@@ -586,6 +731,7 @@ function FooterEditor({ data, onChange }: { data: any; onChange: (data: any) => 
 function SectionEditor({ sectionKey, data, onChange }: { sectionKey: string; data: any; onChange: (data: any) => void }) {
   switch (sectionKey) {
     case "hero": return <HeroEditor data={data} onChange={onChange} />;
+    case "navigation": return <NavigationEditor data={data} onChange={onChange} />;
     case "stats": return <StatsEditor data={data} onChange={onChange} />;
     case "awards": return <AwardsEditor data={data} onChange={onChange} />;
     case "seller": return <ContentBlockEditor data={data} onChange={onChange} sectionName="seller" />;
