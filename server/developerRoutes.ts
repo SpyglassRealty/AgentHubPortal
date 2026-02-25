@@ -2,7 +2,8 @@ import type { Express } from "express";
 import { storage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
 import type { User } from "@shared/schema";
-import { devChangelog, developerActivityLogs, users } from "@shared/schema";
+import { users } from "@shared/schema";
+import { devChangelog, developerActivityLogs } from "@shared/developerSchema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count } from "drizzle-orm";
 
@@ -17,19 +18,19 @@ async function getDbUser(req: any): Promise<User | undefined> {
   return user;
 }
 
-// Middleware: require developer role
+// Middleware: require developer access (hardcoded check)
 async function requireDeveloper(req: any, res: any, next: any) {
   const user = await getDbUser(req);
   if (!user) {
     return res.status(401).json({ message: "Authentication required." });
   }
   
-  // Check if user has developer role
-  if (user.role !== 'developer') {
+  // Hardcoded developer check until role migration is complete
+  if (user.email !== 'daryl@spyglassrealty.com' && !user.isSuperAdmin) {
     return res.status(403).json({ message: "Access denied. Developer privileges required." });
   }
   
-  req.dbUser = user;
+  (req as any).dbUser = user;
   next();
 }
 
@@ -114,9 +115,9 @@ export function setupDeveloperRoutes(app: Express) {
       
       // Log this access
       await logActivity(
-        req.dbUser.id, 
-        req.dbUser.email, 
-        `${req.dbUser.firstName || ''} ${req.dbUser.lastName || ''}`.trim() || req.dbUser.email,
+        (req as any).dbUser.id, 
+        (req as any).dbUser.email, 
+        `${(req as any).dbUser.firstName || ''} ${(req as any).dbUser.lastName || ''}`.trim() || (req as any).dbUser.email,
         'view',
         'Accessed activity logs',
         { filters: { user_id, action_type, start_date, end_date, search }, page: pageNum },
@@ -139,11 +140,11 @@ export function setupDeveloperRoutes(app: Express) {
     }
   });
 
-  // GET /api/developer/users - list all users with roles
+  // GET /api/developer/users - list all users
   app.get("/api/developer/users", async (req, res) => {
     try {
       const usersResult = await db.execute(sql`
-        SELECT id, email, first_name, last_name, role, is_super_admin, created_at, updated_at,
+        SELECT id, email, first_name, last_name, is_super_admin, created_at, updated_at,
                (SELECT COUNT(*) FROM developer_activity_logs WHERE user_id = users.id) as activity_count,
                (SELECT MAX(created_at) FROM developer_activity_logs WHERE user_id = users.id) as last_activity
         FROM users 
@@ -152,9 +153,9 @@ export function setupDeveloperRoutes(app: Express) {
       
       // Log this access
       await logActivity(
-        req.dbUser.id, 
-        req.dbUser.email, 
-        `${req.dbUser.firstName || ''} ${req.dbUser.lastName || ''}`.trim() || req.dbUser.email,
+        (req as any).dbUser.id, 
+        (req as any).dbUser.email, 
+        `${(req as any).dbUser.firstName || ''} ${(req as any).dbUser.lastName || ''}`.trim() || (req as any).dbUser.email,
         'view',
         'Accessed user management',
         { user_count: usersResult.rows.length },
@@ -169,21 +170,19 @@ export function setupDeveloperRoutes(app: Express) {
     }
   });
 
-  // PUT /api/developer/users/:id/role - update user role
-  app.put("/api/developer/users/:id/role", async (req, res) => {
+  // PUT /api/developer/users/:id/super-admin - toggle super admin status
+  app.put("/api/developer/users/:id/super-admin", async (req, res) => {
     try {
       const { id } = req.params;
-      const { role } = req.body;
+      const { isSuperAdmin } = req.body;
       
-      // Validate role
-      const validRoles = ['developer', 'admin', 'agent', 'viewer'];
-      if (!validRoles.includes(role)) {
-        return res.status(400).json({ message: "Invalid role. Must be one of: " + validRoles.join(', ') });
+      if (typeof isSuperAdmin !== 'boolean') {
+        return res.status(400).json({ message: "isSuperAdmin must be a boolean" });
       }
       
       // Get current user info for logging
       const currentUserResult = await db.execute(sql`
-        SELECT email, first_name, last_name, role as current_role FROM users WHERE id = ${id}
+        SELECT email, first_name, last_name, is_super_admin as current_super_admin FROM users WHERE id = ${id}
       `);
       
       if (currentUserResult.rows.length === 0) {
@@ -192,39 +191,39 @@ export function setupDeveloperRoutes(app: Express) {
       
       const targetUser = currentUserResult.rows[0];
       
-      // Update role
+      // Update super admin status
       await db.execute(sql`
-        UPDATE users SET role = ${role}, updated_at = NOW() WHERE id = ${id}
+        UPDATE users SET is_super_admin = ${isSuperAdmin}, updated_at = NOW() WHERE id = ${id}
       `);
       
       // Log this action
       await logActivity(
-        req.dbUser.id, 
-        req.dbUser.email, 
-        `${req.dbUser.firstName || ''} ${req.dbUser.lastName || ''}`.trim() || req.dbUser.email,
+        (req as any).dbUser.id, 
+        (req as any).dbUser.email, 
+        `${(req as any).dbUser.firstName || ''} ${(req as any).dbUser.lastName || ''}`.trim() || (req as any).dbUser.email,
         'update',
-        `Changed user role from ${targetUser.current_role} to ${role}`,
+        `Changed super admin status from ${targetUser.current_super_admin} to ${isSuperAdmin}`,
         { 
           target_user_id: id, 
           target_email: targetUser.email,
-          old_role: targetUser.current_role, 
-          new_role: role 
+          old_super_admin: targetUser.current_super_admin, 
+          new_super_admin: isSuperAdmin 
         },
         req.ip
       );
       
-      res.json({ message: "User role updated successfully" });
+      res.json({ message: "User super admin status updated successfully" });
       
     } catch (error) {
-      console.error("Error updating user role:", error);
-      res.status(500).json({ message: "Failed to update user role" });
+      console.error("Error updating user super admin status:", error);
+      res.status(500).json({ message: "Failed to update user super admin status" });
     }
   });
 
   // POST /api/developer/invite - add co-developer by email
   app.post("/api/developer/invite", async (req, res) => {
     try {
-      const { email } = req.body;
+      const { email, makeSuperAdmin = false } = req.body;
       
       if (!email) {
         return res.status(400).json({ message: "Email is required" });
@@ -232,7 +231,7 @@ export function setupDeveloperRoutes(app: Express) {
       
       // Check if user exists
       const existingUserResult = await db.execute(sql`
-        SELECT id, role FROM users WHERE email = ${email}
+        SELECT id, is_super_admin FROM users WHERE email = ${email}
       `);
       
       if (existingUserResult.rows.length === 0) {
@@ -241,27 +240,29 @@ export function setupDeveloperRoutes(app: Express) {
       
       const user = existingUserResult.rows[0];
       
-      // Update role to developer
-      await db.execute(sql`
-        UPDATE users SET role = 'developer', updated_at = NOW() WHERE email = ${email}
-      `);
+      // Update super admin status if requested
+      if (makeSuperAdmin) {
+        await db.execute(sql`
+          UPDATE users SET is_super_admin = true, updated_at = NOW() WHERE email = ${email}
+        `);
+      }
       
       // Log this action
       await logActivity(
-        req.dbUser.id, 
-        req.dbUser.email, 
-        `${req.dbUser.firstName || ''} ${req.dbUser.lastName || ''}`.trim() || req.dbUser.email,
+        (req as any).dbUser.id, 
+        (req as any).dbUser.email, 
+        `${(req as any).dbUser.firstName || ''} ${(req as any).dbUser.lastName || ''}`.trim() || (req as any).dbUser.email,
         'create',
-        `Invited user as co-developer`,
+        `Invited user as co-developer${makeSuperAdmin ? ' with super admin privileges' : ''}`,
         { 
           invited_email: email,
-          previous_role: user.role,
-          new_role: 'developer'
+          previous_super_admin: user.is_super_admin,
+          new_super_admin: makeSuperAdmin || user.is_super_admin
         },
         req.ip
       );
       
-      res.json({ message: "User successfully added as co-developer" });
+      res.json({ message: `User successfully invited as co-developer${makeSuperAdmin ? ' with super admin privileges' : ''}` });
       
     } catch (error) {
       console.error("Error inviting co-developer:", error);
@@ -303,9 +304,9 @@ export function setupDeveloperRoutes(app: Express) {
       
       // Log this access
       await logActivity(
-        req.dbUser.id, 
-        req.dbUser.email, 
-        `${req.dbUser.firstName || ''} ${req.dbUser.lastName || ''}`.trim() || req.dbUser.email,
+        (req as any).dbUser.id, 
+        (req as any).dbUser.email, 
+        `${(req as any).dbUser.firstName || ''} ${(req as any).dbUser.lastName || ''}`.trim() || (req as any).dbUser.email,
         'view',
         'Accessed system health dashboard',
         {},
@@ -356,12 +357,12 @@ export function setupDeveloperRoutes(app: Express) {
         return res.status(400).json({ message: "Invalid status" });
       }
       
-      const developerName = `${req.dbUser.firstName || ''} ${req.dbUser.lastName || ''}`.trim() || req.dbUser.email;
+      const developerName = `${(req as any).dbUser.firstName || ''} ${(req as any).dbUser.lastName || ''}`.trim() || (req as any).dbUser.email;
       
       // Insert changelog entry
       const result = await db.execute(sql`
         INSERT INTO dev_changelog (description, developer_name, developer_email, requested_by, commit_hash, category, status)
-        VALUES (${description}, ${developerName}, ${req.dbUser.email}, ${requested_by || ''}, ${commit_hash || ''}, ${category}, ${status})
+        VALUES (${description}, ${developerName}, ${(req as any).dbUser.email}, ${requested_by || ''}, ${commit_hash || ''}, ${category}, ${status})
         RETURNING id
       `);
       
@@ -369,8 +370,8 @@ export function setupDeveloperRoutes(app: Express) {
       
       // Log this action
       await logActivity(
-        req.dbUser.id, 
-        req.dbUser.email, 
+        (req as any).dbUser.id, 
+        (req as any).dbUser.email, 
         developerName,
         'create',
         'Added changelog entry',
@@ -524,9 +525,9 @@ export function setupDeveloperRoutes(app: Express) {
       
       // Log this action
       await logActivity(
-        req.dbUser.id, 
-        req.dbUser.email, 
-        `${req.dbUser.firstName || ''} ${req.dbUser.lastName || ''}`.trim() || req.dbUser.email,
+        (req as any).dbUser.id, 
+        (req as any).dbUser.email, 
+        `${(req as any).dbUser.firstName || ''} ${(req as any).dbUser.lastName || ''}`.trim() || (req as any).dbUser.email,
         'update',
         'Updated changelog entry',
         { 
@@ -568,9 +569,9 @@ export function setupDeveloperRoutes(app: Express) {
       
       // Log this action
       await logActivity(
-        req.dbUser.id, 
-        req.dbUser.email, 
-        `${req.dbUser.firstName || ''} ${req.dbUser.lastName || ''}`.trim() || req.dbUser.email,
+        (req as any).dbUser.id, 
+        (req as any).dbUser.email, 
+        `${(req as any).dbUser.firstName || ''} ${(req as any).dbUser.lastName || ''}`.trim() || (req as any).dbUser.email,
         'delete',
         'Deleted changelog entry',
         { 

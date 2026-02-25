@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -92,7 +93,6 @@ interface User {
   email: string;
   first_name?: string;
   last_name?: string;
-  role: string;
   is_super_admin?: boolean;
   created_at: string;
   activity_count: number;
@@ -194,6 +194,7 @@ export default function DeveloperPage() {
     requested_by: "",
   });
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteMakeSuperAdmin, setInviteMakeSuperAdmin] = useState(false);
 
   // Loading state
   if (isLoading) {
@@ -210,7 +211,6 @@ export default function DeveloperPage() {
 
   // Debug info for troubleshooting
   console.log("Developer page - User data:", user);
-  console.log("Developer page - User role:", user?.role);
   console.log("Developer page - Is super admin:", user?.isSuperAdmin);
 
   // Access control check - allow super admins and developers, show debug info for others
@@ -226,8 +226,8 @@ export default function DeveloperPage() {
     );
   }
 
-  // Temporarily allow super admins until role migration is complete
-  if (user.role !== 'developer' && !user.isSuperAdmin) {
+  // Hardcoded developer check until role migration is complete
+  if (user.email !== 'daryl@spyglassrealty.com' && !user.isSuperAdmin) {
     return (
       <Layout>
         <div className="max-w-2xl mx-auto py-12 text-center">
@@ -235,9 +235,9 @@ export default function DeveloperPage() {
           <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
           <p className="text-muted-foreground">You need developer privileges to access this page.</p>
           <div className="mt-4 text-xs text-muted-foreground">
-            <p>Current role: {user.role || 'undefined'}</p>
             <p>Is super admin: {user.isSuperAdmin ? 'yes' : 'no'}</p>
             <p>Email: {user.email}</p>
+            <p>Expected: daryl@spyglassrealty.com or super admin</p>
           </div>
         </div>
       </Layout>
@@ -320,22 +320,22 @@ export default function DeveloperPage() {
   });
 
   // Mutations
-  const updateUserRoleMutation = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
-      const res = await fetch(`/api/developer/users/${userId}/role`, {
+  const updateUserSuperAdminMutation = useMutation({
+    mutationFn: async ({ userId, isSuperAdmin }: { userId: string; isSuperAdmin: boolean }) => {
+      const res = await fetch(`/api/developer/users/${userId}/super-admin`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role }),
+        body: JSON.stringify({ isSuperAdmin }),
       });
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || "Failed to update user role");
+        throw new Error(error.message || "Failed to update user super admin status");
       }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/developer/users"] });
-      toast({ title: "User role updated successfully" });
+      toast({ title: "User super admin status updated successfully" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -373,11 +373,11 @@ export default function DeveloperPage() {
   });
 
   const inviteUserMutation = useMutation({
-    mutationFn: async (email: string) => {
+    mutationFn: async ({ email, makeSuperAdmin }: { email: string; makeSuperAdmin?: boolean }) => {
       const res = await fetch("/api/developer/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, makeSuperAdmin }),
       });
       if (!res.ok) {
         const error = await res.json();
@@ -389,6 +389,7 @@ export default function DeveloperPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/developer/users"] });
       setInviteUserOpen(false);
       setInviteEmail("");
+      setInviteMakeSuperAdmin(false);
       toast({ title: "User invited as co-developer successfully" });
     },
     onError: (error: Error) => {
@@ -883,10 +884,23 @@ export default function DeveloperPage() {
                         onChange={(e) => setInviteEmail(e.target.value)}
                       />
                     </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="make_super_admin"
+                        checked={inviteMakeSuperAdmin}
+                        onCheckedChange={(checked) => setInviteMakeSuperAdmin(checked === true)}
+                      />
+                      <Label htmlFor="make_super_admin" className="text-sm">
+                        Grant super admin privileges
+                      </Label>
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button
-                      onClick={() => inviteUserMutation.mutate(inviteEmail)}
+                      onClick={() => inviteUserMutation.mutate({ 
+                        email: inviteEmail, 
+                        makeSuperAdmin: inviteMakeSuperAdmin 
+                      })}
                       disabled={!inviteEmail || inviteUserMutation.isPending}
                     >
                       {inviteUserMutation.isPending ? (
@@ -930,22 +944,21 @@ export default function DeveloperPage() {
                             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                             
                             <div className="mt-3">
-                              <Label htmlFor={`role-${user.id}`} className="text-xs">Role</Label>
-                              <Select
-                                value={user.role}
-                                onValueChange={(role) => updateUserRoleMutation.mutate({ userId: user.id, role })}
-                                disabled={updateUserRoleMutation.isPending}
-                              >
-                                <SelectTrigger className="w-full mt-1">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="developer">Developer</SelectItem>
-                                  <SelectItem value="admin">Admin</SelectItem>
-                                  <SelectItem value="agent">Agent</SelectItem>
-                                  <SelectItem value="viewer">Viewer</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs">Super Admin</Label>
+                                <Button
+                                  variant={user.is_super_admin ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => updateUserSuperAdminMutation.mutate({ 
+                                    userId: user.id, 
+                                    isSuperAdmin: !user.is_super_admin 
+                                  })}
+                                  disabled={updateUserSuperAdminMutation.isPending}
+                                  className="h-6 px-2 text-xs"
+                                >
+                                  {user.is_super_admin ? "Yes" : "No"}
+                                </Button>
+                              </div>
                             </div>
                             
                             <div className="mt-3 space-y-1 text-xs text-muted-foreground">
@@ -1003,7 +1016,7 @@ export default function DeveloperPage() {
                     <CardContent className="pt-6">
                       <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                          <FileBarChart className="h-5 w-5 text-green-600 dark:text-green-400" />
+                          <BarChart3 className="h-5 w-5 text-green-600 dark:text-green-400" />
                         </div>
                         <div>
                           <p className="text-2xl font-bold">{systemHealth?.database_stats?.total_cmas || 0}</p>
@@ -1122,7 +1135,7 @@ export default function DeveloperPage() {
                 </div>
 
                 {/* Recent Errors */}
-                {systemHealth?.recent_errors?.length > 0 && (
+                {systemHealth?.recent_errors && systemHealth.recent_errors.length > 0 && (
                   <Card>
                     <CardHeader>
                       <CardTitle>Recent Errors</CardTitle>
@@ -1130,7 +1143,7 @@ export default function DeveloperPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {systemHealth.recent_errors.map((error, index) => (
+                        {systemHealth?.recent_errors?.map((error, index) => (
                           <div key={index} className="flex items-start gap-3 p-3 border rounded-lg bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-900">
                             <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
                             <div className="flex-1">
