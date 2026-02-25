@@ -352,18 +352,15 @@ export default function BlogPostEditor() {
 
   if (postLoading && !isNewPost) {
     return (
-      
-        <div className="max-w-4xl mx-auto py-12 text-center">
+    <div className="max-w-4xl mx-auto py-12 text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="text-muted-foreground mt-4">Loading blog post...</p>
         </div>
-      
-    );
+  );
   }
 
   return (
-    
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -619,13 +616,13 @@ export default function BlogPostEditor() {
                       {Object.entries(statusConfig).map(([status, config]) => {
                         const Icon = config.icon;
                         return (
-                          <SelectItem key={status} value={status}>
+    <SelectItem key={status} value={status}>
                             <div className="flex items-center gap-2">
                               <Icon className="h-4 w-4" />
                               {config.label}
                             </div>
                           </SelectItem>
-                        );
+  );
                       })}
                     </SelectContent>
                   </Select>
@@ -777,6 +774,5 @@ export default function BlogPostEditor() {
           </div>
         </div>
       </div>
-    
   );
 }

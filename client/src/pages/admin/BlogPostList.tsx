@@ -240,8 +240,7 @@ export default function BlogPostList() {
   const totalViews = posts.reduce((sum, p) => sum + (p.viewCount || 0), 0);
 
   return (
-    
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -433,7 +432,7 @@ export default function BlogPostList() {
                       const StatusIcon = statusConfig.icon;
                       
                       return (
-                        <TableRow key={post.id}>
+    <TableRow key={post.id}>
                           <TableCell>
                             <div>
                               <Link href={`/admin/blog/posts/${post.slug}`}>
@@ -551,7 +550,7 @@ export default function BlogPostList() {
                             </DropdownMenu>
                           </TableCell>
                         </TableRow>
-                      );
+  );
                     })
                   )}
                 </TableBody>
@@ -582,6 +581,5 @@ export default function BlogPostList() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    
   );
 }

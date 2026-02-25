@@ -217,17 +217,14 @@ export default function PageEditorPage() {
 
   if (isLoading) {
     return (
-      
-        <div className="flex items-center justify-center h-96">
+    <div className="flex items-center justify-center h-96">
           <Loader2 className="h-8 w-8 animate-spin text-[#EF4923]" />
         </div>
-      
-    );
+  );
   }
 
   return (
-    
-      <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex flex-col h-[calc(100vh-4rem)]">
         {/* Top Bar */}
         <div className="flex items-center justify-between px-4 py-3 border-b bg-white dark:bg-card gap-4">
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -405,6 +402,5 @@ export default function PageEditorPage() {
           <PageBuilder blocks={page.sections} onChange={handleBlocksChange} />
         </div>
       </div>
-    
   );
 }

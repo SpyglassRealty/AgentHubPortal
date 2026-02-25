@@ -391,8 +391,7 @@ export default function RedirectManager() {
   const pagination = data?.pagination || { page: 1, limit: 20, total: 0, totalPages: 1 };
 
   return (
-    
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {/* ── Header ─────────────────────────────────── */}
         <div className="flex items-center gap-3 mb-6">
           <Button variant="ghost" size="icon" onClick={() => setLocation("/admin")}>
@@ -599,6 +598,5 @@ export default function RedirectManager() {
           onSuccess={refetch}
         />
       </div>
-    
   );
 }

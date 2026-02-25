@@ -262,8 +262,7 @@ export default function ReviewSourceManager() {
   };
 
   return (
-    
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="max-w-6xl mx-auto px-6 py-8">
           {/* Modern Header */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
@@ -558,6 +557,5 @@ export default function ReviewSourceManager() {
           </Dialog>
         </div>
       </div>
-    
   );
 }
