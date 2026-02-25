@@ -280,7 +280,7 @@ export async function registerRoutes(
       res.json({ success: true, fubResponse: result });
     } catch (error) {
       console.error('[Test FUB] Error:', error);
-      res.json({ success: false, error: error.message });
+      res.json({ success: false, error: error instanceof Error ? error.message : String(error) });
     }
   });
 
@@ -315,8 +315,8 @@ export async function registerRoutes(
       console.error('[Test Google Calendar] Error:', error);
       res.json({ 
         success: false, 
-        error: error.message,
-        stack: error.stack?.split('\n').slice(0, 5) // First 5 lines of stack trace
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack?.split('\n').slice(0, 5) : undefined // First 5 lines of stack trace
       });
     }
   });
@@ -5347,7 +5347,7 @@ Respond with valid JSON in this exact format:
       });
     } catch (error) {
       console.error("Debug schema check error:", error);
-      res.status(500).json({ message: "Schema check failed", error: error.message });
+      res.status(500).json({ message: "Schema check failed", error: error instanceof Error ? error.message : String(error) });
     }
   });
 
