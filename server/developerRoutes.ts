@@ -35,7 +35,7 @@ async function fetchGitHubCommits() {
       commitHash: c.sha.substring(0, 7),
       category: 'deployment',
       status: 'deployed',
-      createdAt: c.commit.author?.date,
+      createdAt: c.commit.author?.date || c.commit.committer?.date || new Date().toISOString(),
       source: 'github'
     }));
   } catch (e) {

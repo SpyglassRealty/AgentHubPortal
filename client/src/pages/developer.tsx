@@ -882,7 +882,7 @@ function DeveloperPage() {
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
                               <span>By {entry.developer_name}</span>
                               {entry.requested_by && <span>Requested by {entry.requested_by}</span>}
-                              <span>{formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })}</span>
+                              <span>{entry.created_at && !isNaN(new Date(entry.created_at).getTime()) ? formatDistanceToNow(new Date(entry.created_at), { addSuffix: true }) : 'Unknown date'}</span>
                             </div>
                           </div>
                         </div>
