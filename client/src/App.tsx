@@ -41,6 +41,8 @@ import AgentListPage from "@/pages/admin/AgentList";
 import AgentEditorPage from "@/pages/admin/AgentEditor";
 import LandingPageListPage from "@/pages/admin/LandingPageList";
 import LandingPageEditorPage from "@/pages/admin/LandingPageEditor";
+import PagesListPage from "@/pages/admin/pages-list";
+import PageEditorPage from "@/pages/admin/page-editor";
 import TestimonialListPage from "@/pages/admin/TestimonialList";
 import TestimonialEditorPage from "@/pages/admin/TestimonialEditor";
 import ReviewSourceManagerPage from "@/pages/admin/ReviewSourceManager";
@@ -117,6 +119,9 @@ function Router() {
       <Route path="/admin/blog/categories" component={BlogCategoryListPage} />
       <Route path="/admin/agents/:id" component={AgentEditorPage} />
       <Route path="/admin/agents" component={AgentListPage} />
+      <Route path="/admin/pages/new" component={PageEditorPage} />
+      <Route path="/admin/pages/:id/edit" component={PageEditorPage} />
+      <Route path="/admin/pages" component={PagesListPage} />
       <Route path="/admin/landing-pages/:id" component={LandingPageEditorPage} />
       <Route path="/admin/landing-pages" component={LandingPageListPage} />
       <Route path="/admin/testimonials/sources" component={ReviewSourceManagerPage} />

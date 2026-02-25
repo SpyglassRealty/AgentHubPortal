@@ -268,6 +268,7 @@ export default function AdminPage() {
         { name: "Blog Posts", href: "/admin/blog/posts", icon: FileText },
         { name: "Blog Categories", href: "/admin/blog/categories", icon: FileBarChart },
         { name: "Landing Pages", href: "/admin/landing-pages", icon: Globe },
+        { name: "Page Builder", href: "/admin/pages", icon: FileText },
       ]
     },
     {

@@ -114,6 +114,7 @@ import blogRoutes from "./blogRoutes";
 import agentRoutes from "./agentRoutes";
 import landingPageRoutes from "./landingPageRoutes";
 import testimonialRoutes from "./testimonialRoutes";
+import pageBuilderRoutes from "./pageBuilderRoutes";
 
 
 // Helper function to get the actual database user from request
@@ -5385,6 +5386,7 @@ Respond with valid JSON in this exact format:
   
   // Register CMS Enhancement Phase 4 - Testimonials & Reviews System
   app.use(testimonialRoutes);
+  app.use('/api', pageBuilderRoutes);
 
   // ==========================================
   // DEBUG ENDPOINT FOR DATABASE DIAGNOSIS
