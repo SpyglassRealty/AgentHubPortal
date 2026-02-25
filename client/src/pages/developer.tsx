@@ -872,17 +872,17 @@ function DeveloperPage() {
                               <Badge className={statusColors[entry.status] || "bg-gray-100 text-gray-700"}>
                                 {entry.status.replace('_', ' ')}
                               </Badge>
-                              {entry.commit_hash && (
+                              {(entry.commit_hash || entry.commitHash) && (
                                 <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
-                                  {entry.commit_hash}
+                                  {entry.commit_hash || entry.commitHash}
                                 </code>
                               )}
                             </div>
                             <p className="text-sm font-medium mb-1">{entry.description}</p>
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span>By {entry.developer_name}</span>
+                              <span>By {entry.developer_name || entry.developerName}</span>
                               {entry.requested_by && <span>Requested by {entry.requested_by}</span>}
-                              <span>{entry.created_at && !isNaN(new Date(entry.created_at).getTime()) ? formatDistanceToNow(new Date(entry.created_at), { addSuffix: true }) : 'Unknown date'}</span>
+                              <span>{(entry.created_at || entry.createdAt) && !isNaN(new Date(entry.created_at || entry.createdAt).getTime()) ? formatDistanceToNow(new Date(entry.created_at || entry.createdAt), { addSuffix: true }) : 'Unknown date'}</span>
                             </div>
                           </div>
                         </div>
