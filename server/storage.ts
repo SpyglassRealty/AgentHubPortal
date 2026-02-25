@@ -71,7 +71,7 @@ export interface IStorage {
   getLatestMarketPulseSnapshot(): Promise<MarketPulseSnapshot | undefined>;
   saveMarketPulseSnapshot(snapshot: InsertMarketPulseSnapshot): Promise<MarketPulseSnapshot>;
   
-  trackAppUsage(userId: string, appId: string, page: string): Promise<AppUsage>;
+  trackAppUsage(userId: string, appId: string, page: string): Promise<AppUsage | null>;
   getAppUsageByPage(userId: string, page: string): Promise<AppUsage[]>;
   
   getNotifications(userId: string, limit?: number): Promise<Notification[]>;
@@ -96,7 +96,7 @@ export interface IStorage {
   upsertSyncStatus(userId: string, section: string, manualRefreshTime: Date): Promise<SyncStatus>;
   
   getSavedContentIdeas(userId: string): Promise<SavedContentIdea[]>;
-  saveContentIdea(idea: InsertSavedContentIdea): Promise<SavedContentIdea>;
+  saveContentIdea(idea: InsertSavedContentIdea): Promise<SavedContentIdea | null>;
   deleteContentIdea(id: number, userId: string): Promise<boolean>;
   updateContentIdeaStatus(id: number, userId: string, status: string): Promise<SavedContentIdea | undefined>;
   
@@ -134,7 +134,7 @@ export interface IStorage {
   // Integration config methods
   getIntegrationConfigs(): Promise<IntegrationConfig[]>;
   getIntegrationConfig(name: string): Promise<IntegrationConfig | undefined>;
-  upsertIntegrationConfig(config: InsertIntegrationConfig): Promise<IntegrationConfig>;
+  upsertIntegrationConfig(config: InsertIntegrationConfig): Promise<IntegrationConfig | null>;
   updateIntegrationTestResult(name: string, result: string, message?: string): Promise<IntegrationConfig | undefined>;
   deleteIntegrationConfig(name: string): Promise<boolean>;
   getIntegrationApiKey(name: string): Promise<string | null>;

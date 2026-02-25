@@ -113,7 +113,7 @@ export interface FubDeal {
 }
 
 export const agentProfiles = pgTable("agent_profiles", {
-  id: varchar("id", { length: 255 }).primaryKey(),
+  id: varchar("id", { length: 255 }).primaryKey().default(sql`gen_random_uuid()`),
   userId: text("user_id").notNull(),
   title: text("title"),
   headshotUrl: text("headshot_url"),
