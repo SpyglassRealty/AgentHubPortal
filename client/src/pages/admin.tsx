@@ -26,7 +26,7 @@ import AdminDashboardsRouter from "./admin-dashboards";
 import { apps, type AppDefinition } from "@/lib/apps";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { Switch as UISwitch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
   Table,
