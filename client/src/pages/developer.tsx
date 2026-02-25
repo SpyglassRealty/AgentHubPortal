@@ -1,4 +1,35 @@
 import React, { useState } from "react";
+
+class DeveloperErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '2rem', fontFamily: 'monospace', background: '#fee', border: '2px solid red' }}>
+          <h2>Developer Page Crash — Error Details:</h2>
+          <pre style={{ whiteSpace: 'pre-wrap', color: 'red' }}>
+            {this.state.error?.message}
+          </pre>
+          <pre style={{ whiteSpace: 'pre-wrap', fontSize: '12px' }}>
+            {this.state.error?.stack}
+          </pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Layout from "@/components/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -165,7 +196,7 @@ const statusColors: Record<string, string> = {
   pending: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
 };
 
-export default function DeveloperPage() {
+function DeveloperPage() {
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1175,5 +1206,13 @@ export default function DeveloperPage() {
         </Tabs>
       </div>
     </Layout>
+  );
+}
+
+export default function DeveloperPageWrapper() {
+  return (
+    <DeveloperErrorBoundary>
+      <DeveloperPage />
+    </DeveloperErrorBoundary>
   );
 }
