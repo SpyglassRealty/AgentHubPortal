@@ -415,7 +415,7 @@ export default function GlobalScriptsList() {
     if (configKeys.length === 0) return null;
 
     return (
-      <div className="space-y-3">
+    <div className="space-y-3">
         <Label className="text-sm font-medium">Template Configuration</Label>
         {configKeys.map(key => (
           <div key={key}>
@@ -429,12 +429,11 @@ export default function GlobalScriptsList() {
           </div>
         ))}
       </div>
-    );
+  );
   };
 
   return (
-    
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* ── Header ────────────────────────────────── */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -830,6 +829,5 @@ export default function GlobalScriptsList() {
           </DialogContent>
         </Dialog>
       </div>
-    
   );
 }

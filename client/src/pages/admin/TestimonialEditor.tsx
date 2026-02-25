@@ -221,7 +221,7 @@ export default function TestimonialEditor({ params }: { params: { id: string } }
 
   const renderStarSelector = () => {
     return (
-      <div className="flex gap-1">
+    <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
@@ -239,22 +239,19 @@ export default function TestimonialEditor({ params }: { params: { id: string } }
           </button>
         ))}
       </div>
-    );
+  );
   };
 
   if (!isNew && testimonialLoading) {
     return (
-      
-        <div className="flex items-center justify-center min-h-screen">
+    <div className="flex items-center justify-center min-h-screen">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         </div>
-      
-    );
+  );
   }
 
   return (
-    
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="max-w-4xl mx-auto px-6 py-8">
           {/* Modern Header */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
@@ -584,6 +581,5 @@ export default function TestimonialEditor({ params }: { params: { id: string } }
           </form>
         </div>
       </div>
-    
   );
 }

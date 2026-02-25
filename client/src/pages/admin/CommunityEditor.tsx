@@ -168,30 +168,25 @@ export default function CommunityEditor() {
 
   if (isLoading) {
     return (
-      
-        <div className="flex items-center justify-center h-[60vh]">
+    <div className="flex items-center justify-center h-[60vh]">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      
-    );
+  );
   }
 
   if (!community) {
     return (
-      
-        <div className="max-w-4xl mx-auto px-4 py-10 text-center">
+    <div className="max-w-4xl mx-auto px-4 py-10 text-center">
           <p className="text-lg text-muted-foreground">Community not found</p>
           <Button variant="link" onClick={() => setLocation("/admin/communities")}>
             Back to list
           </Button>
         </div>
-      
-    );
+  );
   }
 
   return (
-    
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* ── Header ──────────────────────────────── */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
@@ -587,6 +582,5 @@ export default function CommunityEditor() {
           </div>
         </div>
       </div>
-    
   );
 }

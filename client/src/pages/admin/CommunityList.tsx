@@ -118,8 +118,7 @@ export default function CommunityList() {
   };
 
   return (
-    
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <Button variant="ghost" size="icon" onClick={() => setLocation("/admin")}>
@@ -281,7 +280,7 @@ export default function CommunityList() {
                   {communities.map((c) => {
                     const seoStatus = getSeoStatus(c);
                     return (
-                      <TableRow key={c.slug}>
+    <TableRow key={c.slug}>
                         <TableCell 
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -356,7 +355,7 @@ export default function CommunityList() {
                           {formatDate(c.updatedAt)}
                         </TableCell>
                       </TableRow>
-                    );
+  );
                   })}
                 </TableBody>
               </Table>
@@ -393,6 +392,5 @@ export default function CommunityList() {
           </div>
         )}
       </div>
-    
   );
 }

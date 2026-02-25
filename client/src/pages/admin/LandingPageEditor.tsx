@@ -271,19 +271,16 @@ export default function LandingPageEditorPage() {
 
   if (isLoading) {
     return (
-      
-        <div className="flex items-center justify-center py-12">
+    <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      
-    );
+  );
   }
 
   const seoScore = getSeoScore();
 
   return (
-    
-      <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -677,6 +674,5 @@ export default function LandingPageEditorPage() {
           </form>
         )}
       </div>
-    
   );
 }
