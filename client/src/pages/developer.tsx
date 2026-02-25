@@ -166,7 +166,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function DeveloperPage() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -195,21 +195,57 @@ export default function DeveloperPage() {
   });
   const [inviteEmail, setInviteEmail] = useState("");
 
-  // Access control check
-  if (!user || user.role !== 'developer') {
+  // Loading state
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="max-w-2xl mx-auto py-12 text-center">
+          <Loader2 className="h-8 w-8 mx-auto animate-spin mb-4" />
+          <h1 className="text-xl font-medium mb-2">Loading Developer Dashboard...</h1>
+          <p className="text-muted-foreground">Checking permissions...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Debug info for troubleshooting
+  console.log("Developer page - User data:", user);
+  console.log("Developer page - User role:", user?.role);
+  console.log("Developer page - Is super admin:", user?.isSuperAdmin);
+
+  // Access control check - allow super admins and developers, show debug info for others
+  if (!user) {
+    return (
+      <Layout>
+        <div className="max-w-2xl mx-auto py-12 text-center">
+          <Shield className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Not Authenticated</h1>
+          <p className="text-muted-foreground">Please log in to access the developer dashboard.</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Temporarily allow super admins until role migration is complete
+  if (user.role !== 'developer' && !user.isSuperAdmin) {
     return (
       <Layout>
         <div className="max-w-2xl mx-auto py-12 text-center">
           <Shield className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
           <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
           <p className="text-muted-foreground">You need developer privileges to access this page.</p>
+          <div className="mt-4 text-xs text-muted-foreground">
+            <p>Current role: {user.role || 'undefined'}</p>
+            <p>Is super admin: {user.isSuperAdmin ? 'yes' : 'no'}</p>
+            <p>Email: {user.email}</p>
+          </div>
         </div>
       </Layout>
     );
   }
 
-  // Data queries
-  const { data: activityData, isLoading: activityLoading } = useQuery<{
+  // Data queries with error handling
+  const { data: activityData, isLoading: activityLoading, error: activityError } = useQuery<{
     logs: ActivityLog[];
     pagination: any;
   }>({
@@ -220,21 +256,33 @@ export default function DeveloperPage() {
         if (value) params.append(key, value);
       });
       const res = await fetch(`/api/developer/activity-logs?${params}`);
-      if (!res.ok) throw new Error("Failed to fetch activity logs");
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Activity logs API error:", res.status, errorText);
+        throw new Error(`Failed to fetch activity logs: ${res.status} ${errorText}`);
+      }
       return res.json();
     },
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
-  const { data: usersData, isLoading: usersLoading } = useQuery<{ users: User[] }>({
+  const { data: usersData, isLoading: usersLoading, error: usersError } = useQuery<{ users: User[] }>({
     queryKey: ["/api/developer/users"],
     queryFn: async () => {
       const res = await fetch("/api/developer/users");
-      if (!res.ok) throw new Error("Failed to fetch users");
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Users API error:", res.status, errorText);
+        throw new Error(`Failed to fetch users: ${res.status} ${errorText}`);
+      }
       return res.json();
     },
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
-  const { data: changelogData, isLoading: changelogLoading } = useQuery<{
+  const { data: changelogData, isLoading: changelogLoading, error: changelogError } = useQuery<{
     changelog: ChangelogEntry[];
     pagination: any;
   }>({
@@ -245,18 +293,30 @@ export default function DeveloperPage() {
         if (value) params.append(key, value);
       });
       const res = await fetch(`/api/developer/changelog?${params}`);
-      if (!res.ok) throw new Error("Failed to fetch changelog");
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Changelog API error:", res.status, errorText);
+        throw new Error(`Failed to fetch changelog: ${res.status} ${errorText}`);
+      }
       return res.json();
     },
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
-  const { data: systemHealth, isLoading: healthLoading } = useQuery<SystemHealth>({
+  const { data: systemHealth, isLoading: healthLoading, error: healthError } = useQuery<SystemHealth>({
     queryKey: ["/api/developer/system-health"],
     queryFn: async () => {
       const res = await fetch("/api/developer/system-health");
-      if (!res.ok) throw new Error("Failed to fetch system health");
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("System health API error:", res.status, errorText);
+        throw new Error(`Failed to fetch system health: ${res.status} ${errorText}`);
+      }
       return res.json();
     },
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
   // Mutations
@@ -379,6 +439,70 @@ export default function DeveloperPage() {
             Comprehensive development tools, activity monitoring, and system management
           </p>
         </div>
+
+        {/* API Error Alerts */}
+        {(activityError || usersError || changelogError || healthError) && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-red-600">API Connection Issues</h3>
+            {activityError && (
+              <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-red-500" />
+                    <span className="font-medium text-red-700 dark:text-red-400">Activity Logs API Error:</span>
+                  </div>
+                  <p className="text-sm text-red-600 dark:text-red-500 mt-1">{activityError.message}</p>
+                </CardContent>
+              </Card>
+            )}
+            {usersError && (
+              <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-red-500" />
+                    <span className="font-medium text-red-700 dark:text-red-400">Users API Error:</span>
+                  </div>
+                  <p className="text-sm text-red-600 dark:text-red-500 mt-1">{usersError.message}</p>
+                </CardContent>
+              </Card>
+            )}
+            {changelogError && (
+              <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-red-500" />
+                    <span className="font-medium text-red-700 dark:text-red-400">Changelog API Error:</span>
+                  </div>
+                  <p className="text-sm text-red-600 dark:text-red-500 mt-1">{changelogError.message}</p>
+                </CardContent>
+              </Card>
+            )}
+            {healthError && (
+              <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-red-500" />
+                    <span className="font-medium text-red-700 dark:text-red-400">System Health API Error:</span>
+                  </div>
+                  <p className="text-sm text-red-600 dark:text-red-500 mt-1">{healthError.message}</p>
+                </CardContent>
+              </Card>
+            )}
+            <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-yellow-600" />
+                  <span className="font-medium text-yellow-700 dark:text-yellow-400">Troubleshooting Tips:</span>
+                </div>
+                <ul className="text-sm text-yellow-600 dark:text-yellow-500 mt-2 space-y-1 list-disc list-inside">
+                  <li>Database tables may not exist yet - migration needed</li>
+                  <li>Check browser console for detailed error messages</li>
+                  <li>Verify your user account has the correct role</li>
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
