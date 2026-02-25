@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import Layout from "@/components/layout";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -240,7 +240,7 @@ export default function BlogPostList() {
   const totalViews = posts.reduce((sum, p) => sum + (p.viewCount || 0), 0);
 
   return (
-    <Layout>
+    
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -582,6 +582,6 @@ export default function BlogPostList() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </Layout>
+    
   );
 }

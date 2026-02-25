@@ -154,7 +154,7 @@ function AdminSiteEditorContent() {
 // Original dashboard content
 function DashboardContent({ statsLoading, allUsers }: { statsLoading: boolean; allUsers: User[] }) {
   return (
-    <div className="p-6">
+    <div>
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 shadow-lg">
@@ -563,41 +563,43 @@ export default function AdminPage() {
 
         {/* Content Area - Shows different components based on route */}
         <div className="flex-1 overflow-y-auto">
-          <Switch>
-            {/* Sub-routes */}
-            <Route path="/admin/site-editor">
-              <AdminSiteEditorContent />
-            </Route>
-            <Route path="/admin/beacon" component={AdminBeaconPage} />
-            <Route path="/admin/settings" component={AdminSettingsPage} />
-            <Route path="/admin/communities/:slug" component={CommunityEditorPage} />
-            <Route path="/admin/communities" component={CommunityListPage} />
-            <Route path="/admin/redirects" component={RedirectsListPage} />
-            <Route path="/admin/global-scripts" component={GlobalScriptsListPage} />
-            <Route path="/admin/blog/posts/:slug" component={BlogPostEditorPage} />
-            <Route path="/admin/blog/posts" component={BlogPostListPage} />
-            <Route path="/admin/blog/categories" component={BlogCategoryListPage} />
-            <Route path="/admin/agents/:id" component={AgentEditorPage} />
-            <Route path="/admin/agents" component={AgentListPage} />
-            <Route path="/admin/pages/new" component={PageEditorPage} />
-            <Route path="/admin/pages/:id/edit" component={PageEditorPage} />
-            <Route path="/admin/pages" component={PagesListPage} />
-            <Route path="/admin/landing-pages/:id" component={LandingPageEditorPage} />
-            <Route path="/admin/landing-pages" component={LandingPageListPage} />
-            <Route path="/admin/testimonials/sources" component={ReviewSourceManagerPage} />
-            <Route path="/admin/testimonials/:id" component={TestimonialEditorPage} />
-            <Route path="/admin/testimonials" component={TestimonialListPage} />
-            <Route path="/admin/dashboards/:rest*" component={AdminDashboardsRouter} />
-            <Route path="/admin/dashboards" component={AdminDashboardsRouter} />
-            
-            {/* Default dashboard content */}
-            <Route path="/admin">
-              <DashboardContent 
-                statsLoading={statsLoading} 
-                allUsers={allUsers} 
-              />
-            </Route>
-          </Switch>
+          <div className="p-6">
+            <Switch>
+              {/* Sub-routes */}
+              <Route path="/admin/site-editor">
+                <SiteEditorContent />
+              </Route>
+              <Route path="/admin/beacon" component={AdminBeaconPage} />
+              <Route path="/admin/settings" component={AdminSettingsPage} />
+              <Route path="/admin/communities/:slug" component={CommunityEditorPage} />
+              <Route path="/admin/communities" component={CommunityListPage} />
+              <Route path="/admin/redirects" component={RedirectsListPage} />
+              <Route path="/admin/global-scripts" component={GlobalScriptsListPage} />
+              <Route path="/admin/blog/posts/:slug" component={BlogPostEditorPage} />
+              <Route path="/admin/blog/posts" component={BlogPostListPage} />
+              <Route path="/admin/blog/categories" component={BlogCategoryListPage} />
+              <Route path="/admin/agents/:id" component={AgentEditorPage} />
+              <Route path="/admin/agents" component={AgentListPage} />
+              <Route path="/admin/pages/new" component={PageEditorPage} />
+              <Route path="/admin/pages/:id/edit" component={PageEditorPage} />
+              <Route path="/admin/pages" component={PagesListPage} />
+              <Route path="/admin/landing-pages/:id" component={LandingPageEditorPage} />
+              <Route path="/admin/landing-pages" component={LandingPageListPage} />
+              <Route path="/admin/testimonials/sources" component={ReviewSourceManagerPage} />
+              <Route path="/admin/testimonials/:id" component={TestimonialEditorPage} />
+              <Route path="/admin/testimonials" component={TestimonialListPage} />
+              <Route path="/admin/dashboards/:rest*" component={AdminDashboardsRouter} />
+              <Route path="/admin/dashboards" component={AdminDashboardsRouter} />
+              
+              {/* Default dashboard content */}
+              <Route path="/admin">
+                <DashboardContent 
+                  statsLoading={statsLoading} 
+                  allUsers={allUsers} 
+                />
+              </Route>
+            </Switch>
+          </div>
         </div>
       </div>
     </div>

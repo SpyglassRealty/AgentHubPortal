@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import Layout from "@/components/layout";
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -262,7 +262,7 @@ export default function ReviewSourceManager() {
   };
 
   return (
-    <Layout>
+    
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="max-w-6xl mx-auto px-6 py-8">
           {/* Modern Header */}
@@ -558,6 +558,6 @@ export default function ReviewSourceManager() {
           </Dialog>
         </div>
       </div>
-    </Layout>
+    
   );
 }
