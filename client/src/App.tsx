@@ -108,29 +108,8 @@ function Router() {
       <Route path="/training" component={TrainingPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/developer" component={DeveloperPage} />
+      <Route path="/admin/:rest*" component={AdminPage} />
       <Route path="/admin" component={AdminPage} />
-      <Route path="/admin/settings" component={AdminSettingsPage} />
-      <Route path="/admin/beacon" component={AdminBeaconPage} />
-      <Route path="/admin/communities/:slug" component={CommunityEditorPage} />
-      <Route path="/admin/communities" component={CommunityListPage} />
-      <Route path="/admin/site-editor" component={AdminSiteEditorPage} />
-      <Route path="/admin/redirects" component={RedirectsListPage} />
-      <Route path="/admin/global-scripts" component={GlobalScriptsListPage} />
-      <Route path="/admin/blog/posts/:slug" component={BlogPostEditorPage} />
-      <Route path="/admin/blog/posts" component={BlogPostListPage} />
-      <Route path="/admin/blog/categories" component={BlogCategoryListPage} />
-      <Route path="/admin/agents/:id" component={AgentEditorPage} />
-      <Route path="/admin/agents" component={AgentListPage} />
-      <Route path="/admin/pages/new" component={PageEditorPage} />
-      <Route path="/admin/pages/:id/edit" component={PageEditorPage} />
-      <Route path="/admin/pages" component={PagesListPage} />
-      <Route path="/admin/landing-pages/:id" component={LandingPageEditorPage} />
-      <Route path="/admin/landing-pages" component={LandingPageListPage} />
-      <Route path="/admin/testimonials/sources" component={ReviewSourceManagerPage} />
-      <Route path="/admin/testimonials/:id" component={TestimonialEditorPage} />
-      <Route path="/admin/testimonials" component={TestimonialListPage} />
-      <Route path="/admin/dashboards/:rest*" component={AdminDashboardsRouter} />
-      <Route path="/admin/dashboards" component={AdminDashboardsRouter} />
       <Route path="/share/:token" component={SharedCmaPage} />
       <Route path="/app/:id" component={AppView} />
       <Route component={NotFound} />
