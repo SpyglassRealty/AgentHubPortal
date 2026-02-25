@@ -44,6 +44,7 @@ import LandingPageEditorPage from "@/pages/admin/LandingPageEditor";
 import TestimonialListPage from "@/pages/admin/TestimonialList";
 import TestimonialEditorPage from "@/pages/admin/TestimonialEditor";
 import ReviewSourceManagerPage from "@/pages/admin/ReviewSourceManager";
+import DeveloperPage from "./pages/developer";
 
 // Backward compatibility redirect component
 function CmaPresentationRedirect() {
@@ -104,6 +105,7 @@ function Router() {
       <Route path="/marketing-calendar" component={MarketingCalendarPage} />
       <Route path="/training" component={TrainingPage} />
       <Route path="/settings" component={SettingsPage} />
+      <Route path="/developer" component={DeveloperPage} />
       <Route path="/admin" component={AdminPage} />
       <Route path="/admin/settings" component={AdminSettingsPage} />
       <Route path="/admin/beacon" component={AdminBeaconPage} />
