@@ -154,14 +154,21 @@ export function SpyglassResourcesWidget({ agent, cmaToken }: SpyglassResourcesWi
               <FileText className="w-8 h-8 text-gray-500" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-3">
-              No Resources Available
+              {cmaToken ? "No resources have been added yet" : "No resources added yet"}
             </h3>
-            <p className="text-gray-600 text-sm leading-relaxed">
+            <p className="text-gray-600 text-sm leading-relaxed mb-4">
               {cmaToken
                 ? "This agent has not added any resources to share."
-                : "Add helpful documents and links for your clients in Settings."}
+                : "Add documents and links in Settings to display them here"}
             </p>
-          </div>
+            {!cmaToken && (
+              <a 
+                href="/settings" 
+                className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+              >
+                Go to Settings
+              </a>
+            )}          </div>
         )}
       </div>
     </div>
