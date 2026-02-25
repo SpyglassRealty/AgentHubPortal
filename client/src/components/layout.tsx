@@ -114,13 +114,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </div>
 
       <div className="flex-1 px-3 py-6 space-y-1">
-        {navItems.filter((item) => {
-          // Hide Developer link for non-developers (hardcoded check)
-          if (item.href === "/developer" && user?.email !== 'daryl@spyglassrealty.com' && !user?.isSuperAdmin) {
-            return false;
-          }
-          return true;
-        }).map((item) => {
+        {navItems.map((item) => {
           const isActive = location === item.href;
           const itemId = item.href.replace("/", "") || "home";
           return (
@@ -363,7 +357,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 {user?.isSuperAdmin && (
                   <DropdownMenuItem 
                     className="cursor-pointer"
-                    onClick={() => setLocation("/admin")}
+                    onClick={() => setLocation("/admin/settings")}
                   >
                     <Settings className="mr-2 h-4 w-4" />
                     Admin Settings
