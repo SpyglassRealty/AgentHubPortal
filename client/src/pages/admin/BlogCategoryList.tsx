@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import Layout from "@/components/layout";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -308,7 +308,7 @@ export default function BlogCategoryList() {
   const hierarchicalCategories = getCategoryHierarchy();
 
   return (
-    <Layout>
+    
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -626,6 +626,6 @@ export default function BlogCategoryList() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </Layout>
+    
   );
 }

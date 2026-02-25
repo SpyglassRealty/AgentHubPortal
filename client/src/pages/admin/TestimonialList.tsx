@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import Layout from "@/components/layout";
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -223,7 +223,7 @@ export default function TestimonialList() {
   };
 
   return (
-    <Layout>
+    
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-6 py-8">
           {/* Modern Header */}
@@ -586,6 +586,6 @@ export default function TestimonialList() {
           )}
         </div>
       </div>
-    </Layout>
+    
   );
 }

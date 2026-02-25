@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import Layout from "@/components/layout";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -271,18 +271,18 @@ export default function LandingPageEditorPage() {
 
   if (isLoading) {
     return (
-      <Layout>
+      
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      </Layout>
+      
     );
   }
 
   const seoScore = getSeoScore();
 
   return (
-    <Layout>
+    
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -518,7 +518,7 @@ export default function LandingPageEditorPage() {
                   <CardContent>
                     {formData.sections.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
-                        <LayoutIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        
                         <p>No sections yet. Add sections to structure your content.</p>
                       </div>
                     ) : (
@@ -677,6 +677,6 @@ export default function LandingPageEditorPage() {
           </form>
         )}
       </div>
-    </Layout>
+    
   );
 }
