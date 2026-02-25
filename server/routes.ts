@@ -218,6 +218,18 @@ export async function registerRoutes(
     }
   })();
 
+  // Blog posts custom_schema column migration
+  (async () => {
+    try {
+      await db.execute(sql`
+        ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS custom_schema JSONB
+      `);
+      console.log('[Migration] ✅ Blog posts custom_schema column added');
+    } catch (e) {
+      console.warn('[Migration] Blog posts custom_schema column migration skipped:', e.message);
+    }
+  })();
+
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
