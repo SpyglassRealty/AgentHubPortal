@@ -619,8 +619,6 @@ async function createAgentResourcesTable() {
   try {
     console.log('[Database] Creating/fixing agent_resources table...');
     
-    // Drop table if it exists with wrong schema, then recreate
-    await pool.query('DROP TABLE IF EXISTS agent_resources CASCADE');
     
     // Create table with correct schema matching shared/schema.ts
     const createTableSQL = `
