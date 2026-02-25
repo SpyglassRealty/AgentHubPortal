@@ -565,31 +565,25 @@ export default function AdminPage() {
         <div className="flex-1 overflow-y-auto">
           <div className="p-6">
             <Switch>
-              {/* Sub-routes */}
-              <Route path="/admin/site-editor">
-                <SiteEditorContent />
+              {/* Debug info */}
+              <Route path="/admin/communities">
+                <div>
+                  <h2>Communities Loading...</h2>
+                  <CommunityListPage />
+                </div>
               </Route>
-              <Route path="/admin/beacon" component={AdminBeaconPage} />
-              <Route path="/admin/settings" component={AdminSettingsPage} />
-              <Route path="/admin/communities/:slug" component={CommunityEditorPage} />
-              <Route path="/admin/communities" component={CommunityListPage} />
-              <Route path="/admin/redirects" component={RedirectsListPage} />
-              <Route path="/admin/global-scripts" component={GlobalScriptsListPage} />
-              <Route path="/admin/blog/posts/:slug" component={BlogPostEditorPage} />
-              <Route path="/admin/blog/posts" component={BlogPostListPage} />
-              <Route path="/admin/blog/categories" component={BlogCategoryListPage} />
-              <Route path="/admin/agents/:id" component={AgentEditorPage} />
-              <Route path="/admin/agents" component={AgentListPage} />
-              <Route path="/admin/pages/new" component={PageEditorPage} />
-              <Route path="/admin/pages/:id/edit" component={PageEditorPage} />
-              <Route path="/admin/pages" component={PagesListPage} />
-              <Route path="/admin/landing-pages/:id" component={LandingPageEditorPage} />
-              <Route path="/admin/landing-pages" component={LandingPageListPage} />
-              <Route path="/admin/testimonials/sources" component={ReviewSourceManagerPage} />
-              <Route path="/admin/testimonials/:id" component={TestimonialEditorPage} />
-              <Route path="/admin/testimonials" component={TestimonialListPage} />
-              <Route path="/admin/dashboards/:rest*" component={AdminDashboardsRouter} />
-              <Route path="/admin/dashboards" component={AdminDashboardsRouter} />
+              <Route path="/admin/site-editor">
+                <div>
+                  <h2>Site Editor Loading...</h2>
+                  <SiteEditorContent />
+                </div>
+              </Route>
+              <Route path="/admin/blog/posts">
+                <div>
+                  <h2>Blog Posts Loading...</h2>
+                  <BlogPostListPage />
+                </div>
+              </Route>
               
               {/* Default dashboard content */}
               <Route path="/admin">
