@@ -71,7 +71,7 @@ export interface IStorage {
   getLatestMarketPulseSnapshot(): Promise<MarketPulseSnapshot | undefined>;
   saveMarketPulseSnapshot(snapshot: InsertMarketPulseSnapshot): Promise<MarketPulseSnapshot>;
   
-  trackAppUsage(userId: string, appId: string, page: string): Promise<AppUsage | null>;
+  trackAppUsage(userId: string, appId: string, page: string): Promise<AppUsage>;
   getAppUsageByPage(userId: string, page: string): Promise<AppUsage[]>;
   
   getNotifications(userId: string, limit?: number): Promise<Notification[]>;
@@ -96,7 +96,7 @@ export interface IStorage {
   upsertSyncStatus(userId: string, section: string, manualRefreshTime: Date): Promise<SyncStatus>;
   
   getSavedContentIdeas(userId: string): Promise<SavedContentIdea[]>;
-  saveContentIdea(idea: InsertSavedContentIdea): Promise<SavedContentIdea | null>;
+  saveContentIdea(idea: InsertSavedContentIdea): Promise<SavedContentIdea>;
   deleteContentIdea(id: number, userId: string): Promise<boolean>;
   updateContentIdeaStatus(id: number, userId: string, status: string): Promise<SavedContentIdea | undefined>;
   
@@ -134,7 +134,7 @@ export interface IStorage {
   // Integration config methods
   getIntegrationConfigs(): Promise<IntegrationConfig[]>;
   getIntegrationConfig(name: string): Promise<IntegrationConfig | undefined>;
-  upsertIntegrationConfig(config: InsertIntegrationConfig): Promise<IntegrationConfig | null>;
+  upsertIntegrationConfig(config: InsertIntegrationConfig): Promise<IntegrationConfig>;
   updateIntegrationTestResult(name: string, result: string, message?: string): Promise<IntegrationConfig | undefined>;
   deleteIntegrationConfig(name: string): Promise<boolean>;
   getIntegrationApiKey(name: string): Promise<string | null>;
@@ -309,9 +309,9 @@ export class DatabaseStorage implements IStorage {
       }
     } catch (error) {
       console.error(`[Storage] Error upserting agent profile:`, error);
-      console.error(`[Storage] Error details:`, error instanceof Error ? error.message : String(error));
-      console.error(`[Storage] Error code:`, (error as any)?.code);
-      console.error(`[Storage] Error constraint:`, (error as any)?.constraint);
+      console.error(`[Storage] Error details:`, error.message);
+      console.error(`[Storage] Error code:`, error.code);
+      console.error(`[Storage] Error constraint:`, error.constraint);
       throw error;
     }
   }
