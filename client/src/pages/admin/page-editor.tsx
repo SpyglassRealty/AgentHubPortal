@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRoute, useLocation } from 'wouter';
-import Layout from '@/components/layout';
+// Layout removed - component now renders within admin interface
 import { PageBuilder } from '@/components/page-builder';
 import { SeoPanel } from '@/components/seo/SeoPanel';
 import type { BlockData } from '@/components/page-builder/types';
@@ -224,7 +224,7 @@ export default function PageEditorPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex flex-col min-h-[600px] h-[calc(100vh-160px)]">
         {/* Top Bar */}
         <div className="flex items-center justify-between px-4 py-3 border-b bg-white dark:bg-card gap-4">
           <div className="flex items-center gap-3 flex-1 min-w-0">
