@@ -284,7 +284,7 @@ function DeveloperPage() {
     queryFn: async () => {
       const params = new URLSearchParams();
       Object.entries(activityFilters).forEach(([key, value]) => {
-        if (value) params.append(key, value);
+        if (value && value !== "all") params.append(key, value);
       });
       const res = await fetch(`/api/developer/activity-logs?${params}`);
       if (!res.ok) {
@@ -321,7 +321,7 @@ function DeveloperPage() {
     queryFn: async () => {
       const params = new URLSearchParams();
       Object.entries(changelogFilters).forEach(([key, value]) => {
-        if (value) params.append(key, value);
+        if (value && value !== "all") params.append(key, value);
       });
       const res = await fetch(`/api/developer/changelog?${params}`);
       if (!res.ok) {
@@ -621,7 +621,7 @@ function DeveloperPage() {
                       <SelectValue placeholder="Filter by action type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Actions</SelectItem>
+                      <SelectItem value="all">All Actions</SelectItem>
                       <SelectItem value="create">Create</SelectItem>
                       <SelectItem value="update">Update</SelectItem>
                       <SelectItem value="delete">Delete</SelectItem>
@@ -806,7 +806,7 @@ function DeveloperPage() {
                   <SelectValue placeholder="Filter by category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   <SelectItem value="bug_fix">Bug Fix</SelectItem>
                   <SelectItem value="feature">Feature</SelectItem>
                   <SelectItem value="ui">UI Update</SelectItem>
@@ -823,7 +823,7 @@ function DeveloperPage() {
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="deployed">Deployed</SelectItem>
                   <SelectItem value="in_progress">In Progress</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
@@ -838,7 +838,7 @@ function DeveloperPage() {
                   <SelectValue placeholder="Filter by developer" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Developers</SelectItem>
+                  <SelectItem value="all">All Developers</SelectItem>
                   {Array.from(new Set(changelogData?.changelog?.map(c => c.developer_email) || [])).map((email) => (
                     <SelectItem key={email} value={email}>{email}</SelectItem>
                   ))}
