@@ -1276,26 +1276,6 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
               </div>
             </div>
 
-            {/* Address with Mapbox */}
-            <div className={`p-4 rounded-lg border ${borderColor}`}>
-              <div className="flex items-start gap-3 mb-3">
-                <MapPin className={`w-5 h-5 ${textSecondary} mt-0.5`} />
-                <div>
-                  <p className={`font-medium ${textPrimary}`}>{listing.address?.full}</p>
-                </div>
-              </div>
-{(listing.map?.latitude || listing.latitude) && (listing.map?.longitude || listing.longitude) ? (
-                <PropertyMapPreview 
-                  latitude={listing.map?.latitude || listing.latitude} 
-                  longitude={listing.map?.longitude || listing.longitude} 
-                  isDark={isDark} 
-                />
-              ) : (
-                <div className="w-full h-48 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                  <span className="text-gray-400 text-sm">Location not available</span>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </div>
