@@ -309,9 +309,9 @@ export class DatabaseStorage implements IStorage {
       }
     } catch (error) {
       console.error(`[Storage] Error upserting agent profile:`, error);
-      console.error(`[Storage] Error details:`, error.message);
-      console.error(`[Storage] Error code:`, error.code);
-      console.error(`[Storage] Error constraint:`, error.constraint);
+      console.error(`[Storage] Error details:`, error instanceof Error ? error.message : String(error));
+      console.error(`[Storage] Error code:`, (error as any)?.code);
+      console.error(`[Storage] Error constraint:`, (error as any)?.constraint);
       throw error;
     }
   }
