@@ -427,6 +427,17 @@ export default function DeveloperPage() {
     ];
   }, [systemHealth]);
 
+  // Null guard — prevents ALL rendering crashes from undefined API data
+  if (!activityData || !systemHealth || !usersData || !changelogData) {
+    return (
+      <Layout>
+        <div className="p-6 text-center text-muted-foreground">
+          <p>Loading developer dashboard...</p>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="max-w-7xl mx-auto space-y-6">
@@ -535,9 +546,9 @@ export default function DeveloperPage() {
                 <CardDescription>Daily activity volume across the platform</CardDescription>
               </CardHeader>
               <CardContent>
-                {activityChartData.length > 0 ? (
+                {(activityChartData || []).length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={activityChartData}>
+                    <LineChart data={activityChartData || []}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
                       <YAxis />
@@ -1106,11 +1117,11 @@ export default function DeveloperPage() {
                       <CardTitle>Integration Overview</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {integrationStatusData.length > 0 ? (
+                      {(integrationStatusData || []).length > 0 ? (
                         <ResponsiveContainer width="100%" height={200}>
                           <PieChart>
                             <Pie
-                              data={integrationStatusData}
+                              data={integrationStatusData || []}
                               cx="50%"
                               cy="50%"
                               innerRadius={60}
@@ -1118,7 +1129,7 @@ export default function DeveloperPage() {
                               paddingAngle={5}
                               dataKey="value"
                             >
-                              {integrationStatusData.map((entry, index) => (
+                              {(integrationStatusData || []).map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={entry.color} />
                               ))}
                             </Pie>
