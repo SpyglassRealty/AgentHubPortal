@@ -357,7 +357,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 {user?.isSuperAdmin && (
                   <DropdownMenuItem 
                     className="cursor-pointer"
-                    onClick={() => setLocation("/admin/settings")}
+                    onClick={() => setLocation("/admin")}
                   >
                     <Settings className="mr-2 h-4 w-4" />
                     Admin Settings
