@@ -115,8 +115,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       <div className="flex-1 px-3 py-6 space-y-1">
         {navItems.filter((item) => {
-          // Hide Developer link for non-developers
-          if (item.href === "/developer" && user?.role !== 'developer') {
+          // Hide Developer link for non-developers (hardcoded check)
+          if (item.href === "/developer" && user?.email !== 'daryl@spyglassrealty.com' && !user?.isSuperAdmin) {
             return false;
           }
           return true;
