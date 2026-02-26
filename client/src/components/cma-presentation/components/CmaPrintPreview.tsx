@@ -190,6 +190,14 @@ export function CmaPrintPreview({
               )}
             </Button>
 
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onClose}
+              data-testid="button-close-preview"
+            >
+              <X className="w-5 h-5" />
+            </Button>
           </div>
         </div>
 
