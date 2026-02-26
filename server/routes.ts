@@ -116,6 +116,7 @@ import agentRoutes from "./agentRoutes";
 import landingPageRoutes from "./landingPageRoutes";
 import testimonialRoutes from "./testimonialRoutes";
 import pageBuilderRoutes from "./pageBuilderRoutes";
+import uploadRoutes from "./uploadRoutes";
 
 
 // Helper function to get the actual database user from request
@@ -5449,6 +5450,9 @@ Respond with valid JSON in this exact format:
   registerRedirectsRoutes(app);
   registerGlobalScriptsRoutes(app);
   registerSeoRoutes(app);
+  
+  // Register upload routes for image handling
+  app.use('/api/admin', uploadRoutes);
   
   // Register Developer Dashboard routes with error handling
   try {
