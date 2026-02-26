@@ -67,12 +67,16 @@ export interface GmailMessage {
   threadId: string;
   from: string;
   to: string;
+  cc?: string;
+  bcc?: string;
   subject: string;
   snippet: string;
   date: string;
   isRead: boolean;
   labels: string[];
   body?: string;
+  messageIdHeader?: string;  // RFC 2822 Message-ID header (for In-Reply-To)
+  references?: string;        // References header (for threading)
 }
 
 export interface GoogleCalendarEvent {

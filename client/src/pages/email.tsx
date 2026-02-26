@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import Layout from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { AgentSelector } from "@/components/agent-selector";
 import { RefreshButton } from "@/components/ui/refresh-button";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import {
   Mail,
   Search,
@@ -21,6 +31,12 @@ import {
   Tag,
   Users,
   MessageCircle,
+  Send,
+  Reply,
+  ReplyAll,
+  Forward,
+  X,
+  Plus,
 } from "lucide-react";
 import type { GmailMessage } from "@shared/schema";
 
@@ -224,15 +240,276 @@ function EmailListItem({
   );
 }
 
+// ── Compose Email Sheet ──────────────────────────────────────────
+type ComposeMode = 'new' | 'reply' | 'replyAll' | 'forward';
+
+interface ComposeState {
+  mode: ComposeMode;
+  to: string;
+  cc: string;
+  bcc: string;
+  subject: string;
+  body: string;
+  // Reply/forward context
+  originalMessageId?: string;
+  threadId?: string;
+  quotedHtml?: string;
+}
+
+const emptyCompose: ComposeState = {
+  mode: 'new',
+  to: '',
+  cc: '',
+  bcc: '',
+  subject: '',
+  body: '',
+};
+
+function ComposeEmailSheet({
+  open,
+  onOpenChange,
+  compose,
+  setCompose,
+  agentId,
+  onSent,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  compose: ComposeState;
+  setCompose: React.Dispatch<React.SetStateAction<ComposeState>>;
+  agentId: string | null;
+  onSent: () => void;
+}) {
+  const { toast } = useToast();
+  const [showCc, setShowCc] = useState(!!compose.cc);
+  const [showBcc, setShowBcc] = useState(!!compose.bcc);
+
+  const sendMutation = useMutation({
+    mutationFn: async () => {
+      if (compose.mode === 'reply' || compose.mode === 'replyAll') {
+        // Build full body with quoted text
+        const fullBody = compose.quotedHtml
+          ? `${compose.body}<br/><br/><div style="border-left:2px solid #ccc; padding-left:12px; margin-left:0; color:#555;">${compose.quotedHtml}</div>`
+          : compose.body;
+
+        return apiRequest('POST', `/api/gmail/reply/${compose.originalMessageId}`, {
+          body: fullBody,
+          replyAll: compose.mode === 'replyAll',
+          to: compose.to,
+          cc: compose.cc || undefined,
+          subject: compose.subject,
+          agentId: agentId || undefined,
+        });
+      } else {
+        // New compose or forward
+        const fullBody = compose.mode === 'forward' && compose.quotedHtml
+          ? `${compose.body}<br/><br/><div style="border-left:2px solid #ccc; padding-left:12px; margin-left:0; color:#555;">---------- Forwarded message ----------<br/>${compose.quotedHtml}</div>`
+          : compose.body;
+
+        return apiRequest('POST', '/api/gmail/send', {
+          to: compose.to,
+          cc: compose.cc || undefined,
+          bcc: compose.bcc || undefined,
+          subject: compose.subject,
+          body: fullBody,
+          agentId: agentId || undefined,
+        });
+      }
+    },
+    onSuccess: () => {
+      toast({ title: "Email sent", description: "Your message has been sent successfully." });
+      onOpenChange(false);
+      setCompose(emptyCompose);
+      onSent();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to send",
+        description: error.message || "Something went wrong sending your email.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const canSend = compose.to.trim() && compose.subject.trim() && compose.body.trim();
+
+  const modeLabel = {
+    new: 'New Message',
+    reply: 'Reply',
+    replyAll: 'Reply All',
+    forward: 'Forward',
+  }[compose.mode];
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-[600px] flex flex-col p-0">
+        <SheetHeader className="px-6 py-4 border-b shrink-0">
+          <SheetTitle className="flex items-center gap-2">
+            {compose.mode === 'reply' && <Reply className="h-4 w-4" />}
+            {compose.mode === 'replyAll' && <ReplyAll className="h-4 w-4" />}
+            {compose.mode === 'forward' && <Forward className="h-4 w-4" />}
+            {compose.mode === 'new' && <Plus className="h-4 w-4" />}
+            {modeLabel}
+          </SheetTitle>
+          <SheetDescription className="sr-only">Compose and send an email message</SheetDescription>
+        </SheetHeader>
+
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {/* To */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">To</label>
+              <div className="flex gap-1">
+                {!showCc && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs text-muted-foreground"
+                    onClick={() => setShowCc(true)}
+                  >
+                    CC
+                  </Button>
+                )}
+                {!showBcc && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs text-muted-foreground"
+                    onClick={() => setShowBcc(true)}
+                  >
+                    BCC
+                  </Button>
+                )}
+              </div>
+            </div>
+            <Input
+              value={compose.to}
+              onChange={e => setCompose(prev => ({ ...prev, to: e.target.value }))}
+              placeholder="recipient@example.com"
+            />
+          </div>
+
+          {/* CC */}
+          {showCc && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">CC</label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs text-muted-foreground"
+                  onClick={() => { setShowCc(false); setCompose(prev => ({ ...prev, cc: '' })); }}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+              <Input
+                value={compose.cc}
+                onChange={e => setCompose(prev => ({ ...prev, cc: e.target.value }))}
+                placeholder="cc@example.com"
+              />
+            </div>
+          )}
+
+          {/* BCC */}
+          {showBcc && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">BCC</label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs text-muted-foreground"
+                  onClick={() => { setShowBcc(false); setCompose(prev => ({ ...prev, bcc: '' })); }}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+              <Input
+                value={compose.bcc}
+                onChange={e => setCompose(prev => ({ ...prev, bcc: e.target.value }))}
+                placeholder="bcc@example.com"
+              />
+            </div>
+          )}
+
+          {/* Subject */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Subject</label>
+            <Input
+              value={compose.subject}
+              onChange={e => setCompose(prev => ({ ...prev, subject: e.target.value }))}
+              placeholder="Subject"
+            />
+          </div>
+
+          {/* Body */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Message</label>
+            <RichTextEditor
+              value={compose.body}
+              onChange={(html) => setCompose(prev => ({ ...prev, body: html }))}
+              placeholder="Write your message..."
+              className="min-h-[200px]"
+            />
+          </div>
+
+          {/* Quoted text preview for replies/forwards */}
+          {compose.quotedHtml && (
+            <div className="border-l-2 border-muted pl-3 mt-4">
+              <p className="text-xs text-muted-foreground mb-1 font-medium">
+                {compose.mode === 'forward' ? 'Forwarded message' : 'Original message'}
+              </p>
+              <div
+                className="prose prose-xs dark:prose-invert max-w-none text-muted-foreground max-h-40 overflow-y-auto"
+                dangerouslySetInnerHTML={{ __html: compose.quotedHtml }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Footer actions */}
+        <div className="px-6 py-4 border-t flex items-center justify-between shrink-0">
+          <Button
+            variant="ghost"
+            onClick={() => { onOpenChange(false); setCompose(emptyCompose); }}
+          >
+            Discard
+          </Button>
+          <Button
+            onClick={() => sendMutation.mutate()}
+            disabled={!canSend || sendMutation.isPending}
+            className="bg-[#EF4923] hover:bg-[#EF4923]/90 text-white"
+          >
+            {sendMutation.isPending ? (
+              <>
+                <span className="animate-spin mr-2">⏳</span>
+                Sending...
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4 mr-2" />
+                Send
+              </>
+            )}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 // ── Email Detail View ────────────────────────────────────────────
 function EmailDetail({
   messageId,
   agentId,
   onBack,
+  onCompose,
 }: {
   messageId: string;
   agentId: string | null;
   onBack: () => void;
+  onCompose: (compose: ComposeState) => void;
 }) {
   const queryParams = new URLSearchParams();
   if (agentId) queryParams.set('agentId', agentId);
@@ -320,6 +597,75 @@ function EmailDetail({
         ) : (
           <p className="text-muted-foreground italic">No message body</p>
         )}
+
+        {/* Reply / Reply All / Forward buttons */}
+        <div className="flex items-center gap-2 mt-6 pt-4 border-t">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const fromMatch = msg.from.match(/<(.+?)>/);
+              const replyTo = fromMatch ? fromMatch[1] : msg.from;
+              onCompose({
+                mode: 'reply',
+                to: replyTo,
+                cc: '',
+                bcc: '',
+                subject: msg.subject.startsWith('Re:') ? msg.subject : `Re: ${msg.subject}`,
+                body: '',
+                originalMessageId: msg.id,
+                threadId: msg.threadId,
+                quotedHtml: `<p><strong>On ${formatFullDate(msg.date)}, ${msg.from} wrote:</strong></p>${msg.body || msg.snippet}`,
+              });
+            }}
+          >
+            <Reply className="h-4 w-4 mr-1.5" />
+            Reply
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const fromMatch = msg.from.match(/<(.+?)>/);
+              const replyTo = fromMatch ? fromMatch[1] : msg.from;
+              // For Reply All, include original To and CC minus the current user
+              const allCc = [msg.to, msg.cc].filter(Boolean).join(', ');
+              onCompose({
+                mode: 'replyAll',
+                to: replyTo,
+                cc: allCc,
+                bcc: '',
+                subject: msg.subject.startsWith('Re:') ? msg.subject : `Re: ${msg.subject}`,
+                body: '',
+                originalMessageId: msg.id,
+                threadId: msg.threadId,
+                quotedHtml: `<p><strong>On ${formatFullDate(msg.date)}, ${msg.from} wrote:</strong></p>${msg.body || msg.snippet}`,
+              });
+            }}
+          >
+            <ReplyAll className="h-4 w-4 mr-1.5" />
+            Reply All
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              onCompose({
+                mode: 'forward',
+                to: '',
+                cc: '',
+                bcc: '',
+                subject: msg.subject.startsWith('Fwd:') ? msg.subject : `Fwd: ${msg.subject}`,
+                body: '',
+                originalMessageId: msg.id,
+                quotedHtml: `<p><strong>From:</strong> ${msg.from}<br/><strong>Date:</strong> ${formatFullDate(msg.date)}<br/><strong>Subject:</strong> ${msg.subject}<br/><strong>To:</strong> ${msg.to}${msg.cc ? `<br/><strong>Cc:</strong> ${msg.cc}` : ''}</p><br/>${msg.body || msg.snippet}`,
+              });
+            }}
+          >
+            <Forward className="h-4 w-4 mr-1.5" />
+            Forward
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -359,6 +705,8 @@ export default function EmailPage() {
   const [searchInput, setSearchInput] = useState('');
   const [activeCategory, setActiveCategory] = useState<CategoryId>('primary');
   const [pageTokens, setPageTokens] = useState<string[]>([]);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [compose, setCompose] = useState<ComposeState>(emptyCompose);
   const { lastManualRefresh, lastAutoRefresh, isLoading: isSyncing, refresh: refreshSync } = useSyncStatus('calendar'); // reuse calendar sync section
 
   // Build inbox URL with category + search
@@ -439,6 +787,17 @@ export default function EmailPage() {
     }
   };
 
+  const handleCompose = (composeState?: ComposeState) => {
+    setCompose(composeState || emptyCompose);
+    setComposeOpen(true);
+  };
+
+  const handleSent = () => {
+    // Refresh inbox after sending
+    refetch();
+    queryClient.invalidateQueries({ queryKey: ['/api/gmail/unread-counts'] });
+  };
+
   const handleAgentChange = (agentId: string | null) => {
     setSelectedAgentId(agentId);
     setSelectedMessageId(null);
@@ -471,6 +830,14 @@ export default function EmailPage() {
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button
+                onClick={() => handleCompose()}
+                className="bg-[#EF4923] hover:bg-[#EF4923]/90 text-white"
+                size="sm"
+              >
+                <Plus className="h-4 w-4 mr-1.5" />
+                Compose
+              </Button>
               {user?.isSuperAdmin && (
                 <AgentSelector
                   selectedAgentId={selectedAgentId}
@@ -639,6 +1006,7 @@ export default function EmailPage() {
                 messageId={selectedMessageId}
                 agentId={selectedAgentId}
                 onBack={() => setSelectedMessageId(null)}
+                onCompose={handleCompose}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
@@ -650,6 +1018,16 @@ export default function EmailPage() {
           </div>
         </div>
       </div>
+
+      {/* Compose Email Sheet */}
+      <ComposeEmailSheet
+        open={composeOpen}
+        onOpenChange={setComposeOpen}
+        compose={compose}
+        setCompose={setCompose}
+        agentId={selectedAgentId}
+        onSent={handleSent}
+      />
     </Layout>
   );
 }
