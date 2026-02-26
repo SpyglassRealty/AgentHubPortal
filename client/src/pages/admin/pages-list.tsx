@@ -30,6 +30,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Search,
   Plus,
   MoreHorizontal,
@@ -44,6 +50,9 @@ import {
   ExternalLink,
   ArrowLeft,
   Filter,
+  PenTool,
+  Building2,
+  Layout,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -59,6 +68,9 @@ interface Page {
 }
 
 const PAGE_TYPE_LABELS: Record<string, string> = {
+  blog: 'Blog',
+  community: 'Community',
+  core: 'Core Page',
   landing: 'Landing',
   buy: 'Buy',
   sell: 'Sell',
@@ -88,6 +100,7 @@ export default function PagesListPage() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [isNewPageDialogOpen, setIsNewPageDialogOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['/api/admin/pages', { search, type: typeFilter, status: statusFilter }],
@@ -173,12 +186,70 @@ export default function PagesListPage() {
           </div>
           <Button
             className="bg-[#EF4923] hover:bg-[#d63d1c]"
-            onClick={() => setLocation('/admin/pages/new')}
+            onClick={() => setIsNewPageDialogOpen(true)}
           >
             <Plus className="h-4 w-4 mr-1" />
             New Page
           </Button>
         </div>
+
+        {/* New Page Type Selection Dialog */}
+        <Dialog open={isNewPageDialogOpen} onOpenChange={setIsNewPageDialogOpen}>
+          <DialogContent className="sm:max-w-[520px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-[#EF4923]" />
+                Choose Page Type
+              </DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-3 pt-2">
+              <button
+                className="flex items-start gap-4 p-4 rounded-lg border-2 border-transparent hover:border-[#EF4923] hover:bg-orange-50 transition-all text-left group"
+                onClick={() => { setIsNewPageDialogOpen(false); setLocation('/admin/pages/blog/new'); }}
+              >
+                <div className="p-2.5 rounded-lg bg-blue-100 group-hover:bg-blue-200 transition-colors flex-shrink-0">
+                  <PenTool className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">New Blog</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Create a blog article or news post with rich content blocks.
+                  </p>
+                </div>
+              </button>
+
+              <button
+                className="flex items-start gap-4 p-4 rounded-lg border-2 border-transparent hover:border-[#EF4923] hover:bg-orange-50 transition-all text-left group"
+                onClick={() => { setIsNewPageDialogOpen(false); setLocation('/admin/pages/community/new'); }}
+              >
+                <div className="p-2.5 rounded-lg bg-green-100 group-hover:bg-green-200 transition-colors flex-shrink-0">
+                  <Building2 className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">New Community</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Build a neighborhood or community page with local content.
+                  </p>
+                </div>
+              </button>
+
+              <button
+                className="flex items-start gap-4 p-4 rounded-lg border-2 border-transparent hover:border-[#EF4923] hover:bg-orange-50 transition-all text-left group"
+                onClick={() => { setIsNewPageDialogOpen(false); setLocation('/admin/pages/core/new'); }}
+              >
+                <div className="p-2.5 rounded-lg bg-orange-100 group-hover:bg-orange-200 transition-colors flex-shrink-0">
+                  <Layout className="h-5 w-5 text-[#EF4923]" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">New Core Page</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Design a service page, landing page, or any general site page.
+                  </p>
+                </div>
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Filters */}
         <Card className="mb-6">
@@ -233,7 +304,7 @@ export default function PagesListPage() {
                 <p className="text-sm text-gray-400 mb-4">
                   {search ? 'Try adjusting your search.' : 'Create your first page to get started.'}
                 </p>
-                <Button onClick={() => setLocation('/admin/pages/new')} className="bg-[#EF4923] hover:bg-[#d63d1c]">
+                <Button onClick={() => setIsNewPageDialogOpen(true)} className="bg-[#EF4923] hover:bg-[#d63d1c]">
                   <Plus className="h-4 w-4 mr-1" />
                   Create Page
                 </Button>

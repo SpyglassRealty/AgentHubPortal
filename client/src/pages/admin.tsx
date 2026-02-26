@@ -16,6 +16,9 @@ import TestimonialEditorPage from "./admin/TestimonialEditor";
 import ReviewSourceManagerPage from "./admin/ReviewSourceManager";
 import PagesListPage from "./admin/pages-list";
 import PageEditorPage from "./admin/page-editor";
+import BlogPageEditorPage from "./admin/blog-page-editor";
+import CommunityPageEditorPage from "./admin/community-page-editor";
+import CorePageEditorPage from "./admin/core-page-editor";
 import LandingPageListPage from "./admin/LandingPageList";
 import LandingPageEditorPage from "./admin/LandingPageEditor";
 import RedirectsListPage from "./admin/RedirectsList";
@@ -578,6 +581,12 @@ export default function AdminPage() {
               <Route path="/admin/blog/categories" component={BlogCategoryListPage} />
               <Route path="/admin/agents/:id" component={AgentEditorPage} />
               <Route path="/admin/agents" component={AgentListPage} />
+              <Route path="/admin/pages/blog/new" component={BlogPageEditorPage} />
+              <Route path="/admin/pages/blog/:id/edit" component={BlogPageEditorPage} />
+              <Route path="/admin/pages/community/new" component={CommunityPageEditorPage} />
+              <Route path="/admin/pages/community/:id/edit" component={CommunityPageEditorPage} />
+              <Route path="/admin/pages/core/new" component={CorePageEditorPage} />
+              <Route path="/admin/pages/core/:id/edit" component={CorePageEditorPage} />
               <Route path="/admin/pages/new" component={PageEditorPage} />
               <Route path="/admin/pages/:id/edit" component={PageEditorPage} />
               <Route path="/admin/pages" component={PagesListPage} />
