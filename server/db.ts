@@ -544,6 +544,40 @@ async function createPulseDataTables() {
             updated_at timestamp DEFAULT NOW()
           )
         `
+      },
+      // CRITICAL: Developer Dashboard Tables (using snake_case to match existing backend SQL)
+      {
+        name: 'dev_changelog',
+        sql: `
+          CREATE TABLE IF NOT EXISTS dev_changelog (
+            id serial PRIMARY KEY,
+            description text NOT NULL,
+            developer_name varchar(255),
+            developer_email varchar(255),
+            requested_by varchar(255),
+            commit_hash varchar(100),
+            category varchar(50), -- bug_fix, feature, ui, database, api, deployment
+            status varchar(50) DEFAULT 'deployed', -- deployed, in_progress, reverted, pending
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'developer_activity_logs',
+        sql: `
+          CREATE TABLE IF NOT EXISTS developer_activity_logs (
+            id serial PRIMARY KEY,
+            user_id varchar REFERENCES users(id) ON DELETE SET NULL,
+            user_email varchar(255),
+            user_name varchar(255),
+            action_type varchar(100), -- create, update, delete, view, login, export, search
+            description text,
+            metadata jsonb,
+            ip_address varchar(45),
+            created_at timestamp DEFAULT NOW()
+          )
+        `
       }
     ];
     
@@ -562,6 +596,13 @@ async function createPulseDataTables() {
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_metrics_zip_date ON pulse_metrics(zip, date)',
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_market_pulse_history_date_zip ON market_pulse_history(date, zip)',
       'CREATE INDEX IF NOT EXISTS idx_market_pulse_history_zip_date ON market_pulse_history(zip, date DESC)',
+      // Developer dashboard indexes
+      'CREATE INDEX IF NOT EXISTS idx_dev_changelog_status ON dev_changelog(status)',
+      'CREATE INDEX IF NOT EXISTS idx_dev_changelog_category ON dev_changelog(category)',
+      'CREATE INDEX IF NOT EXISTS idx_dev_changelog_created_at ON dev_changelog(created_at)',
+      'CREATE INDEX IF NOT EXISTS idx_developer_activity_logs_user_id ON developer_activity_logs(user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_developer_activity_logs_action_type ON developer_activity_logs(action_type)',
+      'CREATE INDEX IF NOT EXISTS idx_developer_activity_logs_created_at ON developer_activity_logs(created_at)',
     ];
     
     for (const indexSql of indexes) {
