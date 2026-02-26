@@ -200,6 +200,14 @@ export default function CommunityEditor() {
           </div>
           <div className="flex gap-2">
             <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(`https://spyglass-idx.vercel.app/communities/${community.slug}`, '_blank')}
+            >
+              <Globe className="h-4 w-4 mr-1" />
+              View on Site
+            </Button>
+            <Button
               variant={published ? "outline" : "default"}
               size="sm"
               onClick={handleTogglePublish}

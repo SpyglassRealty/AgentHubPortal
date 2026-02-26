@@ -410,9 +410,15 @@ export default function AgentListPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Building2 className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{agent.officeLocation}</span>
+                            <div className="flex flex-wrap gap-1">
+                              {agent.officeLocation.split(',').filter(Boolean).map((office, index) => (
+                                <Badge key={index} variant="secondary" className="text-xs">
+                                  {office.trim()}
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>

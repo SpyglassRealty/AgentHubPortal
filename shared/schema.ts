@@ -1039,7 +1039,7 @@ export const agentDirectoryProfiles = pgTable("agent_directory_profiles", {
   email: varchar("email", { length: 255 }).notNull(),
   phone: varchar("phone", { length: 50 }),
   fubEmail: varchar("fub_email", { length: 255 }), // Follow Up Boss routing email
-  officeLocation: varchar("office_location", { length: 50 }).notNull(), // Austin/Houston/Corpus Christi
+  officeLocation: text("office_location").notNull(), // Comma-separated: "Austin,Houston" for multi-office agents
   bio: text("bio"),
   professionalTitle: varchar("professional_title", { length: 255 }),
   licenseNumber: varchar("license_number", { length: 100 }),

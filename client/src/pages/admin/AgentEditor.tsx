@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -20,6 +21,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { SeoPanel } from "@/components/seo/SeoPanel";
+import { ImageUpload } from "@/components/editor/ImageUpload";
 import {
   ArrowLeft,
   Save,
@@ -40,6 +42,7 @@ import {
   Heart,
   Loader2,
   AlertCircle,
+  ExternalLink,
 } from "lucide-react";
 import type { AgentDirectoryProfile } from "@shared/schema";
 
@@ -49,7 +52,7 @@ interface AgentFormData {
   email: string;
   phone: string;
   fubEmail: string;
-  officeLocation: string;
+  officeLocation: string; // Will store comma-separated values like "Austin,Houston"
   bio: string;
   professionalTitle: string;
   licenseNumber: string;
@@ -266,6 +269,40 @@ export default function AgentEditorPage() {
     return "bg-red-100 text-red-700";
   };
 
+  // Office location multi-select helpers
+  const officeOptions = ["Austin", "Houston", "Corpus Christi"];
+  
+  const getSelectedOffices = (): string[] => {
+    if (!formData.officeLocation) return [];
+    return formData.officeLocation.split(',').filter(Boolean);
+  };
+  
+  const handleOfficeToggle = (office: string, checked: boolean) => {
+    const currentOffices = getSelectedOffices();
+    let newOffices: string[];
+    
+    if (checked) {
+      newOffices = [...currentOffices, office];
+    } else {
+      newOffices = currentOffices.filter(o => o !== office);
+    }
+    
+    // Ensure at least one office is selected
+    if (newOffices.length === 0) {
+      toast({
+        title: "Validation Error", 
+        description: "At least one office location must be selected.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      officeLocation: newOffices.join(',')
+    }));
+  };
+
   if (isLoading) {
     return (
     <div className="flex items-center justify-center py-12">
@@ -300,6 +337,15 @@ export default function AgentEditorPage() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Agents
             </Button>
+            {isEditing && formData.subdomain && (
+              <Button
+                variant="outline"
+                onClick={() => window.open(`https://spyglass-idx.vercel.app/agents/${formData.subdomain}`, '_blank')}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Preview on Site
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => setPreviewMode(!previewMode)}
@@ -478,20 +524,31 @@ export default function AgentEditorPage() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="officeLocation">Office Location *</Label>
-                        <Select
-                          value={formData.officeLocation}
-                          onValueChange={(value) => handleInputChange("officeLocation", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Austin">Austin</SelectItem>
-                            <SelectItem value="Houston">Houston</SelectItem>
-                            <SelectItem value="Corpus Christi">Corpus Christi</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Label>Office Locations *</Label>
+                        <div className="space-y-3 mt-2">
+                          {officeOptions.map((office) => {
+                            const selectedOffices = getSelectedOffices();
+                            const isChecked = selectedOffices.includes(office);
+                            return (
+                              <div key={office} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`office-${office}`}
+                                  checked={isChecked}
+                                  onCheckedChange={(checked) => handleOfficeToggle(office, !!checked)}
+                                />
+                                <Label 
+                                  htmlFor={`office-${office}`} 
+                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                  {office}
+                                </Label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Select all locations where this agent works
+                        </p>
                       </div>
                     </div>
                     
@@ -632,19 +689,15 @@ export default function AgentEditorPage() {
                       </p>
                     </div>
                     
-                    <div>
-                      <Label htmlFor="headshotUrl">Headshot Image URL</Label>
-                      <Input
-                        id="headshotUrl"
-                        type="url"
-                        value={formData.headshotUrl}
-                        onChange={(e) => handleInputChange("headshotUrl", e.target.value)}
-                        placeholder="https://example.com/headshot.jpg"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Professional headshot recommended (square format works best)
-                      </p>
-                    </div>
+                    <ImageUpload
+                      label="Headshot Image"
+                      value={formData.headshotUrl}
+                      onChange={(url) => handleInputChange("headshotUrl", url)}
+                      placeholder="https://example.com/headshot.jpg"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Professional headshot recommended (square format works best)
+                    </p>
                     
                     <div>
                       <Label htmlFor="videoUrl">Introduction Video URL</Label>
