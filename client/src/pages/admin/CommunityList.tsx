@@ -30,6 +30,7 @@ export default function CommunityList() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [county, setCounty] = useState("");
+  const [type, setType] = useState("");
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState("name");
   const [selectedCommunities, setSelectedCommunities] = useState<string[]>([]);
@@ -189,6 +190,23 @@ export default function CommunityList() {
                 </SelectContent>
               </Select>
               <Select
+                value={type || "all"}
+                onValueChange={(v) => {
+                  setType(v === "all" ? "" : v);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="polygon">Neighborhoods</SelectItem>
+                  <SelectItem value="zip">Zip Codes</SelectItem>
+                  <SelectItem value="city">Cities</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
                 value={sortBy}
                 onValueChange={setSortBy}
               >
@@ -269,8 +287,9 @@ export default function CommunityList() {
                         onCheckedChange={(checked) => handleSelectAll(!!checked)}
                       />
                     </TableHead>
-                    <TableHead className="w-[35%]">Name</TableHead>
+                    <TableHead className="w-[30%]">Name</TableHead>
                     <TableHead>County</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>SEO</TableHead>
                     <TableHead>Last Updated</TableHead>
@@ -308,6 +327,16 @@ export default function CommunityList() {
                           onClick={() => setLocation(`/admin/communities/${c.slug}`)}
                         >
                           {c.county || "—"}
+                        </TableCell>
+                        <TableCell 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => setLocation(`/admin/communities/${c.slug}`)}
+                        >
+                          <Badge variant="secondary">
+                            {c.locationType === 'polygon' ? 'Neighborhood' : 
+                             c.locationType === 'zip' ? 'Zip Code' :
+                             c.locationType === 'city' ? 'City' : 'Other'}
+                          </Badge>
                         </TableCell>
                         <TableCell 
                           className="cursor-pointer hover:bg-muted/50"
