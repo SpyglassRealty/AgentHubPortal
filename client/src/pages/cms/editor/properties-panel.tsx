@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { X, Plus, Trash2 } from "lucide-react";
+import { RichTextEditor } from "./rich-text-editor";
 
 interface PropertiesPanelProps {
   selectedBlock: CmsBlock | null;
@@ -146,6 +147,8 @@ function ContentEditor({
                 <SelectItem value="h2">H2 — Section Title</SelectItem>
                 <SelectItem value="h3">H3 — Subsection</SelectItem>
                 <SelectItem value="h4">H4 — Small Heading</SelectItem>
+                <SelectItem value="h5">H5 — Minor Heading</SelectItem>
+                <SelectItem value="h6">H6 — Smallest Heading</SelectItem>
               </SelectContent>
             </Select>
           </Field>
@@ -154,11 +157,12 @@ function ContentEditor({
 
     case "text":
       return (
-        <Field label="Text">
-          <Textarea
-            value={block.content.text || ""}
-            onChange={(e) => updateContent("text", e.target.value)}
-            rows={6}
+        <Field label="Content">
+          <RichTextEditor
+            value={block.content.html || block.content.text || ""}
+            onChange={(html) => updateContent("html", html)}
+            placeholder="Start typing your content here..."
+            className="min-h-[200px]"
           />
         </Field>
       );

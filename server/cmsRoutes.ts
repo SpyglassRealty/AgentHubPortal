@@ -534,7 +534,13 @@ export function registerCmsRoutes(app: Express) {
           return res.status(404).json({ message: "Content not found" });
         }
 
-        return res.json(page);
+        // Ensure community pages have footer enabled by default
+        const responseData = { 
+          ...page,
+          renderFooter: page.type === 'community' ? true : page.renderFooter !== false,
+        };
+
+        return res.json(responseData);
       }
 
       const conditions = [eq(cmsPages.status, 'published')];
@@ -586,6 +592,41 @@ export function registerCmsRoutes(app: Express) {
     } catch (error: any) {
       console.error('[CMS] Upload error:', error);
       res.status(500).json({ message: "Failed to upload image" });
+    }
+  });
+
+  // ============================================================
+  // Footer Settings
+  // ============================================================
+  app.get('/api/cms/footer-settings', async (_req, res) => {
+    try {
+      // For now, return default footer settings
+      // In production, this would come from a database table
+      const footerSettings = {
+        companyName: "Austin Premier Real Estate",
+        address: "123 Main Street, Austin, TX 78701",
+        phone: "(512) 555-0123",
+        email: "info@austinpremier.com",
+        hours: "Monday - Friday: 9:00 AM - 6:00 PM, Saturday: 10:00 AM - 4:00 PM",
+        socialLinks: {
+          facebook: "https://facebook.com/austinpremier",
+          instagram: "https://instagram.com/austinpremier",
+          linkedin: "https://linkedin.com/company/austinpremier",
+        },
+        quickLinks: [
+          { label: "Home", url: "/" },
+          { label: "Communities", url: "/communities" },
+          { label: "Search Homes", url: "/search" },
+          { label: "About", url: "/about" },
+          { label: "Contact", url: "/contact" },
+        ],
+        description: "Your trusted partner in Austin real estate. We help you find the perfect home in the perfect community.",
+      };
+      
+      res.json(footerSettings);
+    } catch (error: any) {
+      console.error('[CMS] Footer settings error:', error);
+      res.status(500).json({ message: "Failed to fetch footer settings" });
     }
   });
 

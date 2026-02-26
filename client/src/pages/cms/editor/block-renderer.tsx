@@ -57,26 +57,49 @@ function HeadingBlock({ content }: { content: Record<string, any> }) {
   const level = content.level || "h2";
   const sizeClass =
     level === "h1"
+      ? "text-4xl"
+      : level === "h2"
       ? "text-3xl"
       : level === "h3"
-      ? "text-xl"
+      ? "text-2xl"
       : level === "h4"
+      ? "text-xl"
+      : level === "h5"
       ? "text-lg"
-      : "text-2xl";
+      : "text-base";
 
   const text = content.text || "Heading";
+  const className = `${sizeClass} font-bold`;
 
-  if (level === "h1") return <h1 className={`${sizeClass} font-bold`}>{text}</h1>;
-  if (level === "h3") return <h3 className={`${sizeClass} font-bold`}>{text}</h3>;
-  if (level === "h4") return <h4 className={`${sizeClass} font-bold`}>{text}</h4>;
-  return <h2 className={`${sizeClass} font-bold`}>{text}</h2>;
+  if (level === "h1") return <h1 className={className}>{text}</h1>;
+  if (level === "h2") return <h2 className={className}>{text}</h2>;
+  if (level === "h3") return <h3 className={className}>{text}</h3>;
+  if (level === "h4") return <h4 className={className}>{text}</h4>;
+  if (level === "h5") return <h5 className={className}>{text}</h5>;
+  if (level === "h6") return <h6 className={className}>{text}</h6>;
+  return <h2 className={className}>{text}</h2>;
 }
 
 function TextBlock({ content }: { content: Record<string, any> }) {
+  // Support both rich text (HTML) and plain text for backward compatibility
+  const htmlContent = content.html || content.text || "Start typing...";
+  
+  // If it's plain text, wrap in paragraph
+  const isPlainText = htmlContent === content.text && !content.html;
+  
+  if (isPlainText) {
+    return (
+      <p className="text-sm leading-relaxed whitespace-pre-wrap">
+        {htmlContent}
+      </p>
+    );
+  }
+  
   return (
-    <p className="text-sm leading-relaxed whitespace-pre-wrap">
-      {content.text || "Start typing..."}
-    </p>
+    <div 
+      className="prose prose-sm max-w-none leading-relaxed"
+      dangerouslySetInnerHTML={{ __html: htmlContent }}
+    />
   );
 }
 
