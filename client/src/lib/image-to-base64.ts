@@ -15,19 +15,13 @@ export async function imageUrlToBase64(url: string): Promise<string | null> {
       return null;
     }
     
-    const blob = await response.blob();
+    const data = await response.json();
+    if (!data?.base64) {
+      console.warn(`[imageToBase64] No base64 in proxy response for: ${url}`);
+      return null;
+    }
     
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        resolve(reader.result as string);
-      };
-      reader.onerror = () => {
-        console.warn(`[imageToBase64] Failed to read blob for: ${url}`);
-        resolve(null);
-      };
-      reader.readAsDataURL(blob);
-    });
+    return data.base64;
   } catch (error) {
     console.warn(`[imageToBase64] Error converting image: ${url}`, error);
     return null;
