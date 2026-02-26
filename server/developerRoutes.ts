@@ -654,6 +654,47 @@ export function setupDeveloperRoutes(app: Express) {
       res.status(500).json({ message: "Failed to delete changelog entry" });
     }
   });
+
+  // DEBUG: Test GitHub commit fetch
+  app.get("/api/developer/debug/github", async (req, res) => {
+    try {
+      const commits = await fetchGitHubCommits();
+      res.json({
+        success: true,
+        count: commits.length,
+        has_token: !!process.env.GITHUB_TOKEN,
+        first_few: commits.slice(0, 3),
+        all_commits: commits
+      });
+    } catch (error) {
+      res.json({
+        success: false,
+        error: error.message,
+        has_token: !!process.env.GITHUB_TOKEN
+      });
+    }
+  });
+}
+
+  // DEBUG: Test GitHub commit fetch
+  app.get("/api/developer/debug/github", async (req, res) => {
+    try {
+      const commits = await fetchGitHubCommits();
+      res.json({
+        success: true,
+        count: commits.length,
+        has_token: !!process.env.GITHUB_TOKEN,
+        first_few: commits.slice(0, 3),
+        all_commits: commits
+      });
+    } catch (error) {
+      res.json({
+        success: false,
+        error: error.message,
+        has_token: !!process.env.GITHUB_TOKEN
+      });
+    }
+  });
 }
 
 export function registerDeveloperRoutes(app: Express) {
