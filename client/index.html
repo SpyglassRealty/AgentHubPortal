@@ -23,6 +23,32 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Flash Prevention Script - Theme URL parameter support for iframe embedding -->
+    <script>
+      (function() {
+        try {
+          // 1. First priority: URL param from parent iframe (Mission Control)
+          var urlTheme = new URLSearchParams(window.location.search).get('theme');
+          // 2. Second priority: localStorage
+          var stored = localStorage.getItem('theme');
+          var mode = urlTheme || stored || 'system';
+          var resolved;
+          
+          if (mode === 'system') {
+            resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          } else if (mode === 'dark' || mode === 'light') {
+            resolved = mode;
+          } else {
+            resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          
+          document.documentElement.classList.add(resolved);
+          document.documentElement.setAttribute('data-theme', resolved);
+        } catch (e) {
+          document.documentElement.classList.add('light');
+        }
+      })();
+    </script>
     <script>
     (function(w,d,t,s,n){
     w['FUBWidgetTracker']=n;w[n]=w[n]||function(){(w[n].q=w[n].q||[]).push(arguments)};
