@@ -7,7 +7,7 @@
  *   - GOOGLE_CALENDAR_CREDENTIALS_FILE = path to the JSON file on disk
  * 
  * The service account must have domain-wide delegation enabled in Google Admin
- * with scope: https://www.googleapis.com/auth/gmail.readonly
+ * with scopes: https://www.googleapis.com/auth/gmail.readonly, https://www.googleapis.com/auth/gmail.send
  */
 
 import { google } from 'googleapis';
@@ -66,7 +66,10 @@ function getGmailClient(userEmail: string) {
   const auth = new google.auth.JWT({
     email: credentials.client_email,
     key: credentials.private_key,
-    scopes: ['https://www.googleapis.com/auth/gmail.readonly'],
+    scopes: [
+      'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/gmail.send',
+    ],
     subject: userEmail, // Impersonate the user via domain-wide delegation
   });
 
@@ -125,8 +128,12 @@ function parseMessageToGmailMessage(message: any): GmailMessage {
 
   const from = getHeader(headers, 'From');
   const to = getHeader(headers, 'To');
+  const cc = getHeader(headers, 'Cc');
+  const bcc = getHeader(headers, 'Bcc');
   const subject = getHeader(headers, 'Subject');
   const date = getHeader(headers, 'Date');
+  const messageIdHeader = getHeader(headers, 'Message-ID') || getHeader(headers, 'Message-Id');
+  const references = getHeader(headers, 'References');
 
   const isRead = !labelIds.includes('UNREAD');
 
@@ -137,12 +144,16 @@ function parseMessageToGmailMessage(message: any): GmailMessage {
     threadId: message.threadId,
     from,
     to,
+    cc: cc || undefined,
+    bcc: bcc || undefined,
     subject: subject || '(No subject)',
     snippet: message.snippet || '',
     date,
     isRead,
     labels: labelIds,
     body: html || text || undefined,
+    messageIdHeader: messageIdHeader || undefined,
+    references: references || undefined,
   };
 }
 
@@ -243,7 +254,7 @@ export async function getGmailInbox(
           userId: 'me',
           id: msg.id!,
           format: 'metadata',
-          metadataHeaders: ['From', 'To', 'Subject', 'Date'],
+          metadataHeaders: ['From', 'To', 'Cc', 'Subject', 'Date'],
         });
         return parseMessageToGmailMessage(fullMessage.data);
       } catch (err) {
@@ -344,4 +355,56 @@ export async function getGmailCategoryUnreadCounts(
     social: socialCount,
     forums: forumsCount,
   };
+}
+
+export interface SendEmailOptions {
+  userEmail: string;
+  to: string;
+  cc?: string;
+  bcc?: string;
+  subject: string;
+  htmlBody: string;
+  inReplyTo?: string;
+  references?: string;
+  threadId?: string;
+}
+
+export async function sendGmailMessage(options: SendEmailOptions): Promise<string> {
+  const { userEmail, to, cc, bcc, subject, htmlBody, inReplyTo, references, threadId } = options;
+  const gmail = getGmailClient(userEmail);
+
+  console.log(`[Gmail] Sending message from ${userEmail} to ${to}`);
+
+  // Construct RFC 2822 MIME message
+  const messageParts = [
+    `To: ${to}`,
+    cc ? `Cc: ${cc}` : '',
+    bcc ? `Bcc: ${bcc}` : '',
+    `Subject: ${subject}`,
+    inReplyTo ? `In-Reply-To: ${inReplyTo}` : '',
+    references ? `References: ${references}` : '',
+    'MIME-Version: 1.0',
+    'Content-Type: text/html; charset=UTF-8',
+    '',
+    htmlBody
+  ].filter(Boolean);
+
+  const message = messageParts.join('\r\n');
+  const encodedMessage = Buffer.from(message).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+  const requestBody: any = {
+    raw: encodedMessage
+  };
+
+  if (threadId) {
+    requestBody.threadId = threadId;
+  }
+
+  const response = await gmail.users.messages.send({
+    userId: 'me',
+    requestBody
+  });
+
+  console.log(`[Gmail] Message sent successfully, ID: ${response.data.id}`);
+  return response.data.id!;
 }
