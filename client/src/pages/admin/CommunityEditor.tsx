@@ -18,6 +18,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { SeoPanel } from "@/components/seo/SeoPanel";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
+import { ImageUpload } from "@/components/editor/ImageUpload";
 import {
   ArrowLeft,
   Save,
@@ -32,6 +34,7 @@ import {
   Eye,
   EyeOff,
   GripVertical,
+  Image as ImageIcon,
 } from "lucide-react";
 
 export default function CommunityEditor() {
@@ -56,6 +59,7 @@ export default function CommunityEditor() {
   const [nearbyLandmarks, setNearbyLandmarks] = useState<string[]>([]);
   const [published, setPublished] = useState(false);
   const [featured, setFeatured] = useState(false);
+  const [featuredImageUrl, setFeaturedImageUrl] = useState("");
 
   // Tag input states
   const [highlightInput, setHighlightInput] = useState("");
@@ -75,6 +79,7 @@ export default function CommunityEditor() {
       setNearbyLandmarks(community.nearbyLandmarks || []);
       setPublished(community.published ?? false);
       setFeatured(community.featured ?? false);
+      setFeaturedImageUrl(community.featuredImageUrl || "");
     }
   }, [community]);
 
@@ -93,6 +98,7 @@ export default function CommunityEditor() {
           highlights: highlights.length > 0 ? highlights : null,
           bestFor: bestFor.length > 0 ? bestFor : null,
           nearbyLandmarks: nearbyLandmarks.length > 0 ? nearbyLandmarks : null,
+          featuredImageUrl: featuredImageUrl || null,
           published,
           featured,
         } as any,
@@ -101,7 +107,7 @@ export default function CommunityEditor() {
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
-  }, [slug, metaTitle, metaDescription, focusKeyword, description, sections, highlights, bestFor, nearbyLandmarks, published, featured, updateMutation, toast]);
+  }, [slug, metaTitle, metaDescription, focusKeyword, description, sections, highlights, bestFor, nearbyLandmarks, featuredImageUrl, published, featured, updateMutation, toast]);
 
   // ── Publish toggle ────────────────────────────────
   const handleTogglePublish = async () => {
@@ -292,19 +298,14 @@ export default function CommunityEditor() {
         <Card>
           <CardHeader>
             <CardTitle>About Description</CardTitle>
-            <CardDescription>Main community overview (appears as the intro on the page)</CardDescription>
+            <CardDescription>Main community overview (appears as the intro on the page). Use the toolbar for headings, formatting, links, and images.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Textarea
+            <RichTextEditor
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={setDescription}
               placeholder="Write about this community — what makes it special, what the homes are like, the lifestyle..."
-              rows={10}
-              className="font-normal"
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              {description.length.toLocaleString()} characters
-            </p>
           </CardContent>
         </Card>
 
@@ -409,11 +410,10 @@ export default function CommunityEditor() {
                   value={section.heading}
                   onChange={(e) => updateSection(idx, "heading", e.target.value)}
                 />
-                <Textarea
-                  placeholder="Section content..."
+                <RichTextEditor
                   value={section.content}
-                  onChange={(e) => updateSection(idx, "content", e.target.value)}
-                  rows={5}
+                  onChange={(html) => updateSection(idx, "content", html)}
+                  placeholder="Section content..."
                 />
               </div>
             ))}
@@ -534,6 +534,26 @@ export default function CommunityEditor() {
                 ))}
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* ── Featured Image ───────────────────── */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ImageIcon className="h-5 w-5" /> Featured Image
+            </CardTitle>
+            <CardDescription>
+              Hero image for this community page. Recommended size: 1200×630px for optimal display and social sharing.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ImageUpload
+              value={featuredImageUrl}
+              onChange={setFeaturedImageUrl}
+              label="Featured Image"
+              placeholder="https://example.com/community-hero.jpg"
+            />
           </CardContent>
         </Card>
 
