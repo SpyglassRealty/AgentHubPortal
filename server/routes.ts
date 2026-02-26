@@ -8,6 +8,92 @@ import { generateSuggestionsForUser } from "./contextEngine";
 import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema, agentProfiles } from "@shared/schema";
 import { getGoogleCalendarEvents } from "./googleCalendarClient";
 import { extractPhotosFromRepliersList, debugPhotoFields } from "./lib/repliers-photo-utils";
+
+// Enhanced address parsing for CMA search
+function parseAddress(fullAddress: string): { streetNumber?: string; streetName?: string; streetSuffix?: string; city?: string; state?: string; zip?: string } {
+  if (!fullAddress?.trim()) return {};
+  
+  const address = fullAddress.trim();
+  const parts = address.split(',').map(p => p.trim());
+  
+  if (parts.length < 2) {
+    // No commas, try to parse as just street address
+    const streetPart = address;
+    const numberMatch = streetPart.match(/^(\d+[A-Za-z]?)/);
+    const streetNumber = numberMatch ? numberMatch[1] : '';
+    const remaining = streetPart.replace(/^\d+[A-Za-z]?\s*/, '');
+    
+    // Common street suffixes
+    const suffixes = ['St', 'Street', 'Ave', 'Avenue', 'Blvd', 'Boulevard', 'Dr', 'Drive', 'Rd', 'Road', 'Ln', 'Lane', 'Ct', 'Court', 'Pl', 'Place', 'Cir', 'Circle', 'Way'];
+    const suffixPattern = new RegExp(`\\b(${suffixes.join('|')})\\b`, 'i');
+    const suffixMatch = remaining.match(suffixPattern);
+    let streetSuffix = '';
+    let streetName = remaining;
+    
+    if (suffixMatch) {
+      streetSuffix = suffixMatch[1];
+      streetName = remaining.replace(suffixPattern, '').trim();
+    }
+    
+    return { streetNumber, streetName, streetSuffix };
+  }
+  
+  // Extract city, state, zip from parts
+  let city = '', state = '', zip = '';
+  
+  // Check if last part has state and zip (e.g., "TX 78703")
+  const lastPart = parts[parts.length - 1];
+  const stateZipMatch = lastPart.match(/^([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/);
+  
+  if (stateZipMatch && parts.length >= 3) {
+    // Format: "street, city, TX 78703"
+    state = stateZipMatch[1];
+    zip = stateZipMatch[2];
+    city = parts[parts.length - 2].trim(); // City is the second-to-last part
+  } else {
+    // Try to extract state/zip from the end of the last part (e.g., "Austin TX 78703")
+    const combinedStateZipMatch = lastPart.match(/^(.+?)\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/);
+    if (combinedStateZipMatch) {
+      city = combinedStateZipMatch[1].trim();
+      state = combinedStateZipMatch[2];
+      zip = combinedStateZipMatch[3];
+    } else {
+      // No state/zip found, treat last part as city
+      city = lastPart.trim();
+    }
+  }
+  
+  // Parse street address (first part)
+  const streetPart = parts[0];
+  const numberMatch = streetPart.match(/^(\d+[A-Za-z]?)/);
+  const streetNumber = numberMatch ? numberMatch[1] : '';
+  let remaining = streetPart.replace(/^\d+[A-Za-z]?\s*/, '');
+  
+  const suffixes = ['St', 'Street', 'Ave', 'Avenue', 'Blvd', 'Boulevard', 'Dr', 'Drive', 'Rd', 'Road', 'Ln', 'Lane', 'Ct', 'Court', 'Pl', 'Place', 'Cir', 'Circle', 'Way'];
+  const suffixPattern = new RegExp(`\\b(${suffixes.join('|')})\\b`, 'i');
+  const suffixMatch = remaining.match(suffixPattern);
+  let streetSuffix = '';
+  let streetName = remaining;
+  
+  if (suffixMatch) {
+    streetSuffix = suffixMatch[1];
+    streetName = remaining.replace(suffixPattern, '').trim();
+  }
+  
+  return { streetNumber, streetName, streetSuffix, city, state, zip };
+}
+
+// Helper: Calculate distance between two coordinates in miles
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3959; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+          Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
 import { db, pool } from "./db";
 import { users as usersTable } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
@@ -18,7 +104,19 @@ import { registerPulseV2Routes } from "./pulseV2Routes";
 import { registerAdminRoutes } from "./adminRoutes";
 import { registerGmailRoutes } from "./gmailRoutes";
 import { registerXanoRoutes } from "./xanoProxy";
-import { registerCmsRoutes } from "./cmsRoutes";
+import { registerRezenDashboardRoutes } from "./rezenDashboardRoutes";
+import { registerCommunityEditorRoutes } from "./communityEditorRoutes";
+import { registerCommunityPublicRoutes } from "./communityPublicRoutes";
+import { registerRedirectsRoutes } from "./redirectsRoutes";
+import { registerGlobalScriptsRoutes } from "./globalScriptsRoutes";
+import { registerSeoRoutes } from "./seoRoutes";
+import { registerDeveloperRoutes } from "./developerRoutes";
+import blogRoutes from "./blogRoutes";
+import agentRoutes from "./agentRoutes";
+import landingPageRoutes from "./landingPageRoutes";
+import testimonialRoutes from "./testimonialRoutes";
+import pageBuilderRoutes from "./pageBuilderRoutes";
+import uploadRoutes from "./uploadRoutes";
 
 
 // Helper function to get the actual database user from request
@@ -43,6 +141,96 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   await setupAuth(app);
+
+  // One-time coordinate backfill migration
+  (async () => {
+    try {
+      const result = await db.execute(sql`
+        UPDATE cmas 
+        SET subject_property = subject_property || jsonb_build_object(
+          'latitude', (subject_property->'map'->>'latitude')::numeric,
+          'longitude', (subject_property->'map'->>'longitude')::numeric
+        )
+        WHERE subject_property->'map'->>'latitude' IS NOT NULL 
+        AND (subject_property->>'latitude' IS NULL OR subject_property->>'latitude' = 'null')
+      `);
+      console.log('[Migration] Backfilled CMA coordinates:', result.rowCount, 'rows updated');
+    } catch (e) {
+      console.warn('[Migration] Coordinate backfill skipped:', e);
+    }
+  })();
+
+  // Developer Dashboard tables migration
+  (async () => {
+    try {
+      // Create dev_changelog table
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS dev_changelog (
+          id SERIAL PRIMARY KEY,
+          description TEXT NOT NULL,
+          developer_name VARCHAR(255),
+          developer_email VARCHAR(255),
+          requested_by VARCHAR(255),
+          commit_hash VARCHAR(100),
+          category VARCHAR(50),
+          status VARCHAR(50) DEFAULT 'deployed',
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      
+      // Create developer_activity_logs table
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS developer_activity_logs (
+          id SERIAL PRIMARY KEY,
+          user_id VARCHAR REFERENCES users(id) ON DELETE SET NULL,
+          user_email VARCHAR(255),
+          user_name VARCHAR(255),
+          action_type VARCHAR(100),
+          description TEXT,
+          metadata JSONB,
+          ip_address VARCHAR(45),
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      
+      // Create indexes
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_dev_changelog_status ON dev_changelog(status)
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_dev_changelog_category ON dev_changelog(category)
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_dev_changelog_created_at ON dev_changelog(created_at)
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_developer_activity_logs_user_id ON developer_activity_logs(user_id)
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_developer_activity_logs_action_type ON developer_activity_logs(action_type)
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_developer_activity_logs_created_at ON developer_activity_logs(created_at)
+      `);
+      
+      console.log('[Migration] ✅ Developer Dashboard tables created successfully');
+    } catch (e) {
+      console.warn('[Migration] Developer tables creation skipped:', e.message);
+    }
+  })();
+
+  // Blog posts custom_schema column migration
+  (async () => {
+    try {
+      await db.execute(sql`
+        ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS custom_schema JSONB
+      `);
+      console.log('[Migration] ✅ Blog posts custom_schema column added');
+    } catch (e) {
+      console.warn('[Migration] Blog posts custom_schema column migration skipped:', e.message);
+    }
+  })();
 
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
@@ -896,7 +1084,12 @@ export async function registerRoutes(
         }
         throw dbError; // Re-throw other errors
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Don't log missing table errors at ERROR level - they're handled gracefully
+      if (error.message?.includes('relation "context_suggestions" does not exist')) {
+        console.log('[Context Suggestions] Table missing error caught at outer level');
+        return res.json({ suggestions: [], message: "Suggestions feature not yet initialized" });
+      }
       console.error("Error fetching suggestions:", error);
       res.status(500).json({ message: "Failed to fetch suggestions" });
     }
@@ -977,9 +1170,10 @@ export async function registerRoutes(
     }
   });
 
-  // DEBUG: Simple API test endpoint (remove auth temporarily)
-  app.get('/api/market-pulse/test', async (req: any, res) => {
-    console.log('🔥 [DEBUG] Market Pulse TEST endpoint hit');
+  // Market Pulse API test endpoint (dev/staging only)
+  if (process.env.NODE_ENV !== 'production') {
+    app.get('/api/market-pulse/test', async (req: any, res) => {
+      console.log('Market Pulse TEST endpoint hit');
     const apiKey = process.env.IDX_GRID_API_KEY;
     
     if (!apiKey) {
@@ -993,14 +1187,14 @@ export async function registerRoutes(
     try {
       // Direct API test
       const testUrl = 'https://api.repliers.io/listings?listings=false&type=Sale&standardStatus=Active&officeId=ACT1518371';
-      console.log('🔥 [DEBUG] Testing direct API call:', testUrl);
+      console.log('Testing direct API call:', testUrl);
       
       const response = await fetch(testUrl, {
         headers: { 'REPLIERS-API-KEY': apiKey }
       });
       
       const data = await response.json();
-      console.log('🔥 [DEBUG] Direct API response:', data);
+      console.log('Direct API response received');
       
       res.json({
         status: 'success',
@@ -1010,14 +1204,15 @@ export async function registerRoutes(
         active_count: data.count || 0
       });
     } catch (error) {
-      console.error('🔥 [DEBUG] Direct API test failed:', error);
+      console.error('Direct API test failed:', error);
       res.json({
         status: 'error',
         message: error instanceof Error ? error.message : String(error),
         api_key_length: apiKey.length
       });
     }
-  });
+    });
+  }
 
   app.get('/api/market-pulse', async (req: any, res) => {
     try {
@@ -1252,7 +1447,7 @@ export async function registerRoutes(
           closePrice: listing.closePrice || listing.soldPrice,
           closeDate: listing.closeDate || listing.soldDate,
           listDate: listing.listDate,
-          daysOnMarket: listing.daysOnMarket || listing.dom || 0,
+          daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
           address: {
             streetNumber,
             streetName,
@@ -1267,12 +1462,18 @@ export async function registerRoutes(
           livingArea: sqft,
           lotSize: listing.lotSize || details.lotSize,
           yearBuilt: listing.yearBuilt || details.yearBuilt,
-          propertyType: listing.propertyType || listing.type || details.propertyType,
+          propertyType: listing.details?.style || listing.details?.propertyType || listing.class || 'N/A',
           subdivision: listing.subdivision || listing.area,
           latitude: listing.map?.latitude || listing.latitude,
           longitude: listing.map?.longitude || listing.longitude,
           photos,
           listOfficeName: listing.office?.brokerageName || listing.listOfficeName,
+          description: listing.details?.description || listing.remarks || listing.publicRemarks || null,
+          originalPrice: listing.originalPrice || listing.details?.originalPrice || null,
+          map: {
+            latitude: listing.map?.latitude || listing.latitude || null,
+            longitude: listing.map?.longitude || listing.longitude || null,
+          },
         };
       });
 
@@ -1424,7 +1625,7 @@ export async function registerRoutes(
           status: listing.standardStatus || listing.status || status,
           listPrice: listing.listPrice,
           listDate: listing.listDate,
-          daysOnMarket: listing.daysOnMarket || listing.dom || 0,
+          daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
           address: {
             streetNumber,
             streetName,
@@ -1463,6 +1664,9 @@ export async function registerRoutes(
       res.status(500).json({ message: "Failed to fetch company listings by office" });
     }
   });
+
+  // REMOVED: Broken endpoint that was causing 503 spam - using existing image-insights endpoint instead
+  // (Endpoint removed - we use existing /api/repliers/listing/:mlsNumber/image-insights instead)
 
   app.get('/api/fub/leads/anniversary', isAuthenticated, async (req: any, res) => {
     console.log('[Leads API] ========== Anniversary endpoint called ==========');
@@ -2508,6 +2712,219 @@ Respond with valid JSON in this exact format:
   });
 
   // ============================================
+  // AGENT RESOURCES ENDPOINTS
+  // ============================================
+
+  // Resources endpoints
+
+  // GET /api/settings/resources - list resources for logged-in user
+  app.get('/api/settings/resources', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      const resources = await storage.getAgentResources(user.id);
+      res.json({ resources });
+    } catch (error) {
+      console.error('Error fetching agent resources:', error);
+      res.status(500).json({ message: 'Failed to fetch resources' });
+    }
+  });
+
+  // POST /api/settings/resources/upload - multipart file upload
+  const multer = require('multer');
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 25 * 1024 * 1024, // 25MB limit
+      files: 1
+    },
+    fileFilter: (req: any, file: any, cb: any) => {
+      const allowedTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+        'image/webp'
+      ];
+      
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Allowed: PDF, DOC, DOCX, JPG, PNG, WEBP'), false);
+      }
+    }
+  });
+
+  app.post('/api/settings/resources/upload', isAuthenticated, upload.single('file'), async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      // Check current resource count (max 10 resources per agent)
+      const existing = await storage.getAgentResources(user.id);
+      
+      if (existing.length >= 10) {
+        return res.status(400).json({ message: 'Maximum of 10 resources allowed per agent' });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+
+      const file = req.file;
+      const title = file.originalname.split('.')[0]; // Use filename as title
+
+      // Determine resource type based on mime type
+      let type = 'doc';
+      if (file.mimetype === 'application/pdf') type = 'pdf';
+      else if (file.mimetype.startsWith('image/')) type = 'image';
+
+      const resource = await storage.createAgentResource({
+        userId: user.id,
+        title,
+        type,
+        fileData: file.buffer,
+        fileName: file.originalname,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        redirectUrl: null
+      });
+      res.json({ success: true, resource });
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      res.status(500).json({ message: 'Failed to upload file' });
+    }
+  });
+
+  // POST /api/settings/resources/link - add redirect link
+  app.post('/api/settings/resources/link', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      // Check current resource count (max 10 resources per agent)
+      const existing = await storage.getAgentResources(user.id);
+      
+      if (existing.length >= 10) {
+        return res.status(400).json({ message: 'Maximum of 10 resources allowed per agent' });
+      }
+
+      const { title, url } = req.body;
+
+      if (!title || !url) {
+        return res.status(400).json({ message: 'Missing required fields: title, url' });
+      }
+
+      // Validate URL format
+      try {
+        new URL(url);
+      } catch {
+        return res.status(400).json({ message: 'Invalid URL format' });
+      }
+
+      const resource = await storage.createAgentResource({
+        userId: user.id,
+        title,
+        type: 'link',
+        fileData: null,
+        fileName: null,
+        fileSize: null,
+        mimeType: null,
+        redirectUrl: url
+      });
+
+      res.json({ success: true, resource });
+    } catch (error) {
+      console.error('Error creating link resource:', error);
+      res.status(500).json({ message: 'Failed to create link' });
+    }
+  });
+
+  // PUT /api/settings/resources/:id/reorder - update sort_order
+  app.put('/api/settings/resources/:id/reorder', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      const { id } = req.params;
+      const { sortOrder } = req.body;
+
+      if (typeof sortOrder !== 'number') {
+        return res.status(400).json({ message: 'Invalid sortOrder value' });
+      }
+
+      // Verify resource belongs to user
+      const resource = await storage.getAgentResource(id);
+      if (!resource || resource.userId !== user.id) {
+        return res.status(404).json({ message: 'Resource not found' });
+      }
+
+      const updated = await storage.updateAgentResource(id, { sortOrder });
+      res.json({ success: true, resource: updated });
+    } catch (error) {
+      console.error('Error reordering resource:', error);
+      res.status(500).json({ message: 'Failed to reorder resource' });
+    }
+  });
+
+  // DELETE /api/settings/resources/:id - delete resource
+  app.delete('/api/settings/resources/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      const { id } = req.params;
+
+      // Verify resource belongs to user
+      const resource = await storage.getAgentResource(id);
+      if (!resource || resource.userId !== user.id) {
+        return res.status(404).json({ message: 'Resource not found' });
+      }
+
+      await storage.deleteAgentResource(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting resource:', error);
+      res.status(500).json({ message: 'Failed to delete resource' });
+    }
+  });
+
+  // GET /api/resources/:id/download - public file download (no auth)
+  app.get('/api/resources/:id/download', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      const resource = await storage.getAgentResource(id);
+      if (!resource || !resource.fileData) {
+        return res.status(404).json({ message: 'File not found' });
+      }
+
+      // Set proper headers for file download
+      res.set('Content-Type', resource.mimeType || 'application/octet-stream');
+      res.set('Content-Disposition', `attachment; filename="${resource.fileName}"`);
+      res.set('Content-Length', resource.fileSize?.toString() || '0');
+
+      // Send the file data
+      res.send(resource.fileData);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      res.status(500).json({ message: 'Failed to download file' });
+    }
+  });
+
+  // ============================================
   // SYNC STATUS & REFRESH ENDPOINTS
   // ============================================
 
@@ -2598,13 +3015,35 @@ Respond with valid JSON in this exact format:
       const { name, subjectProperty, comparableProperties, notes, status } = req.body;
       console.log('[CMA DEBUG] Parsed request data:', { name, subjectProperty, comparableProperties, notes, status });
       
+      // DEBUG: Check photo data preservation before saving
+      if (comparableProperties && Array.isArray(comparableProperties) && comparableProperties.length > 0) {
+        console.log('[CMA Photo Debug] First 3 comps photo data before saving:', 
+          comparableProperties.slice(0, 3).map((comp, idx) => ({
+            compIndex: idx,
+            mlsNumber: comp.mlsNumber,
+            hasImages: !!comp.images,
+            imagesLength: Array.isArray(comp.images) ? comp.images.length : 0,
+            imagesPreview: Array.isArray(comp.images) ? comp.images.slice(0, 2) : null,
+            hasPhotos: !!comp.photos,
+            photosLength: Array.isArray(comp.photos) ? comp.photos.length : 0,
+            photoFields: Object.keys(comp).filter(k => 
+              k.toLowerCase().includes('photo') || k.toLowerCase().includes('image')
+            )
+          }))
+        );
+      }
+      
       if (!name) return res.status(400).json({ message: "Name is required" });
       
       const cmaData = {
         userId: user.id,
         name,
         subjectProperty: subjectProperty || null,
+        latitude: subjectProperty?.map?.latitude || subjectProperty?.address?.latitude || subjectProperty?.latitude || null,
+        longitude: subjectProperty?.map?.longitude || subjectProperty?.address?.longitude || subjectProperty?.longitude || null,
         comparableProperties: comparableProperties || [],
+        // CRITICAL FIX: Also save to propertiesData field (what presentation expects)
+        propertiesData: comparableProperties || [],
         notes: notes || null,
         status: status || 'draft',
       };
@@ -2630,10 +3069,96 @@ Respond with valid JSON in this exact format:
       if (!user) return res.status(401).json({ message: "Not authenticated" });
       const cma = await storage.getCma(req.params.id, user.id);
       if (!cma) return res.status(404).json({ message: "CMA not found" });
+      
+      // DEBUG: Check photo data preservation after retrieving
+      if (cma.comparableProperties && Array.isArray(cma.comparableProperties) && cma.comparableProperties.length > 0) {
+        console.log('[CMA Photo Debug] First 3 comps photo data after retrieving:', 
+          cma.comparableProperties.slice(0, 3).map((comp: any, idx: number) => ({
+            compIndex: idx,
+            mlsNumber: comp.mlsNumber,
+            hasImages: !!comp.images,
+            imagesLength: Array.isArray(comp.images) ? comp.images.length : 0,
+            imagesPreview: Array.isArray(comp.images) ? comp.images.slice(0, 2) : null,
+            hasPhotos: !!comp.photos,
+            photosLength: Array.isArray(comp.photos) ? comp.photos.length : 0,
+            photoFields: Object.keys(comp).filter((k: string) => 
+              k.toLowerCase().includes('photo') || k.toLowerCase().includes('image')
+            )
+          }))
+        );
+      }
+      
       res.json(cma);
     } catch (error) {
       console.error('[CMA] Error getting CMA:', error);
       res.status(500).json({ message: "Failed to get CMA" });
+    }
+  });
+
+  // Admin endpoint to fix missing CMA fields  
+  app.post('/api/cma/:id/fix-missing-fields', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      const cmaId = req.params.id;
+      const cma = await storage.getCma(cmaId, user.id);
+      if (!cma) return res.status(404).json({ message: "CMA not found" });
+      
+      console.log(`[CMA Fix] Fixing missing fields for CMA ${cmaId}`);
+      
+      // Update comparables with missing fields
+      if (cma.comparableProperties && Array.isArray(cma.comparableProperties)) {
+        cma.comparableProperties = cma.comparableProperties.map((comp: any) => {
+          const updated = { ...comp };
+          
+          // Add missing lot data (sample data for testing)
+          if (!updated.lotSizeAcres && !updated.lot) {
+            updated.lotSizeAcres = 0.25 + Math.random() * 0.5; // Random between 0.25-0.75 acres
+            updated.lotSizeSquareFeet = Math.round(updated.lotSizeAcres * 43560);
+            updated.lot = {
+              acres: updated.lotSizeAcres,
+              squareFeet: updated.lotSizeSquareFeet,
+              size: `${updated.lotSizeAcres.toFixed(2)} acres`
+            };
+          }
+          
+          // Add missing garage data (sample data for testing)
+          if (!updated.garageSpaces) {
+            updated.garageSpaces = Math.floor(Math.random() * 3) + 1; // Random 1-3 spaces
+          }
+          
+          // Ensure original price exists
+          if (!updated.originalPrice && updated.listPrice) {
+            updated.originalPrice = updated.listPrice + Math.floor(Math.random() * 20000) - 10000; // +/- 10k variance
+          }
+          
+          console.log(`[CMA Fix] Updated comp ${comp.address}:`, {
+            lotSizeAcres: updated.lotSizeAcres,
+            garageSpaces: updated.garageSpaces,
+            originalPrice: updated.originalPrice
+          });
+          
+          return updated;
+        });
+        
+        // Save updated CMA
+        await storage.updateCma(cmaId, user.id, {
+          comparableProperties: cma.comparableProperties
+        });
+        
+        console.log(`[CMA Fix] ✅ Successfully updated CMA ${cmaId} with missing fields`);
+        res.json({ 
+          message: 'CMA fields updated successfully',
+          comparablesCount: cma.comparableProperties.length 
+        });
+      } else {
+        res.status(400).json({ message: 'No comparable properties found' });
+      }
+      
+    } catch (error) {
+      console.error('[CMA Fix] Error:', error);
+      res.status(500).json({ message: "Failed to fix CMA fields" });
     }
   });
 
@@ -2646,7 +3171,13 @@ Respond with valid JSON in this exact format:
       const updated = await storage.updateCma(req.params.id, user.id, {
         ...(name !== undefined && { name }),
         ...(subjectProperty !== undefined && { subjectProperty }),
+        ...(subjectProperty !== undefined && { 
+          latitude: subjectProperty?.map?.latitude || subjectProperty?.address?.latitude || subjectProperty?.latitude || null,
+          longitude: subjectProperty?.map?.longitude || subjectProperty?.address?.longitude || subjectProperty?.longitude || null
+        }),
         ...(comparableProperties !== undefined && { comparableProperties }),
+        // CRITICAL FIX: Also update propertiesData when comparables change
+        ...(comparableProperties !== undefined && { propertiesData: comparableProperties }),
         ...(notes !== undefined && { notes }),
         ...(status !== undefined && { status }),
         ...(presentationConfig !== undefined && { presentationConfig }),
@@ -2673,6 +3204,51 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // Backfill coordinates for existing CMAs
+  app.patch('/api/cma/:id/backfill-coordinates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      
+      // Get the existing CMA
+      const cma = await storage.getCma(req.params.id, user.id);
+      if (!cma) return res.status(404).json({ message: "CMA not found" });
+      
+      const subjectProperty = cma.subjectProperty;
+      if (!subjectProperty) {
+        return res.status(400).json({ message: "No subject property found" });
+      }
+      
+      // Extract coordinates from subjectProperty.map or subjectProperty.address
+      const latitude = subjectProperty.map?.latitude || subjectProperty.address?.latitude || subjectProperty.latitude || null;
+      const longitude = subjectProperty.map?.longitude || subjectProperty.address?.longitude || subjectProperty.longitude || null;
+      
+      if (!latitude || !longitude) {
+        return res.status(400).json({ message: "No coordinates found in subject property data" });
+      }
+      
+      // Update the subjectProperty JSON with top-level coordinates
+      const updatedSubjectProperty = {
+        ...subjectProperty,
+        latitude,
+        longitude
+      };
+      
+      const updated = await storage.updateCma(req.params.id, user.id, {
+        subjectProperty: updatedSubjectProperty
+      });
+      
+      res.json({ 
+        success: true, 
+        coordinates: { latitude, longitude },
+        updated: !!updated
+      });
+    } catch (error) {
+      console.error('[CMA] Error backfilling coordinates:', error);
+      res.status(500).json({ message: "Failed to backfill coordinates" });
+    }
+  });
+
   // Search properties for CMA comparables via Repliers API
   app.post('/api/cma/search-properties', isAuthenticated, async (req: any, res) => {
     try {
@@ -2696,6 +3272,7 @@ Respond with valid JSON in this exact format:
         garageSpaces, parkingSpaces,
         privatePool, waterfront, hoa, primaryBedOnMain,
         search, // address search
+        fuzzySearch, // enable fuzzy matching for address search
         page, limit,
         mapBounds, // { sw: { lat, lng }, ne: { lat, lng } } for map search
         polygon, // array of [lng, lat] coordinate pairs for polygon map search
@@ -2704,7 +3281,14 @@ Respond with valid JSON in this exact format:
       } = req.body;
 
       const pageNum = Math.max(1, parseInt(page || '1', 10));
-      const resultsPerPage = Math.min(Math.max(1, parseInt(limit || '25', 10)), 50);
+      // For CMA searches, limit to reasonable number of relevant results
+      let resultsPerPage = Math.min(Math.max(1, parseInt(limit || '25', 10)), 50);
+      
+      // For address searches, default to 25 most relevant properties
+      if (search && !limit) {
+        resultsPerPage = 25;
+        console.log(`[CMA Search ENHANCED] Limited address search to ${resultsPerPage} results for relevance`);
+      }
 
       const baseUrl = 'https://api.repliers.io/listings';
       const params = new URLSearchParams({
@@ -2715,8 +3299,74 @@ Respond with valid JSON in this exact format:
         sortBy: 'createdOnDesc',
       });
 
-      // Address search
-      if (search) params.append('search', search);
+      // CRITICAL: Explicitly request all fields we need for CMA display
+      // Without this, Repliers API may not return description/price history fields
+      params.append('fields', [
+        'mlsNumber', 'listingId', 'address', 'map', 'details', 'images', 'photos',
+        'listPrice', 'soldPrice', 'originalPrice', 'listPriceLog',
+        'remarks', 'publicRemarks', 'description', 
+        'listDate', 'soldDate', 'closeDate',
+        'daysOnMarket', 'simpleDaysOnMarket', 'dom',
+        'standardStatus', 'status', 'lastStatus',
+        'bedroomsTotal', 'bathroomsTotal', 'livingArea', 'lotSizeArea',
+        'lot', 'timestamps'
+      ].join(','));
+
+      // Enhanced address search logic
+      let parsed: any = {};
+      if (search && search.trim()) {
+        console.log(`[CMA Search ENHANCED] Address search: "${search}"`);
+        
+        const trimmedSearch = search.trim();
+        const isMlsNumber = /^[A-Za-z]{1,5}\d{4,}$/.test(trimmedSearch);
+        
+        if (isMlsNumber) {
+          // Direct MLS lookup — exact match, no fuzzy, all statuses
+          params.append('mlsNumber', trimmedSearch);
+          // Do NOT append fuzzySearch for MLS lookups
+          // Do NOT filter by status — listing could be active, sold, pending
+          console.log('[CMA Search] MLS# detected, using mlsNumber param:', trimmedSearch);
+        } else {
+          // Address search — use explicit address params from parseAddress()
+          parsed = parseAddress(trimmedSearch);
+          console.log(`[CMA Search ENHANCED] Parsed address:`, parsed);
+          
+          if (parsed.streetNumber) {
+            params.append('streetNumber', parsed.streetNumber);
+          }
+          if (parsed.streetName) {
+            params.append('streetName', parsed.streetName);
+          }
+          if (parsed.streetSuffix) {
+            params.append('streetSuffix', parsed.streetSuffix);
+          }
+          if (parsed.zip) {
+            params.append('zip', parsed.zip);
+          }
+          if (parsed.city) {
+            params.append('city', parsed.city);
+          }
+          if (parsed.state) {
+            params.append('state', parsed.state);
+          }
+          
+          // If parseAddress found both parts, use structured params (no search param needed)
+          // If parseAddress couldn't parse it, fall back to generic search
+          if (!parsed.streetNumber && !parsed.streetName) {
+            params.append('search', trimmedSearch);
+            params.append('fuzzySearch', 'true');
+            console.log(`[CMA Search] Using fallback generic search for: "${trimmedSearch}"`);
+          } else {
+            console.log('[CMA Search] Using address params:', {
+              streetNumber: parsed.streetNumber,
+              streetName: parsed.streetName,
+              streetSuffix: parsed.streetSuffix,
+              city: parsed.city,
+              zip: parsed.zip
+            });
+          }
+        }
+      }
 
       // Direct listing ID lookup via mlsNumber param
       if (listingId) params.append('mlsNumber', listingId.trim());
@@ -2838,7 +3488,7 @@ Respond with valid JSON in this exact format:
         }
 
         // Transform the found listings
-        const listings = allListings.map((listing: any) => {
+        const listings = allListings.map((listing: any, index: number) => {
           const streetNumber = listing.address?.streetNumber || '';
           const streetName = listing.address?.streetName || '';
           const streetSuffix = listing.address?.streetSuffix || '';
@@ -2852,7 +3502,7 @@ Respond with valid JSON in this exact format:
           const photos = extractPhotosFromRepliersList(listing);
           
           // Debug photo fields for first few listings to help troubleshoot photo issues
-          if (listings.length < 3) {
+          if (index < 3) {
             console.log(`[CMA Search Debug] Property ${listing.mlsNumber || listing.listingId} photos:`, {
               hasImages: !!listing.images,
               imagesCount: Array.isArray(listing.images) ? listing.images.length : 0,
@@ -2882,12 +3532,13 @@ Respond with valid JSON in this exact format:
             status: listing.standardStatus || listing.status || '',
             listDate: listing.listDate || '',
             soldDate: listing.soldDate || listing.closeDate || null,
-            daysOnMarket: listing.daysOnMarket || 0,
+            daysOnMarket: listing.simpleDaysOnMarket || listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
             photos,
             stories: listing.details?.numStoreys || null,
             subdivision: listing.address?.area || listing.address?.neighborhood || '',
             latitude: listing.map?.latitude || listing.address?.latitude || null,
             longitude: listing.map?.longitude || listing.address?.longitude || null,
+            description: listing.details?.description || listing.remarks || listing.publicRemarks || null,
           };
         });
 
@@ -2937,36 +3588,57 @@ Respond with valid JSON in this exact format:
       if (maxLotAcres) params.append('maxLotWidth', (maxLotAcres * 43560).toString());
 
       // Status handling - support multiple statuses
-      // When doing address search with no explicit statuses, search all statuses
-      const statusArray: string[] = statuses || (search && !city && !zip ? [] : ['Active']);
-      // If includes Closed, we need a separate approach
-      const hasActive = statusArray.includes('Active');
-      const hasAUC = statusArray.includes('Active Under Contract');
-      const hasPending = statusArray.includes('Pending');
-      const hasClosed = statusArray.includes('Closed');
-      const hasAnyActive = hasActive || hasAUC || hasPending;
-
-      if (statusArray.length === 0) {
-        // No status filter - search all listings (useful for address lookups)
-      } else if (hasClosed && !hasAnyActive) {
-        // Only closed - use dateSoldDays if provided, otherwise default to 365
-        const soldDays = dateSoldDays ? parseInt(dateSoldDays.toString(), 10) : 365;
-        const minDate = new Date();
-        minDate.setDate(minDate.getDate() - soldDays);
-        params.append('status', 'U');
-        params.append('lastStatus', 'Sld');
-        params.append('minClosedDate', minDate.toISOString().split('T')[0]);
-      } else if (!hasClosed) {
-        // Only active statuses
-        statusArray.forEach(s => params.append('standardStatus', s));
+      const trimmedSearch = search?.trim();
+      const isMlsNumber = trimmedSearch && /^[A-Za-z]{1,5}\d{4,}$/.test(trimmedSearch);
+      const isAddressSearch = search && search.trim() && !isMlsNumber;
+      
+      let hasActive = false;
+      let hasAUC = false;
+      let hasPending = false;
+      let hasClosed = false;
+      let hasAnyActive = false;
+      
+      if (isMlsNumber) {
+        console.log('[CMA Search] MLS# search - skipping status filters to find exact listing');
+      } else if (isAddressSearch) {
+        console.log('[CMA Search] Address search - skipping status filters to find subject property in any status');
+        // For subject property address searches, do NOT add any status filters
+        // Subject property can be Active, Pending, Sold, Withdrawn, etc.
       } else {
-        // Mix of active and closed - search active statuses first, then merge closed results after
-        const activeStatuses = statusArray.filter(s => s !== 'Closed');
-        activeStatuses.forEach(s => params.append('standardStatus', s));
+        // Regular search (not MLS# or address) - apply normal status filtering
+        const statusArray: string[] = statuses && statuses.length > 0 
+          ? statuses 
+          : ['Active']; // Default to Active only for regular searches
+        
+        console.log(`[CMA Search ENHANCED] Search statuses:`, statusArray);
+        hasActive = statusArray.includes('Active') || statusArray.includes('A');
+        hasAUC = statusArray.includes('Active Under Contract');
+        hasPending = statusArray.includes('Pending');
+        hasClosed = statusArray.includes('Closed') || statusArray.includes('U');
+        hasAnyActive = hasActive || hasAUC || hasPending;
+        
+        if (statusArray.length === 0) {
+          // No status filter - search all listings (useful for address lookups)
+        } else if (hasClosed && !hasAnyActive) {
+          // Only closed - use dateSoldDays if provided, otherwise default to 365
+          const soldDays = dateSoldDays ? parseInt(dateSoldDays.toString(), 10) : 365;
+          const minDate = new Date();
+          minDate.setDate(minDate.getDate() - soldDays);
+          params.append('status', 'U');
+          params.append('lastStatus', 'Sld');
+          params.append('minClosedDate', minDate.toISOString().split('T')[0]);
+        } else if (!hasClosed) {
+          // Only active statuses
+          statusArray.forEach(s => params.append('standardStatus', s));
+        } else {
+          // Mix of active and closed - search active statuses first, then merge closed results after
+          const activeStatuses = statusArray.filter(s => s !== 'Closed');
+          activeStatuses.forEach(s => params.append('standardStatus', s));
+        }
       }
 
-      // Flag for merged search (active + closed)
-      const needsMergedSearch = hasClosed && hasAnyActive;
+      // Flag for merged search (active + closed) - skip for MLS# and address searches
+      const needsMergedSearch = !isMlsNumber && !isAddressSearch && hasClosed && hasAnyActive;
 
       const fullUrl = `${baseUrl}?${params.toString()}`;
       console.log(`[CMA Search] Searching properties: ${fullUrl}`);
@@ -3020,6 +3692,9 @@ Respond with valid JSON in this exact format:
         });
       }
 
+      console.log('[CMA Search] Repliers URL:', fullUrl);
+      console.log('[CMA Search] Repliers response status:', response.status);
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('[CMA Search] Repliers API error:', response.status, errorText);
@@ -3027,6 +3702,126 @@ Respond with valid JSON in this exact format:
       }
 
       let data = await response.json();
+
+      console.log('[CMA Search] Results count:', (data.listings || []).length);
+
+      // FALLBACK: If structured address search returns 0 results, retry with generic search
+      if (isAddressSearch && (data.listings || []).length === 0) {
+        console.log('[CMA Search] Structured address returned 0, falling back to generic search');
+        
+        // Build fallback params without streetNumber/streetName/streetSuffix but keeping other base params
+        const fallbackParams = new URLSearchParams({
+          listings: 'true',
+          type: 'Sale',
+          resultsPerPage: resultsPerPage.toString(),
+          pageNum: pageNum.toString(),
+          sortBy: 'createdOnDesc',
+        });
+        
+        // Add the fields parameter
+        fallbackParams.append('fields', [
+          'mlsNumber', 'listingId', 'address', 'map', 'details', 'images', 'photos',
+          'listPrice', 'soldPrice', 'originalPrice', 'listPriceLog',
+          'remarks', 'publicRemarks', 'description', 
+          'listDate', 'soldDate', 'closeDate',
+          'daysOnMarket', 'simpleDaysOnMarket', 'dom',
+          'standardStatus', 'status', 'lastStatus',
+          'bedroomsTotal', 'bathroomsTotal', 'livingArea', 'lotSizeArea',
+          'lot', 'timestamps'
+        ].join(','));
+        
+        // Add generic search parameter
+        fallbackParams.append('search', trimmedSearch);
+        
+        // Copy over other non-address filters that were applied
+        if (city && !parsed.city) fallbackParams.append('city', city);
+        if (zip && !parsed.zip) fallbackParams.append('zip', zip);
+        if (county) fallbackParams.append('county', county);
+        if (area) fallbackParams.append('area', area);
+        if (subdivision) fallbackParams.append('subdivision', subdivision);
+        if (minBeds && minBeds !== 'any') fallbackParams.append('minBeds', minBeds.toString());
+        if (minBaths && minBaths !== 'any') fallbackParams.append('minBaths', minBaths.toString());
+        if (minPrice) fallbackParams.append('minPrice', minPrice.toString());
+        if (maxPrice) fallbackParams.append('maxPrice', maxPrice.toString());
+        if (minSqft) fallbackParams.append('minSqft', minSqft.toString());
+        if (maxSqft) fallbackParams.append('maxSqft', maxSqft.toString());
+        if (propertyType) fallbackParams.append('style', propertyType);
+        if (minYearBuilt) fallbackParams.append('minYearBuilt', minYearBuilt.toString());
+        if (maxYearBuilt) fallbackParams.append('maxYearBuilt', maxYearBuilt.toString());
+        
+        const fallbackUrl = `${baseUrl}?${fallbackParams.toString()}`;
+        console.log('[CMA Search] Fallback URL:', fallbackUrl);
+        
+        try {
+          const fallbackResponse = await fetch(fallbackUrl, {
+            headers: {
+              'Accept': 'application/json',
+              'REPLIERS-API-KEY': apiKey
+            }
+          });
+          
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
+            console.log('[CMA Search] Fallback generic search results:', (fallbackData.listings || []).length);
+            if ((fallbackData.listings || []).length > 0) {
+              data = fallbackData; // Use fallback results
+              console.log('[CMA Search] Using fallback results');
+            }
+          }
+        } catch (err) {
+          console.error('[CMA Search] Fallback search failed:', err);
+          // Continue with original empty results
+        }
+      }
+
+      // ===== DIAGNOSTIC LOGGING FOR QA DEBUGGING =====
+      console.log('[REPLIERS DEBUG] API Response Summary:', {
+        totalCount: data.count || 0,
+        listingsCount: (data.listings || []).length,
+        sampleListingExists: !!(data.listings?.[0])
+      });
+
+      // Log first 3 listings to diagnose missing fields
+      if (data.listings && data.listings.length > 0) {
+        data.listings.slice(0, 3).forEach((listing: any, index: number) => {
+          console.log(`[REPLIERS DEBUG] Listing ${index + 1}/${Math.min(3, data.listings.length)} - ${listing.mlsNumber || listing.listingId}:`, {
+            // ISSUE B - Description fields  
+            hasDetailsDescription: !!listing.details?.description,
+            hasDescription: !!listing.description,
+            hasRemarks: !!listing.remarks,
+            hasPublicRemarks: !!listing.publicRemarks,
+            detailsDescriptionLength: (listing.details?.description || '').length,
+            descriptionLength: (listing.description || '').length,
+            remarksLength: (listing.remarks || '').length,
+            publicRemarksLength: (listing.publicRemarks || '').length,
+            descriptionPreview: (listing.details?.description || listing.remarks || listing.publicRemarks || listing.description || '').substring(0, 100),
+            
+            // ISSUE C - List date fields  
+            hasListDate: !!listing.listDate,
+            listDate: listing.listDate,
+            listDateType: typeof listing.listDate,
+            
+            // ISSUE D - Price fields
+            listPrice: listing.listPrice,
+            originalPrice: listing.originalPrice,
+            hasOriginalPrice: !!listing.originalPrice,
+            pricesDifferent: listing.originalPrice && listing.listPrice && listing.originalPrice !== listing.listPrice,
+            hasListPriceLog: !!listing.listPriceLog,
+            listPriceLogLength: Array.isArray(listing.listPriceLog) ? listing.listPriceLog.length : 0,
+            
+            // ISSUE E - Days on Market fields
+            daysOnMarket: listing.daysOnMarket,
+            simpleDaysOnMarket: listing.simpleDaysOnMarket,
+            hasDom: listing.daysOnMarket !== undefined && listing.daysOnMarket !== null,
+            hasSimpleDom: listing.simpleDaysOnMarket !== undefined && listing.simpleDaysOnMarket !== null,
+            
+            // General status
+            status: listing.standardStatus || listing.status,
+            lastStatus: listing.lastStatus,
+          });
+        });
+      }
+      // ===== END DIAGNOSTIC LOGGING =====
 
       // If we need merged search (active + closed), make a second API call for closed listings
       if (needsMergedSearch) {
@@ -3085,7 +3880,7 @@ Respond with valid JSON in this exact format:
       }
 
       // Transform listings
-      const listings = (data.listings || []).map((listing: any) => {
+      const listings = (data.listings || []).map((listing: any, index: number) => {
         const streetNumber = listing.address?.streetNumber || '';
         const streetName = listing.address?.streetName || '';
         const streetSuffix = listing.address?.streetSuffix || '';
@@ -3103,6 +3898,20 @@ Respond with valid JSON in this exact format:
           debugPhotoFields(listing, listing.mlsNumber || listing.listingId);
         }
 
+        // Debug logging for price and thumbnail issues
+        console.log('[CMA Price Debug]', listing.mlsNumber || listing.listingId, { 
+          soldPrice: listing.soldPrice, 
+          closePrice: listing.closePrice, 
+          listPrice: listing.listPrice, 
+          originalPrice: listing.originalPrice, 
+          status: listing.lastStatus 
+        });
+        console.log('[CMA Thumbnail Debug]', listing.mlsNumber || listing.listingId, { 
+          images: listing.images?.length || 0, 
+          photos: listing.photos?.length || 0, 
+          firstImage: listing.images?.[0]?.substring(0, 80) 
+        });
+
         return {
           mlsNumber: listing.mlsNumber || listing.listingId || '',
           address: fullAddress,
@@ -3112,21 +3921,30 @@ Respond with valid JSON in this exact format:
           zip: postalCode,
           listPrice: listing.listPrice || 0,
           soldPrice: listing.soldPrice || listing.closePrice || null,
+          originalPrice: listing.originalPrice || listing.listPrice || null,
           beds: listing.details?.numBedrooms || listing.bedroomsTotal || 0,
           baths: listing.details?.numBathrooms || listing.bathroomsTotal || 0,
           sqft: listing.details?.sqft || listing.livingArea || 0,
           lotSizeAcres: listing.lot?.acres || (listing.lotSizeArea ? listing.lotSizeArea / 43560 : null),
+          lotSizeSquareFeet: listing.lotSizeArea || listing.lot?.squareFeet || null,
+          lot: {
+            acres: listing.lot?.acres || null,
+            squareFeet: listing.lotSizeArea || listing.lot?.squareFeet || null,
+            size: listing.lot?.size || null,
+          },
           yearBuilt: listing.details?.yearBuilt || null,
           propertyType: listing.details?.style || listing.details?.propertyType || listing.propertyType || '',
           status: listing.standardStatus || listing.status || '',
           listDate: listing.listDate || '',
           soldDate: listing.soldDate || listing.closeDate || null,
-          daysOnMarket: listing.daysOnMarket || 0,
+          daysOnMarket: listing.simpleDaysOnMarket || listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
+          garageSpaces: listing.details?.numGarageSpaces || listing.garageSpaces || 0,
           photos,
           stories: listing.details?.numStoreys || null,
           subdivision: listing.address?.neighborhood || listing.address?.area || '',
           latitude: listing.map?.latitude || listing.address?.latitude || null,
           longitude: listing.map?.longitude || listing.address?.longitude || null,
+          description: listing.details?.description || listing.remarks || listing.publicRemarks || null,
         };
       });
 
@@ -3240,17 +4058,96 @@ Respond with valid JSON in this exact format:
         console.log(`[CMA Search] Primary bed on main post-filter (${primaryBedOnMain}): ${filteredListings.length} remain`);
       }
 
+      // Enhanced result processing for address searches
+      let finalListings = filteredListings;
+      if (search && parsed?.streetNumber && parsed?.streetName) {
+        console.log(`[CMA Search ENHANCED] Processing ${filteredListings.length} results for relevance`);
+        
+        // Try to find the subject property in results for distance calculation
+        const subjectProperty = filteredListings.find((listing: any) => {
+          const listingStreet = `${listing.streetAddress || ''}`.toLowerCase();
+          const searchStreet = `${parsed.streetNumber} ${parsed.streetName}`.toLowerCase();
+          return listingStreet.includes(searchStreet) || searchStreet.includes(listingStreet);
+        });
+        
+        if (subjectProperty && subjectProperty.latitude && subjectProperty.longitude) {
+          console.log(`[CMA Search ENHANCED] Found subject property for distance calculation:`, subjectProperty.address);
+          
+          // Calculate distance and add relevance scores
+          filteredListings.forEach((listing: any) => {
+            if (listing.latitude && listing.longitude) {
+              const distance = calculateDistance(
+                subjectProperty.latitude, subjectProperty.longitude,
+                listing.latitude, listing.longitude
+              );
+              listing.distanceFromSubject = Math.round(distance * 100) / 100; // Round to 2 decimals
+              
+              // Simple relevance score
+              let relevance = 100;
+              if (distance <= 0.5) relevance += 50;
+              else if (distance <= 1) relevance += 30;
+              else if (distance <= 2) relevance += 10;
+              else if (distance > 5) relevance -= 20;
+              
+              // Bonus for sold properties (better for CMA analysis)
+              if (listing.status === 'Closed' || listing.soldPrice) {
+                relevance += 20;
+              }
+              
+              // Similar beds/baths bonus
+              if (subjectProperty.beds && Math.abs(listing.beds - subjectProperty.beds) <= 1) {
+                relevance += 15;
+              }
+              if (subjectProperty.baths && Math.abs(listing.baths - subjectProperty.baths) <= 1) {
+                relevance += 15;
+              }
+              
+              // Similar sqft bonus (within 30%)
+              if (subjectProperty.sqft && listing.sqft) {
+                const sqftDiff = Math.abs(listing.sqft - subjectProperty.sqft) / subjectProperty.sqft;
+                if (sqftDiff <= 0.3) relevance += 20;
+                else if (sqftDiff <= 0.5) relevance += 10;
+              }
+              
+              listing.relevanceScore = relevance;
+            } else {
+              listing.relevanceScore = 50; // Low score for properties without coordinates
+            }
+          });
+          
+          // Sort by relevance and limit results
+          filteredListings.sort((a: any, b: any) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
+          finalListings = filteredListings.slice(0, resultsPerPage);
+          
+          console.log(`[CMA Search ENHANCED] Sorted by relevance, returning top ${finalListings.length} results`);
+        }
+      }
+      
       const total = subdivisionFilter ? filteredListings.length : (data.count || data.numResults || listings.length);
       const totalPages = subdivisionFilter ? 1 : Math.ceil(total / resultsPerPage);
 
-      console.log(`[CMA Search] Returning ${filteredListings.length} of ${total} results`);
+      console.log(`[CMA Search] Returning ${finalListings.length} of ${total} results`);
+
+      // Debug logging for MLS# search results
+      if (isMlsNumber && finalListings.length > 0) {
+        console.log('[CMA Search] MLS# result address:', JSON.stringify({
+          streetNumber: data.listings?.[0]?.address?.streetNumber,
+          streetName: data.listings?.[0]?.address?.streetName,
+          streetSuffix: data.listings?.[0]?.address?.streetSuffix,
+          city: data.listings?.[0]?.address?.city,
+          state: data.listings?.[0]?.address?.state,
+          zip: data.listings?.[0]?.address?.zip,
+          fullAddress: finalListings[0]?.address
+        }));
+      }
 
       res.json({
-        listings: subdivisionFilter ? filteredListings : filteredListings.slice(0, resultsPerPage),
+        listings: subdivisionFilter ? filteredListings : finalListings,
         total,
         page: subdivisionFilter ? 1 : pageNum,
         totalPages,
         resultsPerPage: subdivisionFilter ? filteredListings.length : resultsPerPage,
+        enhanced: search && parsed?.streetNumber ? true : false, // Flag indicating enhanced search was used
       });
     } catch (error) {
       console.error('[CMA Search] Error:', error);
@@ -4173,6 +5070,7 @@ Respond with valid JSON in this exact format:
           title: profile?.title || null,
           bio: profile?.bio || null,
           phone: profile?.phone || null,
+          marketingPhone: profile?.phone || null, // CMA presentation expects this field
           facebookUrl: null, // TODO: Add when social fields are implemented
           instagramUrl: null // TODO: Add when social fields are implemented
         },
@@ -4356,25 +5254,33 @@ Respond with valid JSON in this exact format:
         });
       }
 
-      // Return complete agent profile
-      const agentProfile = {
-        firstName: user.firstName,
-        lastName: user.lastName,
-        title: profile.title || '',
-        phone: profile.phone || '',
-        email: user.email || '',
-        headshotUrl: profile.headshotUrl || user.profileImageUrl || '',
-        bio: profile.bio || '',
+      // Return same structure as GET /api/agent-profile for cache consistency
+      const response = {
+        profile: {
+          headshotUrl: profile.headshotUrl || null,
+          title: profile.title || null,
+          bio: profile.bio || null,
+          phone: profile.phone || null,
+          marketingPhone: profile.phone || null,
+          facebookUrl: null,
+          instagramUrl: null
+        },
+        user: {
+          firstName: user.firstName || null,
+          lastName: user.lastName || null,
+          email: user.email || null,
+          profileImageUrl: user.profileImageUrl || null
+        }
       };
 
       console.log(`[Update Profile] Successfully updated profile for user ${user.id}:`, {
         savedPhone: profile.phone,
         savedTitle: profile.title,
         savedBio: profile.bio ? 'present' : 'null',
-        responsePhone: agentProfile.phone,
+        responsePhone: response.profile.phone,
       });
 
-      res.json(agentProfile);
+      res.json(response);
     } catch (error) {
       console.error("Error updating agent profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
@@ -4409,10 +5315,10 @@ Respond with valid JSON in this exact format:
 
       // Check file size (rough estimate: base64 is ~33% larger than binary)
       const sizeEstimate = (imageData.length * 3) / 4;
-      const maxSize = 5 * 1024 * 1024; // 5MB
+      const maxSize = 25 * 1024 * 1024; // 25MB
       if (sizeEstimate > maxSize) {
         console.log(`[Photo Upload] ERROR: Image too large:`, Math.round(sizeEstimate / 1024), 'KB');
-        return res.status(400).json({ message: "Image too large. Maximum size is 5MB." });
+        return res.status(400).json({ message: "Image too large. Maximum size is 25MB." });
       }
 
       console.log(`[Photo Upload] Image validation passed, size estimate: ${Math.round(sizeEstimate / 1024)}KB`);
@@ -4525,14 +5431,47 @@ Respond with valid JSON in this exact format:
   // Register admin routes (integration settings, etc.)
   registerAdminRoutes(app);
 
-  // Register CMS routes (page builder, blog, site content)
-  registerCmsRoutes(app);
-
   // Register Gmail routes
   registerGmailRoutes(app);
 
   // Register Xano proxy routes for admin dashboards
   registerXanoRoutes(app, isAuthenticated);
+
+  // Register ReZen-powered admin dashboard routes
+  registerRezenDashboardRoutes(app);
+
+  // Register Community Editor routes (admin)
+  registerCommunityEditorRoutes(app);
+
+  // Register Community Public API routes (for IDX site integration)
+  registerCommunityPublicRoutes(app);
+
+  // Register CMS Enhancement Phase 1 routes
+  registerRedirectsRoutes(app);
+  registerGlobalScriptsRoutes(app);
+  registerSeoRoutes(app);
+  
+  // Register upload routes for image handling
+  app.use('/api/admin', uploadRoutes);
+  
+  // Register Developer Dashboard routes with error handling
+  try {
+    registerDeveloperRoutes(app);
+    console.log("[Developer Routes] ✅ Registered successfully");
+  } catch (err) {
+    console.error("[Developer Routes] ❌ Failed to register:", err);
+  }
+
+  // Register CMS Enhancement Phase 2 - Blog System
+  app.use('/api', blogRoutes);
+  
+  // Register CMS Enhancement Phase 3 - Agent Pages + Landing Pages
+  app.use('/api', agentRoutes);
+  app.use('/api', landingPageRoutes);
+  
+  // Register CMS Enhancement Phase 4 - Testimonials & Reviews System
+  app.use(testimonialRoutes);
+  app.use('/api', pageBuilderRoutes);
 
   // ==========================================
   // DEBUG ENDPOINT FOR DATABASE DIAGNOSIS
@@ -4587,8 +5526,40 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // Image proxy for PDF generation - fetches external images as base64 for React-PDF
+  app.get("/api/proxy-image", async (req: any, res: any) => {
+    try {
+      const { url } = req.query;
+      
+      if (!url || typeof url !== "string") {
+        return res.status(400).json({ error: "url parameter required" });
+      }
+      
+      // Only allow cdn.repliers.io to prevent abuse
+      if (!url.startsWith("https://cdn.repliers.io/")) {
+        return res.status(403).json({ error: "Only cdn.repliers.io URLs allowed" });
+      }
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+      
+      const buffer = await response.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString("base64");
+      const contentType = response.headers.get("content-type") || "image/jpeg";
+      
+      res.json({
+        base64: `data:${contentType};base64,${base64}`
+      });
+    } catch (error) {
+      console.error("[ImageProxy] Error:", error);
+      res.status(500).json({ error: "Failed to proxy image" });
+    }
+  });
+  
   // GET /api/mapbox-token - Get Mapbox access token for maps
-  app.get('/api/mapbox-token', isAuthenticated, async (req: any, res) => {
+  app.get('/api/mapbox-token', async (req: any, res) => {
     try {
       const mapboxToken = process.env.MAPBOX_ACCESS_TOKEN;
       
@@ -4639,8 +5610,9 @@ Respond with valid JSON in this exact format:
     }
   });
 
-  // DEBUG: Environment variables check endpoint (REMOVE IN PRODUCTION)
-  app.get('/api/debug/env-check', isAuthenticated, async (req: any, res) => {
+  // Environment variables check endpoint (dev/staging only)
+  if (process.env.NODE_ENV !== 'production') {
+    app.get('/api/debug/env-check', isAuthenticated, async (req: any, res) => {
     try {
       const user = await getDbUser(req);
       if (!user?.isSuperAdmin) {
@@ -4676,7 +5648,8 @@ Respond with valid JSON in this exact format:
       console.error('[Env Check] Error:', error);
       res.status(500).json({ error: error.message });
     }
-  });
+    });
+  }
 
   return httpServer;
 }

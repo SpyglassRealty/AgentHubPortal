@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  customType,
   date,
   index,
   integer,
@@ -13,6 +14,12 @@ import {
   uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
+
+const bytea = customType<{ data: Buffer }>({
+  dataType() {
+    return 'bytea';
+  },
+});
 import { z } from "zod";
 
 export const sessions = pgTable(
@@ -124,6 +131,24 @@ export const agentProfiles = pgTable("agent_profiles", {
 
 export type AgentProfile = typeof agentProfiles.$inferSelect;
 export type InsertAgentProfile = typeof agentProfiles.$inferInsert;
+
+export const agentResources = pgTable("agent_resources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: varchar("title", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // 'pdf', 'doc', 'image', 'link'
+  fileData: bytea("file_data"), // file stored as binary (for uploaded files)
+  fileName: varchar("file_name", { length: 255 }), // original filename
+  fileSize: integer("file_size"), // size in bytes
+  mimeType: varchar("mime_type", { length: 100 }), // e.g. 'application/pdf'
+  redirectUrl: text("redirect_url"), // for link-type resources
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type AgentResource = typeof agentResources.$inferSelect;
+export type InsertAgentResource = typeof agentResources.$inferInsert;
 
 export const contextSuggestions = pgTable("context_suggestions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -506,6 +531,7 @@ export interface CMAComparable {
   listDate?: string;
   closeDate?: string;
   yearBuilt?: number;
+  description?: string; // MLS property description ("About This Home")
   map?: {
     latitude: number;
     longitude: number;
@@ -619,26 +645,6 @@ export interface Property {
   rawData?: Record<string, any>;
 }
 
-// Agent resources for CMA presentations
-export const agentResources = pgTable("agent_resources", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: text("user_id").notNull(),
-  name: text("name").notNull(),
-  type: text("type").notNull(), // 'link' or 'file'
-  url: text("url"), // For external links
-  fileUrl: text("file_url"), // For uploaded files (object storage URL)
-  fileName: text("file_name"), // Original file name
-  fileData: text("file_data"), // Base64 encoded file content (for database storage)
-  fileMimeType: text("file_mime_type"), // MIME type of uploaded file
-  isActive: boolean("is_active").default(true),
-  displayOrder: integer("display_order").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export type AgentResource = typeof agentResources.$inferSelect;
-export type InsertAgentResource = typeof agentResources.$inferInsert;
-
 // Helper schema for optional URLs that auto-prepends https:// if missing
 const optionalUrlSchema = z
   .string()
@@ -689,10 +695,10 @@ export const pulseZillowData = pgTable("pulse_zillow_data", {
   id: serial("id").primaryKey(),
   zip: varchar("zip", { length: 5 }).notNull(),
   date: date("date").notNull(),
-  homeValue: numeric("home_value"),           // ZHVI all homes
-  homeValueSf: numeric("home_value_sf"),      // ZHVI single-family
-  homeValueCondo: numeric("home_value_condo"),// ZHVI condo
-  rentalValue: numeric("rental_value"),       // ZORI rent
+  homeValue: numeric("home_value"),                     // ZHVI all homes
+  singleFamilyValue: numeric("single_family_value"),    // ZHVI single-family
+  condoValue: numeric("condo_value"),                   // ZHVI condo
+  rentValue: numeric("rent_value"),                     // ZORI rent
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -828,6 +834,454 @@ export const pulseSchoolsCache = pgTable("pulse_schools_cache", {
 
 export type PulseSchoolsCache = typeof pulseSchoolsCache.$inferSelect;
 export type InsertPulseSchoolsCache = typeof pulseSchoolsCache.$inferInsert;
+
+// ── Communities (SEO content editor) ────────────────────────────────────
+export const communities = pgTable("communities", {
+  id: serial("id").primaryKey(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  county: varchar("county", { length: 100 }),
+  // Location data fields
+  locationType: varchar("location_type", { length: 20 }).notNull().default('polygon'), // 'polygon' | 'zip' | 'city'
+  filterValue: varchar("filter_value", { length: 50 }), // for zip/city types (e.g. "78704", "Bastrop")
+  polygon: jsonb("polygon").$type<[number, number][]>(), // array of [lng, lat] coordinates
+  displayPolygon: jsonb("display_polygon").$type<[number, number][]>(), // array of [lat, lng] for Leaflet
+  centroid: jsonb("centroid").$type<{ lat: number; lng: number }>(), // center point
+  heroImage: text("hero_image"), // URL for hero image
+  parentSlug: varchar("parent_slug", { length: 255 }), // for nesting (e.g. zip belongs to city)
+  // SEO fields
+  metaTitle: varchar("meta_title", { length: 255 }),
+  metaDescription: text("meta_description"),
+  focusKeyword: varchar("focus_keyword", { length: 255 }),
+  // Content fields
+  description: text("description"),
+  highlights: jsonb("highlights").$type<string[]>(),
+  bestFor: jsonb("best_for").$type<string[]>(),
+  nearbyLandmarks: jsonb("nearby_landmarks").$type<string[]>(),
+  sections: jsonb("sections").$type<{ id: string; heading: string; content: string; order: number }[]>(),
+  published: boolean("published").default(false),
+  featured: boolean("featured").default(false),
+  // Enhanced SEO fields (Phase 1)
+  customSlug: varchar("custom_slug", { length: 255 }),
+  featuredImageUrl: varchar("featured_image_url", { length: 500 }),
+  ogImageUrl: varchar("og_image_url", { length: 500 }),
+  breadcrumbPath: jsonb("breadcrumb_path"),
+  indexingDirective: varchar("indexing_directive", { length: 20 }).default('index,follow'),
+  customSchema: jsonb("custom_schema"),
+  seoScore: integer("seo_score"),
+  seoIssues: jsonb("seo_issues"),
+  canonicalUrl: varchar("canonical_url", { length: 500 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: varchar("updated_by", { length: 255 }),
+}, (table) => [
+  uniqueIndex("idx_communities_slug").on(table.slug),
+  index("idx_communities_county").on(table.county),
+  index("idx_communities_published").on(table.published),
+  index("idx_communities_location_type").on(table.locationType),
+  index("idx_communities_custom_slug").on(table.customSlug),
+  index("idx_communities_seo_score").on(table.seoScore),
+  index("idx_communities_updated_at").on(table.updatedAt),
+  index("idx_communities_featured").on(table.featured),
+  index("idx_communities_published_featured").on(table.published, table.featured),
+]);
+
+// Update communities table with new SEO fields
+export type Community = typeof communities.$inferSelect;
+export type InsertCommunity = typeof communities.$inferInsert;
+
+// Site Content table — stores homepage section content as JSON blobs
+export const siteContent = pgTable("site_content", {
+  id: serial("id").primaryKey(),
+  section: varchar("section", { length: 100 }).notNull().unique(),
+  content: jsonb("content").notNull(),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("idx_site_content_section").on(table.section),
+]);
+
+export type SiteContent = typeof siteContent.$inferSelect;
+export type InsertSiteContent = typeof siteContent.$inferInsert;
+// ── CMS Enhancement Phase 1 Tables ──────────────────────────────────────────
+
+// ── 1. Redirects Management ──────────────────────────────────────────────────
+export const redirects = pgTable("redirects", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sourceUrl: varchar("source_url", { length: 500 }).notNull(),
+  destinationUrl: varchar("destination_url", { length: 500 }).notNull(),
+  redirectType: varchar("redirect_type", { length: 10 }).notNull().default('301'), // '301' or '302'
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  hitCount: integer("hit_count").default(0),
+  lastAccessed: timestamp("last_accessed"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by", { length: 255 }),
+}, (table) => [
+  // Create unique index on source_url for active redirects to prevent conflicts
+  uniqueIndex("idx_redirects_active_source").on(table.sourceUrl).where(sql`${table.isActive} = true`),
+  index("idx_redirects_source").on(table.sourceUrl),
+  index("idx_redirects_active").on(table.isActive),
+  index("idx_redirects_created_at").on(table.createdAt),
+]);
+
+export type Redirect = typeof redirects.$inferSelect;
+export type InsertRedirect = typeof redirects.$inferInsert;
+
+// ── 2. Global Tracking Scripts Management ─────────────────────────────────────
+export const globalScripts = pgTable("global_scripts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  scriptType: varchar("script_type", { length: 50 }).notNull(), // 'google_analytics', 'google_tag_manager', 'meta_pixel', 'microsoft_clarity', 'custom'
+  position: varchar("position", { length: 20 }).notNull().default('head'), // 'head' or 'body'
+  scriptContent: text("script_content").notNull(),
+  isEnabled: boolean("is_enabled").default(true),
+  priority: integer("priority").default(0), // higher number = higher priority (loads first)
+  description: text("description"),
+  configuration: jsonb("configuration"), // store additional config like tracking IDs, etc.
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by", { length: 255 }),
+}, (table) => [
+  index("idx_global_scripts_enabled").on(table.isEnabled),
+  index("idx_global_scripts_type").on(table.scriptType),
+  index("idx_global_scripts_position").on(table.position),
+  index("idx_global_scripts_priority").on(table.priority),
+]);
+
+export type GlobalScript = typeof globalScripts.$inferSelect;
+export type InsertGlobalScript = typeof globalScripts.$inferInsert;
+
+// ── 3. SEO Templates & Settings ───────────────────────────────────────────────
+export const seoTemplates = pgTable("seo_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  pageType: varchar("page_type", { length: 50 }).notNull(), // 'community', 'blog', 'agent', 'landing'
+  titleTemplate: varchar("title_template", { length: 255 }), // e.g. "{{name}} - Homes for Sale | {{company}}"
+  descriptionTemplate: text("description_template"),
+  schemaTemplate: jsonb("schema_template"), // JSON-LD schema template
+  breadcrumbConfig: jsonb("breadcrumb_config"), // breadcrumb hierarchy rules
+  defaultIndexing: varchar("default_indexing", { length: 20 }).default('index,follow'), // 'index,follow', 'noindex,follow', etc.
+  ogImageTemplate: varchar("og_image_template", { length: 500 }), // template for OG image generation
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by", { length: 255 }),
+}, (table) => [
+  index("idx_seo_templates_page_type").on(table.pageType),
+  index("idx_seo_templates_default").on(table.isDefault),
+]);
+
+export type SeoTemplate = typeof seoTemplates.$inferSelect;
+export type InsertSeoTemplate = typeof seoTemplates.$inferInsert;
+
+// ── 4. Page-Level SEO Overrides ───────────────────────────────────────────────
+export const pageSeoSettings = pgTable("page_seo_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  pageType: varchar("page_type", { length: 50 }).notNull(), // 'community', 'blog', 'agent', 'landing'
+  pageIdentifier: varchar("page_identifier", { length: 255 }).notNull(), // slug, ID, or other unique identifier
+  customTitle: varchar("custom_title", { length: 255 }),
+  customDescription: text("custom_description"),
+  customSlug: varchar("custom_slug", { length: 255 }),
+  featuredImageUrl: varchar("featured_image_url", { length: 500 }),
+  ogImageUrl: varchar("og_image_url", { length: 500 }),
+  breadcrumbPath: jsonb("breadcrumb_path"), // custom breadcrumb override
+  indexingDirective: varchar("indexing_directive", { length: 20 }).default('index,follow'),
+  customSchema: jsonb("custom_schema"), // custom JSON-LD schema
+  focusKeyword: varchar("focus_keyword", { length: 255 }),
+  seoScore: integer("seo_score"), // calculated SEO score (0-100)
+  seoIssues: jsonb("seo_issues"), // array of SEO issues found
+  canonicalUrl: varchar("canonical_url", { length: 500 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by", { length: 255 }),
+}, (table) => [
+  // Ensure one SEO setting per page
+  uniqueIndex("idx_page_seo_unique").on(table.pageType, table.pageIdentifier),
+  index("idx_page_seo_page_type").on(table.pageType),
+  index("idx_page_seo_score").on(table.seoScore),
+]);
+
+export type PageSeoSettings = typeof pageSeoSettings.$inferSelect;
+export type InsertPageSeoSettings = typeof pageSeoSettings.$inferInsert;
+
+// ── 5. Internal Link Management ───────────────────────────────────────────────
+export const internalLinks = pgTable("internal_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sourcePageType: varchar("source_page_type", { length: 50 }).notNull(),
+  sourcePageId: varchar("source_page_id", { length: 255 }).notNull(),
+  targetPageType: varchar("target_page_type", { length: 50 }).notNull(),
+  targetPageId: varchar("target_page_id", { length: 255 }).notNull(),
+  anchorText: varchar("anchor_text", { length: 255 }).notNull(),
+  linkContext: text("link_context"), // surrounding text for context
+  position: integer("position"), // position within content
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_internal_links_source").on(table.sourcePageType, table.sourcePageId),
+  index("idx_internal_links_target").on(table.targetPageType, table.targetPageId),
+  index("idx_internal_links_active").on(table.isActive),
+]);
+
+export type InternalLink = typeof internalLinks.$inferSelect;
+export type InsertInternalLink = typeof internalLinks.$inferInsert;
+
+// ── CMS Enhancement Phase 3: Agent Pages + Landing Pages ─────────────────────
+
+// ── Agent Directory (Phase 3A) ───────────────────────────────────────────────
+export const agentDirectoryProfiles = pgTable("agent_directory_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  firstName: varchar("first_name", { length: 255 }).notNull(),
+  lastName: varchar("last_name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 50 }),
+  fubEmail: varchar("fub_email", { length: 255 }), // Follow Up Boss routing email
+  officeLocation: text("office_location").notNull(), // Comma-separated: "Austin,Houston" for multi-office agents
+  bio: text("bio"),
+  professionalTitle: varchar("professional_title", { length: 255 }),
+  licenseNumber: varchar("license_number", { length: 100 }),
+  websiteUrl: varchar("website_url", { length: 500 }),
+  headshotUrl: varchar("headshot_url", { length: 500 }),
+  socialLinks: jsonb("social_links").$type<{
+    facebook?: string;
+    instagram?: string;
+    linkedin?: string;
+    twitter?: string;
+    youtube?: string;
+    tiktok?: string;
+  }>(),
+  subdomain: varchar("subdomain", { length: 100 }).unique(), // For agentname.spyglassrealty.com
+  isVisible: boolean("is_visible").default(true),
+  sortOrder: integer("sort_order").default(0),
+  
+  // SEO fields (reusing SeoPanel pattern)
+  metaTitle: varchar("meta_title", { length: 255 }),
+  metaDescription: text("meta_description"),
+  indexingDirective: varchar("indexing_directive", { length: 20 }).default('index,follow'),
+  customSchema: jsonb("custom_schema"),
+  seoScore: integer("seo_score"),
+  
+  // Custom content
+  videoUrl: varchar("video_url", { length: 500 }), // Custom intro video
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_agent_directory_visible").on(table.isVisible),
+  index("idx_agent_directory_office").on(table.officeLocation),
+  index("idx_agent_directory_sort").on(table.sortOrder),
+  index("idx_agent_directory_name").on(table.firstName, table.lastName),
+  index("idx_agent_directory_subdomain").on(table.subdomain),
+]);
+
+export type AgentDirectoryProfile = typeof agentDirectoryProfiles.$inferSelect;
+export type InsertAgentDirectoryProfile = typeof agentDirectoryProfiles.$inferInsert;
+
+// ── Landing Pages (Phase 3B) ─────────────────────────────────────────────────
+export const landingPages = pgTable("landing_pages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  pageType: varchar("page_type", { length: 50 }).notNull(), // buy/sell/cash-offer/trade-in/relocation/join-team/join-real/about/newsroom/faq/custom
+  content: text("content").notNull(), // Rich HTML content
+  sections: jsonb("sections").$type<Array<{
+    id: string;
+    heading: string;
+    content: string;
+    imageUrl?: string;
+    ctaText?: string;
+    ctaUrl?: string;
+    order: number;
+  }>>().default([]),
+  
+  // SEO fields
+  metaTitle: varchar("meta_title", { length: 255 }),
+  metaDescription: text("meta_description"),
+  ogImageUrl: varchar("og_image_url", { length: 500 }),
+  indexingDirective: varchar("indexing_directive", { length: 20 }).default('index,follow'),
+  customSchema: jsonb("custom_schema"),
+  seoScore: integer("seo_score"),
+  breadcrumbPath: jsonb("breadcrumb_path").$type<Array<{ name: string; url: string }>>(),
+  
+  // Page-specific scripts and content
+  customScripts: text("custom_scripts"), // For page-specific scripts/schema
+  
+  // Publishing
+  isPublished: boolean("is_published").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_landing_pages_slug").on(table.slug),
+  index("idx_landing_pages_type").on(table.pageType),
+  index("idx_landing_pages_published").on(table.isPublished),
+  index("idx_landing_pages_seo_score").on(table.seoScore),
+]);
+
+export type LandingPage = typeof landingPages.$inferSelect;
+export type InsertLandingPage = typeof landingPages.$inferInsert;
+
+// ── CMS Enhancement Phase 2: Blog System ─────────────────────────────────────
+
+// ── Blog Authors ──────────────────────────────────────────────────────────────
+export const blogAuthors = pgTable("blog_authors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }).unique(),
+  bio: text("bio"),
+  avatarUrl: varchar("avatar_url", { length: 500 }),
+  socialLinks: jsonb("social_links").$type<{
+    twitter?: string;
+    linkedin?: string;
+    facebook?: string;
+    instagram?: string;
+    website?: string;
+  }>(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_blog_authors_email").on(table.email),
+]);
+
+export type BlogAuthor = typeof blogAuthors.$inferSelect;
+export type InsertBlogAuthor = typeof blogAuthors.$inferInsert;
+
+// ── Blog Categories ───────────────────────────────────────────────────────────
+export const blogCategories = pgTable("blog_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  description: text("description"),
+  parentId: varchar("parent_id"), // Self-referencing for hierarchy
+  metaTitle: varchar("meta_title", { length: 255 }),
+  metaDescription: text("meta_description"),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_blog_categories_slug").on(table.slug),
+  index("idx_blog_categories_parent").on(table.parentId),
+  index("idx_blog_categories_sort").on(table.sortOrder),
+]);
+
+export type BlogCategory = typeof blogCategories.$inferSelect;
+export type InsertBlogCategory = typeof blogCategories.$inferInsert;
+
+// ── Blog Posts ─────────────────────────────────────────────────────────────────
+export const blogPosts = pgTable("blog_posts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  content: text("content").notNull(), // Rich text/HTML content
+  excerpt: text("excerpt"),
+  featuredImageUrl: varchar("featured_image_url", { length: 500 }),
+  ogImageUrl: varchar("og_image_url", { length: 500 }),
+  authorId: varchar("author_id").notNull().references(() => blogAuthors.id),
+  status: varchar("status", { length: 20 }).notNull().default('draft'), // 'draft', 'published', 'scheduled'
+  publishedAt: timestamp("published_at"),
+  categoryIds: jsonb("category_ids").$type<string[]>().default([]),
+  tags: jsonb("tags").$type<string[]>().default([]),
+  
+  // SEO fields (reusing SeoPanel pattern)
+  metaTitle: varchar("meta_title", { length: 255 }),
+  metaDescription: text("meta_description"),
+  indexingDirective: varchar("indexing_directive", { length: 20 }).default('index,follow'),
+  customSchema: jsonb("custom_schema"),
+  seoScore: integer("seo_score"),
+  seoIssues: jsonb("seo_issues").$type<string[]>(),
+  canonicalUrl: varchar("canonical_url", { length: 500 }),
+  breadcrumbPath: jsonb("breadcrumb_path").$type<Array<{ name: string; url: string }>>(),
+  
+  // Content features
+  tableOfContents: jsonb("table_of_contents").$type<Array<{ id: string; title: string; level: number }>>(),
+  ctaConfig: jsonb("cta_config").$type<{
+    enabled: boolean;
+    title?: string;
+    description?: string;
+    buttonText?: string;
+    buttonUrl?: string;
+  }>(),
+  readingTime: integer("reading_time"), // Estimated reading time in minutes
+  viewCount: integer("view_count").default(0),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_blog_posts_slug").on(table.slug),
+  index("idx_blog_posts_status").on(table.status),
+  index("idx_blog_posts_author").on(table.authorId),
+  index("idx_blog_posts_published").on(table.publishedAt),
+  index("idx_blog_posts_seo_score").on(table.seoScore),
+  index("idx_blog_posts_status_published").on(table.status, table.publishedAt),
+  index("idx_blog_posts_updated").on(table.updatedAt),
+]);
+
+export type BlogPost = typeof blogPosts.$inferSelect;
+export type InsertBlogPost = typeof blogPosts.$inferInsert;
+
+// ── Blog Post Categories Junction (for many-to-many) ──────────────────────────
+export const blogPostCategories = pgTable("blog_post_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  postId: varchar("post_id").notNull().references(() => blogPosts.id, { onDelete: 'cascade' }),
+  categoryId: varchar("category_id").notNull().references(() => blogCategories.id, { onDelete: 'cascade' }),
+}, (table) => [
+  uniqueIndex("idx_blog_post_categories_unique").on(table.postId, table.categoryId),
+  index("idx_blog_post_categories_post").on(table.postId),
+  index("idx_blog_post_categories_category").on(table.categoryId),
+]);
+
+export type BlogPostCategory = typeof blogPostCategories.$inferSelect;
+export type InsertBlogPostCategory = typeof blogPostCategories.$inferInsert;
+
+// ── CMS Enhancement Phase 4: Testimonials & Reviews System ──────────────────
+
+// ── Testimonials (Phase 4A) ──────────────────────────────────────────────────
+export const testimonials = pgTable("testimonials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  reviewerName: varchar("reviewer_name", { length: 255 }).notNull(),
+  reviewerLocation: varchar("reviewer_location", { length: 255 }),
+  reviewText: text("review_text").notNull(),
+  rating: integer("rating").notNull(), // 1-5 stars
+  source: varchar("source", { length: 50 }).notNull().default('manual'), // google/zillow/facebook/manual
+  sourceUrl: varchar("source_url", { length: 500 }),
+  agentId: varchar("agent_id"), // Optional - link to agent directory profile
+  communitySlug: varchar("community_slug", { length: 255 }), // Optional - link to community
+  photoUrl: varchar("photo_url", { length: 500 }),
+  isApproved: boolean("is_approved").default(false),
+  isFeatured: boolean("is_featured").default(false),
+  displayOrder: integer("display_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_testimonials_approved").on(table.isApproved),
+  index("idx_testimonials_featured").on(table.isFeatured),
+  index("idx_testimonials_rating").on(table.rating),
+  index("idx_testimonials_source").on(table.source),
+  index("idx_testimonials_agent").on(table.agentId),
+  index("idx_testimonials_community").on(table.communitySlug),
+  index("idx_testimonials_display_order").on(table.displayOrder),
+]);
+
+export type Testimonial = typeof testimonials.$inferSelect;
+export type InsertTestimonial = typeof testimonials.$inferInsert;
+
+// ── Review Sources (Phase 4B) ────────────────────────────────────────────────
+export const reviewSources = pgTable("review_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  platform: varchar("platform", { length: 50 }).notNull(), // google/zillow/facebook
+  placeId: varchar("place_id", { length: 255 }), // Google place ID
+  apiKey: varchar("api_key", { length: 500 }), // Optional API key for platform
+  lastSyncedAt: timestamp("last_synced_at"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_review_sources_platform").on(table.platform),
+  index("idx_review_sources_active").on(table.isActive),
+]);
+
+export type ReviewSource = typeof reviewSources.$inferSelect;
+export type InsertReviewSource = typeof reviewSources.$inferInsert;
 
 export const INTEGRATION_DEFINITIONS = [
   {

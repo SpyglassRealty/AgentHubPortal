@@ -73,6 +73,9 @@ async function runDirectMigrations() {
     // Create pulse data tables for Market Pulse functionality
     await createPulseDataTables();
     
+    // CRITICAL: Create agent_resources table
+    await createAgentResourcesTable();
+    
   } catch (error) {
     console.error("[Database] Direct migration error:", error);
     throw error;
@@ -134,6 +137,40 @@ async function createPulseDataTables() {
     
     // Create all missing tables based on schema
     const missingTables = [
+      // CRITICAL: Sessions table for authentication
+      {
+        name: 'sessions',
+        sql: `
+          CREATE TABLE IF NOT EXISTS sessions (
+            sid varchar PRIMARY KEY,
+            sess jsonb NOT NULL,
+            expire timestamp NOT NULL
+          )
+        `
+      },
+      // Agent profiles table
+      {
+        name: 'agent_profiles',
+        sql: `
+          CREATE TABLE IF NOT EXISTS agent_profiles (
+            id varchar PRIMARY KEY,
+            user_id text NOT NULL,
+            title text,
+            headshot_url text,
+            bio text,
+            default_cover_letter text,
+            facebook_url text,
+            instagram_url text,
+            linkedin_url text,
+            twitter_url text,
+            website_url text,
+            marketing_company text,
+            phone text,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
       // CMA tables
       {
         name: 'cmas',
@@ -307,6 +344,20 @@ async function createPulseDataTables() {
           )
         `
       },
+      // Site content table for homepage editor
+      {
+        name: 'site_content',
+        sql: `
+          CREATE TABLE IF NOT EXISTS site_content (
+            id serial PRIMARY KEY,
+            section varchar(100) NOT NULL UNIQUE,
+            content jsonb NOT NULL,
+            updated_by varchar REFERENCES users(id),
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
       // Sync status table
       {
         name: 'sync_status',
@@ -321,6 +372,178 @@ async function createPulseDataTables() {
             updated_at timestamp DEFAULT NOW()
           )
         `
+      },
+      // CRITICAL MISSING TABLES - Adding to fix production issues
+      {
+        name: 'context_suggestions',
+        sql: `
+          CREATE TABLE IF NOT EXISTS context_suggestions (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            suggestion_type varchar NOT NULL,
+            title varchar NOT NULL,
+            description text,
+            priority integer DEFAULT 0,
+            payload jsonb,
+            recommended_app_id varchar,
+            status varchar DEFAULT 'active',
+            expires_at timestamp,
+            created_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'app_usage',
+        sql: `
+          CREATE TABLE IF NOT EXISTS app_usage (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            app_id varchar NOT NULL,
+            page varchar NOT NULL,
+            click_count integer DEFAULT 1,
+            last_used_at timestamp DEFAULT NOW(),
+            created_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'user_notification_settings',
+        sql: `
+          CREATE TABLE IF NOT EXISTS user_notification_settings (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL UNIQUE,
+            notifications_enabled boolean DEFAULT false,
+            lead_assigned_enabled boolean DEFAULT true,
+            appointment_reminder_enabled boolean DEFAULT true,
+            deal_update_enabled boolean DEFAULT true,
+            task_due_enabled boolean DEFAULT true,
+            system_enabled boolean DEFAULT true,
+            appointment_reminder_times jsonb DEFAULT '[1440, 60, 15]'::jsonb,
+            quiet_hours_enabled boolean DEFAULT false,
+            quiet_hours_start varchar DEFAULT '22:00',
+            quiet_hours_end varchar DEFAULT '07:00',
+            email_notifications_enabled boolean DEFAULT false,
+            notification_email varchar,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'saved_content_ideas',
+        sql: `
+          CREATE TABLE IF NOT EXISTS saved_content_ideas (
+            id serial PRIMARY KEY,
+            user_id varchar NOT NULL,
+            month varchar(20) NOT NULL,
+            year integer NOT NULL,
+            week integer NOT NULL,
+            theme varchar(100),
+            platform varchar(50) NOT NULL,
+            content_type varchar(50) NOT NULL,
+            best_time varchar(50),
+            content text NOT NULL,
+            hashtags text,
+            status varchar(20) DEFAULT 'saved',
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'cma_report_configs',
+        sql: `
+          CREATE TABLE IF NOT EXISTS cma_report_configs (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            cma_id varchar NOT NULL UNIQUE,
+            included_sections jsonb,
+            section_order jsonb,
+            cover_letter_override text,
+            layout text DEFAULT 'two_photos',
+            template text DEFAULT 'default',
+            theme text DEFAULT 'spyglass',
+            photo_layout text DEFAULT 'first_dozen',
+            map_style text DEFAULT 'streets',
+            show_map_polygon boolean DEFAULT true,
+            include_agent_footer boolean DEFAULT true,
+            cover_page_config jsonb,
+            custom_photo_selections jsonb,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'cma_report_templates',
+        sql: `
+          CREATE TABLE IF NOT EXISTS cma_report_templates (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            name text NOT NULL,
+            is_default boolean DEFAULT false,
+            included_sections jsonb,
+            section_order jsonb,
+            cover_letter_override text,
+            layout text DEFAULT 'two_photos',
+            theme text DEFAULT 'spyglass',
+            photo_layout text DEFAULT 'first_dozen',
+            map_style text DEFAULT 'streets',
+            show_map_polygon boolean DEFAULT true,
+            include_agent_footer boolean DEFAULT true,
+            cover_page_config jsonb,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'agent_resources',
+        sql: `
+          CREATE TABLE IF NOT EXISTS agent_resources (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            title varchar(255) NOT NULL,
+            type varchar(50) NOT NULL,
+            file_data bytea,
+            file_name varchar(255),
+            file_size integer,
+            mime_type varchar(100),
+            redirect_url text,
+            sort_order integer NOT NULL DEFAULT 0,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'integration_configs',
+        sql: `
+          CREATE TABLE IF NOT EXISTS integration_configs (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            name varchar(100) NOT NULL UNIQUE,
+            display_name varchar(255) NOT NULL,
+            api_key text NOT NULL,
+            additional_config jsonb,
+            is_active boolean DEFAULT true,
+            last_tested_at timestamp,
+            last_test_result varchar(50),
+            last_test_message text,
+            created_by varchar,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'app_visibility',
+        sql: `
+          CREATE TABLE IF NOT EXISTS app_visibility (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            app_id varchar UNIQUE NOT NULL,
+            hidden boolean DEFAULT false,
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
       }
     ];
     
@@ -331,6 +554,7 @@ async function createPulseDataTables() {
     
     // Create indexes for better performance
     const indexes = [
+      'CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON sessions(expire)',
       'CREATE INDEX IF NOT EXISTS idx_cmas_user_id ON cmas(user_id)',
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_zillow_zip_date ON pulse_zillow_data(zip, date)',
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_census_zip_year ON pulse_census_data(zip, year)',
@@ -348,10 +572,38 @@ async function createPulseDataTables() {
       }
     }
     
+    // Communities table for SEO content editor
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS communities (
+        id serial PRIMARY KEY,
+        slug varchar(255) NOT NULL UNIQUE,
+        name varchar(255) NOT NULL,
+        county varchar(100),
+        meta_title varchar(255),
+        meta_description text,
+        focus_keyword varchar(255),
+        description text,
+        highlights jsonb,
+        best_for jsonb,
+        nearby_landmarks jsonb,
+        sections jsonb,
+        published boolean DEFAULT false,
+        featured boolean DEFAULT false,
+        created_at timestamp DEFAULT NOW(),
+        updated_at timestamp DEFAULT NOW(),
+        updated_by varchar(255)
+      )
+    `);
+    console.log(`[Database] Created/verified communities table`);
+
+    // Communities indexes
+    try {
+      await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_communities_slug ON communities(slug)');
+      await pool.query('CREATE INDEX IF NOT EXISTS idx_communities_county ON communities(county)');
+      await pool.query('CREATE INDEX IF NOT EXISTS idx_communities_published ON communities(published)');
+    } catch (e) { /* indexes may already exist */ }
+
     console.log("[Database] All required tables created successfully");
-    
-    // Create CMS pages table
-    await createCmsPagesTable();
     
     // Add market pulse snapshots schema migration
     await migrateMarketPulseSnapshots();
@@ -362,40 +614,41 @@ async function createPulseDataTables() {
   }
 }
 
-// Create CMS pages table for the page builder
-async function createCmsPagesTable() {
+// CRITICAL: Create agent_resources table with correct schema
+async function createAgentResourcesTable() {
   try {
-    console.log("[Database] Creating CMS pages table if not exists...");
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS cms_pages (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        title VARCHAR NOT NULL,
-        slug VARCHAR NOT NULL UNIQUE,
-        type VARCHAR NOT NULL DEFAULT 'page',
-        status VARCHAR NOT NULL DEFAULT 'draft',
-        content JSONB,
-        excerpt TEXT,
-        featured_image_url TEXT,
-        meta_title VARCHAR,
-        meta_description TEXT,
-        focus_keyword VARCHAR,
-        author_id VARCHAR REFERENCES users(id),
-        tags JSONB DEFAULT '[]'::jsonb,
-        category VARCHAR,
-        published_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
+    console.log('[Database] Creating/fixing agent_resources table...');
+    
+    
+    // Create table with correct schema matching shared/schema.ts
+    const createTableSQL = `
+      CREATE TABLE IF NOT EXISTS agent_resources (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id varchar NOT NULL,
+        title varchar(255) NOT NULL,
+        type varchar(50) NOT NULL,
+        file_data bytea,
+        file_name varchar(255),
+        file_size integer,
+        mime_type varchar(100),
+        redirect_url text,
+        sort_order integer NOT NULL DEFAULT 0,
+        created_at timestamp DEFAULT NOW(),
+        updated_at timestamp DEFAULT NOW()
       )
-    `);
+    `;
     
-    // Create indexes
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_cms_pages_slug ON cms_pages(slug)`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_cms_pages_type ON cms_pages(type)`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_cms_pages_status ON cms_pages(status)`);
+    await pool.query(createTableSQL);
     
-    console.log("[Database] CMS pages table created/verified successfully");
+    // Add indexes for performance
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_agent_resources_user_id ON agent_resources (user_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_agent_resources_sort_order ON agent_resources (user_id, sort_order)');
+    
+    console.log('[Database] ✅ agent_resources table created successfully');
+    
   } catch (error) {
-    console.error("[Database] CMS pages table creation error:", error);
+    console.error('[Database] ❌ Error creating agent_resources table:', error);
+    throw error;
   }
 }
 

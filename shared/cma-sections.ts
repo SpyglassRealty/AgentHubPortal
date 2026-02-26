@@ -93,6 +93,7 @@ export interface CMAComparable {
   mlsNumber: string;
   listPrice: number;
   soldPrice?: number;
+  originalPrice?: number;    // Original list price for price history
   bedrooms: number;
   bathrooms: number;
   sqft: number;
@@ -103,6 +104,9 @@ export interface CMAComparable {
   status: string;
   photos: string[];
   pricePerSqft: number;
+  description?: string;      // MLS property description ("About This Home")
+  listDate?: string;         // Date property was listed
+  soldDate?: string;         // Date property was sold (for closed properties)
 }
 
 export interface CMAAgentInfo {

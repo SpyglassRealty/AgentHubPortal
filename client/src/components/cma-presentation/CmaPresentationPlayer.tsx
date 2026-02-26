@@ -180,7 +180,7 @@ export function CmaPresentationPlayer({
         avgPricePerAcre={avgPricePerAcre}
       />
 
-      <div className="flex-1 overflow-auto bg-muted/30 pb-16">
+      <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900/30 pb-16">
         <SectionGrid
           widgets={WIDGETS}
           onSelectWidget={setCurrentSlide}

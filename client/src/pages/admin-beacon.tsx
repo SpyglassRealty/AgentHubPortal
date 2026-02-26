@@ -1,4 +1,4 @@
-import Layout from "@/components/layout";
+
 import { Button } from "@/components/ui/button";
 import { ExternalLink, RefreshCw, Radar } from "lucide-react";
 import { useRef } from "react";
@@ -13,8 +13,7 @@ export default function AdminBeaconPage() {
   };
 
   return (
-    <Layout>
-      <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex flex-col min-h-[600px] h-[calc(100vh-160px)]">
         {/* Toolbar */}
         <div className="flex items-center justify-between px-4 py-2 border-b bg-card">
           <div className="flex items-center gap-2">
@@ -48,6 +47,5 @@ export default function AdminBeaconPage() {
           allow="clipboard-write"
         />
       </div>
-    </Layout>
   );
 }

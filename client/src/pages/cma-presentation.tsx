@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SafeImage } from "@/components/ui/safe-image";
+import { extractPrice, extractDOM } from "@/lib/cma-data-utils";
 import { toast } from "sonner";
 import {
   Home,
@@ -64,6 +66,7 @@ interface PropertyData {
   state?: string;
   zip?: string;
   listPrice: number;
+  originalPrice?: number;
   soldPrice?: number | null;
   beds: number;
   baths: number;
@@ -75,6 +78,7 @@ interface PropertyData {
   listDate?: string;
   soldDate?: string | null;
   daysOnMarket?: number;
+  simpleDaysOnMarket?: number;
   photos?: string[];
   latitude?: number | null;
   longitude?: number | null;
@@ -621,18 +625,11 @@ function SlideshowPlayer({ widgets, cma, agentProfile, activeWidgetId, onClose, 
                 {/* Property Image */}
                 <div className="w-full max-w-2xl mx-auto mb-8">
                   <div className="relative aspect-[4/3] rounded-lg overflow-hidden">
-                    {cma.subjectProperty.photos?.[0] ? (
-                      <img 
-                        src={cma.subjectProperty.photos[0]} 
-                        alt={cma.subjectProperty.address}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-muted flex flex-col items-center justify-center text-muted-foreground">
-                        <Home className="w-16 w-16 mb-4" />
-                        <span className="text-lg font-medium text-yellow-600">No Photo Available</span>
-                      </div>
-                    )}
+                    <SafeImage 
+                      src={cma.subjectProperty.photos?.[0] || ""} 
+                      alt={cma.subjectProperty.address}
+                      className="w-full h-full object-cover"
+                    />
                     {/* Subject Property Badge */}
                     <div className="absolute top-4 left-4">
                       <span className="px-3 py-2 text-sm font-bold text-white bg-[#EF4923] rounded">
@@ -695,20 +692,11 @@ function SlideshowPlayer({ widgets, cma, agentProfile, activeWidgetId, onClose, 
                     <div key={index} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                       {/* Property Image */}
                       <div className="relative aspect-[4/3]">
-                        {comp.photos?.[0] ? (
-                          <img 
-                            src={comp.photos[0]} 
-                            alt={comp.address}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-muted flex flex-col items-center justify-center text-muted-foreground">
-                            <Home className="w-8 h-8" />
-                            <span className="text-xs text-yellow-600 font-medium flex items-center gap-1 mt-2">
-                              No Photo
-                            </span>
-                          </div>
-                        )}
+                        <SafeImage 
+                          src={comp.photos?.[0] || ""} 
+                          alt={comp.address}
+                          className="w-full h-full object-cover"
+                        />
                         {/* Status Badge */}
                         <div className="absolute top-3 left-3">
                           <span className={`px-2 py-1 text-xs font-medium text-white rounded ${
@@ -748,19 +736,77 @@ function SlideshowPlayer({ widgets, cma, agentProfile, activeWidgetId, onClose, 
                           </div>
                         </div>
                         
-                        {/* Additional Info */}
-                        <div className="space-y-1 text-sm text-muted-foreground">
+                        {/* Listing Details */}
+                        <div className="space-y-1 text-xs">
+                          <div className="font-medium text-gray-900">Listing Details</div>
+                          
+                          {/* Original Price - always show, use N/A if missing */}
+                          <div>
+                            Original Price: {comp.originalPrice ? `$${comp.originalPrice.toLocaleString()}` : 'N/A'}
+                          </div>
+                          
+                          {/* Current List Price */}
+                          {comp.listPrice && (
+                            <div>List: ${comp.listPrice.toLocaleString()}</div>
+                          )}
+                          
+                          {/* Listing Date - format as MM/DD/YYYY */}
+                          {(() => {
+                            if (!comp.listDate) return null;
+                            const date = new Date(comp.listDate);
+                            if (isNaN(date.getTime())) return null;
+                            return (
+                              <div>
+                                Listing Date: {date.toLocaleDateString('en-US', {
+                                  month: '2-digit',
+                                  day: '2-digit', 
+                                  year: 'numeric'
+                                })}
+                              </div>
+                            );
+                          })()}
+                          
+                          {/* Price per square foot */}
+                          {(() => {
+                            const price = extractPrice(comp);
+                            const sqft = comp.sqft;
+                            if (price && sqft && sqft > 0) {
+                              return <div>$/Sqft: ${Math.round(price / sqft)}</div>;
+                            }
+                            return null;
+                          })()}
+                          
+                          {/* Days on Market - use extractDOM utility to get simpleDaysOnMarket */}
+                          {(() => {
+                            const dom = extractDOM(comp);
+                            return dom !== null && (
+                              <div>DOM: {dom}</div>
+                            );
+                          })()}
+                          
+                          {/* For Closed/Sold comps - add sold price and sold date */}
+                          {comp.soldPrice && (
+                            <div>Sold Price: ${comp.soldPrice.toLocaleString()}</div>
+                          )}
+                          
+                          {(() => {
+                            if (!comp.soldDate) return null;
+                            const date = new Date(comp.soldDate);
+                            if (isNaN(date.getTime())) return null;
+                            return (
+                              <div>
+                                Sold Date: {date.toLocaleDateString('en-US', {
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  year: 'numeric'
+                                })}
+                              </div>
+                            );
+                          })()}
+                          
+                          {/* MLS Number */}
                           {comp.mlsNumber && (
-                            <div>MLS# {comp.mlsNumber}</div>
-                          )}
-                          {comp.daysOnMarket && comp.daysOnMarket > 0 && (
-                            <div>{comp.daysOnMarket} days on market</div>
-                          )}
-                          {comp.soldDate && (
-                            <div>Sold: {new Date(comp.soldDate).toLocaleDateString()}</div>
-                          )}
-                          {comp.listDate && !comp.soldDate && (
-                            <div>Listed: {new Date(comp.listDate).toLocaleDateString()}</div>
+                            <div className="text-muted-foreground">MLS# {comp.mlsNumber}</div>
                           )}
                         </div>
                       </div>
@@ -808,15 +854,15 @@ function SlideshowPlayer({ widgets, cma, agentProfile, activeWidgetId, onClose, 
                 {cma.subjectProperty.photos && cma.subjectProperty.photos.length > 0 ? (
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {cma.subjectProperty.photos.map((photo, index) => (
-                      <div key={index} className="relative aspect-[4/3] rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                        <img 
+                      <div key={index} className="relative aspect-[4/3] rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                           onClick={() => {
+                             // Could add modal functionality here
+                             window.open(photo, '_blank');
+                           }}>
+                        <SafeImage 
                           src={photo} 
                           alt={`${cma.subjectProperty.address} - Photo ${index + 1}`}
-                          className="w-full h-full object-cover cursor-pointer"
-                          onClick={() => {
-                            // Could add modal functionality here
-                            window.open(photo, '_blank');
-                          }}
+                          className="w-full h-full object-cover"
                         />
                         <div className="absolute bottom-2 right-2">
                           <span className="px-2 py-1 text-xs font-medium text-white bg-black/60 rounded backdrop-blur">
@@ -973,6 +1019,26 @@ export default function CmaPresentationPage() {
     );
   }
 
+  // Add error handling for failed fetch
+  if (!isLoading && !cma) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">CMA Not Found</h1>
+          <p className="text-muted-foreground">The requested CMA could not be loaded.</p>
+          <Button
+            variant="outline"
+            onClick={() => window.history.back()}
+            className="mt-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background p-6">
@@ -989,6 +1055,7 @@ export default function CmaPresentationPage() {
   }
 
   const cmaForDisplay: CmaData = cma || {
+    id: cmaId,
     name: "",
     subjectProperty: null,
     comparableProperties: [],
@@ -1060,18 +1127,20 @@ export default function CmaPresentationPage() {
         </div>
       </div>
 
-      {/* Slideshow Player */}
-      <SlideshowPlayer
-        widgets={CMA_WIDGETS}
-        cma={cmaForDisplay}
-        agentProfile={agentProfile}
-        activeWidgetId={activeWidgetId}
-        onClose={handleCloseSlideshow}
-        onNext={handleNextWidget}
-        onPrevious={handlePreviousWidget}
-        onEditBio={() => setIsBioModalOpen(true)}
-        isAgentProfileLoading={isAgentProfileLoading}
-      />
+      {/* Slideshow Player - Only render if we have data or are not loading */}
+      {(!isLoading && activeWidgetId) && (
+        <SlideshowPlayer
+          widgets={CMA_WIDGETS}
+          cma={cmaForDisplay}
+          agentProfile={agentProfile}
+          activeWidgetId={activeWidgetId}
+          onClose={handleCloseSlideshow}
+          onNext={handleNextWidget}
+          onPrevious={handlePreviousWidget}
+          onEditBio={() => setIsBioModalOpen(true)}
+          isAgentProfileLoading={isAgentProfileLoading}
+        />
+      )}
 
       {/* Bio Edit Modal */}
       <BioEditModal

@@ -1,12 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, Map as MapIcon, TrendingUp, List, LayoutGrid, Table2, Bed, Bath, Square, Clock, MapPin, Home, AlertTriangle, ArrowUpRight, ArrowDownRight, Camera } from 'lucide-react';
+import { SafeImage } from '@/components/ui/safe-image';
+import { BarChart3, Map as MapIcon, TrendingUp, List, LayoutGrid, Table2, Bed, Bath, Square, Clock, MapPin, Home, AlertTriangle, ArrowUpRight, ArrowDownRight, Camera, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CMAMap } from '@/components/cma-map';
 import { PropertyDetailModal } from './PropertyDetailModal';
-import { PhotoGalleryModal } from '@/components/cma/PhotoGalleryModal';
 import { extractPrice, extractSqft, extractDOM, calculatePricePerSqft, getCityState } from '@/lib/cma-data-utils';
 import type { CmaProperty } from '../types';
 import type { Property } from '@shared/schema';
@@ -14,6 +15,7 @@ import type { Property } from '@shared/schema';
 interface CompsWidgetProps {
   comparables: CmaProperty[];
   subjectProperty?: CmaProperty;
+  suggestedListPrice?: number;
 }
 
 interface CmaStatMetric {
@@ -140,14 +142,14 @@ const normalizeStatus = (status: string): string => {
 
 function convertToProperty(cmaProperty: CmaProperty): Property {
   return {
-    id: cmaProperty.id,
     mlsNumber: cmaProperty.id,
-    unparsedAddress: cmaProperty.address,
+    address: cmaProperty.address,
     city: cmaProperty.city,
     state: cmaProperty.state,
     postalCode: cmaProperty.zipCode,
-    listPrice: cmaProperty.originalPrice || cmaProperty.price,
+    price: cmaProperty.price,
     soldPrice: cmaProperty.soldPrice,
+    listPrice: cmaProperty.originalPrice || cmaProperty.price,
     bedrooms: cmaProperty.beds,
     bathrooms: cmaProperty.baths,
     sqft: cmaProperty.sqft,
@@ -167,7 +169,7 @@ function StatItem({
   label, 
   value, 
   subtext, 
-  subtextColor = 'text-muted-foreground',
+  subtextColor = 'text-gray-600',
   vsMarketPercent,
   yourValue
 }: { 
@@ -181,10 +183,10 @@ function StatItem({
   const testId = `stat-${label.toLowerCase().replace(/[\s/]+/g, '-')}`;
   return (
     <div className="text-center" data-testid={testId}>
-      <p className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider" data-testid={`${testId}-label`}>
+      <p className="text-[10px] sm:text-xs text-gray-600 font-medium uppercase tracking-wider" data-testid={`${testId}-label`}>
         {label}
       </p>
-      <p className="text-sm sm:text-lg font-bold" data-testid={`${testId}-value`}>{value}</p>
+      <p className="text-sm sm:text-lg font-bold text-gray-900" data-testid={`${testId}-value`}>{value}</p>
       {vsMarketPercent !== undefined && vsMarketPercent !== null && (
         <p className={`text-[10px] sm:text-xs flex items-center justify-center gap-0.5 ${vsMarketPercent > 0 ? 'text-red-500' : 'text-green-500'}`} data-testid={`${testId}-vs-market`}>
           {vsMarketPercent > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
@@ -192,7 +194,7 @@ function StatItem({
         </p>
       )}
       {yourValue && (
-        <p className="text-[10px] sm:text-xs text-muted-foreground truncate" data-testid={`${testId}-your`}>
+        <p className="text-[10px] sm:text-xs text-gray-600 truncate" data-testid={`${testId}-your`}>
           Your: {yourValue}
         </p>
       )}
@@ -203,7 +205,7 @@ function StatItem({
   );
 }
 
-function PropertyCard({ property, isSubject = false, onClick, onPhotoClick }: { property: CmaProperty; isSubject?: boolean; onClick?: () => void; onPhotoClick?: () => void }) {
+function PropertyCard({ property, isSubject = false, onClick }: { property: CmaProperty; isSubject?: boolean; onClick?: () => void }) {
   return (
     <Card 
       className={`overflow-hidden cursor-pointer hover:shadow-lg transition-shadow ${isSubject ? 'border-[#EF4923] border-2' : ''}`}
@@ -218,22 +220,24 @@ function PropertyCard({ property, isSubject = false, onClick, onPhotoClick }: { 
         }
       }}
     >
-      <div 
-        className="relative aspect-[4/3] cursor-pointer group"
-        onClick={(e) => {
-          e.stopPropagation();
-          onPhotoClick?.();
-        }}
-      >
+      <div className="relative aspect-[4/3]">
         {property.photos?.[0] ? (
-          <img 
-            src={property.photos[0]} 
-            alt={property.address}
-            className="w-full h-full object-cover"
-            data-testid={`property-image-${property.id}`}
-          />
+          <div 
+            className="cursor-pointer group"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick?.();
+            }}
+          >
+            <SafeImage 
+              src={property.photos[0]} 
+              alt={property.address}
+              className="w-full h-full object-cover"
+              data-testid={`property-image-${property.id}`}
+            />
+          </div>
         ) : (
-          <div className="w-full h-full bg-muted flex flex-col items-center justify-center text-muted-foreground gap-1">
+          <div className="w-full h-full bg-gray-50 flex flex-col items-center justify-center text-gray-600 gap-1">
             <Home className="w-8 h-8" />
             <span className="text-xs text-yellow-600 font-medium flex items-center gap-1">
               <AlertTriangle className="w-3 h-3" />
@@ -249,41 +253,24 @@ function PropertyCard({ property, isSubject = false, onClick, onPhotoClick }: { 
             {isSubject ? 'Subject' : property.status}
           </span>
         </div>
-        
-        {/* Photo count indicator for multiple photos */}
-        {property.photos && property.photos.length > 1 && (
-          <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded text-xs flex items-center gap-1">
-            <Camera className="w-3 h-3" />
-            <span>{property.photos.length}</span>
-          </div>
-        )}
-
-        {/* Hover overlay hint */}
-        {property.photos && property.photos.length > 0 && (
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-            <span className="opacity-0 group-hover:opacity-100 text-white text-sm font-medium">
-              {property.photos.length > 1 ? 'Click to view photos' : 'Click to view photo'}
-            </span>
-          </div>
-        )}
       </div>
       
       <div className="p-4">
-        <p className="font-medium text-sm truncate" data-testid={`property-address-${property.id}`}>{property.address}</p>
+        <p className="font-medium text-sm truncate text-gray-900" data-testid={`property-address-${property.id}`}>{property.address}</p>
         {getCityState(property) && (
-          <p className="text-xs text-muted-foreground truncate">
+          <p className="text-xs text-gray-600 truncate">
             {getCityState(property)}
           </p>
         )}
         <div className="flex items-baseline justify-between gap-2 mt-2 flex-wrap">
-          <p className="text-lg font-bold" data-testid={`property-price-${property.id}`}>
+          <p className="text-lg font-bold text-gray-900" data-testid={`property-price-${property.id}`}>
             {formatCurrency(getDisplayPrice(property))}
           </p>
-          <p className="text-sm text-muted-foreground" data-testid={`property-ppsf-${property.id}`}>
+          <p className="text-sm text-gray-600" data-testid={`property-ppsf-${property.id}`}>
             {getSafePricePerSqft(property)}/sqft
           </p>
         </div>
-        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
+        <div className="flex items-center gap-3 mt-2 text-xs text-gray-600 flex-wrap">
           <span className="flex items-center gap-1" data-testid={`property-beds-${property.id}`}>
             <Bed className="w-3 h-3" /> {property.beds}
           </span>
@@ -294,8 +281,8 @@ function PropertyCard({ property, isSubject = false, onClick, onPhotoClick }: { 
             <Square className="w-3 h-3" /> {property.sqft.toLocaleString()}
           </span>
         </div>
-        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1" data-testid={`property-dom-${property.id}`}>
-          <Clock className="w-3 h-3" /> {property.daysOnMarket} days on market
+        <p className="text-xs text-gray-600 mt-2 flex items-center gap-1" data-testid={`property-dom-${property.id}`}>
+          <Clock className="w-3 h-3" /> {extractDOM(property) || 0} days on market
         </p>
       </div>
     </Card>
@@ -319,13 +306,13 @@ function PropertyListItem({ property, isSubject = false, onClick }: { property: 
     >
       <div className="w-32 h-24 flex-shrink-0 rounded overflow-hidden">
         {property.photos?.[0] ? (
-          <img 
+          <SafeImage 
             src={property.photos[0]} 
             alt={property.address}
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-muted flex flex-col items-center justify-center text-muted-foreground gap-1">
+          <div className="w-full h-full bg-gray-50 flex flex-col items-center justify-center text-gray-600 gap-1">
             <Home className="w-6 h-6" />
             <span className="text-[10px] text-yellow-600 font-medium flex items-center gap-0.5">
               <AlertTriangle className="w-2.5 h-2.5" />
@@ -340,18 +327,18 @@ function PropertyListItem({ property, isSubject = false, onClick }: { property: 
             {isSubject ? 'Subject' : property.status}
           </Badge>
         </div>
-        <p className="font-medium text-sm truncate" data-testid={`property-list-address-${property.id}`}>{property.address}</p>
-        <p className="text-lg font-bold mt-1" data-testid={`property-list-price-${property.id}`}>
+        <p className="font-medium text-sm truncate text-gray-900" data-testid={`property-list-address-${property.id}`}>{property.address}</p>
+        <p className="text-lg font-bold mt-1 text-gray-900" data-testid={`property-list-price-${property.id}`}>
           {formatCurrency(getDisplayPrice(property))}
-          <span className="text-sm font-normal text-muted-foreground ml-2">
+          <span className="text-sm font-normal text-gray-600 ml-2">
             {getSafePricePerSqft(property)}/sqft
           </span>
         </p>
-        <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
+        <div className="flex items-center gap-4 mt-1 text-xs text-gray-600 flex-wrap">
           <span>{property.beds} beds</span>
           <span>{property.baths} baths</span>
           <span>{property.sqft.toLocaleString()} sqft</span>
-          <span>{property.daysOnMarket} DOM</span>
+          <span>{extractDOM(property) || 0} DOM</span>
         </div>
       </div>
     </Card>
@@ -380,7 +367,7 @@ function PropertyTable({ comparables, subjectProperty, onPropertyClick }: { comp
           {allProperties.map((property, index) => (
             <tr 
               key={property.id} 
-              className={`border-b hover:bg-muted/50 cursor-pointer ${property.isSubject ? 'bg-[#EF4923]/10' : ''}`}
+              className={`border-b hover:bg-gray-50 cursor-pointer ${property.isSubject ? 'bg-[#EF4923]/10' : ''}`}
               data-testid={`property-row-${property.id}`}
               onClick={() => onPropertyClick?.(property)}
               tabIndex={0}
@@ -402,11 +389,475 @@ function PropertyTable({ comparables, subjectProperty, onPropertyClick }: { comp
               <td className="text-center p-3" data-testid={`table-beds-${index}`}>{property.beds}</td>
               <td className="text-center p-3" data-testid={`table-baths-${index}`}>{property.baths}</td>
               <td className="text-right p-3" data-testid={`table-sqft-${index}`}>{property.sqft.toLocaleString()}</td>
-              <td className="text-right p-3" data-testid={`table-dom-${index}`}>{property.daysOnMarket}</td>
+              <td className="text-right p-3" data-testid={`table-dom-${index}`}>{extractDOM(property) || 0}</td>
             </tr>
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// Helper function to calculate comparison indicators
+function getComparisonIndicator(compValue: number | null, subjectValue: number | null, field: 'sqft' | 'lot' | 'count') {
+  if (compValue === null || subjectValue === null || subjectValue === 0) return null;
+  
+  if (field === 'count') {
+    // For beds, baths, garage - show absolute difference
+    const diff = compValue - subjectValue;
+    if (diff === 0) return null;
+    return {
+      arrow: diff > 0 ? ArrowUpRight : ArrowDownRight,
+      text: `${diff > 0 ? '↑' : '↓'}${Math.abs(diff)}`,
+      color: diff > 0 ? 'text-green-500' : 'text-red-500'
+    };
+  } else {
+    // For sqft, lot - show percentage difference
+    const pctDiff = ((compValue - subjectValue) / subjectValue) * 100;
+    if (Math.abs(pctDiff) < 0.5) return null; // Don't show very small differences
+    return {
+      arrow: pctDiff > 0 ? ArrowUpRight : ArrowDownRight,
+      text: `${pctDiff > 0 ? '↑' : '↓'}${Math.abs(pctDiff).toFixed(1)}%`,
+      color: pctDiff > 0 ? 'text-green-500' : 'text-red-500'
+    };
+  }
+}
+
+// Status legend for subject column
+function StatusLegend() {
+  return (
+    <div className="space-y-1 text-xs">
+      <div className="font-medium">Listing Status</div>
+      <div className="space-y-0.5">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+          <span className="text-gray-600">Active (For Sale) are current competition</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+          <span className="text-gray-600">Sold determine recent market value</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+          <span className="text-gray-600">Pending signal market direction</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+          <span className="text-gray-600">Withdrawn/Expired indicate overpriced</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Side-by-side comparison view component
+function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, mapboxToken, handlePropertyClick }: { comparables: CmaProperty[]; subjectProperty?: CmaProperty; geocodedCoords?: {latitude: number; longitude: number} | null; mapboxToken?: string; handlePropertyClick?: (comp: CmaProperty) => Promise<void> }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  // Responsive columns based on screen width
+  const [visibleColumns, setVisibleColumns] = useState(4);
+  
+  useEffect(() => {
+    const updateColumns = () => {
+      const width = typeof window !== 'undefined' ? window.innerWidth : 1200;
+      const totalComps = comparables.length;
+      
+      // Calculate optimal columns based on available width (each column needs ~240px including subject)
+      const availableWidth = width - 240; // Subject column width
+      const maxPossibleColumns = Math.floor(availableWidth / 240);
+      
+      // Show all comparables if they fit on screen, otherwise use responsive breakpoints
+      if (totalComps <= maxPossibleColumns && width >= 1000) {
+        setVisibleColumns(totalComps);
+      } else if (width >= 1600) {
+        setVisibleColumns(Math.min(6, totalComps));
+      } else if (width >= 1400) {
+        setVisibleColumns(Math.min(5, totalComps));
+      } else if (width >= 1200) {
+        setVisibleColumns(Math.min(4, totalComps));
+      } else if (width >= 1000) {
+        setVisibleColumns(Math.min(3, totalComps));
+      } else if (width >= 768) {
+        setVisibleColumns(2);
+      } else {
+        setVisibleColumns(1);
+      }
+    };
+    
+    updateColumns();
+    window.addEventListener('resize', updateColumns);
+    return () => window.removeEventListener('resize', updateColumns);
+  }, [comparables.length]);
+  
+  const visibleComparables = comparables.slice(currentIndex, currentIndex + visibleColumns);
+  const canScrollLeft = currentIndex > 0;
+  const canScrollRight = currentIndex + visibleColumns < comparables.length;
+  
+  const scrollLeft = () => {
+    setCurrentIndex(Math.max(0, currentIndex - visibleColumns));
+  };
+  
+  const scrollRight = () => {
+    setCurrentIndex(Math.min(comparables.length - visibleColumns, currentIndex + visibleColumns));
+  };
+  
+  if (!subjectProperty && !comparables?.length) {
+    return (
+      <div className="flex items-center justify-center h-64 text-gray-500">
+        <div className="text-center">
+          <Home className="w-12 h-12 mx-auto mb-2 opacity-50" />
+          <p>Subject property required for comparison view</p>
+        </div>
+      </div>
+    );
+  }
+  
+  const subjectSqft = extractSqft(subjectProperty);
+  const subjectLotSize = subjectProperty.lotSize || subjectProperty.lotSizeAcres || null;
+  
+  return (
+    <div className="relative">
+      <div className="overflow-x-auto">
+        <div className="inline-flex min-w-full">
+          {/* Fixed Subject Column */}
+          <div className="w-56 flex-shrink-0 border-r border-gray-200 bg-blue-50">
+            <div className="p-4 space-y-4">
+              {/* Subject Header */}
+              <div className="text-center">
+                {(() => {
+                  const subLat = subjectProperty?.latitude || subjectProperty?.map?.latitude || geocodedCoords?.latitude;
+                  const subLng = subjectProperty?.longitude || subjectProperty?.map?.longitude || geocodedCoords?.longitude;
+                  return (subLat && subLng && mapboxToken) ? (
+                    <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden mb-2">
+                      <img
+                        src={`https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+e74c3c(${subLng},${subLat})/${subLng},${subLat},14,0/300x200@2x?access_token=${mapboxToken}`}
+                      alt={`Map of ${subjectProperty.address}`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to address text if map fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallback = target.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                    <div className="w-full h-full bg-gray-100 rounded-lg flex-col items-center justify-center text-gray-600 gap-1 p-2" style={{ display: 'none' }}>
+                      <MapPin className="w-6 h-6" />
+                      <span className="text-xs text-center leading-tight">Map unavailable</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full h-32 bg-gray-100 rounded-lg flex flex-col items-center justify-center text-gray-600 gap-1 p-2 mb-2">
+                      <MapPin className="w-6 h-6" />
+                      <span className="text-xs text-center leading-tight font-medium">No map coordinates</span>
+                    </div>
+                  );
+                })()}
+                <div className="font-medium text-sm">{subjectProperty.address}</div>
+                <div className="text-xs text-gray-600">Subject Property</div>
+              </div>
+              
+              {/* Subject Stats */}
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Beds:</span>
+                  <span>{subjectProperty.beds || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Baths:</span>
+                  <span>{subjectProperty.baths || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Sq.Ft:</span>
+                  <span>{subjectSqft ? subjectSqft.toLocaleString() : '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Lot:</span>
+                  <span>{subjectLotSize ? subjectLotSize.toLocaleString() : '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Garage:</span>
+                  <span>{subjectProperty.garageSpaces || subjectProperty.garage || '0'}</span>
+                </div>
+              </div>
+              
+              {/* Your Comp Guide */}
+              <div className="pt-4 border-t border-blue-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <Home className="w-4 h-4" />
+                  <span className="font-medium text-sm">Your Comp Guide</span>
+                </div>
+                <StatusLegend />
+              </div>
+            </div>
+          </div>
+          
+          {/* Scrollable Comparable Columns */}
+          {visibleComparables.map((comp, index) => {
+            const compSqft = extractSqft(comp);
+            const compPrice = extractPrice(comp);
+            const compLotSize = comp.lotSize || comp.lotSizeAcres || null;
+            
+            // Calculate indicators
+            const sqftIndicator = getComparisonIndicator(compSqft, subjectSqft, 'sqft');
+            const lotIndicator = getComparisonIndicator(compLotSize, subjectLotSize, 'lot');
+            const bedsIndicator = getComparisonIndicator(comp.beds, subjectProperty.beds, 'count');
+            const bathsIndicator = getComparisonIndicator(comp.baths, subjectProperty.baths, 'count');
+            const garageIndicator = getComparisonIndicator(
+              comp.garageSpaces || comp.garage || 0, 
+              subjectProperty.garageSpaces || subjectProperty.garage || 0, 
+              'count'
+            );
+            
+            // Sold price percentage
+            const listPrice = comp.listPrice || comp.price;
+            const soldPrice = comp.soldPrice;
+            const soldPct = (listPrice && soldPrice) ? (soldPrice / listPrice) * 100 : null;
+            const soldPctColor = soldPct ? (soldPct >= 100 ? 'text-green-600' : soldPct >= 95 ? 'text-gray-900' : 'text-red-600') : '';
+            
+            return (
+              <div key={comp.id} className="w-56 flex-shrink-0 border-r border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => handlePropertyClick?.(comp)}>
+                <div className="p-4 space-y-4">
+                  {/* Comp Header */}
+                  <div className="text-center">
+                    <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden mb-2">
+                      {comp.photos && comp.photos.length > 0 ? (
+                        <img 
+                          src={comp.photos[0]} 
+                          alt={comp.address}
+                          className="w-full h-full object-cover cursor-pointer hover:opacity-80"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePropertyClick?.(comp);
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Camera className="w-8 h-8 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="font-medium text-sm text-gray-900">{comp.address}</div>
+                    <div className="text-sm font-semibold text-green-600">
+                      {compPrice ? `$${compPrice.toLocaleString()}` : '-'}
+                    </div>
+                    <div className="text-xs text-gray-600 capitalize">
+                      {comp.status || 'Unknown'}
+                    </div>
+                  </div>
+                  
+                  {/* Comp Stats with Indicators */}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span>Beds:</span>
+                      <div className="flex items-center gap-1">
+                        <span>{comp.beds || '-'}</span>
+                        {bedsIndicator && (
+                          <span className={`text-xs ${bedsIndicator.color}`}>
+                            {bedsIndicator.text}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>Baths:</span>
+                      <div className="flex items-center gap-1">
+                        <span>{comp.baths || '-'}</span>
+                        {bathsIndicator && (
+                          <span className={`text-xs ${bathsIndicator.color}`}>
+                            {bathsIndicator.text}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>Sq.Ft:</span>
+                      <div className="flex items-center gap-1">
+                        <span>{compSqft ? compSqft.toLocaleString() : '-'}</span>
+                        {sqftIndicator && (
+                          <span className={`text-xs ${sqftIndicator.color}`}>
+                            {sqftIndicator.text}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>Lot:</span>
+                      <div className="flex items-center gap-1">
+                        <span>{compLotSize ? compLotSize.toLocaleString() : '-'}</span>
+                        {lotIndicator && (
+                          <span className={`text-xs ${lotIndicator.color}`}>
+                            {lotIndicator.text}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>Garage:</span>
+                      <div className="flex items-center gap-1">
+                        <span>{comp.garageSpaces || comp.garage || '0'}</span>
+                        {garageIndicator && (
+                          <span className={`text-xs ${garageIndicator.color}`}>
+                            {garageIndicator.text}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Listing Details */}
+                  <div className="pt-4 border-t border-gray-200 space-y-1 text-xs">
+                    <div className="font-medium">Listing Details</div>
+                    
+                    {/* DEBUG: Log full comp object */}
+                    {(() => {
+                      console.log(`🔍 FULL COMP OBJECT - ${comp.address}:`, comp);
+                      return null;
+                    })()}
+                    
+                    {/* List Price */}
+                    {listPrice && (
+                      <div>List Price: ${listPrice.toLocaleString()}</div>
+                    )}
+                    
+                    {/* Listing Date - RESO compliant MM/DD/YYYY format */}
+                    <div>
+                      Listing Date: {comp.listDate ? (() => {
+                        const date = new Date(comp.listDate);
+                        if (isNaN(date.getTime())) return '—';
+                        const mm = String(date.getMonth() + 1).padStart(2, '0');
+                        const dd = String(date.getDate()).padStart(2, '0');
+                        const yyyy = date.getFullYear();
+                        return `${mm}/${dd}/${yyyy}`;
+                      })() : '—'}
+                    </div>
+                    
+                    {/* Price per square foot */}
+                    {compPrice && compSqft && (
+                      <div>$/Sqft: ${Math.round(compPrice / compSqft)}</div>
+                    )}
+                    
+                    {/* Days on Market - use extractDOM utility prioritizing simpleDaysOnMarket */}
+                    {(() => {
+                      const dom = extractDOM(comp);
+                      return dom !== null && (
+                        <div>Days on Market: {dom}</div>
+                      );
+                    })()}
+                    
+                    {/* Original List Price - RESO compliant label, show only if different from list price */}
+                    {comp.originalPrice && comp.originalPrice !== listPrice && (
+                      <div>
+                        Original List Price: ${comp.originalPrice.toLocaleString()}
+                      </div>
+                    )}
+                    
+                    {/* Lot Size - HIDE ROW if no data (per Daryl's requirement) */}
+                    {(() => {
+                      let lotSizeText = null;
+                      
+                      // Priority 1: lot.acres if available
+                      if (comp.lot?.acres && comp.lot.acres > 0) {
+                        lotSizeText = `${comp.lot.acres.toFixed(2)} acres`;
+                      }
+                      // Priority 2: lot.squareFeet if available  
+                      else if (comp.lot?.squareFeet && comp.lot.squareFeet > 0) {
+                        lotSizeText = `${comp.lot.squareFeet.toLocaleString()} sqft`;
+                      }
+                      // Priority 3: lotSizeAcres field
+                      else if (comp.lotSizeAcres && comp.lotSizeAcres > 0) {
+                        lotSizeText = `${comp.lotSizeAcres.toFixed(2)} acres`;
+                      }
+                      // Priority 4: lotSizeSquareFeet field  
+                      else if (comp.lotSizeSquareFeet && comp.lotSizeSquareFeet > 0) {
+                        lotSizeText = `${comp.lotSizeSquareFeet.toLocaleString()} sqft`;
+                      }
+                      // Priority 5: lotSize field (legacy)
+                      else if (comp.lotSize && comp.lotSize > 0) {
+                        lotSizeText = `${comp.lotSize.toLocaleString()} sqft`;
+                      }
+                      
+                      // ONLY show row if we have data - HIDE entirely if null/undefined/0
+                      return lotSizeText ? (
+                        <div>Lot Size: {lotSizeText}</div>
+                      ) : null;
+                    })()}
+                    
+                    {/* Garage - HIDE ROW if no data (per Daryl's requirement) */}
+                    {(() => {
+                      let garageSpaces = 0;
+                      
+                      // Check garageSpaces field first
+                      if (comp.garageSpaces && comp.garageSpaces > 0) {
+                        garageSpaces = comp.garageSpaces;
+                      }
+                      // Check if there's a details.numGarageSpaces (from raw data)
+                      else if ((comp as any).details?.numGarageSpaces && (comp as any).details.numGarageSpaces > 0) {
+                        garageSpaces = (comp as any).details.numGarageSpaces;
+                      }
+                      
+                      // ONLY show row if we have garage spaces - HIDE entirely if null/undefined/0
+                      return garageSpaces > 0 ? (
+                        <div>Garage: {garageSpaces} spaces</div>
+                      ) : null;
+                    })()}
+                    
+                    {/* For Closed/Sold comps - RESO compliant labels */}
+                    {comp.soldPrice && (
+                      <div>Close Price: ${comp.soldPrice.toLocaleString()}</div>
+                    )}
+                    
+                    {(() => {
+                      if (!comp.soldDate) return null;
+                      const date = new Date(comp.soldDate);
+                      if (isNaN(date.getTime())) return null;
+                      const mm = String(date.getMonth() + 1).padStart(2, '0');
+                      const dd = String(date.getDate()).padStart(2, '0');
+                      const yyyy = date.getFullYear();
+                      return (
+                        <div>Close Date: {mm}/{dd}/{yyyy}</div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* "About This Home" section removed per Daryl's request */}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      
+      {/* Navigation Controls */}
+      {comparables.length > visibleColumns && (
+        <div className="flex justify-center items-center gap-4 mt-4 pb-4">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={scrollLeft}
+            disabled={!canScrollLeft}
+            className="rounded-full w-12 h-12"
+            data-testid="scroll-left"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </Button>
+          
+          <div className="text-sm text-gray-600">
+            {currentIndex + 1}-{Math.min(currentIndex + visibleColumns, comparables.length)} of {comparables.length} comparables
+          </div>
+          
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={scrollRight}
+            disabled={!canScrollRight}
+            className="rounded-full w-12 h-12"
+            data-testid="scroll-right"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -420,8 +871,8 @@ function CompsMapView({ comparables, subjectProperty }: { comparables: CmaProper
 
   if (!hasSubjectCoords && validComparables.length === 0) {
     return (
-      <div className="h-full min-h-[400px] flex items-center justify-center rounded-lg border bg-muted/30" data-testid="map-no-coords">
-        <div className="text-center text-muted-foreground">
+      <div className="h-full min-h-[400px] flex items-center justify-center rounded-lg border bg-gray-50" data-testid="map-no-coords">
+        <div className="text-center text-gray-600">
           <MapPin className="w-12 h-12 mx-auto mb-2 opacity-50" />
           <p className="text-lg font-medium">Map Unavailable</p>
           <p className="text-sm">No coordinates found for properties</p>
@@ -441,18 +892,32 @@ function CompsMapView({ comparables, subjectProperty }: { comparables: CmaProper
   );
 }
 
-export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) {
+export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }: CompsWidgetProps) {
+  // DEBUG: Log actual data structure
+  console.log('🔍 CompsWidget DEBUG - Data received:', {
+    comparablesCount: comparables?.length || 0,
+    sampleComp: comparables?.[0] ? {
+      id: comparables[0].id,
+      address: comparables[0].address,
+      originalPrice: comparables[0].originalPrice,
+      listDate: comparables[0].listDate,
+      simpleDaysOnMarket: comparables[0].simpleDaysOnMarket,
+      daysOnMarket: comparables[0].daysOnMarket,
+      allFields: Object.keys(comparables[0])
+    } : null
+  });
+  
   // Handle empty comparables
   if (!comparables || comparables.length === 0) {
     return (
-      <div className="flex flex-col h-full bg-background" data-testid="comps-widget">
+      <div className="flex flex-col h-full bg-white" data-testid="comps-widget">
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-              <BarChart3 className="w-8 h-8 text-muted-foreground" />
+            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <BarChart3 className="w-8 h-8 text-gray-600" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">No Comparable Properties</h3>
-            <p className="text-muted-foreground">
+            <h3 className="text-lg font-semibold mb-2 text-gray-900">No Comparable Properties</h3>
+            <p className="text-gray-600">
               No comparable properties were found for this CMA. Please check the CMA data or refresh the presentation.
             </p>
           </div>
@@ -460,14 +925,73 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
       </div>
     );
   }
-  
   const [mainView, setMainView] = useState<'compare' | 'map' | 'stats'>('compare');
-  const [subView, setSubView] = useState<'grid' | 'list' | 'table'>('grid');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedProperty, setSelectedProperty] = useState<CmaProperty | null>(null);
-  const [galleryOpen, setGalleryOpen] = useState(false);
-  const [galleryProperty, setGalleryProperty] = useState<CmaProperty | null>(null);
-  const [initialPhotoIndex, setInitialPhotoIndex] = useState(0);
+  const [mapboxToken, setMapboxToken] = useState('');
+  const [geocodedCoords, setGeocodedCoords] = useState<{latitude: number; longitude: number}|null>(null);
+
+  // Fresh MLS fetch handler - ensures complete property data for modal
+  const handlePropertyClick = async (comp: CmaProperty) => {
+    try {
+      console.log(`🔍 FRESH MLS FETCH - ${comp.address} (${comp.mlsNumber})`);
+      
+      // Fetch fresh MLS data instead of using stored data
+      const response = await fetch(`/api/cma/search-properties`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mlsNumbers: [comp.mlsNumber]
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.listings && data.listings.length > 0) {
+          const freshProperty = data.listings[0];
+          console.log('🔍 FRESH MLS SUCCESS - Complete property data:', {
+            hasDescription: !!freshProperty.description,
+            descriptionPreview: freshProperty.description?.substring(0, 100),
+            hasListDate: !!freshProperty.listDate,
+            listDate: freshProperty.listDate,
+            hasOriginalPrice: !!freshProperty.originalPrice,
+            originalPrice: freshProperty.originalPrice,
+          });
+          setSelectedProperty(freshProperty);
+          return;
+        }
+      }
+      
+      console.log('🔍 FRESH MLS FALLBACK - Using stored data');
+      setSelectedProperty(comp);
+    } catch (error) {
+      console.error('🔍 FRESH MLS ERROR - Using stored data fallback:', error);
+      setSelectedProperty(comp);
+    }
+  };
+
+  // Fetch Mapbox token on mount
+  useEffect(() => {
+    fetch('/api/mapbox-token')
+      .then(res => res.json())
+      .then(data => setMapboxToken(data.token))
+      .catch(() => console.warn('Failed to load Mapbox token'));
+  }, []);
+
+  useEffect(() => {
+    if (mapboxToken && subjectProperty?.address && !subjectProperty?.latitude && !subjectProperty?.longitude && !subjectProperty?.map?.latitude) {
+      const addr = `${subjectProperty.address}, ${subjectProperty.city || ''}, ${subjectProperty.state || ''} ${subjectProperty.zipCode || ''}`.trim();
+      fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?access_token=${mapboxToken}&limit=1`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.features?.[0]?.center) {
+            const [lng, lat] = data.features[0].center;
+            setGeocodedCoords({ latitude: lat, longitude: lng });
+          }
+        })
+        .catch(err => console.warn('Geocoding failed:', err));
+    }
+  }, [mapboxToken, subjectProperty]);
 
   const filteredComparables = useMemo(() => {
     if (statusFilter === 'all') return comparables;
@@ -476,30 +1000,15 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
 
   const statistics = useMemo(() => calculateStatistics(filteredComparables), [filteredComparables]);
 
-  const handlePhotoClick = (property: CmaProperty, photoIndex: number = 0) => {
-    console.log('[CompsWidget Debug] Photo click for property:', {
-      mlsNumber: property.mlsNumber || property.id,
-      address: property.address,
-      photosCount: property.photos?.length || 0,
-      photosPreview: property.photos?.slice(0, 3) || [],
-      hasPhotosArray: Array.isArray(property.photos),
-      photoIndex,
-    });
-    
-    setGalleryProperty(property);
-    setInitialPhotoIndex(photoIndex);
-    setGalleryOpen(true);
-  };
-
   return (
-    <div className="flex flex-col h-full bg-background" data-testid="comps-widget">
+    <div className="flex flex-col h-full bg-white" data-testid="comps-widget">
       <div className="p-4 border-b space-y-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3 flex-wrap">
-            <h2 className="text-lg font-semibold" data-testid="comps-title">
+            <h2 className="text-lg font-semibold text-gray-900" data-testid="comps-title">
               Comparable Properties
             </h2>
-            <span className="text-sm text-muted-foreground" data-testid="comps-count">
+            <span className="text-sm text-gray-600" data-testid="comps-count">
               {filteredComparables.length} properties
             </span>
             <Badge variant="outline" className="text-xs" data-testid="badge-mls">
@@ -539,7 +1048,9 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
         
         {statistics && (() => {
           // Calculate subject property values for "vs market" comparison
-          const subjectPrice = subjectProperty ? extractPrice(subjectProperty) : null;
+          const extractedPrice = subjectProperty ? extractPrice(subjectProperty) : null;
+          // Use suggestedListPrice as fallback if subject property has no price data
+          const subjectPrice = extractedPrice || suggestedListPrice || null;
           const subjectSqft = subjectProperty ? extractSqft(subjectProperty) : null;
           const subjectPricePerSqft = (subjectPrice && subjectSqft && subjectSqft > 0) 
             ? subjectPrice / subjectSqft 
@@ -555,7 +1066,7 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
             : null;
           
           return (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-4 p-2 sm:p-4 bg-muted/50 rounded-lg" data-testid="stats-summary">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-4 p-2 sm:p-4 bg-gray-50 rounded-lg" data-testid="stats-summary">
               <StatItem 
                 label="LOW PRICE" 
                 value={formatCurrency(statistics.price.range.min)} 
@@ -588,89 +1099,18 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
           );
         })()}
         
-        {mainView === 'compare' && (
-          <div className="flex items-center gap-2 flex-wrap" data-testid="view-toggles">
-            <span className="text-sm text-muted-foreground">View:</span>
-            <Button
-              variant={subView === 'grid' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSubView('grid')}
-              className="gap-1"
-              data-testid="view-grid"
-            >
-              <LayoutGrid className="w-4 h-4" /> Grid
-            </Button>
-            <Button
-              variant={subView === 'list' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSubView('list')}
-              className="gap-1"
-              data-testid="view-list"
-            >
-              <List className="w-4 h-4" /> List
-            </Button>
-            <Button
-              variant={subView === 'table' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSubView('table')}
-              className="gap-1"
-              data-testid="view-table"
-            >
-              <Table2 className="w-4 h-4" /> Table
-            </Button>
-          </div>
-        )}
+        {/* Removed old compare view toggles - now using side-by-side comparison */}
       </div>
       
       <div className="flex-1 overflow-auto p-4" data-testid="content-area">
         {mainView === 'compare' && (
-          <>
-            {subView === 'grid' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="grid-view">
-                {subjectProperty && (
-                  <PropertyCard 
-                    property={{...subjectProperty, isSubject: true}} 
-                    isSubject 
-                    onClick={() => setSelectedProperty({...subjectProperty, isSubject: true})}
-                    onPhotoClick={() => handlePhotoClick({...subjectProperty, isSubject: true})}
-                  />
-                )}
-                {filteredComparables.map(comp => (
-                  <PropertyCard 
-                    key={comp.id} 
-                    property={comp} 
-                    onClick={() => setSelectedProperty(comp)}
-                    onPhotoClick={() => handlePhotoClick(comp)}
-                  />
-                ))}
-              </div>
-            )}
-            {subView === 'list' && (
-              <div className="space-y-3" data-testid="list-view">
-                {subjectProperty && (
-                  <PropertyListItem 
-                    property={{...subjectProperty, isSubject: true}} 
-                    isSubject 
-                    onClick={() => setSelectedProperty({...subjectProperty, isSubject: true})}
-                  />
-                )}
-                {filteredComparables.map(comp => (
-                  <PropertyListItem 
-                    key={comp.id} 
-                    property={comp} 
-                    onClick={() => setSelectedProperty(comp)}
-                  />
-                ))}
-              </div>
-            )}
-            {subView === 'table' && (
-              <PropertyTable 
-                comparables={filteredComparables} 
-                subjectProperty={subjectProperty ? {...subjectProperty, isSubject: true} : undefined}
-                onPropertyClick={setSelectedProperty}
-              />
-            )}
-          </>
+          <SideBySideComparison 
+            comparables={filteredComparables}
+            subjectProperty={subjectProperty}
+            geocodedCoords={geocodedCoords}
+            mapboxToken={mapboxToken}
+            handlePropertyClick={handlePropertyClick}
+          />
         )}
 
         {mainView === 'map' && (
@@ -683,19 +1123,19 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
         {mainView === 'stats' && statistics && (
           <div className="space-y-6" data-testid="stats-view">
             <Card className="p-6" data-testid="stats-price-card">
-              <h3 className="text-lg font-semibold mb-4">Price Statistics</h3>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Price Statistics</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div data-testid="stats-price-avg">
-                  <p className="text-sm text-muted-foreground">Average</p>
-                  <p className="text-2xl font-bold">{formatCurrency(statistics.price.average)}</p>
+                  <p className="text-sm text-gray-600">Average</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(statistics.price.average)}</p>
                 </div>
                 <div data-testid="stats-price-median">
-                  <p className="text-sm text-muted-foreground">Median</p>
-                  <p className="text-2xl font-bold">{formatCurrency(statistics.price.median)}</p>
+                  <p className="text-sm text-gray-600">Median</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(statistics.price.median)}</p>
                 </div>
                 <div data-testid="stats-price-range">
-                  <p className="text-sm text-muted-foreground">Range</p>
-                  <p className="text-lg font-medium">
+                  <p className="text-sm text-gray-600">Range</p>
+                  <p className="text-lg font-medium text-gray-900">
                     {formatCurrency(statistics.price.range.min)} - {formatCurrency(statistics.price.range.max)}
                   </p>
                 </div>
@@ -703,19 +1143,19 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
             </Card>
             
             <Card className="p-6" data-testid="stats-ppsf-card">
-              <h3 className="text-lg font-semibold mb-4">Price Per Square Foot</h3>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Price Per Square Foot</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div data-testid="stats-ppsf-avg">
-                  <p className="text-sm text-muted-foreground">Average</p>
-                  <p className="text-2xl font-bold">${Math.round(statistics.pricePerSqFt.average)}/sqft</p>
+                  <p className="text-sm text-gray-600">Average</p>
+                  <p className="text-2xl font-bold text-gray-900">${Math.round(statistics.pricePerSqFt.average)}/sqft</p>
                 </div>
                 <div data-testid="stats-ppsf-median">
-                  <p className="text-sm text-muted-foreground">Median</p>
-                  <p className="text-2xl font-bold">${Math.round(statistics.pricePerSqFt.median)}/sqft</p>
+                  <p className="text-sm text-gray-600">Median</p>
+                  <p className="text-2xl font-bold text-gray-900">${Math.round(statistics.pricePerSqFt.median)}/sqft</p>
                 </div>
                 <div data-testid="stats-ppsf-range">
-                  <p className="text-sm text-muted-foreground">Range</p>
-                  <p className="text-lg font-medium">
+                  <p className="text-sm text-gray-600">Range</p>
+                  <p className="text-lg font-medium text-gray-900">
                     ${Math.round(statistics.pricePerSqFt.range.min)} - ${Math.round(statistics.pricePerSqFt.range.max)}/sqft
                   </p>
                 </div>
@@ -723,19 +1163,19 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
             </Card>
             
             <Card className="p-6" data-testid="stats-dom-card">
-              <h3 className="text-lg font-semibold mb-4">Days on Market</h3>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Days on Market</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div data-testid="stats-dom-avg">
-                  <p className="text-sm text-muted-foreground">Average</p>
-                  <p className="text-2xl font-bold">{Math.round(statistics.daysOnMarket.average)} days</p>
+                  <p className="text-sm text-gray-600">Average</p>
+                  <p className="text-2xl font-bold text-gray-900">{Math.round(statistics.daysOnMarket.average)} days</p>
                 </div>
                 <div data-testid="stats-dom-median">
-                  <p className="text-sm text-muted-foreground">Median</p>
-                  <p className="text-2xl font-bold">{Math.round(statistics.daysOnMarket.median)} days</p>
+                  <p className="text-sm text-gray-600">Median</p>
+                  <p className="text-2xl font-bold text-gray-900">{Math.round(statistics.daysOnMarket.median)} days</p>
                 </div>
                 <div data-testid="stats-dom-range">
-                  <p className="text-sm text-muted-foreground">Range</p>
-                  <p className="text-lg font-medium">
+                  <p className="text-sm text-gray-600">Range</p>
+                  <p className="text-lg font-medium text-gray-900">
                     {Math.round(statistics.daysOnMarket.range.min)} - {Math.round(statistics.daysOnMarket.range.max)} days
                   </p>
                 </div>
@@ -746,28 +1186,13 @@ export function CompsWidget({ comparables, subjectProperty }: CompsWidgetProps) 
 
       </div>
 
-      {selectedProperty && (
+      {selectedProperty && typeof window !== 'undefined' && createPortal(
         <PropertyDetailModal
           property={selectedProperty}
           onClose={() => setSelectedProperty(null)}
-        />
-      )}
-
-      {galleryProperty && (
-        <PhotoGalleryModal
-          open={galleryOpen}
-          onOpenChange={setGalleryOpen}
-          photos={galleryProperty.photos || []}
-          initialIndex={initialPhotoIndex}
-          propertyAddress={galleryProperty.address}
-          propertyPrice={extractPrice(galleryProperty)}
-          propertyDetails={{
-            beds: galleryProperty.beds,
-            baths: galleryProperty.baths,
-            sqft: galleryProperty.sqft,
-            status: galleryProperty.status,
-          }}
-        />
+          mapboxToken={mapboxToken}
+        />,
+        document.body
       )}
     </div>
   );

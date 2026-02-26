@@ -26,7 +26,7 @@ export function AdjustmentsPreview({ subjectProperty, comparables, compact }: Ad
         <thead>
           <tr className="border-b">
             <th className="text-left py-2 font-medium">Property</th>
-            <th className="text-right py-2 font-medium">Sale Price</th>
+            <th className="text-right py-2 font-medium">Close Price</th>
             <th className="text-right py-2 font-medium">Total Adj</th>
             <th className="text-right py-2 font-medium">Adj. Price</th>
           </tr>

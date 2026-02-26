@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Building2, Search, X, ChevronLeft, ChevronRight, ChevronDown,
@@ -6,6 +6,8 @@ import {
   RotateCcw, MapPin, ExternalLink
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 type ViewMode = 'grid' | 'list' | 'table';
 
@@ -932,8 +934,102 @@ function ListListingCard({ listing, isDark, onClick, formatPrice }: any) {
   );
 }
 
+// Interactive Mapbox Map Component
+function PropertyMapPreview({ latitude, longitude, isDark }: { latitude: number; longitude: number; isDark: boolean; }) {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+
+  useEffect(() => {
+    if (!mapContainer.current || !latitude || !longitude) return;
+
+    // Fetch Mapbox token
+    fetch('/api/mapbox-token')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.token) return;
+        
+        mapboxgl.accessToken = data.token;
+
+        map.current = new mapboxgl.Map({
+          container: mapContainer.current!,
+          style: isDark ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12',
+          center: [longitude, latitude],
+          zoom: 15,
+          interactive: false,
+          attributionControl: false,
+        });
+
+        // Create custom Spyglass marker
+        const marker = document.createElement('div');
+        marker.style.width = '24px';
+        marker.style.height = '24px';
+        marker.style.borderRadius = '50%';
+        marker.style.backgroundColor = '#EF4923';
+        marker.style.border = '3px solid white';
+        marker.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+
+        new mapboxgl.Marker({ element: marker })
+          .setLngLat([longitude, latitude])
+          .addTo(map.current);
+      })
+      .catch(err => console.error('Failed to load Mapbox token:', err));
+
+    return () => {
+      map.current?.remove();
+    };
+  }, [latitude, longitude, isDark]);
+
+  return <div ref={mapContainer} className="w-full h-48 rounded-lg overflow-hidden" />;
+}
+
+// Status badge color helper
+const getStatusColor = (status: string) => {
+  const s = status?.toLowerCase() || '';
+  if (s.includes('active') && !s.includes('under')) return 'bg-green-500';
+  if (s.includes('active under') || s.includes('under contract')) return 'bg-orange-500';
+  if (s.includes('closed') || s.includes('sold')) return 'bg-red-500';
+  if (s.includes('pending')) return 'bg-gray-500';
+  return 'bg-gray-400';
+};
+
+// Price per sqft helper
+const calculatePricePerSqft = (price: number, sqft: number) => {
+  if (!price || !sqft) return null;
+  return Math.round(price / sqft);
+};
+
+// Standard date formatter - RESO compliant MM/DD/YYYY format
+const formatDate = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return 'N/A';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return 'N/A';
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${mm}/${dd}/${yyyy}`;
+};
+
 function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  
+  // Debug logging for data pipeline
+  console.log('[Properties Modal] Full listing data:', {
+    mlsNumber: listing.mlsNumber,
+    type: listing.type, // Should be "Sale" (transaction)
+    propertyType: listing.propertyType, // Should be "Single Family Residence" etc
+    class: listing.class,
+    hasDescription: !!listing.description,
+    hasDetailsDescription: !!(listing.details?.description),
+    hasRemarks: !!listing.remarks,
+    descriptionSource: listing.details?.description ? 'details.description' : listing.description ? 'description' : listing.remarks ? 'remarks' : 'NONE',
+    hasMapCoords: !!(listing.map?.latitude),
+    latitude: listing.map?.latitude || listing.latitude,
+    longitude: listing.map?.longitude || listing.longitude,
+    hasOriginalPrice: !!listing.originalPrice,
+    hasListingDate: !!listing.listingDate,
+    hasYearBuilt: !!(listing.details?.yearBuilt || listing.yearBuilt),
+    hasSqft: !!listing.livingArea,
+  });
   
   const cardBg = isDark ? 'bg-[#222222]' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
@@ -958,11 +1054,21 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
         className={`${cardBg} rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className={`flex items-center justify-between p-4 border-b ${borderColor}`}>
-          <div>
-            <h3 className={`text-xl font-bold ${textPrimary}`}>{formatPrice(listing.listPrice)}</h3>
-            <p className={`text-sm ${textSecondary}`}>{streetAddress}, {listing.address?.city}</p>
+        {/* Header - Full Address with MLS# */}
+        <div className={`flex items-start justify-between p-4 border-b ${borderColor}`}>
+          <div className="flex-1">
+            <div className="flex items-baseline gap-4">
+              <h3 className={`text-2xl font-bold ${textPrimary}`}>{formatPrice(listing.listPrice)}</h3>
+              {calculatePricePerSqft(listing.listPrice, listing.livingArea) && (
+                <span className={`text-lg font-semibold ${textPrimary}`}>
+                  ${calculatePricePerSqft(listing.listPrice, listing.livingArea)}/sqft
+                </span>
+              )}
+            </div>
+            <h4 className={`text-lg font-medium ${textPrimary} mb-1`}>
+              {listing.address?.full || `${streetAddress}, ${listing.address?.city}`}
+            </h4>
+            <p className={`text-sm ${textSecondary}`}>MLS# {listing.mlsNumber}</p>
           </div>
           <button
             onClick={onClose}
@@ -1033,7 +1139,7 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
               <div className={`p-3 rounded-lg ${isDark ? 'bg-[#2a2a2a]' : 'bg-gray-50'}`}>
                 <div className="flex items-center gap-2 mb-1">
                   <Square className={`w-4 h-4 ${textSecondary}`} />
-                  <span className={`text-xs ${textSecondary}`}>Square Feet</span>
+                  <span className={`text-xs ${textSecondary}`}>Living Area</span>
                 </div>
                 <p className={`text-lg font-bold ${textPrimary}`}>{(listing.livingArea || listing.sqft)?.toLocaleString() || '-'}</p>
               </div>
@@ -1046,60 +1152,130 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
               </div>
             </div>
 
-            {/* Property Info */}
+            {/* Price History & Dates */}
             <div className={`p-4 rounded-lg border ${borderColor}`}>
-              <h4 className={`font-semibold ${textPrimary} mb-3`}>Property Details</h4>
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <h4 className={`font-semibold ${textPrimary} mb-3`}>Price History & Dates</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className={textSecondary}>MLS#:</span>
-                  <span className={`ml-2 ${textPrimary}`}>{listing.mlsNumber}</span>
+                  <span className={textSecondary}>Original Price:</span>
+                  <span className={`ml-2 ${textPrimary} font-medium`}>
+                    {listing.originalPrice ? formatPrice(listing.originalPrice) : 'N/A'}
+                  </span>
+                </div>
+                <div>
+                  <span className={textSecondary}>Listing Date:</span>
+                  <span className={`ml-2 ${textPrimary} font-medium`}>
+                    {formatDate(listing.listDate)}
+                  </span>
+                </div>
+                <div>
+                  <span className={textSecondary}>List Price:</span>
+                  <span className={`ml-2 ${textPrimary} font-medium`}>{formatPrice(listing.listPrice)}</span>
                 </div>
                 <div>
                   <span className={textSecondary}>Status:</span>
-                  <span className={`ml-2 ${textPrimary}`}>{listing.status}</span>
+                  <span className={`inline-flex px-2 py-1 text-xs font-medium text-white rounded-full ml-2 ${getStatusColor(listing.status)}`}>
+                    {listing.status}
+                  </span>
                 </div>
-                <div>
-                  <span className={textSecondary}>Year Built:</span>
-                  <span className={`ml-2 ${textPrimary}`}>{listing.yearBuilt || '-'}</span>
-                </div>
-                <div>
-                  <span className={textSecondary}>Property Type:</span>
-                  <span className={`ml-2 ${textPrimary}`}>{listing.propertyType || '-'}</span>
-                </div>
-                {listing.subdivision && (
-                  <div className="col-span-2">
-                    <span className={textSecondary}>Subdivision:</span>
-                    <span className={`ml-2 ${textPrimary}`}>{listing.subdivision}</span>
-                  </div>
-                )}
-                {listing.listOfficeName && (
-                  <div className="col-span-2">
-                    <span className={textSecondary}>Listed by:</span>
-                    <span className={`ml-2 ${textPrimary}`}>{listing.listOfficeName}</span>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Address */}
+            {/* Property Details - Two Column Layout */}
             <div className={`p-4 rounded-lg border ${borderColor}`}>
-              <div className="flex items-start gap-3">
-                <MapPin className={`w-5 h-5 ${textSecondary} mt-0.5`} />
+              <h4 className={`font-semibold ${textPrimary} mb-4`}>Property Details</h4>
+              
+              {/* Two-column layout: Map on left, Specs on right */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                {/* Left Column - Location */}
                 <div>
-                  <p className={`font-medium ${textPrimary}`}>{listing.address?.full}</p>
-                  {listing.latitude && listing.longitude && (
-                    <a 
-                      href={`https://www.google.com/maps?q=${listing.latitude},${listing.longitude}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#EF4923] text-sm flex items-center gap-1 mt-1 hover:underline"
-                    >
-                      View on Google Maps <ExternalLink className="w-3 h-3" />
-                    </a>
+                  <h5 className={`text-sm font-medium ${textSecondary} mb-3`}>Location</h5>
+                  {(listing.map?.latitude || listing.latitude) && (listing.map?.longitude || listing.longitude) ? (
+                    <PropertyMapPreview 
+                      latitude={listing.map?.latitude || listing.latitude} 
+                      longitude={listing.map?.longitude || listing.longitude} 
+                      isDark={isDark} 
+                    />
+                  ) : (
+                    <div className="w-full h-48 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                      <span className="text-gray-400 text-sm">Location not available</span>
+                    </div>
                   )}
+                </div>
+
+                {/* Right Column - Specifications */}
+                <div>
+                  <h5 className={`text-sm font-medium ${textSecondary} mb-3`}>Specifications</h5>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className={`${textSecondary} flex items-center gap-1`}>
+                        <Bed className="w-3 h-3" />
+                        Bedrooms:
+                      </span>
+                      <span className={textPrimary}>{listing.beds}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className={`${textSecondary} flex items-center gap-1`}>
+                        <Bath className="w-3 h-3" />
+                        Bathrooms:
+                      </span>
+                      <span className={textPrimary}>{listing.baths}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className={`${textSecondary} flex items-center gap-1`}>
+                        <Square className="w-3 h-3" />
+                        Living Area:
+                      </span>
+                      <span className={textPrimary}>{(listing.livingArea || 0).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className={`${textSecondary} flex items-center gap-1`}>
+                        <Calendar className="w-3 h-3" />
+                        Days on Market:
+                      </span>
+                      <span className={textPrimary}>{listing.daysOnMarket}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className={`${textSecondary} flex items-center gap-1`}>
+                        Status:
+                      </span>
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium text-white rounded-full ${getStatusColor(listing.status)}`}>
+                        {listing.status}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className={textSecondary}>Year Built:</span>
+                      <span className={textPrimary}>{listing.yearBuilt || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className={textSecondary}>Property Type:</span>
+                      <span className={textPrimary}>{listing.propertyType || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className={textSecondary}>MLS#:</span>
+                      <span className={textPrimary}>{listing.mlsNumber}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
+
+            {/* Property Description - ALWAYS VISIBLE */}
+            <div className={`p-4 rounded-lg border ${borderColor} mt-4`}>
+              <h4 className={`font-semibold ${textPrimary} mb-3 pb-2 border-b-2 ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                Property Description
+              </h4>
+              <div className={`text-sm ${textSecondary} leading-relaxed text-justify space-y-4`}>
+                {(listing.description || listing.details?.description || listing.remarks || listing.publicRemarks)
+                  ? (listing.description || listing.details?.description || listing.remarks || listing.publicRemarks)
+                      .split(/\n\n|\r\n\r\n/)
+                      .filter(p => p.trim())
+                      .map((p, i) => <p key={i}>{p.trim()}</p>)
+                  : <p className="italic">No description available</p>
+                }
+              </div>
+            </div>
+
           </div>
         </div>
       </div>

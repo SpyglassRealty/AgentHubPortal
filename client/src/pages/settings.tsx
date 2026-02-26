@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
-import { TrendingUp, Link2, Link2Off, Unlink, Check, AlertCircle, Bell, Users, Calendar, Home, CheckSquare, Megaphone, Moon, Mail, Loader2, User, ExternalLink, Camera, Upload, ZoomIn, ZoomOut, Move, Sparkles } from "lucide-react";
+import { TrendingUp, Link2, Link2Off, Unlink, Check, AlertCircle, Bell, Users, Calendar, Home, CheckSquare, Megaphone, Moon, Mail, Loader2, User, ExternalLink, Camera, Upload, ZoomIn, ZoomOut, Move, Sparkles, FileText, File, Image as ImageIcon, Trash2, GripVertical, Plus, Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -66,6 +66,20 @@ interface NotificationSettings {
   quietHoursEnd: string;
   emailNotificationsEnabled: boolean;
   notificationEmail: string | null;
+}
+
+interface AgentResource {
+  id: string;
+  userId: string;
+  title: string;
+  type: 'pdf' | 'doc' | 'image' | 'link';
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
+  redirectUrl?: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const defaultNotificationSettings: Partial<NotificationSettings> = {
@@ -299,6 +313,12 @@ export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  
+  // Resources & Links state
+  const resourcesFileInputRef = useRef<HTMLInputElement>(null);
+  const [showAddLinkForm, setShowAddLinkForm] = useState(false);
+  const [linkForm, setLinkForm] = useState({ title: "", url: "" });
+  
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -365,6 +385,18 @@ export default function SettingsPage() {
       return data.profile;
     },
   });
+
+  const { data: resourcesData } = useQuery<{ resources: AgentResource[] }>({
+    queryKey: ["/api/settings/resources"],
+    queryFn: async () => {
+      const res = await fetch("/api/settings/resources", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch resources");
+      return res.json();
+    },
+    staleTime: 0, // Always refetch on mount
+  });
+
+  const resources = resourcesData?.resources || [];
 
   // Set form values when agent profile loads
   useEffect(() => {
@@ -523,6 +555,102 @@ export default function SettingsPage() {
     },
   });
 
+  // Resources & Links mutations
+  const uploadResourceMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await fetch("/api/settings/resources/upload", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to upload file");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/resources"] });
+      toast({ title: "File uploaded", description: "Your resource has been uploaded successfully." });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Upload failed", 
+        description: error.message || "Failed to upload file. Please try again.", 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const addLinkMutation = useMutation({
+    mutationFn: async (linkData: { title: string; url: string }) => {
+      const res = await fetch("/api/settings/resources/link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(linkData),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to add link");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/resources"] });
+      setLinkForm({ title: "", url: "" });
+      setShowAddLinkForm(false);
+      toast({ title: "Link added", description: "Your link has been added successfully." });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Failed to add link", 
+        description: error.message || "Please try again.", 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const deleteResourceMutation = useMutation({
+    mutationFn: async (resourceId: string) => {
+      const res = await fetch(`/api/settings/resources/${resourceId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to delete resource");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/resources"] });
+      toast({ title: "Resource deleted", description: "The resource has been removed." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete resource. Please try again.", variant: "destructive" });
+    },
+  });
+
+  const reorderResourceMutation = useMutation({
+    mutationFn: async ({ resourceId, sortOrder }: { resourceId: string; sortOrder: number }) => {
+      const res = await fetch(`/api/settings/resources/${resourceId}/reorder`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ sortOrder }),
+      });
+      if (!res.ok) throw new Error("Failed to reorder resource");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/resources"] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to reorder resource. Please try again.", variant: "destructive" });
+    },
+  });
+
   const isRezenLinked = !!userProfile?.rezenYentaId;
   const isFubLinked = !!userProfile?.fubUserId;
 
@@ -599,11 +727,11 @@ export default function SettingsPage() {
       return;
     }
 
-    // Check file size (5MB limit)
-    if (file.size > 5 * 1024 * 1024) {
+    // Check file size (25MB limit)
+    if (file.size > 25 * 1024 * 1024) {
       toast({ 
         title: "File too large", 
-        description: "Please select an image under 5MB.", 
+        description: "Please select an image under 25MB.", 
         variant: "destructive" 
       });
       return;
@@ -630,6 +758,132 @@ export default function SettingsPage() {
   const handleCloseCropModal = () => {
     setIsCropModalOpen(false);
     setSelectedImageFile(null);
+  };
+
+  // Resources & Links handlers
+  const handleResourceUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check file type
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/jpeg',
+      'image/png',
+      'image/webp'
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      toast({ 
+        title: "Invalid file type", 
+        description: "Please upload PDF, DOC, DOCX, JPG, PNG, or WEBP files only.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Check file size (25MB limit)
+    if (file.size > 25 * 1024 * 1024) {
+      toast({ 
+        title: "File too large", 
+        description: "Please select a file under 25MB.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Check resource count
+    if (resources.length >= 10) {
+      toast({ 
+        title: "Maximum resources reached", 
+        description: "You can only upload up to 10 resources.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    uploadResourceMutation.mutate(file);
+    
+    // Clear the input
+    if (event.target) {
+      event.target.value = '';
+    }
+  };
+
+  const handleAddLink = () => {
+    if (!linkForm.title.trim() || !linkForm.url.trim()) {
+      toast({ 
+        title: "Missing information", 
+        description: "Please provide both title and URL.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Basic URL validation
+    try {
+      new URL(linkForm.url);
+    } catch {
+      toast({ 
+        title: "Invalid URL", 
+        description: "Please enter a valid URL (e.g., https://example.com).", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Check resource count
+    if (resources.length >= 10) {
+      toast({ 
+        title: "Maximum resources reached", 
+        description: "You can only have up to 10 resources.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    addLinkMutation.mutate(linkForm);
+  };
+
+  const triggerResourceUpload = () => {
+    resourcesFileInputRef.current?.click();
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  const getResourceIcon = (resource: AgentResource) => {
+    if (resource.type === 'link') {
+      return <Link2 className="w-5 h-5 text-blue-500" />;
+    }
+    if (resource.type === 'pdf') {
+      return <FileText className="w-5 h-5 text-red-500" />;
+    }
+    if (resource.type === 'doc') {
+      return <File className="w-5 h-5 text-blue-600" />;
+    }
+    if (resource.type === 'image') {
+      return <ImageIcon className="w-5 h-5 text-green-500" />;
+    }
+    return <File className="w-5 h-5 text-gray-500" />;
+  };
+
+  const moveResource = (resourceId: string, direction: 'up' | 'down') => {
+    const currentIndex = resources.findIndex(r => r.id === resourceId);
+    if (currentIndex === -1) return;
+    
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= resources.length) return;
+    
+    const newSortOrder = resources[newIndex].sortOrder;
+    reorderResourceMutation.mutate({ resourceId, sortOrder: newSortOrder });
   };
 
   return (
@@ -709,7 +963,7 @@ export default function SettingsPage() {
                       )}
                     </Button>
                     <p className="text-xs text-muted-foreground mt-1">
-                      JPG, PNG, or WEBP. Max 5MB.
+                      JPG, PNG, or WEBP. Max 25MB.
                     </p>
                   </div>
                 </div>
@@ -894,6 +1148,224 @@ export default function SettingsPage() {
                         )}
                       </Button>
                     </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Resources & Links Section */}
+            <Card data-testid="card-resources-links">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-[#EF4923]" />
+                  Resources & Links
+                </CardTitle>
+                <CardDescription>Upload documents and add links that appear on your CMA presentation</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Upload and Add Link buttons */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={triggerResourceUpload}
+                    disabled={uploadResourceMutation.isPending || resources.length >= 10}
+                    className="flex items-center gap-2"
+                  >
+                    {uploadResourceMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4" />
+                        Upload File
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowAddLinkForm(!showAddLinkForm)}
+                    disabled={resources.length >= 10}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Link
+                  </Button>
+                  <input
+                    ref={resourcesFileInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                    onChange={handleResourceUpload}
+                    className="hidden"
+                  />
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  Accepts PDF, DOC, DOCX, JPG, PNG, WEBP files. Max 25MB per file.
+                </p>
+
+                {/* Add Link Form */}
+                {showAddLinkForm && (
+                  <div className="p-4 bg-muted/30 rounded-lg space-y-3">
+                    <div className="grid grid-cols-1 gap-3">
+                      <div>
+                        <Label htmlFor="link-title">Title</Label>
+                        <Input
+                          id="link-title"
+                          placeholder="e.g., Market Report 2024"
+                          value={linkForm.title}
+                          onChange={(e) => setLinkForm(prev => ({ ...prev, title: e.target.value }))}
+                          disabled={addLinkMutation.isPending}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="link-url">URL</Label>
+                        <Input
+                          id="link-url"
+                          placeholder="https://example.com"
+                          value={linkForm.url}
+                          onChange={(e) => setLinkForm(prev => ({ ...prev, url: e.target.value }))}
+                          disabled={addLinkMutation.isPending}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleAddLink}
+                        disabled={addLinkMutation.isPending}
+                        className="bg-[#EF4923] hover:bg-[#EF4923]/90"
+                      >
+                        {addLinkMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                            Adding...
+                          </>
+                        ) : (
+                          "Add Link"
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setShowAddLinkForm(false);
+                          setLinkForm({ title: "", url: "" });
+                        }}
+                        disabled={addLinkMutation.isPending}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Resources List */}
+                <div className="space-y-3">
+                  {resources.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>No resources added yet</p>
+                      <p className="text-sm">Upload files or add links to get started</p>
+                    </div>
+                  ) : (
+                    resources
+                      .sort((a, b) => a.sortOrder - b.sortOrder)
+                      .map((resource, index) => (
+                        <div
+                          key={resource.id}
+                          className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg group hover:bg-muted/50 transition-colors"
+                        >
+                          {/* Resource Icon */}
+                          <div className="flex-shrink-0">
+                            {getResourceIcon(resource)}
+                          </div>
+
+                          {/* Resource Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">
+                              {resource.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {resource.type === 'link' 
+                                ? 'Link' 
+                                : resource.fileSize 
+                                  ? formatFileSize(resource.fileSize)
+                                  : 'File'
+                              }
+                            </p>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {/* Move Up */}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => moveResource(resource.id, 'up')}
+                              disabled={index === 0 || reorderResourceMutation.isPending}
+                              className="h-8 w-8 p-0"
+                            >
+                              <GripVertical className="h-3 w-3 rotate-90" />
+                            </Button>
+
+                            {/* Move Down */}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => moveResource(resource.id, 'down')}
+                              disabled={index === resources.length - 1 || reorderResourceMutation.isPending}
+                              className="h-8 w-8 p-0"
+                            >
+                              <GripVertical className="h-3 w-3 -rotate-90" />
+                            </Button>
+
+                            {/* Delete */}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600"
+                                  disabled={deleteResourceMutation.isPending}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Resource?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will permanently remove "{resource.title}" from your resources. This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => deleteResourceMutation.mutate(resource.id)}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+
+                {/* Resource Counter */}
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <span className="text-sm text-muted-foreground">
+                    {resources.length} / 10 resources
+                  </span>
+                  {resources.length >= 10 && (
+                    <span className="text-xs text-red-600">
+                      Maximum resources reached
+                    </span>
                   )}
                 </div>
               </CardContent>

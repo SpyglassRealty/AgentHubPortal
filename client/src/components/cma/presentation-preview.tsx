@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,8 +17,7 @@ import {
 import type { PresentationSection } from "./presentation-sections";
 import mapboxgl from "mapbox-gl";
 
-const MAPBOX_TOKEN =
-  "pk.eyJ1Ijoic3B5Z2xhc3NyZWFsdHkiLCJhIjoiY21sYmJjYjR5MG5teDNkb29oYnlldGJ6bCJ9.h6al6oHtIP5YiiIW97zhDw";
+// Mapbox access token will be fetched from API
 
 interface PropertyData {
   mlsNumber: string;
@@ -40,6 +39,7 @@ interface PropertyData {
   soldDate?: string | null;
   daysOnMarket?: number;
   photo?: string | null;
+  photos?: string[];
   latitude?: number | null;
   longitude?: number | null;
 }
@@ -196,6 +196,17 @@ function ContactMeSection() {
 function MapSection({ comps, subject }: { comps: PropertyData[]; subject: PropertyData | null }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  
+  // Mapbox token state
+  const [mapboxToken, setMapboxToken] = useState('');
+
+  // Fetch Mapbox token on component mount
+  useEffect(() => {
+    fetch('/api/mapbox-token')
+      .then(res => res.json())
+      .then(data => setMapboxToken(data.token))
+      .catch(() => console.warn('Failed to load Mapbox token'));
+  }, []);
 
   const allProps = useMemo(() => {
     const list: PropertyData[] = [];
@@ -208,8 +219,15 @@ function MapSection({ comps, subject }: { comps: PropertyData[]; subject: Proper
 
   useEffect(() => {
     if (!mapContainerRef.current || allProps.length === 0) return;
+    if (!mapboxToken) {
+      // Show loading state in map container
+      if (mapContainerRef.current) {
+        mapContainerRef.current.innerHTML = '<div style="display: flex; items-center: justify-center; height: 100%; background: #f5f5f5; color: #666; font-size: 14px;">Loading map...</div>';
+      }
+      return;
+    }
 
-    mapboxgl.accessToken = MAPBOX_TOKEN;
+    mapboxgl.accessToken = mapboxToken;
 
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
@@ -248,7 +266,7 @@ function MapSection({ comps, subject }: { comps: PropertyData[]; subject: Proper
       map.remove();
       mapRef.current = null;
     };
-  }, [allProps, subject]);
+  }, [allProps, subject, mapboxToken]);
 
   if (allProps.length === 0) {
     return (
@@ -365,11 +383,12 @@ function PropertyDetailsSection({ comps }: { comps: PropertyData[] }) {
             key={i}
             className="border rounded-lg p-3 flex gap-3 hover:shadow-sm transition"
           >
-            {c.photo ? (
+            {(c.photos && c.photos.length > 0) || c.photo ? (
               <img
-                src={c.photo}
-                alt=""
+                src={(c.photos && c.photos.length > 0) ? c.photos[0] : c.photo!}
+                alt={c.address}
                 className="w-20 h-16 rounded object-cover flex-shrink-0"
+                loading="lazy"
               />
             ) : (
               <div className="w-20 h-16 rounded bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -425,7 +444,7 @@ function PropertyDetailsSection({ comps }: { comps: PropertyData[] }) {
 }
 
 function PropertyPhotosSection({ comps }: { comps: PropertyData[] }) {
-  const withPhotos = comps.filter((c) => c.photo);
+  const withPhotos = comps.filter((c) => (c.photos && c.photos.length > 0) || c.photo);
 
   if (withPhotos.length === 0) {
     return (
@@ -447,9 +466,10 @@ function PropertyPhotosSection({ comps }: { comps: PropertyData[] }) {
         {withPhotos.slice(0, 9).map((c, i) => (
           <div key={i} className="relative">
             <img
-              src={c.photo!}
+              src={(c.photos && c.photos.length > 0) ? c.photos[0] : c.photo!}
               alt={c.address}
               className="w-full h-24 rounded object-cover"
+              loading="lazy"
             />
             <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1 py-0.5 rounded">
               {c.streetAddress || c.address.split(",")[0]}

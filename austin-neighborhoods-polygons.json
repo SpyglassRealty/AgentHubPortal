@@ -1,0 +1,211 @@
+{
+  "austin_neighborhoods": [
+    {
+      "name": "East Austin",
+      "description": "East of IH-35, includes East 6th Street, Mueller, and Airport corridor",
+      "coordinates": [
+        [30.3074, -97.7164],
+        [30.3074, -97.6900],
+        [30.2950, -97.6800],
+        [30.2800, -97.6600],
+        [30.2600, -97.6500],
+        [30.2400, -97.6600],
+        [30.2200, -97.6800],
+        [30.2100, -97.7000],
+        [30.2200, -97.7164],
+        [30.3074, -97.7164]
+      ],
+      "zip_codes": ["78702", "78721", "78724", "78741"],
+      "market_segment": "Emerging/Trendy",
+      "avg_price_range": "$300K-$600K"
+    },
+    {
+      "name": "Central Austin",
+      "description": "Downtown, UT campus, South Lamar, Zilker Park area",
+      "coordinates": [
+        [30.3200, -97.7600],
+        [30.3200, -97.7164],
+        [30.2900, -97.7164],
+        [30.2700, -97.7200],
+        [30.2500, -97.7300],
+        [30.2400, -97.7400],
+        [30.2300, -97.7500],
+        [30.2400, -97.7600],
+        [30.2600, -97.7650],
+        [30.2800, -97.7650],
+        [30.3000, -97.7620],
+        [30.3200, -97.7600]
+      ],
+      "zip_codes": ["78701", "78703", "78704", "78705"],
+      "market_segment": "Urban Core",
+      "avg_price_range": "$400K-$1M+"
+    },
+    {
+      "name": "Westlake Hills",
+      "description": "Premium area near Lake Austin, Westlake High School district",
+      "coordinates": [
+        [30.2900, -97.8200],
+        [30.2900, -97.7800],
+        [30.2800, -97.7700],
+        [30.2700, -97.7650],
+        [30.2600, -97.7650],
+        [30.2500, -97.7700],
+        [30.2400, -97.7800],
+        [30.2300, -97.7900],
+        [30.2200, -97.8000],
+        [30.2200, -97.8200],
+        [30.2300, -97.8300],
+        [30.2500, -97.8350],
+        [30.2700, -97.8300],
+        [30.2900, -97.8200]
+      ],
+      "zip_codes": ["78746", "78733"],
+      "market_segment": "Luxury",
+      "avg_price_range": "$800K-$3M+"
+    },
+    {
+      "name": "Southwest Austin",
+      "description": "Circle C, Oak Hill, Sunset Valley, Barton Hills area",
+      "coordinates": [
+        [30.2400, -97.8200],
+        [30.2400, -97.7164],
+        [30.2200, -97.7164],
+        [30.2000, -97.7200],
+        [30.1800, -97.7300],
+        [30.1600, -97.7500],
+        [30.1500, -97.7800],
+        [30.1600, -97.8000],
+        [30.1800, -97.8100],
+        [30.2000, -97.8150],
+        [30.2200, -97.8200],
+        [30.2400, -97.8200]
+      ],
+      "zip_codes": ["78739", "78745", "78749", "78735"],
+      "market_segment": "Family/Suburban",
+      "avg_price_range": "$400K-$800K"
+    },
+    {
+      "name": "North Austin",
+      "description": "Domain, Arboretum, Cedar Park corridor, tech hub area",
+      "coordinates": [
+        [30.4200, -97.8000],
+        [30.4200, -97.6800],
+        [30.4000, -97.6700],
+        [30.3800, -97.6700],
+        [30.3600, -97.6800],
+        [30.3400, -97.6900],
+        [30.3200, -97.7000],
+        [30.3100, -97.7200],
+        [30.3200, -97.7400],
+        [30.3400, -97.7600],
+        [30.3600, -97.7700],
+        [30.3800, -97.7800],
+        [30.4000, -97.7900],
+        [30.4200, -97.8000]
+      ],
+      "zip_codes": ["78727", "78729", "78750", "78759"],
+      "market_segment": "Tech/Professional",
+      "avg_price_range": "$500K-$1.2M"
+    },
+    {
+      "name": "South Austin",
+      "description": "South of the River, including Bouldin Creek, Travis Heights, St. Edwards",
+      "coordinates": [
+        [30.2500, -97.7700],
+        [30.2500, -97.7164],
+        [30.2200, -97.7164],
+        [30.2000, -97.7200],
+        [30.1800, -97.7300],
+        [30.1700, -97.7400],
+        [30.1600, -97.7500],
+        [30.1700, -97.7600],
+        [30.1900, -97.7650],
+        [30.2100, -97.7700],
+        [30.2300, -97.7720],
+        [30.2500, -97.7700]
+      ],
+      "zip_codes": ["78704", "78745"],
+      "market_segment": "Hip/Creative",
+      "avg_price_range": "$450K-$900K"
+    },
+    {
+      "name": "Mueller",
+      "description": "New development on former airport site, mixed-use community",
+      "coordinates": [
+        [30.3000, -97.7000],
+        [30.3000, -97.6800],
+        [30.2900, -97.6700],
+        [30.2800, -97.6700],
+        [30.2700, -97.6800],
+        [30.2700, -97.7000],
+        [30.2800, -97.7100],
+        [30.2900, -97.7100],
+        [30.3000, -97.7000]
+      ],
+      "zip_codes": ["78723"],
+      "market_segment": "New Development",
+      "avg_price_range": "$500K-$800K"
+    },
+    {
+      "name": "Northwest Hills",
+      "description": "Established neighborhood near Mopac and 2222, close to downtown",
+      "coordinates": [
+        [30.3400, -97.7800],
+        [30.3400, -97.7500],
+        [30.3300, -97.7400],
+        [30.3200, -97.7400],
+        [30.3100, -97.7500],
+        [30.3100, -97.7700],
+        [30.3150, -97.7800],
+        [30.3250, -97.7850],
+        [30.3400, -97.7800]
+      ],
+      "zip_codes": ["78731"],
+      "market_segment": "Established/Upscale",
+      "avg_price_range": "$600K-$1.5M"
+    },
+    {
+      "name": "Hyde Park",
+      "description": "Historic neighborhood near UT, walkable with vintage homes",
+      "coordinates": [
+        [30.3100, -97.7400],
+        [30.3100, -97.7300],
+        [30.3050, -97.7250],
+        [30.3000, -97.7250],
+        [30.2950, -97.7300],
+        [30.2950, -97.7400],
+        [30.3000, -97.7450],
+        [30.3050, -97.7450],
+        [30.3100, -97.7400]
+      ],
+      "zip_codes": ["78705"],
+      "market_segment": "Historic/Walkable",
+      "avg_price_range": "$500K-$1M"
+    },
+    {
+      "name": "Tarrytown",
+      "description": "Upscale central neighborhood west of downtown",
+      "coordinates": [
+        [30.2900, -97.7700],
+        [30.2900, -97.7500],
+        [30.2800, -97.7450],
+        [30.2700, -97.7450],
+        [30.2600, -97.7500],
+        [30.2600, -97.7700],
+        [30.2700, -97.7750],
+        [30.2800, -97.7750],
+        [30.2900, -97.7700]
+      ],
+      "zip_codes": ["78703"],
+      "market_segment": "Upscale Central",
+      "avg_price_range": "$700K-$2M+"
+    }
+  ],
+  "metadata": {
+    "created": "2026-02-16",
+    "source": "Zillow neighborhood boundaries and Austin real estate market analysis",
+    "coordinate_system": "WGS84 (lat, lon)",
+    "use_case": "IDX website integration and MLS search filtering",
+    "market_focus": "Real estate buyer/seller perception vs official city boundaries"
+  }
+}

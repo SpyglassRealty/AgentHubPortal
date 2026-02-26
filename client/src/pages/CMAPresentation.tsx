@@ -10,7 +10,7 @@ import { DrawingCanvas, type DrawingCanvasHandle } from '@/components/cma-presen
 import { WIDGETS } from '@/components/cma-presentation/constants/widgets';
 import { Loader2 } from 'lucide-react';
 import { useRef } from 'react';
-import type { Cma, AgentProfile } from '@shared/schema';
+import type { Transaction, Cma, AgentProfile } from '@shared/schema';
 
 export default function CMAPresentation() {
   const [, params] = useRoute('/transactions/:transactionId/cma-presentation');
@@ -55,7 +55,7 @@ export default function CMAPresentation() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSlide, sidebarOpen, drawingMode, handleClose]);
 
-  const { data: transaction, isLoading: transactionLoading } = useQuery<any>({
+  const { data: transaction, isLoading: transactionLoading } = useQuery<Transaction>({
     queryKey: ['/api/transactions', transactionId],
     enabled: !!transactionId,
   });
@@ -65,96 +65,50 @@ export default function CMAPresentation() {
     enabled: !!transactionId,
   });
 
-  const { data: agentProfileData, isLoading: profileLoading, error: profileError } = useQuery<{
+  const { data: agentProfileData, isLoading: profileLoading } = useQuery<{
     profile: {
-      headshotUrl?: string;
+      id?: string;
+      userId?: string;
       title?: string;
+      headshotUrl?: string;
       bio?: string;
-      phone?: string;
-      facebookUrl?: string | null;
-      instagramUrl?: string | null;
+      defaultCoverLetter?: string;
+      marketingCompany?: string;
     } | null;
     user: { 
       firstName?: string; 
       lastName?: string;
-      email?: string;
       profileImageUrl?: string;
+      marketingDisplayName?: string; 
+      marketingTitle?: string; 
+      marketingHeadshotUrl?: string; 
+      marketingPhone?: string; 
+      marketingEmail?: string;
     } | null;
   }>({
-    queryKey: ['/api/agent-profile'],
-    queryFn: async () => {
-      const response = await fetch('/api/agent-profile', { credentials: 'include' });
-      if (!response.ok) return { profile: null, user: null };
-      return response.json();
-    },
+    queryKey: ['/api/agent/profile'],
     staleTime: 0,               // Always consider stale - refetch on mount
     refetchOnMount: true,       // Refetch when component mounts
     refetchOnWindowFocus: true, // Refetch when window gains focus
-    retry: (failureCount, error: any) => {
-      // Don't retry on authentication errors
-      if (error?.response?.status === 401) {
-        console.log('[Agent Profile] 401 - redirecting to login');
-        window.location.href = '/api/login';
-        return false;
-      }
-      return failureCount < 3;
-    },
-    retryDelay: 1000,           // Delay between retries
-  });
-
-  // Debug logging for agent profile data
-  console.log('[CMA Debug] Agent profile API response:', {
-    data: agentProfileData,
-    loading: profileLoading,
-    error: profileError,
-    hasProfile: !!agentProfileData?.profile,
-    hasUser: !!agentProfileData?.user,
-    profileFields: agentProfileData?.profile ? Object.keys(agentProfileData.profile) : [],
-    userFields: agentProfileData?.user ? Object.keys(agentProfileData.user) : [],
-    rawProfileData: agentProfileData?.profile,
-    rawUserData: agentProfileData?.user
   });
 
   const agentProfile = useMemo(() => {
-    console.log('[CMA Debug] Building agentProfile from data:', agentProfileData);
-    
-    if (!agentProfileData) {
-      console.log('[CMA Debug] No agentProfileData, returning defaults');
-      return { name: 'Agent', company: 'Spyglass Realty', phone: '', email: '', photo: '', bio: '', title: 'Licensed Real Estate Agent' };
-    }
+    if (!agentProfileData) return { name: '', company: 'Spyglass Realty', phone: '', email: '', photo: '', bio: '' };
     
     const { profile, user } = agentProfileData;
-    console.log('[CMA Debug] Extracted profile:', profile);
-    console.log('[CMA Debug] Extracted user:', user);
-    console.log('[CMA Debug] Raw phone field:', profile?.phone);
-    console.log('[CMA Debug] Phone field type:', typeof profile?.phone);
+    const displayName = user?.marketingDisplayName || 
+      (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 
+       user?.firstName || 'Agent');
     
-    const displayName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 
-       (user?.firstName || user?.email?.split('@')[0] || 'Agent');
-    
-    const result = {
+    return {
       name: displayName,
-      company: 'Spyglass Realty',
-      phone: profile?.phone || '',
-      email: user?.email || '',
-      photo: profile?.headshotUrl || user?.profileImageUrl || '',
-      title: profile?.title || 'Licensed Real Estate Agent',
+      company: profile?.marketingCompany || 'Spyglass Realty',
+      phone: user?.marketingPhone || '',
+      email: user?.marketingEmail || '',
+      photo: user?.marketingHeadshotUrl || profile?.headshotUrl || user?.profileImageUrl || '',
+      title: profile?.title || user?.marketingTitle || '',
       bio: profile?.bio || '',
     };
-    
-    console.log('[CMA Debug] Final agentProfile result:', {
-      name: result.name,
-      phone: result.phone, // ← ADD PHONE DEBUG
-      hasPhone: !!result.phone,
-      hasPhoto: !!result.photo,
-      photoLength: result.photo?.length || 0,
-      email: result.email,
-      title: result.title,
-      hasBio: !!result.bio,
-      bioLength: result.bio?.length || 0
-    });
-    
-    return result;
   }, [agentProfileData]);
 
   // Normalize status checking both status and lastStatus fields
@@ -227,34 +181,6 @@ export default function CMAPresentation() {
       const parsedBeds = typeof comp.bedrooms === 'string' ? parseInt(comp.bedrooms) : (comp.bedrooms || comp.beds || comp.bedroomsTotal || 0);
       const parsedBaths = typeof comp.bathrooms === 'string' ? parseFloat(comp.bathrooms) : (comp.bathrooms || comp.baths || comp.bathroomsTotal || 0);
       const parsedPrice = comp.listPrice || comp.price || comp.closePrice || 0;
-
-      // Enhanced debug logging for photo fields (based on official Repliers API reference)
-      if (index === 0) {
-        console.log('[CMA Debug] First comp comprehensive photo analysis:', {
-          mlsNumber: comp.mlsNumber || comp.id,
-          status: comp.status || comp.standardStatus,
-          // Primary field (official Repliers API)
-          hasImages: !!comp.images,
-          imagesType: Array.isArray(comp.images) ? 'array' : typeof comp.images,
-          imagesCount: Array.isArray(comp.images) ? comp.images.length : 0,
-          imagesPreview: Array.isArray(comp.images) ? comp.images.slice(0, 3) : comp.images,
-          // Legacy field
-          hasPhotos: !!comp.photos,
-          photosType: Array.isArray(comp.photos) ? 'array' : typeof comp.photos,
-          photosCount: Array.isArray(comp.photos) ? comp.photos.length : 0,
-          photosPreview: Array.isArray(comp.photos) ? comp.photos.slice(0, 3) : comp.photos,
-          // Single photo fallbacks
-          hasSinglePhoto: !!comp.photo,
-          singlePhotoValue: comp.photo,
-          hasImageUrl: !!comp.imageUrl,
-          imageUrlValue: comp.imageUrl,
-          // All photo-related fields for debugging
-          allPhotoFields: Object.keys(comp).filter(k => 
-            k.toLowerCase().includes('image') || 
-            k.toLowerCase().includes('photo')
-          ).reduce((acc, key) => ({ ...acc, [key]: comp[key] }), {}),
-        });
-      }
       
       // First try to get coordinates from the comp itself
       let lat = comp.latitude || comp.lat || comp.map?.latitude || comp.map?.lat || 
@@ -303,60 +229,19 @@ export default function CMAPresentation() {
         sqft: parsedSqft,
         lotSizeAcres: lotAcres,
         daysOnMarket: comp.daysOnMarket || comp.dom || 0,
-        photos: (() => {
-          // Based on official Repliers API reference:
-          // 1. Photos come from 'images' field as fully qualified URLs
-          // 2. Order matters (first = cover photo)  
-          // 3. Sold listings may have reduced photo count
-          // 4. Handle empty arrays gracefully (MLS compliance)
-          
-          // PRIMARY: Repliers 'images' field (fully qualified URLs)
-          if (comp.images && Array.isArray(comp.images) && comp.images.length > 0) {
-            const validImages = comp.images.filter((url: string) => 
-              url && typeof url === 'string' && url.trim().length > 0
-            );
-            if (index === 0) console.log('[CMA Debug] ✅ Using Repliers comp.images (official):', {
-              count: validImages.length,
-              firstThree: validImages.slice(0, 3),
-              allValid: validImages.every(url => url.startsWith('http'))
-            });
-            return validImages;
-          }
-          
-          // FALLBACK: Legacy 'photos' field (if exists)
-          if (comp.photos && Array.isArray(comp.photos) && comp.photos.length > 0) {
-            const validPhotos = comp.photos.filter((url: string) => 
-              url && typeof url === 'string' && url.trim().length > 0
-            );
-            if (index === 0) console.log('[CMA Debug] 📷 Using legacy comp.photos fallback:', {
-              count: validPhotos.length,
-              firstThree: validPhotos.slice(0, 3)
-            });
-            return validPhotos;
-          }
-          
-          // FALLBACK: Single photo fields (less common)
-          const singlePhotoFields = ['photo', 'imageUrl', 'primaryPhoto', 'coverPhoto'];
-          for (const field of singlePhotoFields) {
-            if (comp[field] && typeof comp[field] === 'string' && comp[field].trim().length > 0) {
-              const result = [comp[field]];
-              if (index === 0) console.log(`[CMA Debug] 🖼️ Using single ${field} fallback:`, {
-                field,
-                value: comp[field],
-                result
-              });
-              return result;
-            }
-          }
-          
-          // No photos found - this is normal for some sold listings per Repliers reference
-          if (index === 0) console.log('[CMA Debug] ⚠️ No photos found (normal for older sold listings)', {
+        // DEBUG: Log photo data before assignment
+        ...(() => {
+          if (index === 0) console.log('[CMA Photo Debug] First comp photo data:', {
             mlsNumber: comp.mlsNumber,
-            status: comp.status || comp.standardStatus,
-            checkedFields: ['images', 'photos', 'photo', 'imageUrl', 'primaryPhoto', 'coverPhoto']
+            hasPhotos: !!comp.photos,
+            photosLength: comp.photos?.length,
+            hasImages: !!comp.images,
+            imagesLength: comp.images?.length,
+            imageUrl: comp.imageUrl,
           });
-          return [];
+          return {};
         })(),
+        photos: comp.photos || comp.images || (comp.imageUrl ? [comp.imageUrl] : []),
         map: lat && lng ? { latitude: lat, longitude: lng } : null,
         latitude: lat,
         longitude: lng,
@@ -412,42 +297,6 @@ export default function CMAPresentation() {
 
   const isLoading = transactionLoading || cmaLoading || profileLoading;
 
-  // Debug: Add direct API test and auth check on component mount
-  useEffect(() => {
-    const testAuthAndAPI = async () => {
-      try {
-        // First check authentication status
-        console.log('[CMA Debug] Checking authentication status...');
-        const authResponse = await fetch('/api/debug/auth-status');
-        const authData = await authResponse.json();
-        console.log('[CMA Debug] Auth status:', authData);
-        
-        // Then test the agent profile API
-        console.log('[CMA Debug] Testing direct fetch to /api/agent-profile...');
-        const response = await fetch('/api/agent-profile');
-        const data = await response.json();
-        console.log('[CMA Debug] Direct fetch result:', { 
-          url: '/api/agent-profile',
-          status: response.status, 
-          statusText: response.statusText,
-          data 
-        });
-        
-        if (!response.ok) {
-          console.error('[CMA Debug] API returned error:', response.status, data);
-          if (response.status === 401) {
-            console.log('[CMA Debug] Authentication required - user needs to login');
-          }
-        }
-      } catch (error) {
-        console.error('[CMA Debug] Test failed:', error);
-      }
-    };
-    
-    // Test auth and API on mount
-    testAuthAndAPI();
-  }, []);
-
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
@@ -467,11 +316,6 @@ export default function CMAPresentation() {
         </div>
       </div>
     );
-  }
-
-  // Debug: Display agent profile error if any
-  if (profileError) {
-    console.error('[CMA Debug] Agent profile error:', profileError);
   }
 
   if (currentSlide !== null) {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import Layout from "@/components/layout";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -418,14 +418,12 @@ export default function AdminSettingsPage() {
   // Guard: not admin
   if (!user?.isSuperAdmin) {
     return (
-      <Layout>
-        <div className="max-w-2xl mx-auto py-12 text-center">
+    <div className="max-w-2xl mx-auto py-12 text-center">
           <Shield className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
           <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
           <p className="text-muted-foreground">You need administrator privileges to access this page.</p>
         </div>
-      </Layout>
-    );
+  );
   }
 
   const integrations = data?.integrations || [];
@@ -433,8 +431,7 @@ export default function AdminSettingsPage() {
   const connectedCount = integrations.filter((i) => i.lastTestResult === "success").length;
 
   return (
-    <Layout>
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
         <div>
           <h1 className="text-3xl font-display font-bold flex items-center gap-3">
             <Settings className="h-8 w-8 text-[#EF4923]" />
@@ -535,6 +532,5 @@ export default function AdminSettingsPage() {
           </CardContent>
         </Card>
       </div>
-    </Layout>
   );
 }

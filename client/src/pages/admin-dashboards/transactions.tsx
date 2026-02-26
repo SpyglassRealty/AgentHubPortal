@@ -1,8 +1,8 @@
 import { DashboardLayout } from "@/components/admin-dashboards/dashboard-layout";
-import { KpiCard } from "@/components/admin-dashboards/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -11,337 +11,433 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { FileText, RefreshCw } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  useXanoTransactionsClosed,
-  useXanoTransactionsPending,
-  useXanoTransactionsTerminated,
-  formatCurrency,
-  formatNumber,
-  getMonthKey,
-} from "@/lib/xano";
+  FileText,
+  RefreshCw,
+  AlertTriangle,
+  Download,
+  Search,
+  ArrowUpDown,
+  ChevronUp,
+  ChevronDown,
+} from "lucide-react";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-  Line,
-  ComposedChart,
-} from "recharts";
-import { useMemo, useState } from "react";
-import { Input } from "@/components/ui/input";
+  useTransactionsTable,
+  useRefreshDashboard,
+  formatCurrency,
+  formatDate,
+  type TransactionRow,
+} from "@/lib/rezen-dashboard";
+import { useMemo, useState, useCallback } from "react";
+
+type SortField = "date" | "address" | "agent" | "type" | "side" | "price" | "grossCommission" | "status";
+type SortDirection = "asc" | "desc";
 
 export default function TransactionsPage() {
-  const closedTx = useXanoTransactionsClosed();
-  const pendingTx = useXanoTransactionsPending();
-  const terminatedTx = useXanoTransactionsTerminated();
+  const [status, setStatus] = useState<string>("CLOSED");
+  const { data, isLoading, isError, error } = useTransactionsTable(status);
+  const refreshMutation = useRefreshDashboard();
+
   const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [sortField, setSortField] = useState<SortField>("date");
+  const [sortDir, setSortDir] = useState<SortDirection>("desc");
 
-  const isLoading = closedTx.isLoading || pendingTx.isLoading;
+  const handleRefresh = () => {
+    refreshMutation.mutate();
+  };
 
-  const metrics = useMemo(() => {
-    const closed = Array.isArray(closedTx.data) ? closedTx.data : [];
-    const pending = Array.isArray(pendingTx.data) ? pendingTx.data : [];
-
-    const closedUnits = closed.length;
-    const closedVolume = closed.reduce(
-      (sum, t) => sum + (t.close_price || t.sale_price || t.price || t.volume || 0),
-      0
-    );
-    const closedGci = closed.reduce(
-      (sum, t) => sum + (t.gci || t.gross_commission || 0),
-      0
-    );
-    const pendingUnits = pending.length;
-    const pendingVolume = pending.reduce(
-      (sum, t) => sum + (t.price || t.sale_price || t.volume || 0),
-      0
-    );
-    const pendingGci = pending.reduce(
-      (sum, t) => sum + (t.gci || t.gross_commission || 0),
-      0
-    );
-
-    // Monthly data for chart
-    const monthlyData: Record<string, { month: string; key: string; units: number; volume: number }> = {};
-    closed.forEach((t) => {
-      const date = t.close_date || t.closing_date || t.created_at;
-      if (!date) return;
-      const key = getMonthKey(date);
-      if (!monthlyData[key]) {
-        const d = new Date(date);
-        monthlyData[key] = {
-          month: d.toLocaleString("en-US", { month: "short", year: "numeric" }),
-          key,
-          units: 0,
-          volume: 0,
-        };
+  const handleSort = useCallback(
+    (field: SortField) => {
+      if (sortField === field) {
+        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      } else {
+        setSortField(field);
+        setSortDir("desc");
       }
-      monthlyData[key].units++;
-      monthlyData[key].volume += t.close_price || t.sale_price || t.price || t.volume || 0;
-    });
+    },
+    [sortField]
+  );
 
-    const chartData = Object.values(monthlyData)
-      .sort((a, b) => a.key.localeCompare(b.key))
-      .slice(-12);
+  // Filter & sort
+  const filteredTransactions = useMemo(() => {
+    let rows = data?.transactions || [];
 
-    // Rolling average
-    let rollingSum = 0;
-    const rollingData = chartData.map((d, i) => {
-      rollingSum += d.units;
-      const avg = rollingSum / (i + 1);
-      return { ...d, rollingAvg: Math.round(avg * 10) / 10 };
-    });
-
-    // Current / Last / Next month stats
-    const now = new Date();
-    const currentKey = getMonthKey(now);
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastKey = getMonthKey(lastMonth);
-    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const nextKey = getMonthKey(nextMonth);
-
-    const lastMonthClosed = closed.filter((t) => {
-      const d = t.close_date || t.closing_date;
-      return d && getMonthKey(d) === lastKey;
-    }).length;
-
-    const currentMonthClosed = closed.filter((t) => {
-      const d = t.close_date || t.closing_date;
-      return d && getMonthKey(d) === currentKey;
-    }).length;
-
-    const currentMonthPending = pending.filter((t) => {
-      const d = t.expected_close_date || t.close_date;
-      return d && getMonthKey(d) === currentKey;
-    }).length;
-
-    const nextMonthPending = pending.filter((t) => {
-      const d = t.expected_close_date || t.close_date;
-      return d && getMonthKey(d) === nextKey;
-    }).length;
-
-    return {
-      closedUnits,
-      closedVolume,
-      closedGci,
-      pendingUnits,
-      pendingVolume,
-      pendingGci,
-      chartData: rollingData,
-      lastMonthClosed,
-      currentMonthClosed,
-      currentMonthPending,
-      nextMonthPending,
-    };
-  }, [closedTx.data, pendingTx.data]);
-
-  // Filtered records for table
-  const closedRecords = useMemo(() => {
-    const data = Array.isArray(closedTx.data) ? closedTx.data : [];
-    if (!search) return data.slice(0, 50);
-    const q = search.toLowerCase();
-    return data
-      .filter(
+    // Search filter
+    if (search) {
+      const q = search.toLowerCase();
+      rows = rows.filter(
         (t) =>
-          (t.address || t.street_address || "").toLowerCase().includes(q) ||
-          (t.agent_name || t.listing_agent || t.buying_agent || "").toLowerCase().includes(q)
-      )
-      .slice(0, 50);
-  }, [closedTx.data, search]);
+          t.address.toLowerCase().includes(q) ||
+          t.agent.toLowerCase().includes(q) ||
+          t.city.toLowerCase().includes(q) ||
+          (t.code || "").toLowerCase().includes(q)
+      );
+    }
+
+    // Date range filter
+    if (dateFrom) {
+      const from = new Date(dateFrom).getTime();
+      rows = rows.filter((t) => {
+        if (!t.date) return false;
+        return new Date(t.date).getTime() >= from;
+      });
+    }
+    if (dateTo) {
+      const to = new Date(dateTo).getTime() + 86400000; // end of day
+      rows = rows.filter((t) => {
+        if (!t.date) return false;
+        return new Date(t.date).getTime() < to;
+      });
+    }
+
+    // Sort
+    rows = [...rows].sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case "date":
+          cmp =
+            (a.date ? new Date(a.date).getTime() : 0) -
+            (b.date ? new Date(b.date).getTime() : 0);
+          break;
+        case "address":
+          cmp = a.address.localeCompare(b.address);
+          break;
+        case "agent":
+          cmp = a.agent.localeCompare(b.agent);
+          break;
+        case "type":
+          cmp = a.type.localeCompare(b.type);
+          break;
+        case "side":
+          cmp = a.side.localeCompare(b.side);
+          break;
+        case "price":
+          cmp = a.price - b.price;
+          break;
+        case "grossCommission":
+          cmp = a.grossCommission - b.grossCommission;
+          break;
+        case "status":
+          cmp = a.status.localeCompare(b.status);
+          break;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+
+    return rows;
+  }, [data?.transactions, search, dateFrom, dateTo, sortField, sortDir]);
+
+  // CSV Export
+  const handleExport = useCallback(() => {
+    if (!filteredTransactions.length) return;
+
+    const headers = [
+      "Date",
+      "Address",
+      "City",
+      "State",
+      "Agent",
+      "Type",
+      "Side",
+      "Close Price",
+      "Gross Commission",
+      "Net Payout",
+      "Status",
+      "Property Type",
+    ];
+
+    const csvRows = filteredTransactions.map((t) => [
+      t.date ? new Date(t.date).toLocaleDateString() : "",
+      `"${t.address.replace(/"/g, '""')}"`,
+      t.city,
+      t.state,
+      `"${t.agent.replace(/"/g, '""')}"`,
+      t.type,
+      t.side,
+      t.price,
+      t.grossCommission,
+      t.netPayout,
+      t.status,
+      t.propertyType,
+    ]);
+
+    const csv = [headers.join(","), ...csvRows.map((r) => r.join(","))].join(
+      "\n"
+    );
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `transactions-${status.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [filteredTransactions, status]);
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return sortDir === "asc" ? (
+      <ChevronUp className="h-3 w-3 ml-1" />
+    ) : (
+      <ChevronDown className="h-3 w-3 ml-1" />
+    );
+  };
 
   return (
     <DashboardLayout
       title="Transactions"
-      subtitle="Closed, pending, and terminated transactions"
+      subtitle="Browse, search, and export all transactions — powered by ReZen"
       icon={FileText}
       actions={
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            closedTx.refetch();
-            pendingTx.refetch();
-            terminatedTx.refetch();
-          }}
-          disabled={isLoading}
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={!filteredTransactions.length}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isLoading || refreshMutation.isPending}
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${
+                isLoading || refreshMutation.isPending ? "animate-spin" : ""
+              }`}
+            />
+            Refresh
+          </Button>
+        </div>
       }
     >
-      <Tabs defaultValue="overview">
-        <TabsList className="mb-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="records">Records</TabsTrigger>
-        </TabsList>
+      {isError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {(error as any)?.message || "Failed to load transactions."}
+          </AlertDescription>
+        </Alert>
+      )}
 
-        <TabsContent value="overview">
-          {/* KPI Row 1 */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-            {isLoading ? (
-              Array(6)
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        {/* Status tabs */}
+        <div className="flex gap-1 bg-muted p-1 rounded-lg">
+          {(["CLOSED", "OPEN", "TERMINATED"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatus(s)}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                status === s
+                  ? "bg-background text-foreground shadow-sm font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {s.charAt(0) + s.slice(1).toLowerCase()}
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search address, agent, city..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
+        {/* Date range */}
+        <div className="flex items-center gap-2">
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="w-[140px] text-sm"
+            placeholder="From"
+          />
+          <span className="text-muted-foreground text-sm">to</span>
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="w-[140px] text-sm"
+            placeholder="To"
+          />
+        </div>
+
+        {/* Count badge */}
+        {data && (
+          <Badge variant="secondary" className="text-xs">
+            {filteredTransactions.length}
+            {filteredTransactions.length !== data.totalCount
+              ? ` / ${data.totalCount}`
+              : ""}{" "}
+            transactions
+          </Badge>
+        )}
+      </div>
+
+      {/* Table */}
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-6 space-y-3">
+              {Array(8)
                 .fill(null)
                 .map((_, i) => (
-                  <Card key={i}>
-                    <CardContent className="p-4">
-                      <Skeleton className="h-4 w-20 mb-2" />
-                      <Skeleton className="h-8 w-24" />
-                    </CardContent>
-                  </Card>
-                ))
-            ) : (
-              <>
-                <KpiCard title="Closed Units" value={formatNumber(metrics.closedUnits)} category="transactions" />
-                <KpiCard title="Closed Volume" value={formatCurrency(metrics.closedVolume, true)} category="transactions" />
-                <KpiCard title="Closed GCI" value={formatCurrency(metrics.closedGci, true)} category="transactions" />
-                <KpiCard title="Pending Units" value={formatNumber(metrics.pendingUnits)} category="transactions" />
-                <KpiCard title="Pending Volume" value={formatCurrency(metrics.pendingVolume, true)} category="transactions" />
-                <KpiCard title="Pending GCI" value={formatCurrency(metrics.pendingGci, true)} category="transactions" />
-              </>
-            )}
-          </div>
-
-          {/* Chart */}
-          <Card className="mb-6">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-medium">
-                Closed Units (Rolling Avg)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <Skeleton className="h-[300px] w-full" />
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <ComposedChart data={metrics.chartData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="month" className="text-xs" />
-                    <YAxis className="text-xs" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Legend />
-                    <Bar dataKey="units" name="Monthly Units" fill="#0d9488" radius={[4, 4, 0, 0]} />
-                    <Line
-                      type="monotone"
-                      dataKey="rollingAvg"
-                      name="Rolling Avg"
-                      stroke="#1e40af"
-                      strokeWidth={2}
-                      dot={{ r: 3 }}
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Monthly KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <KpiCard
-              title="Last Month Closed"
-              value={formatNumber(metrics.lastMonthClosed)}
-              category="transactions"
-            />
-            <KpiCard
-              title="Current Month"
-              value={formatNumber(metrics.currentMonthClosed + metrics.currentMonthPending)}
-              subtitle={`${metrics.currentMonthClosed} Closed + ${metrics.currentMonthPending} Pending`}
-              category="transactions"
-            />
-            <KpiCard
-              title="Next Month Pending"
-              value={formatNumber(metrics.nextMonthPending)}
-              category="transactions"
-            />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="records">
-          <div className="mb-4">
-            <Input
-              placeholder="Search by address or agent..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="max-w-sm"
-            />
-          </div>
-          <Card>
-            <CardContent className="p-0">
+                  <Skeleton key={i} className="h-10 w-full" />
+                ))}
+            </div>
+          ) : filteredTransactions.length === 0 ? (
+            <div className="p-12 text-center text-muted-foreground">
+              No transactions found
+              {search || dateFrom || dateTo ? " matching your filters" : ""}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Address</TableHead>
-                    <TableHead>Agent</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
-                    <TableHead className="text-right">GCI</TableHead>
-                    <TableHead>Close Date</TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none"
+                      onClick={() => handleSort("date")}
+                    >
+                      <div className="flex items-center">
+                        Date
+                        <SortIcon field="date" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none"
+                      onClick={() => handleSort("address")}
+                    >
+                      <div className="flex items-center">
+                        Address
+                        <SortIcon field="address" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none"
+                      onClick={() => handleSort("agent")}
+                    >
+                      <div className="flex items-center">
+                        Agent
+                        <SortIcon field="agent" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none"
+                      onClick={() => handleSort("type")}
+                    >
+                      <div className="flex items-center">
+                        Type
+                        <SortIcon field="type" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none"
+                      onClick={() => handleSort("side")}
+                    >
+                      <div className="flex items-center">
+                        Side
+                        <SortIcon field="side" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none text-right"
+                      onClick={() => handleSort("price")}
+                    >
+                      <div className="flex items-center justify-end">
+                        Close Price
+                        <SortIcon field="price" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none text-right"
+                      onClick={() => handleSort("grossCommission")}
+                    >
+                      <div className="flex items-center justify-end">
+                        Gross Commission
+                        <SortIcon field="grossCommission" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none"
+                      onClick={() => handleSort("status")}
+                    >
+                      <div className="flex items-center">
+                        Status
+                        <SortIcon field="status" />
+                      </div>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoading ? (
-                    Array(5)
-                      .fill(null)
-                      .map((_, i) => (
-                        <TableRow key={i}>
-                          <TableCell colSpan={6}>
-                            <Skeleton className="h-4 w-full" />
-                          </TableCell>
-                        </TableRow>
-                      ))
-                  ) : closedRecords.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">
-                        No transactions found
+                  {filteredTransactions.map((t) => (
+                    <TableRow key={t.id}>
+                      <TableCell className="whitespace-nowrap">
+                        {formatDate(t.date)}
+                      </TableCell>
+                      <TableCell className="font-medium max-w-[300px] truncate">
+                        {t.address}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{t.agent}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {t.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className={`text-xs ${
+                            t.side === "Listing"
+                              ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                              : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                          }`}
+                        >
+                          {t.side}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        {formatCurrency(t.price)}
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        {formatCurrency(t.grossCommission)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`text-xs ${
+                            t.status.includes("CLOSED") || t.status.includes("Closed")
+                              ? "border-green-300 text-green-700 dark:border-green-700 dark:text-green-400"
+                              : t.status.includes("TERMINATED") || t.status.includes("Terminated")
+                              ? "border-red-300 text-red-700 dark:border-red-700 dark:text-red-400"
+                              : ""
+                          }`}
+                        >
+                          {t.status}
+                        </Badge>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    closedRecords.map((t, i) => (
-                      <TableRow key={t.id || i}>
-                        <TableCell className="font-medium">
-                          {t.address || t.street_address || "—"}
-                        </TableCell>
-                        <TableCell>
-                          {t.agent_name || t.listing_agent || t.buying_agent || "—"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {t.representation || t.type || t.transaction_type || "—"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(t.close_price || t.sale_price || t.price || t.volume)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(t.gci || t.gross_commission)}
-                        </TableCell>
-                        <TableCell>
-                          {t.close_date || t.closing_date
-                            ? new Date(t.close_date || t.closing_date!).toLocaleDateString()
-                            : "—"}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                  ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </DashboardLayout>
   );
 }
