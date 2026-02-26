@@ -75,13 +75,13 @@ async function requireDeveloper(req: any, res: any, next: any) {
 async function logActivity(userId: string, userEmail: string, userName: string, actionType: string, description: string, metadata?: any, ipAddress?: string) {
   try {
     await db.insert(developerActivityLogs).values({
-      userId,
-      userEmail,
-      userName,
-      actionType,
+      user_id: userId,
+      user_email: userEmail,
+      user_name: userName,
+      action_type: actionType,
       description,
       metadata: metadata || {},
-      ipAddress,
+      ip_address: ipAddress,
     });
   } catch (error) {
     console.error("Failed to log activity:", error);
