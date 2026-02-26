@@ -24,6 +24,7 @@ import {
   Loader2,
   Settings,
 } from "lucide-react";
+import { CommunityPagePreviewModal } from "./components/community-page-preview";
 import {
   Sheet,
   SheetContent,
@@ -80,6 +81,7 @@ export default function CmsPageEditor() {
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [viewport, setViewport] = useState<"desktop" | "tablet" | "mobile">("desktop");
+  const [showPreview, setShowPreview] = useState(false);
 
   // History (undo/redo)
   const [history, setHistory] = useState<PageContent[]>([emptyContent]);
@@ -649,74 +651,154 @@ export default function CmsPageEditor() {
               <SheetHeader>
                 <SheetTitle>Page Settings</SheetTitle>
               </SheetHeader>
-              <div className="space-y-4 mt-4">
-                <div>
-                  <Label>Title</Label>
-                  <Input value={title} onChange={(e) => { setTitle(e.target.value); setIsDirty(true); }} />
+              <div className="space-y-6 mt-4">
+                {/* Basic Settings */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-foreground">Basic Information</h4>
+                  <div>
+                    <Label>Title</Label>
+                    <Input value={title} onChange={(e) => { setTitle(e.target.value); setIsDirty(true); }} />
+                  </div>
+                  <div>
+                    <Label>Slug</Label>
+                    <Input value={slug} onChange={(e) => { setSlug(e.target.value); setIsDirty(true); }} />
+                  </div>
+                  <div>
+                    <Label>Type</Label>
+                    <Select value={pageType} onValueChange={(v) => { setPageType(v); setIsDirty(true); }}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="page">Page</SelectItem>
+                        <SelectItem value="blog">Blog Post</SelectItem>
+                        <SelectItem value="community">Community</SelectItem>
+                        <SelectItem value="landing">Landing Page</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div>
-                  <Label>Slug</Label>
-                  <Input value={slug} onChange={(e) => { setSlug(e.target.value); setIsDirty(true); }} />
+
+                {/* Status */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-foreground">Status</h4>
+                  <div>
+                    <Label>Publication Status</Label>
+                    <Select value={pageStatus} onValueChange={(v) => { setPageStatus(v); setIsDirty(true); }}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="published">Published</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div>
-                  <Label>Type</Label>
-                  <Select value={pageType} onValueChange={(v) => { setPageType(v); setIsDirty(true); }}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="page">Page</SelectItem>
-                      <SelectItem value="blog">Blog Post</SelectItem>
-                      <SelectItem value="community">Community</SelectItem>
-                      <SelectItem value="landing">Landing Page</SelectItem>
-                    </SelectContent>
-                  </Select>
+
+                {/* Main Content */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-foreground">Main Content</h4>
+                  <div>
+                    <Label>Excerpt</Label>
+                    <Textarea value={excerpt} onChange={(e) => { setExcerpt(e.target.value); setIsDirty(true); }} placeholder="Brief description..." rows={3} />
+                  </div>
                 </div>
-                <div>
-                  <Label>Category</Label>
-                  <Input value={category} onChange={(e) => { setCategory(e.target.value); setIsDirty(true); }} placeholder="e.g., Austin Real Estate" />
+
+                {/* Tags & Attributes */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-foreground">Tags & Attributes</h4>
+                  <div>
+                    <Label>Category</Label>
+                    <Input value={category} onChange={(e) => { setCategory(e.target.value); setIsDirty(true); }} placeholder="e.g., Austin Real Estate" />
+                  </div>
+                  <div>
+                    <Label>Tags (comma separated)</Label>
+                    <Input
+                      value={tags.join(", ")}
+                      onChange={(e) => {
+                        setTags(e.target.value.split(",").map((t) => t.trim()).filter(Boolean));
+                        setIsDirty(true);
+                      }}
+                      placeholder="tag1, tag2, tag3"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label>Excerpt</Label>
-                  <Textarea value={excerpt} onChange={(e) => { setExcerpt(e.target.value); setIsDirty(true); }} placeholder="Brief description..." rows={3} />
+
+                {/* SEO Settings */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-foreground">SEO Settings</h4>
+                  <div>
+                    <Label>Meta Title</Label>
+                    <Input value={metaTitle} onChange={(e) => { setMetaTitle(e.target.value); setIsDirty(true); }} placeholder="SEO title (60 chars max)" />
+                    <p className="text-xs text-muted-foreground mt-1">{metaTitle.length}/60 characters</p>
+                  </div>
+                  <div>
+                    <Label>Meta Description</Label>
+                    <Textarea value={metaDescription} onChange={(e) => { setMetaDescription(e.target.value); setIsDirty(true); }} placeholder="SEO description (160 chars max)" rows={3} />
+                    <p className="text-xs text-muted-foreground mt-1">{metaDescription.length}/160 characters</p>
+                  </div>
+                  <div>
+                    <Label>Focus Keyword</Label>
+                    <Input value={focusKeyword} onChange={(e) => { setFocusKeyword(e.target.value); setIsDirty(true); }} placeholder="Primary keyword" />
+                  </div>
                 </div>
-                <div>
-                  <Label>Featured Image URL</Label>
-                  <Input value={featuredImageUrl} onChange={(e) => { setFeaturedImageUrl(e.target.value); setIsDirty(true); }} placeholder="https://..." />
-                  {featuredImageUrl && (
-                    <img src={featuredImageUrl} alt="Featured" className="mt-2 rounded-lg max-h-32 object-cover" />
-                  )}
-                </div>
-                <hr />
-                <div>
-                  <Label className="font-semibold">SEO Settings</Label>
-                </div>
-                <div>
-                  <Label>Meta Title</Label>
-                  <Input value={metaTitle} onChange={(e) => { setMetaTitle(e.target.value); setIsDirty(true); }} placeholder="SEO title (60 chars max)" />
-                  <p className="text-xs text-muted-foreground mt-1">{metaTitle.length}/60 characters</p>
-                </div>
-                <div>
-                  <Label>Meta Description</Label>
-                  <Textarea value={metaDescription} onChange={(e) => { setMetaDescription(e.target.value); setIsDirty(true); }} placeholder="SEO description (160 chars max)" rows={3} />
-                  <p className="text-xs text-muted-foreground mt-1">{metaDescription.length}/160 characters</p>
-                </div>
-                <div>
-                  <Label>Focus Keyword</Label>
-                  <Input value={focusKeyword} onChange={(e) => { setFocusKeyword(e.target.value); setIsDirty(true); }} placeholder="Primary keyword" />
-                </div>
-                <div>
-                  <Label>Tags (comma separated)</Label>
-                  <Input
-                    value={tags.join(", ")}
-                    onChange={(e) => {
-                      setTags(e.target.value.split(",").map((t) => t.trim()).filter(Boolean));
-                      setIsDirty(true);
-                    }}
-                    placeholder="tag1, tag2, tag3"
-                  />
+
+                {/* Featured Image */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-foreground">Featured Image</h4>
+                  <div>
+                    <Label>Upload Image</Label>
+                    <div className="mt-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            // Convert to base64 for now - in production, upload to cloud storage
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                              const result = e.target?.result as string;
+                              setFeaturedImageUrl(result);
+                              setIsDirty(true);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Recommended size: 1200x630px (16:9 aspect ratio)
+                      </p>
+                    </div>
+                    {featuredImageUrl && (
+                      <div className="mt-3">
+                        <img src={featuredImageUrl} alt="Featured" className="rounded-lg max-h-32 object-cover" />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => {
+                            setFeaturedImageUrl("");
+                            setIsDirty(true);
+                          }}
+                        >
+                          Remove Image
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </SheetContent>
           </Sheet>
+
+          {/* Preview */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowPreview(true)}
+          >
+            <Eye className="mr-1 h-4 w-4" />
+            Preview
+          </Button>
 
           {/* Save */}
           <Button
@@ -791,6 +873,26 @@ export default function CmsPageEditor() {
           }}
         />
       </div>
+
+      {/* Preview Modal */}
+      <CommunityPagePreviewModal
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+        page={{
+          title,
+          slug,
+          type: pageType,
+          status: pageStatus,
+          excerpt,
+          featuredImageUrl,
+          metaTitle,
+          metaDescription,
+          focusKeyword,
+          category,
+          tags,
+        }}
+        content={content}
+      />
     </div>
   );
 }

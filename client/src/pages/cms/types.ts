@@ -72,10 +72,10 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
   },
   {
     type: 'text',
-    label: 'Text',
+    label: 'Rich Text',
     icon: 'T',
     category: 'basic',
-    defaultContent: { text: 'Start typing your content here...' },
+    defaultContent: { html: '<p>Start typing your content here...</p>' },
   },
   {
     type: 'image',
