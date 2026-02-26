@@ -23,7 +23,12 @@ async function fetchGitHubCommits() {
       { headers }
     );
     
-    if (!response.ok) return [];
+    if (!response.ok) {
+      console.error(`[Changelog] GitHub API error: ${response.status} ${response.statusText}`);
+      const errorBody = await response.text();
+      console.error(`[Changelog] Error details:`, errorBody);
+      return [];
+    }
     
     const commits = await response.json();
     
@@ -678,5 +683,6 @@ export function setupDeveloperRoutes(app: Express) {
 
 export function registerDeveloperRoutes(app: Express) {
   console.log('[Developer Routes] Registering developer dashboard routes...');
+  console.log(`[Developer Routes] GITHUB_TOKEN environment variable: ${process.env.GITHUB_TOKEN ? 'PRESENT' : 'MISSING'}`);
   setupDeveloperRoutes(app);
 }
