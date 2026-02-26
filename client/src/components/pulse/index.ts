@@ -1,6 +1,7 @@
 export { default as DataLayerSidebar } from "./DataLayerSidebar";
 export { default as ZipSummaryPanel } from "./ZipSummaryPanel";
 export { default as HistoricalChart } from "./HistoricalChart";
+export { default as AffordabilityChart } from "./AffordabilityChart";
 export { default as ForecastGauge } from "./ForecastGauge";
 export { default as PulseMap } from "./PulseMap";
 export { default as HeroStatsBar } from "./HeroStatsBar";

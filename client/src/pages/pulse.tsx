@@ -7,6 +7,7 @@ import {
   DataLayerSidebar,
   ZipSummaryPanel,
   HistoricalChart,
+  AffordabilityChart,
   PulseMap,
   HeroStatsBar,
   MarketTrends,
@@ -38,6 +39,9 @@ export default function PulsePage() {
   const handleLayerSelect = useCallback((layerId: string) => {
     setSelectedLayerId(layerId);
   }, []);
+
+  // Detect if we should show the special AffordabilityChart
+  const isAffordabilityLayer = selectedLayerId === "salary-to-afford";
 
   // Fetch overview
   const { data: overview, isLoading: overviewLoading } = useQuery<OverviewData>({
@@ -196,15 +200,22 @@ export default function PulsePage() {
                 />
               </div>
 
-              {/* Historical Chart — right half of center */}
+              {/* Historical Chart or Affordability Chart — right half of center */}
               <div className="flex-1 min-w-[400px]">
-                <HistoricalChart
-                  selectedLayerId={selectedLayerId}
-                  selectedZip={selectedZip}
-                  period={period}
-                  onPeriodChange={setPeriod}
-                  className="h-full border-0 rounded-none"
-                />
+                {isAffordabilityLayer ? (
+                  <AffordabilityChart
+                    selectedZip={selectedZip}
+                    className="h-full border-0 rounded-none"
+                  />
+                ) : (
+                  <HistoricalChart
+                    selectedLayerId={selectedLayerId}
+                    selectedZip={selectedZip}
+                    period={period}
+                    onPeriodChange={setPeriod}
+                    className="h-full border-0 rounded-none"
+                  />
+                )}
               </div>
             </div>
           ) : (
@@ -220,15 +231,22 @@ export default function PulsePage() {
                 />
               </div>
 
-              {/* Right Panel — Historical Chart */}
+              {/* Right Panel — Historical Chart or Affordability Chart */}
               <div className="w-[35%] min-w-[420px] max-w-[520px] flex-shrink-0 border-l border-border">
-                <HistoricalChart
-                  selectedLayerId={selectedLayerId}
-                  selectedZip={selectedZip}
-                  period={period}
-                  onPeriodChange={setPeriod}
-                  className="h-full border-0 rounded-none"
-                />
+                {isAffordabilityLayer ? (
+                  <AffordabilityChart
+                    selectedZip={selectedZip}
+                    className="h-full border-0 rounded-none"
+                  />
+                ) : (
+                  <HistoricalChart
+                    selectedLayerId={selectedLayerId}
+                    selectedZip={selectedZip}
+                    period={period}
+                    onPeriodChange={setPeriod}
+                    className="h-full border-0 rounded-none"
+                  />
+                )}
               </div>
             </>
           )}

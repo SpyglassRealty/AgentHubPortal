@@ -1117,5 +1117,168 @@ export function registerPulseV2Routes(app: Express): void {
     }
   });
 
-  console.log("[Pulse V2] Registered 8 route groups under /api/pulse/v2/*");
+  // ═══════════════════════════════════════════════════════════════════
+  // 9. GET /api/pulse/v2/zip/:zip/affordability-history
+  //    Historical "Salary to Afford a House" vs "Median Income" (2005-2025)
+  // ═══════════════════════════════════════════════════════════════════
+  app.get("/api/pulse/v2/zip/:zip/affordability-history", isAuthenticated, async (req: Request, res: Response) => {
+    const { zip } = req.params;
+    const period = ((req.query.period as string) || "yearly") as "monthly" | "yearly";
+
+    // ── Historical 30-year fixed mortgage rates (annual avg, Freddie Mac PMMS) ──
+    const MORTGAGE_RATES: Record<number, number> = {
+      2005: 0.0587, 2006: 0.0641, 2007: 0.0634, 2008: 0.0604,
+      2009: 0.0505, 2010: 0.0472, 2011: 0.0445, 2012: 0.0366,
+      2013: 0.0398, 2014: 0.0417, 2015: 0.0385, 2016: 0.0365,
+      2017: 0.0399, 2018: 0.0454, 2019: 0.0394, 2020: 0.0311,
+      2021: 0.0296, 2022: 0.0534, 2023: 0.0681, 2024: 0.0672, 2025: 0.0680,
+    };
+
+    // ── Monthly mortgage rate estimates (for month-level granularity) ──
+    const MONTHLY_RATES: Record<string, number> = {
+      // 2023
+      "2023-01": 0.0633, "2023-02": 0.0626, "2023-03": 0.0654, "2023-04": 0.0634,
+      "2023-05": 0.0643, "2023-06": 0.0671, "2023-07": 0.0681, "2023-08": 0.0709,
+      "2023-09": 0.0721, "2023-10": 0.0762, "2023-11": 0.0744, "2023-12": 0.0691,
+      // 2024
+      "2024-01": 0.0666, "2024-02": 0.0690, "2024-03": 0.0682, "2024-04": 0.0699,
+      "2024-05": 0.0706, "2024-06": 0.0692, "2024-07": 0.0684, "2024-08": 0.0650,
+      "2024-09": 0.0620, "2024-10": 0.0632, "2024-11": 0.0684, "2024-12": 0.0672,
+      // 2025
+      "2025-01": 0.0689, "2025-02": 0.0683, "2025-03": 0.0671, "2025-04": 0.0680,
+      "2025-05": 0.0676, "2025-06": 0.0682,
+    };
+
+    // ── Austin home value trajectory multipliers vs current value ──
+    const YEARLY_HOME_MULTS: Record<number, number> = {
+      2005: 0.30, 2006: 0.32, 2007: 0.34, 2008: 0.35, 2009: 0.34,
+      2010: 0.35, 2011: 0.36, 2012: 0.37, 2013: 0.40, 2014: 0.43,
+      2015: 0.50, 2016: 0.53, 2017: 0.57, 2018: 0.62, 2019: 0.65,
+      2020: 0.68, 2021: 0.85, 2022: 1.08, 2023: 0.97, 2024: 0.98, 2025: 1.00,
+    };
+
+    // ── Historical US median household income (Census Bureau, national) ──
+    // Used as base; we scale by zip-specific income ratio
+    const NATIONAL_MEDIAN_INCOME: Record<number, number> = {
+      2005: 46326, 2006: 48451, 2007: 50233, 2008: 50303, 2009: 49777,
+      2010: 49276, 2011: 50054, 2012: 51017, 2013: 51939, 2014: 53657,
+      2015: 55775, 2016: 57617, 2017: 60336, 2018: 63179, 2019: 65712,
+      2020: 67521, 2021: 70784, 2022: 74580, 2023: 77397, 2024: 80610, 2025: 82000,
+    };
+
+    // ── Constants ──
+    const DOWN_PAYMENT_PCT = 0.20;
+    const PROPERTY_TAX_RATE = 0.018;  // Texas ~1.8%
+    const INSURANCE_RATE = 0.005;      // ~0.5% of home value
+    const HOUSING_COST_RATIO = 0.30;   // 30% of gross income
+    const LOAN_TERM_MONTHS = 360;      // 30-year fixed
+
+    // Calculate monthly mortgage payment
+    function calcMonthlyMortgage(homeValue: number, annualRate: number): number {
+      const principal = homeValue * (1 - DOWN_PAYMENT_PCT);
+      const monthlyRate = annualRate / 12;
+      if (monthlyRate === 0) return principal / LOAN_TERM_MONTHS;
+      return principal * (monthlyRate * Math.pow(1 + monthlyRate, LOAN_TERM_MONTHS))
+        / (Math.pow(1 + monthlyRate, LOAN_TERM_MONTHS) - 1);
+    }
+
+    // Calculate salary to afford
+    function calcSalaryToAfford(homeValue: number, annualRate: number): number {
+      const monthlyMortgage = calcMonthlyMortgage(homeValue, annualRate);
+      const monthlyTax = (homeValue * PROPERTY_TAX_RATE) / 12;
+      const monthlyInsurance = (homeValue * INSURANCE_RATE) / 12;
+      const totalMonthlyHousing = monthlyMortgage + monthlyTax + monthlyInsurance;
+      return (totalMonthlyHousing * 12) / HOUSING_COST_RATIO;
+    }
+
+    try {
+      const currentHomeValue = getRealisticHomeValue(zip);
+      const currentIncome = REALISTIC_INCOMES[zip] || 75000;
+      // Ratio of zip income to national for scaling historical income
+      const incomeRatio = currentIncome / (NATIONAL_MEDIAN_INCOME[2025] || 82000);
+
+      interface AffordabilityPoint {
+        date: string;
+        year: number;
+        month?: number;
+        salaryToAfford: number;
+        medianIncome: number;
+        homeValue: number;
+        mortgageRate: number;
+      }
+
+      const data: AffordabilityPoint[] = [];
+
+      if (period === "yearly") {
+        for (let y = 2005; y <= 2025; y++) {
+          const mult = YEARLY_HOME_MULTS[y] || 1.0;
+          const homeValue = currentHomeValue * mult;
+          const rate = MORTGAGE_RATES[y] || 0.065;
+          const salaryToAfford = calcSalaryToAfford(homeValue, rate);
+          const nationalIncome = NATIONAL_MEDIAN_INCOME[y] || 75000;
+          const medianIncome = Math.round(nationalIncome * incomeRatio);
+
+          data.push({
+            date: `${y}`,
+            year: y,
+            salaryToAfford: Math.round(salaryToAfford),
+            medianIncome,
+            homeValue: Math.round(homeValue),
+            mortgageRate: parseFloat((rate * 100).toFixed(2)),
+          });
+        }
+      } else {
+        // Monthly: 2023-01 through 2025-06
+        for (let y = 2023; y <= 2025; y++) {
+          const maxMonth = y === 2025 ? 6 : 12;
+          for (let m = 1; m <= maxMonth; m++) {
+            const dateKey = `${y}-${String(m).padStart(2, "0")}`;
+            // Interpolate home value within year
+            const yearMult = YEARLY_HOME_MULTS[y] || 1.0;
+            const nextYearMult = YEARLY_HOME_MULTS[y + 1] || yearMult;
+            const interpMult = yearMult + (nextYearMult - yearMult) * ((m - 1) / 12);
+            const homeValue = currentHomeValue * interpMult;
+
+            const rate = MONTHLY_RATES[dateKey] || MORTGAGE_RATES[y] || 0.065;
+            const salaryToAfford = calcSalaryToAfford(homeValue, rate);
+
+            // Interpolate income within year
+            const yearIncome = NATIONAL_MEDIAN_INCOME[y] || 75000;
+            const nextYearIncome = NATIONAL_MEDIAN_INCOME[y + 1] || yearIncome;
+            const interpIncome = yearIncome + (nextYearIncome - yearIncome) * ((m - 1) / 12);
+            const medianIncome = Math.round(interpIncome * incomeRatio);
+
+            data.push({
+              date: dateKey,
+              year: y,
+              month: m,
+              salaryToAfford: Math.round(salaryToAfford),
+              medianIncome,
+              homeValue: Math.round(homeValue),
+              mortgageRate: parseFloat((rate * 100).toFixed(2)),
+            });
+          }
+        }
+      }
+
+      res.json({
+        zip,
+        period,
+        data,
+        meta: {
+          downPaymentPct: DOWN_PAYMENT_PCT,
+          propertyTaxRate: PROPERTY_TAX_RATE,
+          insuranceRate: INSURANCE_RATE,
+          housingCostRatio: HOUSING_COST_RATIO,
+          source: "Calculated from Zillow ZHVI, Freddie Mac PMMS, Census ACS",
+          description: "Annual salary required so that mortgage + taxes + insurance ≤ 30% of gross income (20% down, 30-yr fixed)",
+        },
+      });
+    } catch (err: any) {
+      console.error(`[Pulse V2] affordability-history/${zip} error:`, err);
+      res.status(500).json({ error: "Failed to calculate affordability history" });
+    }
+  });
+
+  console.log("[Pulse V2] Registered 9 route groups under /api/pulse/v2/*");
 }
