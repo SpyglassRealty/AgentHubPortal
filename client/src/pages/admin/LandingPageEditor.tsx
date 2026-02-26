@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
+import { ImageUpload } from "@/components/editor/ImageUpload";
 import {
   Select,
   SelectContent,
@@ -103,7 +105,6 @@ export default function LandingPageEditorPage() {
   
   const [formData, setFormData] = useState<PageFormData>(defaultFormData);
   const [previewMode, setPreviewMode] = useState(false);
-  const [htmlEditMode, setHtmlEditMode] = useState(false);
   const [activeTab, setActiveTab] = useState("content");
 
   // Fetch existing page data if editing
@@ -337,14 +338,14 @@ export default function LandingPageEditorPage() {
                     {formData.isPublished ? "Published" : "Draft"}
                   </span>
                 </div>
-                {formData.isPublished && formData.slug && (
+                {formData.slug && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => window.open(`https://spyglassrealty.com/${formData.slug}`, '_blank')}
+                    onClick={() => window.open(`https://spyglass-idx.vercel.app/${formData.slug}`, '_blank')}
                   >
                     <Globe className="h-4 w-4 mr-2" />
-                    View Live
+                    {formData.isPublished ? 'View Live' : 'Preview'}
                   </Button>
                 )}
               </div>
@@ -470,32 +471,16 @@ export default function LandingPageEditorPage() {
 
                 <Card>
                   <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle>Main Content</CardTitle>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setHtmlEditMode(!htmlEditMode)}
-                      >
-                        <Code className="h-4 w-4 mr-2" />
-                        {htmlEditMode ? "Visual" : "HTML"}
-                      </Button>
-                    </div>
+                    <CardTitle>Main Content</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <Textarea
+                    <RichTextEditor
                       value={formData.content}
-                      onChange={(e) => handleInputChange("content", e.target.value)}
-                      rows={htmlEditMode ? 15 : 8}
-                      placeholder={htmlEditMode 
-                        ? "<h1>Welcome to our page</h1>\n<p>Your content here...</p>"
-                        : "Enter your page content here..."
-                      }
-                      className="font-mono"
+                      onChange={(html) => handleInputChange("content", html)}
+                      placeholder="Enter your page content here. Use the toolbar for formatting, images, and links..."
                     />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {htmlEditMode ? "HTML content" : "Rich text content"} • {formData.content.length} characters
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {formData.content.length} characters
                     </p>
                   </CardContent>
                 </Card>
@@ -558,32 +543,33 @@ export default function LandingPageEditorPage() {
                                 />
                               </div>
                               
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-4">
                                 <div>
-                                  <Label>Image URL</Label>
-                                  <Input
+                                  <ImageUpload
                                     value={section.imageUrl || ""}
-                                    onChange={(e) => updateSection(section.id, { imageUrl: e.target.value })}
-                                    placeholder="https://example.com/image.jpg"
+                                    onChange={(url) => updateSection(section.id, { imageUrl: url })}
+                                    label="Section Image"
+                                    placeholder="https://example.com/section-image.jpg"
                                   />
                                 </div>
-                                <div>
-                                  <Label>CTA Button Text</Label>
-                                  <Input
-                                    value={section.ctaText || ""}
-                                    onChange={(e) => updateSection(section.id, { ctaText: e.target.value })}
-                                    placeholder="Learn More"
-                                  />
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label>CTA Button Text</Label>
+                                    <Input
+                                      value={section.ctaText || ""}
+                                      onChange={(e) => updateSection(section.id, { ctaText: e.target.value })}
+                                      placeholder="Learn More"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label>CTA Button URL</Label>
+                                    <Input
+                                      value={section.ctaUrl || ""}
+                                      onChange={(e) => updateSection(section.id, { ctaUrl: e.target.value })}
+                                      placeholder="/contact"
+                                    />
+                                  </div>
                                 </div>
-                              </div>
-                              
-                              <div>
-                                <Label>CTA Button URL</Label>
-                                <Input
-                                  value={section.ctaUrl || ""}
-                                  onChange={(e) => updateSection(section.id, { ctaUrl: e.target.value })}
-                                  placeholder="/contact"
-                                />
                               </div>
                             </CardContent>
                           </Card>
@@ -621,12 +607,10 @@ export default function LandingPageEditorPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <Label htmlFor="ogImageUrl">Open Graph Image URL</Label>
-                      <Input
-                        id="ogImageUrl"
-                        type="url"
+                      <ImageUpload
                         value={formData.ogImageUrl}
-                        onChange={(e) => handleInputChange("ogImageUrl", e.target.value)}
+                        onChange={(url) => handleInputChange("ogImageUrl", url)}
+                        label="Open Graph Image"
                         placeholder="https://example.com/og-image.jpg"
                       />
                       <p className="text-xs text-muted-foreground mt-1">

@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
+import { ImageUpload } from "@/components/editor/ImageUpload";
 import { 
   Select,
   SelectContent,
@@ -28,6 +30,14 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   Save,
@@ -43,6 +53,7 @@ import {
   AlertCircle,
   Clock,
   X,
+  Code2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -149,6 +160,7 @@ export default function BlogPostEditor() {
       buttonText: "",
       buttonUrl: "",
     },
+    customScripts: "",
   });
   
   const [newTag, setNewTag] = useState("");
@@ -208,6 +220,7 @@ export default function BlogPostEditor() {
           buttonText: "",
           buttonUrl: "",
         },
+        customScripts: post.customScripts || "",
       });
       setIsDirty(false);
     }
@@ -390,14 +403,14 @@ export default function BlogPostEditor() {
               </div>
             )}
             
-            {!isNewPost && post?.status === 'published' && (
+            {formData.slug && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open(`/blog/${post.slug}`, '_blank')}
+                onClick={() => window.open(`https://spyglass-idx.vercel.app/blog/${formData.slug}`, '_blank')}
               >
                 <Eye className="h-4 w-4 mr-2" />
-                View Live
+                Preview
               </Button>
             )}
             
@@ -461,17 +474,11 @@ export default function BlogPostEditor() {
                 
                 <div>
                   <Label htmlFor="content">Content</Label>
-                  <Textarea
-                    id="content"
+                  <RichTextEditor
                     value={formData.content}
-                    onChange={(e) => handleInputChange("content", e.target.value)}
-                    placeholder="Write your blog post content here. You can use HTML tags for formatting..."
-                    rows={20}
-                    className="font-mono"
+                    onChange={(html) => handleInputChange("content", html)}
+                    placeholder="Write your blog post content here. You can use rich formatting, images, and links..."
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    HTML is supported. Use standard HTML tags for formatting.
-                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -486,12 +493,11 @@ export default function BlogPostEditor() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="featuredImage">Featured Image URL</Label>
-                  <Input
-                    id="featuredImage"
+                  <ImageUpload
                     value={formData.featuredImageUrl}
-                    onChange={(e) => handleInputChange("featuredImageUrl", e.target.value)}
-                    placeholder="https://example.com/image.jpg"
+                    onChange={(url) => handleInputChange("featuredImageUrl", url)}
+                    label="Featured Image"
+                    placeholder="https://example.com/featured-image.jpg"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Main image shown in blog lists and at the top of the post
@@ -499,11 +505,10 @@ export default function BlogPostEditor() {
                 </div>
                 
                 <div>
-                  <Label htmlFor="ogImage">Social Media Image URL (Optional)</Label>
-                  <Input
-                    id="ogImage"
+                  <ImageUpload
                     value={formData.ogImageUrl}
-                    onChange={(e) => handleInputChange("ogImageUrl", e.target.value)}
+                    onChange={(url) => handleInputChange("ogImageUrl", url)}
+                    label="Social Media Image (Optional)"
                     placeholder="https://example.com/og-image.jpg"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
@@ -577,6 +582,61 @@ export default function BlogPostEditor() {
                     </div>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Custom Scripts */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Code2 className="h-5 w-5" />
+                  Custom Scripts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="customScripts">Custom Scripts & HTML</Label>
+                    <Textarea
+                      id="customScripts"
+                      value={formData.customScripts}
+                      onChange={(e) => handleInputChange("customScripts", e.target.value)}
+                      placeholder={`<script>
+// Custom JavaScript for this post
+console.log('Blog post loaded');
+</script>
+
+<!-- Custom HTML/Schema markup -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "${formData.title}"
+}
+</script>`}
+                      rows={10}
+                      className="font-mono text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Add custom JavaScript, tracking codes, schema markup, or other HTML that will be included in this blog post.
+                      Scripts will be inserted in the page head section.
+                    </p>
+                  </div>
+                  
+                  {formData.customScripts && (
+                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                        <div className="text-sm">
+                          <p className="font-medium text-yellow-800">Custom scripts detected</p>
+                          <p className="text-yellow-700 mt-1">
+                            Make sure your scripts are properly formatted and secure. Malformed scripts may break the page.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
