@@ -586,7 +586,7 @@ export default function AdminPage() {
               <Route path="/admin/testimonials/sources" component={ReviewSourceManagerPage} />
               <Route path="/admin/testimonials/:id" component={TestimonialEditorPage} />
               <Route path="/admin/testimonials" component={TestimonialListPage} />
-              <Route path="/admin/dashboards/:rest*" component={AdminDashboardsRouter} />
+              <Route path="/admin/dashboards/*" component={AdminDashboardsRouter} />
               <Route path="/admin/dashboards" component={AdminDashboardsRouter} />
               
               {/* Default dashboard content */}

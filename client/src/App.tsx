@@ -108,7 +108,7 @@ function Router() {
       <Route path="/training" component={TrainingPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/developer" component={DeveloperPage} />
-      <Route path="/admin/:rest*" component={AdminPage} />
+      <Route path="/admin/*" component={AdminPage} />
       <Route path="/admin" component={AdminPage} />
       <Route path="/share/:token" component={SharedCmaPage} />
       <Route path="/app/:id" component={AppView} />
