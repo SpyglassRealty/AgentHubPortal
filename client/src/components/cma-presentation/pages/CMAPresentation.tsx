@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Header } from '@/components/cma-presentation/components/Header';
@@ -12,11 +12,107 @@ import { Loader2 } from 'lucide-react';
 import { useRef } from 'react';
 import type { Transaction, Cma, AgentProfile } from '@shared/schema';
 
-export default function CMAPresentation() {
+// Error Boundary Component
+class CMAErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error('[CMA Presentation] Uncaught error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-gray-50">
+          <div className="text-center max-w-md p-8">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h1>
+            <p className="text-gray-600 mb-4">
+              The CMA presentation encountered an error and couldn't load properly.
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              Error: {this.state.error?.message || 'Unknown error'}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-3 bg-[#EF4923] text-white rounded-lg hover:bg-[#d94420] transition-colors mr-4"
+            >
+              Reload Page
+            </button>
+            <button
+              onClick={() => window.history.back()}
+              className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Go Back
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// WRAPPER - handles data fetching and guards
+function CmaPresentationPage() {
   const [, params] = useRoute('/cma/:id/cma-presentation');
-  const [, navigate] = useLocation();
   const id = params?.id;
 
+  const { data: cmaData, isLoading, error } = useQuery({
+    queryKey: ['cma-presentation', id],
+    queryFn: async () => {
+      const res = await fetch(`/api/cma/${id}`);
+      if (!res.ok) throw new Error('Failed to load CMA');
+      return res.json();
+    },
+    enabled: !!id,
+  });
+
+  // SAFE to early return here - no hooks below
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-3">Loading presentation...</span>
+      </div>
+    );
+  }
+
+  if (error || !cmaData) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <h2 className="text-xl font-semibold text-red-600">CMA Not Found</h2>
+        <p>Could not load presentation data.</p>
+        <button 
+          onClick={() => window.location.href = '/cma'}
+          className="px-4 py-2 bg-[#EF4923] text-white rounded hover:bg-[#d94420]"
+        >
+          Back to CMA
+        </button>
+      </div>
+    );
+  }
+
+  // Only render inner component AFTER data is confirmed available
+  return <CmaPresentationInner cmaData={cmaData} id={id} />;
+}
+
+// INNER - has all the useMemo, useState, useEffect hooks
+// cmaData is GUARANTEED to exist here
+function CmaPresentationInner({ cmaData, id }: { cmaData: any; id: string }) {
+  const [, navigate] = useLocation();
+
+  // Now it's safe to use other hooks since we have guaranteed data
   const [currentSlide, setCurrentSlide] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [drawingMode, setDrawingMode] = useState(false);
@@ -27,7 +123,13 @@ export default function CMAPresentation() {
   };
 
   const handleClose = useCallback(() => {
-    navigate(`/cma/${id}`);
+    // If user navigated directly to this URL, there might not be a history stack
+    // Try to go back first, then fallback to CMA dashboard
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      navigate(`/cma/${id}`);
+    }
   }, [navigate, id]);
 
   useEffect(() => {
@@ -55,17 +157,7 @@ export default function CMAPresentation() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSlide, sidebarOpen, drawingMode, handleClose]);
 
-  const { data: cmaData } = useQuery({
-    queryKey: ['/api/cma', id],
-    queryFn: async () => {
-      const res = await fetch('/api/cma/' + id);
-      if (!res.ok) throw new Error('Failed to fetch CMA');
-      return res.json();
-    },
-  });
-
-  // REMOVED: savedCma query - using cmaData instead
-
+  // Agent profile query
   const { data: agentProfileData, isLoading: profileLoading, error: profileError } = useQuery<{
     profile: {
       id?: string;
@@ -333,6 +425,13 @@ export default function CMAPresentation() {
         sqft: parsedSqft,
         lotSizeAcres: lotAcres,
         daysOnMarket: comp.daysOnMarket || comp.dom || 0,
+        
+        // CRITICAL: Add missing fields that were being dropped during transformation
+        description: comp.description || comp.remarks || comp.publicRemarks || null,
+        listDate: comp.listDate || null,
+        soldDate: comp.soldDate || null, 
+        originalPrice: comp.originalPrice || null,
+        
         photos: (() => {
           // Based on official Repliers API reference:
           // 1. Photos come from 'images' field as fully qualified URLs
@@ -360,11 +459,17 @@ export default function CMAPresentation() {
             });
           }
           
-          // PRIMARY: API returns 'photo' field (singular string, full CDN URL)
-          // Based on Daryl's live API analysis: comp.photo = "https://cdn.repliers.io/..."
+          // PRIMARY: Database 'imageUrl' field (every property has one!)
+          if (comp.imageUrl && typeof comp.imageUrl === 'string' && comp.imageUrl.trim().length > 0) {
+            const result = [comp.imageUrl];
+            if (index === 0) console.log('[CMA Debug] Using DB imageUrl (primary):', result);
+            return result;
+          }
+          
+          // SECONDARY: API returns 'photo' field (singular string, full CDN URL)
           if (comp.photo && typeof comp.photo === 'string' && comp.photo.trim().length > 0) {
             const result = [comp.photo];
-            if (index === 0) console.log('[CMA Debug] Using API comp.photo (actual field):', result);
+            if (index === 0) console.log('[CMA Debug] Using API comp.photo (secondary):', result);
             return result;
           }
           
@@ -387,7 +492,7 @@ export default function CMAPresentation() {
           }
           
           // FALLBACK: Other single photo fields
-          const otherPhotoFields = ['imageUrl', 'primaryPhoto', 'coverPhoto'];
+          const otherPhotoFields = ['primaryPhoto', 'coverPhoto'];
           for (const field of otherPhotoFields) {
             if (comp[field] && typeof comp[field] === 'string' && comp[field].trim().length > 0) {
               const result = [comp[field]];
@@ -404,12 +509,45 @@ export default function CMAPresentation() {
         latitude: lat,
         longitude: lng,
       };
+    }).map((transformedComp, index) => {
+      // DEBUG: Log first comp to verify fields are preserved
+      if (index === 0) {
+        console.log('🔍 FRONTEND TRANSFORMATION DEBUG - First comp after transformation:', {
+          mlsNumber: transformedComp.mlsNumber,
+          originalPrice: transformedComp.originalPrice,
+          listDate: transformedComp.listDate, 
+          description: transformedComp.description,
+          hasFields: {
+            originalPrice: !!transformedComp.originalPrice,
+            listDate: !!transformedComp.listDate,
+            description: !!transformedComp.description,
+          }
+        });
+      }
+      return transformedComp;
     });
   }, [cmaData?.comparableProperties, normalizeStatusWithLastStatus]);
 
   const subjectProperty = useMemo(() => {
     const rawSubject = cmaData?.subjectProperty as any;
-    if (!rawSubject) return undefined;
+    if (!rawSubject) {
+      // Construct minimal subject from CMA name when subjectProperty is null in DB
+      return {
+        address: cmaData?.name || 'Subject Property',
+        unparsedAddress: cmaData?.name || 'Subject Property',
+        streetAddress: cmaData?.name || 'Subject Property',
+        beds: 0,
+        bedroomsTotal: 0,
+        baths: 0,
+        bathroomsTotal: 0,
+        sqft: 0,
+        livingArea: 0,
+        standardStatus: 'Active',
+        mlsNumber: '',
+        listPrice: 0, // Remove circular dependency - will be set later
+        price: 0, // Remove circular dependency - will be set later
+      } as any;
+    }
     
     return {
       ...rawSubject,
@@ -453,28 +591,7 @@ export default function CMAPresentation() {
     return Math.round(total / compsWithAcres.length);
   }, [presentationComparables]);
 
-  const isLoading = profileLoading;
-
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
-          <p className="text-muted-foreground">Loading presentation...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!cmaData) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
-        <div className="text-center">
-          <p className="text-muted-foreground">CMA not found</p>
-        </div>
-      </div>
-    );
-  }
+  // Agent profile loading is handled separately - we can show the CMA even if profile is still loading
 
   if (currentSlide !== null) {
     const prevTitle = currentSlide > 0 ? WIDGETS[currentSlide - 1].title : null;
@@ -586,5 +703,14 @@ export default function CMAPresentation() {
       
       <DrawingCanvas ref={drawingCanvasRef} isActive={drawingMode} onClose={() => setDrawingMode(false)} />
     </div>
+  );
+}
+
+// Export wrapped with ErrorBoundary
+export default function CMAPresentationWithErrorBoundary() {
+  return (
+    <CMAErrorBoundary>
+      <CmaPresentationPage />
+    </CMAErrorBoundary>
   );
 }

@@ -1,11 +1,120 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { SafeImage } from '@/components/ui/safe-image';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useState, useRef, useEffect } from 'react';
-import { Edit2, Check, X, Info, Star, Camera, MapPin, BarChart3, Home, TrendingUp, Lightbulb, Undo2 } from 'lucide-react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import { Edit2, Check, X, Info, Star, Camera, MapPin, BarChart3, Home, TrendingUp, Lightbulb, Undo2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { CMAMap } from '@/components/cma-map';
+import { extractPrice, extractSqft } from '@/lib/cma-data-utils';
+import type { Property } from '@shared/schema';
 import type { CmaProperty } from '../types';
+
+// Convert CmaProperty to Property for CMAMap compatibility  
+function convertToProperty(cmaProperty: CmaProperty): Property {
+  return {
+    mlsNumber: cmaProperty.id,
+    address: cmaProperty.address,
+    city: cmaProperty.city,
+    state: cmaProperty.state,
+    postalCode: cmaProperty.zipCode,
+    price: cmaProperty.price,
+    soldPrice: cmaProperty.soldPrice,
+    listPrice: cmaProperty.originalPrice || cmaProperty.price,
+    bedrooms: cmaProperty.beds,
+    bathrooms: cmaProperty.baths,
+    sqft: cmaProperty.sqft,
+    livingArea: cmaProperty.sqft,
+    lotSize: cmaProperty.lotSize,
+    yearBuilt: cmaProperty.yearBuilt,
+    status: cmaProperty.status,
+    standardStatus: cmaProperty.status,
+    daysOnMarket: cmaProperty.daysOnMarket,
+    photos: cmaProperty.photos,
+    latitude: cmaProperty.latitude,
+    longitude: cmaProperty.longitude,
+  } as Property;
+}
+
+// Helper component for Comparable Properties Photo Collage
+function ComparablePropertiesPhotoCollage({ comparables }: { comparables: CmaProperty[] }) {
+  const compsWithPhotos = comparables
+    ?.filter(c => (c.photos && c.photos.length > 0) || c.photo)
+    ?.slice(0, 6) || [];
+
+  if (compsWithPhotos.length === 0) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-4">
+        <Home className="w-10 h-10 mb-2" />
+        <p className="font-medium text-sm text-center">No Comparable Photos Available</p>
+        <p className="text-xs text-center">Photos will appear when comparables are added</p>
+      </div>
+    );
+  }
+
+  const getGridLayout = (count: number) => {
+    if (count <= 2) return { cols: '1fr', rows: '1fr' };
+    if (count <= 4) return { cols: 'repeat(2, 1fr)', rows: 'repeat(2, 1fr)' };
+    return { cols: 'repeat(2, 1fr)', rows: 'repeat(3, 1fr)' };
+  };
+
+  const layout = getGridLayout(compsWithPhotos.length);
+  const formatPrice = (price: number) => {
+    if (price >= 1000000) return `$${(price / 1000000).toFixed(1)}M`;
+    return `$${Math.round(price / 1000)}K`;
+  };
+
+  return (
+    <div className="relative w-full h-full">
+      {/* Title overlay */}
+      <div className="absolute top-2 left-2 bg-black/80 backdrop-blur-sm text-white px-2 py-1 rounded text-xs font-medium z-10">
+        Comparable Properties
+      </div>
+      
+      <div 
+        className="grid gap-1 h-full p-1"
+        style={{
+          gridTemplateColumns: layout.cols,
+          gridTemplateRows: layout.rows,
+        }}
+      >
+        {compsWithPhotos.map((comp, i) => {
+          const photoUrl = (comp.photos && comp.photos.length > 0) ? comp.photos[0] : comp.photo!;
+          const price = comp.soldPrice || comp.listPrice || comp.price || 0;
+          const address = comp.address?.split(',')[0] || 'Property';
+          
+          return (
+            <div
+              key={i}
+              className="relative overflow-hidden rounded-md"
+              style={{
+                gridColumn: i === 0 && compsWithPhotos.length >= 5 ? 'span 2' : undefined,
+              }}
+            >
+              <img
+                src={photoUrl}
+                alt={comp.address || 'Comparable property'}
+                loading="lazy"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    parent.innerHTML = `<div class="w-full h-full bg-muted flex items-center justify-center"><svg class="w-6 h-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>`;
+                  }
+                }}
+              />
+              <div className="absolute bottom-0 left-0 right-0 bg-black/50 backdrop-blur-sm px-2 py-1">
+                <span className="text-white text-xs font-medium truncate block">
+                  {price > 0 ? formatPrice(price) : 'N/A'} · {address}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 interface ImageInsight {
   url: string;
@@ -121,14 +230,10 @@ export function SuggestedPriceWidget({
   const [editedPrice, setEditedPrice] = useState<number>(0);
   const [originalPrice, setOriginalPrice] = useState<number>(0);
   const [hasBeenEdited, setHasBeenEdited] = useState(false);
-  const [mapToken, setMapToken] = useState<string | null>(null);
-  const [mapError, setMapError] = useState<string | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [fetchedInsights, setFetchedInsights] = useState<ImageInsight[]>([]);
   
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
   const originalPriceInitialized = useRef(false);
 
   const closedComps = comparables.filter(c => c.status.toLowerCase().includes('closed'));
@@ -182,18 +287,7 @@ export function SuggestedPriceWidget({
     }
   }, [suggestedPrice, closedComps.length, subjectProperty?.sqft]);
 
-  useEffect(() => {
-    fetch('/api/mapbox-token')
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        if (data.token) setMapToken(data.token);
-        else setMapError(data.error || 'Failed to load map token');
-      })
-      .catch((err) => setMapError(`Failed to load map: ${err.message}`));
-  }, []);
+  // Mapbox token and initialization handled by CMAMap component
 
   useEffect(() => {
     if (imageInsights && imageInsights.length > 0) {
@@ -214,31 +308,7 @@ export function SuggestedPriceWidget({
       .catch(() => {});
   }, [mlsNumber, subjectProperty?.mlsNumber, imageInsights]);
 
-  useEffect(() => {
-    if (!mapContainer.current || map.current) return;
-    if (!subjectProperty?.latitude || !subjectProperty?.longitude) return;
-    if (!mapToken) return;
-    
-    mapboxgl.accessToken = mapToken;
-    
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [subjectProperty.longitude, subjectProperty.latitude],
-      zoom: 14,
-    });
-    
-    new mapboxgl.Marker({ color: '#EF4923' })
-      .setLngLat([subjectProperty.longitude, subjectProperty.latitude])
-      .addTo(map.current);
-    
-    map.current.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
-    
-    return () => {
-      map.current?.remove();
-      map.current = null;
-    };
-  }, [subjectProperty?.latitude, subjectProperty?.longitude, mapToken]);
+  // Map handling moved to CMAMap component - no custom mapbox setup needed
 
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat('en-US', { 
@@ -291,6 +361,20 @@ export function SuggestedPriceWidget({
     ? validPricePerSqft.reduce((sum, p) => sum + p, 0) / validPricePerSqft.length
     : 0;
   
+  // Calculate vs market percentages for subject property
+  const calculateVsMarket = (subjectValue: number, marketAverage: number): number | null => {
+    if (!marketAverage || marketAverage === 0 || !subjectValue) return null;
+    return ((subjectValue - marketAverage) / marketAverage) * 100;
+  };
+
+  // Use the displayed suggested price for vs market calculation (not subject property price)
+  const displayedPrice = displayPrice > 0 ? displayPrice : (suggestedPrice || 0);
+  const subjectSqft = subjectProperty ? extractSqft(subjectProperty) || 0 : 0;
+  const subjectPricePerSqft = subjectSqft > 0 && displayedPrice > 0 ? displayedPrice / subjectSqft : 0;
+
+  const priceVsMarket = calculateVsMarket(displayedPrice, avgPrice);
+  const psfVsMarket = calculateVsMarket(subjectPricePerSqft, avgPricePerSqft);
+  
   const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
   const maxPrice = validPrices.length > 0 ? Math.max(...validPrices) : 0;
   
@@ -334,7 +418,9 @@ export function SuggestedPriceWidget({
     onPriceUpdate?.(originalPrice);
   };
 
-  const hasCoordinates = subjectProperty?.latitude && subjectProperty?.longitude;
+  // Normalize properties for CMAMap component
+  const normalizedSubject: Property | null = subjectProperty ? convertToProperty(subjectProperty) : null;
+  const normalizedComparables: Property[] = comparables.map(convertToProperty);
 
   const aiPhotos: ImageInsight[] = fetchedInsights.length > 0
     ? fetchedInsights
@@ -347,26 +433,13 @@ export function SuggestedPriceWidget({
   const fallbackPhotos: ImageInsight[] = (() => {
     const photoUrls: string[] = [];
     
-    console.log('[SuggestedPrice Debug] Subject property photo fields:', {
-      hasPhotos: !!subjectProperty?.photos,
-      photosLength: Array.isArray(subjectProperty?.photos) ? subjectProperty.photos.length : 0,
-      hasPhoto: !!subjectProperty?.photo,
-      photoValue: subjectProperty?.photo,
-      mlsNumber: subjectProperty?.mlsNumber,
-      allFields: subjectProperty ? Object.keys(subjectProperty).filter(k => 
-        k.toLowerCase().includes('photo') || k.toLowerCase().includes('image')
-      ) : []
-    });
-    
     // Check for photos array (if available)
     if (subjectProperty?.photos && Array.isArray(subjectProperty.photos)) {
       photoUrls.push(...subjectProperty.photos);
-      console.log('[SuggestedPrice Debug] Using photos array:', photoUrls.length);
     }
     // Check for single photo field (main API field based on Daryl's analysis)
     else if (subjectProperty?.photo && typeof subjectProperty.photo === 'string') {
       photoUrls.push(subjectProperty.photo);
-      console.log('[SuggestedPrice Debug] Using single photo field:', subjectProperty.photo);
     }
     
     return photoUrls.slice(0, 3).map(url => ({ url }));
@@ -386,60 +459,9 @@ export function SuggestedPriceWidget({
         
         <div className="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
           
-          <div className="relative rounded-xl overflow-hidden shadow-lg bg-muted min-h-[120px] md:min-h-0">
-            {photosToShow.length > 0 && currentPhoto ? (
-              <>
-                <img
-                  src={currentPhoto.url}
-                  alt="Property"
-                  className="w-full h-full object-cover"
-                  data-testid="property-photo"
-                />
-                
-                {currentPhoto.quality?.quantitative && currentPhoto.quality.quantitative > 0 && (
-                  <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm text-white 
-                                  px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-medium shadow-lg"
-                       data-testid="ai-best-photo-badge">
-                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                    <span>AI Best Photo</span>
-                    <span className="bg-green-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
-                      {Math.round(currentPhoto.quality.quantitative * 20)}%
-                    </span>
-                  </div>
-                )}
-                
-                {currentPhoto.classification?.imageOf && (
-                  <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white 
-                                  px-2 py-1 rounded text-[10px] sm:text-xs">
-                    {formatImageLabel(currentPhoto.classification.imageOf)}
-                  </div>
-                )}
-                
-                {photosToShow.length > 1 && (
-                  <div className="absolute bottom-2 right-2 flex gap-1">
-                    {photosToShow.map((photo, idx) => (
-                      <div
-                        key={idx}
-                        className={`rounded-md ${currentPhotoIndex === idx ? 'ring-2 ring-[#EF4923]' : ''}`}
-                      >
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setCurrentPhotoIndex(idx)}
-                          data-testid={`photo-thumbnail-${idx}`}
-                        >
-                          <img src={photo.url} alt="" className="w-full h-full object-cover" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                <Camera className="w-10 h-10" />
-              </div>
-            )}
+          {/* LEFT SIDE - Comparable Properties Photo Collage */}
+          <div className="relative rounded-xl overflow-hidden shadow-lg bg-muted h-full min-h-[400px]">
+            <ComparablePropertiesPhotoCollage comparables={comparables} />
           </div>
           
           <div className="flex flex-col justify-center items-center text-center py-1 sm:py-2">
@@ -570,29 +592,13 @@ export function SuggestedPriceWidget({
             </div>
           </div>
           
-          <div className="relative rounded-xl overflow-hidden shadow-lg bg-muted min-h-[120px] md:min-h-0">
-            {hasCoordinates && mapToken && !mapError ? (
-              <div 
-                ref={mapContainer}
-                className="w-full h-full min-h-[120px]"
-                data-testid="map-container"
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-3">
-                <MapPin className="w-8 h-8 mb-2" />
-                <p className="font-medium text-sm">Subject Property Map</p>
-                <p className="text-xs">
-                  {mapError ? 'Map unavailable' : !hasCoordinates ? 'No coordinates' : 'Loading...'}
-                </p>
-              </div>
-            )}
-            
-            {hasCoordinates && (
-              <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white 
-                              px-2 py-1 rounded text-[10px] font-mono z-10">
-                {subjectProperty?.latitude?.toFixed(4)}°N, {Math.abs(subjectProperty?.longitude || 0).toFixed(4)}°W
-              </div>
-            )}
+          {/* RIGHT SIDE - Comparable Properties Location Map (using CMAMap component) */}
+          <div className="relative rounded-xl overflow-hidden shadow-lg bg-muted h-full min-h-[400px]">
+            <CMAMap
+              properties={normalizedComparables}
+              subjectProperty={normalizedSubject}
+              showPolygon={false}
+            />
           </div>
         </div>
         
@@ -622,12 +628,38 @@ export function SuggestedPriceWidget({
               <p className="text-xs sm:text-sm lg:text-base font-bold" data-testid="stat-avg-price">
                 {formatPriceShort(avgPrice)}
               </p>
+              {priceVsMarket !== null && (
+                <div className="mt-1">
+                  <div className={`text-[9px] sm:text-xs flex items-center justify-center gap-1 ${
+                    priceVsMarket > 0 ? 'text-red-400' : 'text-green-400'
+                  }`}>
+                    {priceVsMarket > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                    {Math.abs(priceVsMarket).toFixed(1)}% vs market
+                  </div>
+                  <div className="text-[8px] sm:text-[9px] text-muted-foreground">
+                    Your: {formatPriceShort(displayedPrice)}
+                  </div>
+                </div>
+              )}
             </Card>
             <Card className="p-1.5 sm:p-2 text-center">
               <p className="text-[9px] sm:text-xs text-muted-foreground">Avg $/sqft</p>
               <p className="text-xs sm:text-sm lg:text-base font-bold" data-testid="stat-avg-sqft">
                 ${avgPricePerSqft.toFixed(0)}
               </p>
+              {psfVsMarket !== null && (
+                <div className="mt-1">
+                  <div className={`text-[9px] sm:text-xs flex items-center justify-center gap-1 ${
+                    psfVsMarket > 0 ? 'text-red-400' : 'text-green-400'
+                  }`}>
+                    {psfVsMarket > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                    {Math.abs(psfVsMarket).toFixed(1)}% vs market
+                  </div>
+                  <div className="text-[8px] sm:text-[9px] text-muted-foreground">
+                    Your: ${Math.round(subjectPricePerSqft)}
+                  </div>
+                </div>
+              )}
             </Card>
             <Card className="p-1.5 sm:p-2 text-center">
               <p className="text-[9px] sm:text-xs text-muted-foreground">Price Range</p>

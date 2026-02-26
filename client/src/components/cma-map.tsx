@@ -250,7 +250,7 @@ function addSymbolLayers(
       });
     }
   } catch (err) {
-    console.warn('[CMA Map] Error adding symbol layers:', err);
+    console.warn('Map layer error:', err);
   }
 }
 
@@ -357,7 +357,7 @@ function initCmaLayers(
       addSymbolLayers(map, tuning);
     });
   } catch (err) {
-    console.warn('[CMA Map] Error initializing layers:', err);
+    console.warn('Map layer initialization error:', err);
   }
 }
 
@@ -483,7 +483,6 @@ export function CMAMap({
     if (!map) return;
 
     if (!model.subjectLngLat) {
-      console.log('[CMA Map] centerOnSubject: No subject coordinates');
       return;
     }
 
@@ -501,7 +500,6 @@ export function CMAMap({
     if (!map) return;
 
     if (!model.bounds) {
-      console.log('[CMA Map] fitAllBounds: No bounds available');
       return;
     }
 
@@ -595,10 +593,8 @@ export function CMAMap({
       // Fallback: Also initialize layers on load in case style.load hasn't fired yet
       // This handles initial load reliably across all browsers
       // Use setTimeout to ensure style resources are fully loaded
-      console.log('[CMA Map] Map load event fired, scheduling layer initialization...');
       setTimeout(() => {
         if (!layersReadyRef.current) {
-          console.log('[CMA Map] Layers not ready, initializing from load event fallback...');
           ensureLayersExist();
         }
       }, 100);
@@ -896,7 +892,7 @@ export function CMAMap({
 
   if (error) {
     return (
-      <div className="w-full h-[550px] rounded-lg border flex items-center justify-center bg-muted">
+      <div className="w-full h-full rounded-lg border flex items-center justify-center bg-muted">
         <p className="text-muted-foreground">{error}</p>
       </div>
     );
@@ -904,7 +900,7 @@ export function CMAMap({
 
   if (!token) {
     return (
-      <div className="w-full h-[550px] rounded-lg border flex items-center justify-center bg-muted">
+      <div className="w-full h-full rounded-lg border flex items-center justify-center bg-muted">
         <p className="text-muted-foreground">Loading map...</p>
       </div>
     );
@@ -915,7 +911,7 @@ export function CMAMap({
 
   return (
     <div
-      className="relative w-full h-[550px] rounded-lg overflow-hidden border"
+      className="relative w-full h-full rounded-lg overflow-hidden border"
       data-testid="cma-map-container"
     >
       <div ref={mapContainer} className="w-full h-full touch-manipulation" />

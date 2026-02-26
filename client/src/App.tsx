@@ -29,7 +29,24 @@ import AdminSettingsPage from "@/pages/admin-settings";
 import AdminPage from "@/pages/admin";
 import AdminDashboardsRouter from "@/pages/admin-dashboards";
 import AdminBeaconPage from "@/pages/admin-beacon";
-import CmsRouter from "@/pages/cms";
+import CommunityListPage from "@/pages/admin/CommunityList";
+import CommunityEditorPage from "@/pages/admin/CommunityEditor";
+import AdminSiteEditorPage from "@/pages/admin-site-editor";
+import RedirectsListPage from "@/pages/admin/RedirectsList";
+import GlobalScriptsListPage from "@/pages/admin/GlobalScriptsList";
+import BlogPostListPage from "@/pages/admin/BlogPostList";
+import BlogPostEditorPage from "@/pages/admin/BlogPostEditor";
+import BlogCategoryListPage from "@/pages/admin/BlogCategoryList";
+import AgentListPage from "@/pages/admin/AgentList";
+import AgentEditorPage from "@/pages/admin/AgentEditor";
+import LandingPageListPage from "@/pages/admin/LandingPageList";
+import LandingPageEditorPage from "@/pages/admin/LandingPageEditor";
+import PagesListPage from "@/pages/admin/pages-list";
+import PageEditorPage from "@/pages/admin/page-editor";
+import TestimonialListPage from "@/pages/admin/TestimonialList";
+import TestimonialEditorPage from "@/pages/admin/TestimonialEditor";
+import ReviewSourceManagerPage from "@/pages/admin/ReviewSourceManager";
+import DeveloperPage from "./pages/developer";
 
 // Backward compatibility redirect component
 function CmaPresentationRedirect() {
@@ -90,15 +107,9 @@ function Router() {
       <Route path="/marketing-calendar" component={MarketingCalendarPage} />
       <Route path="/training" component={TrainingPage} />
       <Route path="/settings" component={SettingsPage} />
+      <Route path="/developer" component={DeveloperPage} />
+      <Route path="/admin/*" component={AdminPage} />
       <Route path="/admin" component={AdminPage} />
-      <Route path="/admin/settings" component={AdminSettingsPage} />
-      <Route path="/admin/beacon" component={AdminBeaconPage} />
-      <Route path="/admin/cms/editor/new" component={CmsRouter} />
-      <Route path="/admin/cms/editor/:id" component={CmsRouter} />
-      <Route path="/admin/cms/pages" component={CmsRouter} />
-      <Route path="/admin/cms" component={CmsRouter} />
-      <Route path="/admin/dashboards/:rest*" component={AdminDashboardsRouter} />
-      <Route path="/admin/dashboards" component={AdminDashboardsRouter} />
       <Route path="/share/:token" component={SharedCmaPage} />
       <Route path="/app/:id" component={AppView} />
       <Route component={NotFound} />

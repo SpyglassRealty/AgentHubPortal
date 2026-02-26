@@ -2,8 +2,11 @@ import type { Express } from "express";
 import { storage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
 import { resetFubClient, refreshFubDbConfig } from "./fubClient";
-import { INTEGRATION_DEFINITIONS, upsertIntegrationConfigSchema } from "@shared/schema";
+import { INTEGRATION_DEFINITIONS, upsertIntegrationConfigSchema, siteContent } from "@shared/schema";
 import type { User } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+import { SITE_CONTENT_DEFAULTS, VALID_SECTIONS } from "./siteContentDefaults";
 
 // Mask an API key to show only last 4 chars
 function maskApiKey(key: string): string {
@@ -398,6 +401,129 @@ export function registerAdminRoutes(app: Express) {
     } catch (error) {
       console.error(`[Admin] Error deleting integration:`, error);
       res.status(500).json({ message: "Failed to delete integration" });
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  Site Content — Homepage Section Editor
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/admin/site-content — all sections (merged with defaults)
+  app.get("/api/admin/site-content", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const rows = await db.select().from(siteContent);
+      const savedMap: Record<string, any> = {};
+      for (const row of rows) {
+        savedMap[row.section] = row.content;
+      }
+
+      // Merge: saved values override defaults
+      const merged: Record<string, any> = {};
+      for (const key of VALID_SECTIONS) {
+        merged[key] = savedMap[key] ?? SITE_CONTENT_DEFAULTS[key];
+      }
+
+      res.json({ sections: merged, savedSections: Object.keys(savedMap) });
+    } catch (error) {
+      console.error("[Admin] Error fetching site content:", error);
+      res.status(500).json({ message: "Failed to fetch site content" });
+    }
+  });
+
+  // GET /api/admin/site-content/:section — single section
+  app.get("/api/admin/site-content/:section", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { section } = req.params;
+      if (!VALID_SECTIONS.includes(section)) {
+        return res.status(400).json({ message: `Invalid section: ${section}` });
+      }
+
+      const [row] = await db.select().from(siteContent).where(eq(siteContent.section, section));
+      const content = row?.content ?? SITE_CONTENT_DEFAULTS[section];
+      res.json({ section, content, isDefault: !row });
+    } catch (error) {
+      console.error("[Admin] Error fetching site content section:", error);
+      res.status(500).json({ message: "Failed to fetch section content" });
+    }
+  });
+
+  // PUT /api/admin/site-content/:section — upsert a section
+  app.put("/api/admin/site-content/:section", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { section } = req.params;
+      const user = req.dbUser;
+
+      if (!VALID_SECTIONS.includes(section)) {
+        return res.status(400).json({ message: `Invalid section: ${section}` });
+      }
+
+      const { content } = req.body;
+      if (!content || typeof content !== "object") {
+        return res.status(400).json({ message: "content must be a JSON object" });
+      }
+
+      // Upsert
+      const [existing] = await db.select().from(siteContent).where(eq(siteContent.section, section));
+      
+      let result;
+      if (existing) {
+        [result] = await db
+          .update(siteContent)
+          .set({ content, updatedBy: user.id, updatedAt: new Date() })
+          .where(eq(siteContent.section, section))
+          .returning();
+      } else {
+        [result] = await db
+          .insert(siteContent)
+          .values({ section, content, updatedBy: user.id })
+          .returning();
+      }
+
+      console.log(`[Admin] Site content section '${section}' updated by ${user.id}`);
+      res.json({ success: true, section, content: result.content, updatedAt: result.updatedAt });
+    } catch (error) {
+      console.error("[Admin] Error updating site content:", error);
+      res.status(500).json({ message: "Failed to update site content" });
+    }
+  });
+
+  // POST /api/admin/site-content/:section/reset — reset a section to defaults
+  app.post("/api/admin/site-content/:section/reset", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { section } = req.params;
+      if (!VALID_SECTIONS.includes(section)) {
+        return res.status(400).json({ message: `Invalid section: ${section}` });
+      }
+
+      await db.delete(siteContent).where(eq(siteContent.section, section));
+      console.log(`[Admin] Site content section '${section}' reset to defaults by ${req.dbUser.id}`);
+      res.json({ success: true, section, content: SITE_CONTENT_DEFAULTS[section] });
+    } catch (error) {
+      console.error("[Admin] Error resetting site content:", error);
+      res.status(500).json({ message: "Failed to reset section" });
+    }
+  });
+
+  // GET /api/site-content — PUBLIC endpoint (no auth) for IDX site to fetch content
+  app.get("/api/site-content", async (req: any, res) => {
+    try {
+      const rows = await db.select().from(siteContent);
+      const savedMap: Record<string, any> = {};
+      for (const row of rows) {
+        savedMap[row.section] = row.content;
+      }
+
+      const merged: Record<string, any> = {};
+      for (const key of VALID_SECTIONS) {
+        merged[key] = savedMap[key] ?? SITE_CONTENT_DEFAULTS[key];
+      }
+
+      // Set cache headers - 5 minute cache
+      res.set("Cache-Control", "public, max-age=300");
+      res.json(merged);
+    } catch (error) {
+      console.error("[API] Error fetching public site content:", error);
+      res.status(500).json({ message: "Failed to fetch site content" });
     }
   });
 }

@@ -94,7 +94,7 @@ export function SlideViewer({
       case 'marketing':
         return <MarketingWidget />;
       case 'comps':
-        return <CompsWidget comparables={comparables} subjectProperty={subjectProperty} />;
+        return <CompsWidget comparables={comparables} subjectProperty={subjectProperty} suggestedListPrice={suggestedListPrice ?? undefined} />;
       case 'time_to_sell':
         return <TimeToSellWidget comparables={comparables} averageDaysOnMarket={averageDaysOnMarket} />;
       case 'suggested_list_price':
@@ -102,7 +102,7 @@ export function SlideViewer({
       case 'listing_action_plan':
         return <ListingActionPlanWidget />;
       case 'spyglass_resources':
-        return <SpyglassResourcesWidget cmaToken={cmaToken} />;
+        return <SpyglassResourcesWidget agent={agent} cmaToken={cmaToken} />;
       case 'average_price_acre':
         return <AveragePriceAcreWidget comparables={comparables} subjectProperty={subjectProperty} />;
       default:

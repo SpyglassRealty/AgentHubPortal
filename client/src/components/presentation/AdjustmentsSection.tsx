@@ -282,7 +282,7 @@ export function AdjustmentsSection({
               </thead>
               <tbody>
                 <tr className="border-b border-border/50">
-                  <td className="py-2 pr-4">Sale Price</td>
+                  <td className="py-2 pr-4">Close Price</td>
                   <td className="py-2 px-2 text-center text-muted-foreground">—</td>
                   {displayComps.map((comp, idx) => (
                     <Fragment key={comp.mlsNumber || idx}>
@@ -293,7 +293,7 @@ export function AdjustmentsSection({
                 </tr>
                 
                 <tr className="border-b border-border/50">
-                  <td className="py-2 pr-4">Square Feet</td>
+                  <td className="py-2 pr-4">Living Area</td>
                   <td className="py-2 px-2 text-center">{getSqft(subjectProperty || {}).toLocaleString() || '—'}</td>
                   {displayComps.map((comp, idx) => {
                     const adj = calculateAdjustments(comp);

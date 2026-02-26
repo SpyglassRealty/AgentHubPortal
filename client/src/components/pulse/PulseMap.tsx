@@ -7,8 +7,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { getLayerById, formatLayerValue } from "./data-layers";
 import type { ZipHeatmapItem, DataLayer } from "./types";
 
-const MAPBOX_TOKEN =
-  "pk.eyJ1Ijoic3B5Z2xhc3NyZWFsdHkiLCJhIjoiY21sYmJjYjR5MG5teDNkb29oYnlldGJ6bCJ9.h6al6oHtIP5YiiIW97zhDw";
+// Mapbox access token will be fetched from API
 
 interface PulseMapProps {
   zipData: ZipHeatmapItem[];
@@ -89,13 +88,24 @@ export default function PulseMap({
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
+  // Mapbox token state
+  const [mapboxToken, setMapboxToken] = useState('');
+
   const layer = getLayerById(selectedLayerId);
+
+  // Fetch Mapbox token on component mount
+  useEffect(() => {
+    fetch('/api/mapbox-token')
+      .then(res => res.json())
+      .then(data => setMapboxToken(data.token))
+      .catch(() => console.warn('Failed to load Mapbox token'));
+  }, []);
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
+    if (!mapContainerRef.current || mapRef.current || !mapboxToken) return;
 
-    mapboxgl.accessToken = MAPBOX_TOKEN;
+    mapboxgl.accessToken = mapboxToken;
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: isDark
@@ -113,7 +123,7 @@ export default function PulseMap({
       map.remove();
       mapRef.current = null;
     };
-  }, [isDark]);
+  }, [isDark, mapboxToken]);
 
   // Update markers when data changes
   useEffect(() => {

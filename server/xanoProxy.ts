@@ -65,7 +65,10 @@ async function xanoFetch(endpoint: string, token: string | null, options?: Reque
   
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Xano API error ${response.status}: ${text.substring(0, 500)}`);
+    const error = new Error(`Xano API error ${response.status}: ${text.substring(0, 500)}`);
+    (error as any).status = response.status;
+    (error as any).isAuthError = response.status === 401;
+    throw error;
   }
   
   return response.json();
@@ -84,7 +87,15 @@ export function registerXanoRoutes(app: Express, isAuthenticated: any) {
       res.json(data);
     } catch (error: any) {
       console.error("[Xano] transactions/closed error:", error.message);
-      res.status(500).json({ error: error.message });
+      if (error.isAuthError || error.status === 401) {
+        res.status(503).json({ 
+          error: "Xano service unavailable - authentication expired",
+          service: "xano",
+          retry: true 
+        });
+      } else {
+        res.status(500).json({ error: error.message });
+      }
     }
   });
 
@@ -98,7 +109,15 @@ export function registerXanoRoutes(app: Express, isAuthenticated: any) {
       res.json(data);
     } catch (error: any) {
       console.error("[Xano] transactions/pending error:", error.message);
-      res.status(500).json({ error: error.message });
+      if (error.isAuthError || error.status === 401) {
+        res.status(503).json({ 
+          error: "Xano service unavailable - authentication expired",
+          service: "xano",
+          retry: true 
+        });
+      } else {
+        res.status(500).json({ error: error.message });
+      }
     }
   });
 
@@ -127,7 +146,15 @@ export function registerXanoRoutes(app: Express, isAuthenticated: any) {
       res.json(data);
     } catch (error: any) {
       console.error("[Xano] listings error:", error.message);
-      res.status(500).json({ error: error.message });
+      if (error.isAuthError || error.status === 401) {
+        res.status(503).json({ 
+          error: "Xano service unavailable - authentication expired",
+          service: "xano",
+          retry: true 
+        });
+      } else {
+        res.status(500).json({ error: error.message });
+      }
     }
   });
 
@@ -142,7 +169,15 @@ export function registerXanoRoutes(app: Express, isAuthenticated: any) {
       res.json(data);
     } catch (error: any) {
       console.error("[Xano] network error:", error.message);
-      res.status(500).json({ error: error.message });
+      if (error.isAuthError || error.status === 401) {
+        res.status(503).json({ 
+          error: "Xano service unavailable - authentication expired",
+          service: "xano",
+          retry: true 
+        });
+      } else {
+        res.status(500).json({ error: error.message });
+      }
     }
   });
 
@@ -157,7 +192,15 @@ export function registerXanoRoutes(app: Express, isAuthenticated: any) {
       res.json(data);
     } catch (error: any) {
       console.error("[Xano] revshare error:", error.message);
-      res.status(500).json({ error: error.message });
+      if (error.isAuthError || error.status === 401) {
+        res.status(503).json({ 
+          error: "Xano service unavailable - authentication expired",
+          service: "xano",
+          retry: true 
+        });
+      } else {
+        res.status(500).json({ error: error.message });
+      }
     }
   });
 

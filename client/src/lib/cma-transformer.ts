@@ -51,6 +51,7 @@ export function transformPropertyToComparable(property: Property, subjectPropert
     mlsNumber: property.mlsNumber || '',
     listPrice: property.listPrice || 0,
     soldPrice: property.closePrice,
+    originalPrice: (property as any).originalPrice || property.listPrice || 0,
     bedrooms: property.bedrooms || 0,
     bathrooms: property.bathrooms || 0,
     sqft,
@@ -61,6 +62,9 @@ export function transformPropertyToComparable(property: Property, subjectPropert
     status: property.standardStatus || 'Active',
     photos,
     pricePerSqft,
+    description: (property as any).description || property.publicRemarks || '', // Add description field
+    listDate: property.listDate || '',                                         // Add list date
+    soldDate: (property as any).soldDate || (property as any).closeDate || '', // Add sold date
   };
 }
 

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { SafeImage } from '@/components/ui/safe-image';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Info, Home, TrendingUp } from 'lucide-react';
 import { 
@@ -107,14 +108,8 @@ function PropertySidebarItem({ property, isSelected, onClick }: PropertySidebarI
         ${isSelected ? 'bg-[#EF4923]/10 ring-2 ring-[#EF4923] ring-inset rounded-md' : 'hover-elevate rounded-md'}`}
       data-testid={`sidebar-property-${property.id}`}
     >
-      <div className="w-12 h-10 flex-shrink-0 rounded overflow-hidden bg-muted">
-        {property.photos?.[0] ? (
-          <img src={property.photos[0]} alt="" className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-            No img
-          </div>
-        )}
+      <div className="w-12 h-10 flex-shrink-0 rounded overflow-hidden">
+        <SafeImage src={property.photos?.[0] || ""} alt="" className="w-full h-full object-cover" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium truncate">{property.address}</p>
@@ -178,7 +173,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
       <div className="mt-1.5 space-y-0.5 text-xs">
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Price:</span>
-          <span className="font-medium">{formatFullPrice(data.soldPrice || data.price)}</span>
+          <span className="font-medium">{formatFullPrice(data.closePrice || data.listPrice || 0)}</span>
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Acres:</span>
@@ -260,6 +255,9 @@ export function AveragePriceAcreWidget({
 
   // Helper to calculate acres using the improved utility function
   const getAcres = (p: CmaProperty): number => {
+    // Use pre-processed lotSizeAcres from CMA search (same as sidebar)
+    if (p.lotSizeAcres && p.lotSizeAcres > 0) return p.lotSizeAcres;
+    // Fallback to extraction utility
     const acres = extractLotAcres(p);
     return acres ?? 0;
   };
@@ -279,7 +277,7 @@ export function AveragePriceAcreWidget({
       })
       .map(p => {
         const acres = getAcres(p);
-        const price = getPrice(p);
+        const price = p.closePrice || p.listPrice || 0; // Match sidebar logic exactly
         // Always calculate fresh price per acre from current data (don't use stale p.pricePerAcre)
         const pricePerAcre = acres > 0 && price > 0 ? Math.round(price / acres) : 0;
         
@@ -318,7 +316,7 @@ export function AveragePriceAcreWidget({
     if (!subjectProperty) return null;
     const acres = getAcres(subjectProperty);
     if (!acres || acres <= 0) return null;
-    const price = getPrice(subjectProperty) || (avgPricePerAcre * acres);
+    const price = subjectProperty.closePrice || subjectProperty.listPrice || (avgPricePerAcre * acres);
     // Always calculate fresh price per acre from current data
     const pricePerAcre = price > 0 && acres > 0 ? Math.round(price / acres) : 0;
     return {
@@ -329,39 +327,82 @@ export function AveragePriceAcreWidget({
     };
   }, [subjectProperty, avgPricePerAcre]);
 
+  // Group chart data by status for separate Scatter components
+  const chartDataByStatus = useMemo(() => {
+    const closed: any[] = [];
+    const pending: any[] = [];
+    const active: any[] = [];
+    
+    propertiesWithAcreage.forEach(p => {
+      const dataPoint = {
+        ...p,
+        x: p.lotSizeAcres,
+        y: p.pricePerAcre,
+        fill: getStatusColor(p.status),
+      };
+      
+      const category = getStatusCategory(p.status);
+      if (category === 'closed') closed.push(dataPoint);
+      else if (category === 'pending') pending.push(dataPoint);
+      else active.push(dataPoint);
+    });
+    
+    return { closed, pending, active };
+  }, [propertiesWithAcreage, comparables]);
+  
+  // For backward compatibility
   const chartData = useMemo(() => {
-    return propertiesWithAcreage.map(p => ({
-      ...p,
-      x: p.lotSizeAcres,
-      y: p.soldPrice || p.price,
-    }));
-  }, [propertiesWithAcreage]);
+    return [...chartDataByStatus.closed, ...chartDataByStatus.pending, ...chartDataByStatus.active];
+  }, [chartDataByStatus]);
 
   const subjectChartData = useMemo(() => {
     if (!subjectWithAcreage || !showSubject) return [];
     return [{
       ...subjectWithAcreage,
       x: subjectWithAcreage.lotSizeAcres,
-      y: subjectWithAcreage.soldPrice || subjectWithAcreage.price || (avgPricePerAcre * subjectWithAcreage.lotSizeAcres),
+      y: subjectWithAcreage.pricePerAcre,
+      fill: STATUS_COLORS.subject,
     }];
   }, [subjectWithAcreage, showSubject, avgPricePerAcre]);
 
   // Calculate linear regression from CLOSED/SOLD listings only (CloudCMA-style)
   const regressionData = useMemo(() => {
     const closedData = chartData.filter(d => getStatusCategory(d.status) === 'closed');
-    if (closedData.length < 2) return null;
+    console.log('[AveragePriceAcreWidget] Trendline Debug - Closed listings count:', closedData.length);
+    console.log('[AveragePriceAcreWidget] Trendline Debug - Closed data points:', closedData.map(d => ({ 
+      address: d.address, 
+      status: d.status, 
+      acres: d.x, 
+      pricePerAcre: d.y 
+    })));
+    
+    if (closedData.length < 2) {
+      console.log('[AveragePriceAcreWidget] Trendline Debug - Insufficient closed data for trendline');
+      return null;
+    }
     
     const points = closedData.map(d => ({ x: d.x, y: d.y }));
-    return calculateLinearRegression(points);
+    const result = calculateLinearRegression(points);
+    console.log('[AveragePriceAcreWidget] Trendline Debug - Regression result:', result);
+    return result;
   }, [chartData]);
 
   const { minAcres, maxAcres, minPrice, maxPrice, trendlineData } = useMemo(() => {
     const allAcres = chartData.map(d => d.x);
     const allPrices = chartData.map(d => d.y);
-    if (subjectChartData.length > 0) {
+    if (subjectChartData.length > 0 && showSubject) {
       allAcres.push(subjectChartData[0].x);
       allPrices.push(subjectChartData[0].y);
     }
+    
+    console.log('[AveragePriceAcreWidget] Trendline Domain Debug:', {
+      closedAcres: chartData.filter(d => getStatusCategory(d.status) === 'closed').map(d => d.x),
+      subjectAcres: subjectChartData.map(d => d.x),
+      showSubject,
+      subjectDataLength: subjectChartData.length,
+      allAcres,
+      hasRegression: !!regressionData
+    });
     
     if (allAcres.length === 0) {
       return { minAcres: 0, maxAcres: 1, minPrice: 0, maxPrice: 1, trendlineData: [] };
@@ -375,6 +416,13 @@ export function AveragePriceAcreWidget({
     if (regressionData) {
       trendMinY = regressionData.slope * minA + regressionData.intercept;
       trendMaxY = regressionData.slope * maxA + regressionData.intercept;
+      
+      console.log('[AveragePriceAcreWidget] Trendline Calculation:', {
+        minA, maxA,
+        slope: regressionData.slope,
+        intercept: regressionData.intercept,
+        trendMinY, trendMaxY
+      });
     }
     
     // Include trendline endpoints in price range calculation (if positive)
@@ -399,7 +447,7 @@ export function AveragePriceAcreWidget({
       maxPrice: maxP,
       trendlineData: trendline,
     };
-  }, [chartData, subjectChartData, regressionData]);
+  }, [chartData, subjectChartData, regressionData, showSubject]);
 
   const handlePropertyClick = (property: CmaProperty) => {
     setSelectedProperty(property);
@@ -426,7 +474,7 @@ export function AveragePriceAcreWidget({
               onSelect={handlePropertyClick}
             />
             <StatusGroup 
-              title="Under Contract" 
+              title="Active Under Contract" 
               items={groupedProperties.pending} 
               color={STATUS_COLORS.pending}
               selectedId={selectedProperty?.id || null}
@@ -513,7 +561,7 @@ export function AveragePriceAcreWidget({
                   <YAxis 
                     type="number" 
                     dataKey="y" 
-                    name="Price"
+                    name="Price Per Acre"
                     domain={[minPrice, maxPrice]}
                     tickFormatter={formatPrice}
                     tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
@@ -535,32 +583,106 @@ export function AveragePriceAcreWidget({
                     />
                   )}
 
-                  {chartData.length > 0 && (
+                  {/* Alternative 1: Single Scatter with custom shape */}
+                  {false && chartData.length > 0 && (
                     <Scatter 
                       name="Properties" 
                       data={chartData} 
                       cursor="pointer"
                       onClick={(data) => handleScatterClick(data)}
-                    >
-                      {chartData.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`}
-                          fill={getStatusColor(entry.status)}
-                          stroke="white"
-                          strokeWidth={2}
-                          r={12}
-                        />
-                      ))}
-                    </Scatter>
+                      shape={(props: any) => {
+                        const { cx, cy, payload } = props;
+                        
+                        console.log('[AveragePriceAcreWidget] DEBUG - Custom shape rendering:', {
+                          cx, cy,
+                          payload: payload ? {
+                            address: payload.address,
+                            x: payload.x,
+                            y: payload.y,
+                            fill: payload.fill,
+                            status: payload.status
+                          } : 'no payload'
+                        });
+                        
+                        if (cx === undefined || cy === undefined) return null;
+                        
+                        return (
+                          <circle
+                            cx={cx}
+                            cy={cy}
+                            r={8}
+                            fill={payload?.fill || '#8884d8'}
+                            stroke="white"
+                            strokeWidth={2}
+                            style={{ cursor: 'pointer' }}
+                          />
+                        );
+                      }}
+                    />
+                  )}
+                  
+                  {/* Alternative 2: Separate Scatter components by status */}
+                  {chartDataByStatus.closed.length > 0 && (
+                    <Scatter
+                      name="Closed"
+                      data={chartDataByStatus.closed}
+                      fill={STATUS_COLORS.closed}
+                      cursor="pointer"
+                      onClick={(data) => handleScatterClick(data)}
+                      r={8}
+                      stroke="white"
+                      strokeWidth={2}
+                    />
+                  )}
+                  
+                  {chartDataByStatus.pending.length > 0 && (
+                    <Scatter
+                      name="Pending"
+                      data={chartDataByStatus.pending}
+                      fill={STATUS_COLORS.pending}
+                      cursor="pointer"
+                      onClick={(data) => handleScatterClick(data)}
+                      r={8}
+                      stroke="white"
+                      strokeWidth={2}
+                    />
+                  )}
+                  
+                  {chartDataByStatus.active.length > 0 && (
+                    <Scatter
+                      name="Active"
+                      data={chartDataByStatus.active}
+                      fill={STATUS_COLORS.active}
+                      cursor="pointer"
+                      onClick={(data) => handleScatterClick(data)}
+                      r={8}
+                      stroke="white"
+                      strokeWidth={2}
+                    />
                   )}
 
                   {subjectChartData.length > 0 && (
                     <Scatter
                       name="Subject"
                       data={subjectChartData}
-                      shape={<SubjectHouse />}
+                      fill="#3B82F6"
                       cursor="pointer"
                       onClick={(data) => handleScatterClick(data)}
+                      shape={(props: any) => {
+                        const { cx, cy } = props;
+                        if (cx === undefined || cy === undefined) return null;
+                        return (
+                          <circle
+                            cx={cx}
+                            cy={cy}
+                            r={12}
+                            fill="#3B82F6"
+                            stroke="white"
+                            strokeWidth={3}
+                            style={{ cursor: 'pointer' }}
+                          />
+                        );
+                      }}
                     />
                   )}
                 </ScatterChart>
@@ -602,9 +724,15 @@ export function AveragePriceAcreWidget({
                 checked={showTrendline} 
                 onCheckedChange={(checked) => setShowTrendline(checked === true)}
                 data-testid="checkbox-show-trendline"
+                disabled={!regressionData}
               />
               <span className="w-6 h-0.5 bg-muted-foreground border-t border-dashed" />
-              <span className="text-muted-foreground">Trendline represents average price per acre of SOLD listings.</span>
+              <span className={`text-muted-foreground ${!regressionData ? 'opacity-50' : ''}`}>
+                {regressionData 
+                  ? 'Trendline represents average price per acre of SOLD listings.'
+                  : 'No sold data available for trendline (minimum 2 sold listings required).'
+                }
+              </span>
             </label>
             <div className="flex items-center gap-4 ml-auto">
               <div className="flex items-center gap-1.5">

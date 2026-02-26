@@ -24,7 +24,8 @@ import {
   GraduationCap,
   FileBarChart,
   Activity,
-  Shield
+  Shield,
+  Code
 } from "lucide-react";
 
 export type AppConnectionType = 
@@ -231,5 +232,6 @@ export const navItems = [
   { label: "Marketing Calendar", icon: CalendarDays, href: "/marketing-calendar" },
   { label: "Training", icon: GraduationCap, href: "/training" },
   { label: "Settings", icon: Settings, href: "/settings" },
+  { label: "Developer", icon: Code, href: "/developer" },
   { label: "Admin", icon: Shield, href: "/admin" },
 ];

@@ -100,7 +100,7 @@ export function CmaPrintPreview({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent 
         className={cn(
-          "max-w-[95vw] w-[1400px] h-[90vh] p-0 flex flex-col",
+          "max-w-[95vw] w-[1400px] h-[90vh] p-0 flex flex-col [&>button]:hidden",
           isDark ? "bg-zinc-900 border-zinc-700" : "bg-gray-100 border-gray-200"
         )}>
         <div className={cn(

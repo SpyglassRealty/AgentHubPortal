@@ -1,16 +1,16 @@
 import { DashboardLayout } from "@/components/admin-dashboards/dashboard-layout";
 import { KpiCard } from "@/components/admin-dashboards/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DollarSign, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { DollarSign, RefreshCw, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  useXanoTransactionsClosed,
-  useXanoTransactionsPending,
+  useRevenueData,
+  useRefreshDashboard,
   formatCurrency,
-  getMonthKey,
-} from "@/lib/xano";
+  formatNumber,
+} from "@/lib/rezen-dashboard";
 import {
   BarChart,
   Bar,
@@ -20,264 +20,226 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  Line,
+  ComposedChart,
 } from "recharts";
-import { useMemo, useState } from "react";
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border bg-card p-3 shadow-md">
+      <p className="text-sm font-medium mb-1">{label}</p>
+      {payload.map((entry: any, i: number) => (
+        <p key={i} className="text-sm" style={{ color: entry.color }}>
+          {entry.name}: {formatCurrency(entry.value)}
+        </p>
+      ))}
+    </div>
+  );
+};
 
 export default function RevenuePage() {
-  const closedTx = useXanoTransactionsClosed();
-  const pendingTx = useXanoTransactionsPending();
-  const [chartView, setChartView] = useState<"gross" | "deductions" | "net">("gross");
+  const { data, isLoading, isError, error } = useRevenueData();
+  const refreshMutation = useRefreshDashboard();
 
-  const isLoading = closedTx.isLoading;
+  const handleRefresh = () => {
+    refreshMutation.mutate();
+  };
 
-  const metrics = useMemo(() => {
-    const closed = Array.isArray(closedTx.data) ? closedTx.data : [];
-    const pending = Array.isArray(pendingTx.data) ? pendingTx.data : [];
-
-    const grossIncome = closed.reduce(
-      (sum, t) => sum + (t.gci || t.gross_commission || 0),
-      0
-    );
-    // Estimate deductions at ~28% of gross (typical brokerage split)
-    const deductions = grossIncome * 0.28;
-    const netIncome = grossIncome - deductions;
-
-    // Monthly breakdown
-    const monthlyData: Record<
-      string,
-      { month: string; key: string; gross: number; deductions: number; net: number }
-    > = {};
-    closed.forEach((t) => {
-      const date = t.close_date || t.closing_date || t.created_at;
-      if (!date) return;
-      const key = getMonthKey(date);
-      if (!monthlyData[key]) {
-        const d = new Date(date);
-        monthlyData[key] = {
-          month: d.toLocaleString("en-US", { month: "short", year: "2-digit" }),
-          key,
-          gross: 0,
-          deductions: 0,
-          net: 0,
-        };
-      }
-      const gci = t.gci || t.gross_commission || 0;
-      monthlyData[key].gross += gci;
-      monthlyData[key].deductions += gci * 0.28;
-      monthlyData[key].net += gci * 0.72;
-    });
-
-    const chartData = Object.values(monthlyData)
-      .sort((a, b) => a.key.localeCompare(b.key))
-      .slice(-12);
-
-    // Current/Last/Next month
-    const now = new Date();
-    const currentKey = getMonthKey(now);
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastKey = getMonthKey(lastMonth);
-    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const nextKey = getMonthKey(nextMonth);
-
-    const lastMonthNet = (monthlyData[lastKey]?.net || 0);
-    const currentMonthNet = (monthlyData[currentKey]?.net || 0);
-
-    // Next month from pending
-    const nextMonthNet = pending
-      .filter((t) => {
-        const d = t.expected_close_date || t.close_date;
-        return d && getMonthKey(d) === nextKey;
-      })
-      .reduce((sum, t) => sum + (t.gci || t.gross_commission || 0) * 0.72, 0);
-
-    return {
-      grossIncome,
-      deductions,
-      netIncome,
-      lastMonthNet,
-      currentMonthNet,
-      nextMonthNet,
-      chartData,
-    };
-  }, [closedTx.data, pendingTx.data]);
+  const kpis = data?.kpis;
+  const monthlyTrend = data?.monthlyTrend || [];
 
   return (
     <DashboardLayout
-      title="Revenue"
-      subtitle="Gross income, deductions, and net revenue"
+      title="Revenue Dashboard"
+      subtitle="Gross income, net revenue, and commission analytics — powered by ReZen"
       icon={DollarSign}
       actions={
         <Button
           variant="outline"
           size="sm"
-          onClick={() => {
-            closedTx.refetch();
-            pendingTx.refetch();
-          }}
-          disabled={isLoading}
+          onClick={handleRefresh}
+          disabled={isLoading || refreshMutation.isPending}
         >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+          <RefreshCw
+            className={`h-4 w-4 mr-2 ${
+              isLoading || refreshMutation.isPending ? "animate-spin" : ""
+            }`}
+          />
           Refresh
         </Button>
       }
     >
-      <Tabs defaultValue="overview">
-        <TabsList className="mb-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="trends">Trends</TabsTrigger>
-        </TabsList>
+      {isError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {(error as any)?.message || "Failed to load revenue data. Make sure your ReZen account is linked."}
+          </AlertDescription>
+        </Alert>
+      )}
 
-        <TabsContent value="overview">
-          {/* KPI Row */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-            {isLoading ? (
-              Array(6)
-                .fill(null)
-                .map((_, i) => (
-                  <Card key={i}>
-                    <CardContent className="p-4">
-                      <Skeleton className="h-4 w-20 mb-2" />
-                      <Skeleton className="h-8 w-24" />
-                    </CardContent>
-                  </Card>
-                ))
-            ) : (
-              <>
-                <KpiCard
-                  title="Gross Income"
-                  value={formatCurrency(metrics.grossIncome, true)}
-                  subtitle="Closed"
-                  category="revenue"
-                />
-                <KpiCard
-                  title="Deductions"
-                  value={formatCurrency(metrics.deductions, true)}
-                  subtitle="Closed (est.)"
-                  category="revenue"
-                />
-                <KpiCard
-                  title="Net Income"
-                  value={formatCurrency(metrics.netIncome, true)}
-                  subtitle="Closed"
-                  category="revenue"
-                />
-                <KpiCard
-                  title="Net Income"
-                  value={formatCurrency(metrics.lastMonthNet, true)}
-                  subtitle="Last Month"
-                  category="revenue"
-                />
-                <KpiCard
-                  title="Net Income"
-                  value={formatCurrency(metrics.currentMonthNet, true)}
-                  subtitle="Current Month"
-                  category="revenue"
-                />
-                <KpiCard
-                  title="Net Income"
-                  value={formatCurrency(metrics.nextMonthNet, true)}
-                  subtitle="Next Month (est.)"
-                  category="revenue"
-                />
-              </>
-            )}
-          </div>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        {isLoading ? (
+          Array(6)
+            .fill(null)
+            .map((_, i) => (
+              <Card key={i} className="border-l-4 border-l-muted">
+                <CardContent className="p-4 flex flex-col items-center justify-center min-h-[120px]">
+                  <Skeleton className="h-4 w-20 mb-2" />
+                  <Skeleton className="h-8 w-24" />
+                </CardContent>
+              </Card>
+            ))
+        ) : (
+          <>
+            <KpiCard
+              title="Closed Volume"
+              value={formatCurrency(kpis?.closedVolume, true)}
+              subtitle="Total sale prices"
+              category="transactions"
+              tooltip="Sum of all sale prices on closed transactions"
+            />
+            <KpiCard
+              title="Gross GCI"
+              value={formatCurrency(kpis?.grossGCI, true)}
+              subtitle="Total commissions"
+              category="revenue"
+              tooltip="Gross Commission Income across all closed transactions"
+            />
+            <KpiCard
+              title="Net Income"
+              value={formatCurrency(kpis?.netIncome, true)}
+              subtitle="After splits/fees"
+              category="revenue"
+              tooltip="Total net payout after brokerage splits and fees"
+            />
+            <KpiCard
+              title="Avg Commission"
+              value={formatCurrency(kpis?.avgCommission, true)}
+              subtitle="Per transaction"
+              category="revenue"
+              tooltip="Average gross commission per closed transaction"
+            />
+            <KpiCard
+              title="Commissions"
+              value={formatNumber(kpis?.commissionCount)}
+              subtitle="Closed deals"
+              category="transactions"
+              tooltip="Total number of closed transactions"
+            />
+            <KpiCard
+              title="Fees & Splits"
+              value={formatCurrency(kpis?.feesDeductions, true)}
+              subtitle="Gross − Net"
+              category="revenue"
+              tooltip="Difference between gross GCI and net payout (brokerage splits, fees, etc.)"
+            />
+          </>
+        )}
+      </div>
 
-          {/* Monthly Revenue Chart */}
-          <Card>
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-base font-medium">
-                Monthly Revenue
-              </CardTitle>
-              <div className="flex gap-1">
-                {(["gross", "deductions", "net"] as const).map((view) => (
-                  <Button
-                    key={view}
-                    variant={chartView === view ? "default" : "outline"}
-                    size="sm"
-                    className="text-xs h-7"
-                    onClick={() => setChartView(view)}
-                  >
-                    {view.charAt(0).toUpperCase() + view.slice(1)}
-                  </Button>
-                ))}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <Skeleton className="h-[350px] w-full" />
-              ) : (
-                <ResponsiveContainer width="100%" height={350}>
-                  <BarChart data={metrics.chartData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="month" className="text-xs" />
-                    <YAxis
-                      className="text-xs"
-                      tickFormatter={(v) => formatCurrency(v, true)}
-                    />
-                    <Tooltip
-                      formatter={(v: any) => formatCurrency(v)}
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Legend />
-                    {chartView === "gross" && (
-                      <Bar dataKey="gross" name="Gross" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    )}
-                    {chartView === "deductions" && (
-                      <Bar dataKey="deductions" name="Deductions" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                    )}
-                    {chartView === "net" && (
-                      <Bar dataKey="net" name="Net" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                    )}
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+      {/* Revenue Trend Chart */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-medium">
+            Monthly Revenue Trend (Last 12 Months)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <Skeleton className="h-[400px] w-full" />
+          ) : monthlyTrend.length === 0 ? (
+            <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+              No monthly data available
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={400}>
+              <ComposedChart data={monthlyTrend}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="month" className="text-xs" />
+                <YAxis
+                  className="text-xs"
+                  tickFormatter={(v) => formatCurrency(v, true)}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Bar
+                  dataKey="grossGCI"
+                  name="Gross GCI"
+                  fill="#10b981"
+                  radius={[4, 4, 0, 0]}
+                  opacity={0.8}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="netIncome"
+                  name="Net Income"
+                  stroke="#3b82f6"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: "#3b82f6" }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
 
-        <TabsContent value="trends">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-medium">
-                Monthly Revenue — All Series
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <Skeleton className="h-[400px] w-full" />
-              ) : (
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart data={metrics.chartData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="month" className="text-xs" />
-                    <YAxis
-                      className="text-xs"
-                      tickFormatter={(v) => formatCurrency(v, true)}
-                    />
-                    <Tooltip
-                      formatter={(v: any) => formatCurrency(v)}
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Legend />
-                    <Bar dataKey="gross" name="Gross" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="deductions" name="Deductions" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="net" name="Net" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Volume Trend */}
+      <Card className="mt-6">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-medium">
+            Monthly Closed Volume & Deal Count
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <Skeleton className="h-[350px] w-full" />
+          ) : monthlyTrend.length === 0 ? (
+            <div className="flex items-center justify-center h-[350px] text-muted-foreground">
+              No monthly data available
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={350}>
+              <ComposedChart data={monthlyTrend}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="month" className="text-xs" />
+                <YAxis
+                  yAxisId="left"
+                  className="text-xs"
+                  tickFormatter={(v) => formatCurrency(v, true)}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  className="text-xs"
+                  allowDecimals={false}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Bar
+                  yAxisId="left"
+                  dataKey="volume"
+                  name="Closed Volume"
+                  fill="#8b5cf6"
+                  radius={[4, 4, 0, 0]}
+                  opacity={0.7}
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="count"
+                  name="Deal Count"
+                  stroke="#f59e0b"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: "#f59e0b" }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
     </DashboardLayout>
   );
 }
