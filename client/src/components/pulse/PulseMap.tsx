@@ -91,6 +91,7 @@ export default function PulseMap({
   // Mapbox token state
   const [mapboxToken, setMapboxToken] = useState('');
   const [mapReady, setMapReady] = useState(false);
+  const prevZipCountRef = useRef<number>(0);
 
   const layer = getLayerById(selectedLayerId);
 
@@ -130,6 +131,32 @@ export default function PulseMap({
       setMapReady(false);
     };
   }, [isDark, mapboxToken]);
+
+  // Auto-zoom map when zipData changes (filter applied/cleared)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !zipData.length) return;
+
+    const prevCount = prevZipCountRef.current;
+    prevZipCountRef.current = zipData.length;
+
+    // Skip on first render (initial load) — only react to changes
+    if (prevCount === 0) return;
+
+    // If we have a filtered subset, fit bounds to show just those zips
+    if (zipData.length < 20) {
+      const bounds = new mapboxgl.LngLatBounds();
+      zipData.forEach(item => {
+        if (item.lat && item.lng) bounds.extend([item.lng, item.lat]);
+      });
+      if (!bounds.isEmpty()) {
+        map.fitBounds(bounds, { padding: 80, maxZoom: 13, duration: 800 });
+      }
+    } else {
+      // Reset to default Austin metro view
+      map.flyTo({ center: [-97.7431, 30.2672], zoom: 10, duration: 800 });
+    }
+  }, [zipData, mapReady]);
 
   // Update markers when data changes or map becomes ready
   useEffect(() => {

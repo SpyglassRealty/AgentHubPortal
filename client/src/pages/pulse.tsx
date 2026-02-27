@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Layout from "@/components/layout";
-import { Activity, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Activity, PanelLeftClose, PanelLeftOpen, MapPin, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DataLayerSidebar,
@@ -155,7 +155,14 @@ export default function PulsePage() {
                   Pulse
                 </h1>
                 <p className="text-muted-foreground mt-1">
-                  Austin Metro market intelligence — 50+ data layers powered by Spyglass
+                  {filterLabel ? (
+                    <>
+                      <span className="text-[#EF4923] font-medium">{filterLabel}</span>
+                      {" "}market intelligence — {zipData.length} zip{zipData.length !== 1 ? "s" : ""} · powered by Spyglass
+                    </>
+                  ) : (
+                    "Austin Metro market intelligence — 50+ data layers powered by Spyglass"
+                  )}
                 </p>
               </div>
               {overview?.lastUpdated && (
@@ -184,6 +191,28 @@ export default function PulsePage() {
           onClearFilter={handleClearFilter}
           activeFilter={filterLabel}
         />
+
+        {/* ─── Active Filter Banner ──────────────────────── */}
+        {filterLabel && (
+          <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg bg-[#EF4923]/8 border border-[#EF4923]/20">
+            <div className="flex items-center gap-2 text-sm">
+              <MapPin className="h-4 w-4 text-[#EF4923]" />
+              <span className="font-medium text-foreground">
+                Showing <span className="text-[#EF4923] font-semibold">{filterLabel}</span>
+              </span>
+              <span className="text-muted-foreground">
+                — {zipData.length} of {allZipData.length} zip codes
+              </span>
+            </div>
+            <button
+              onClick={handleClearFilter}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground px-2.5 py-1 rounded-md hover:bg-[#EF4923]/10 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear filter
+            </button>
+          </div>
+        )}
 
         {/* ─── 3-Panel Layout: Sidebar | Center Content | RightChart ── */}
         <div ref={mapSectionRef} className="flex gap-0 rounded-xl border border-border overflow-hidden bg-card shadow-sm" style={{ minHeight: "600px" }}>
