@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { eq, desc, asc, ilike, inArray, and, sql, or, isNull } from "drizzle-orm";
 import { db } from "./db";
-import { 
-  blogPosts, 
-  blogCategories, 
-  blogAuthors, 
+import {
+  blogPosts,
+  blogCategories,
+  blogAuthors,
   blogPostCategories,
   type BlogPost,
   type BlogCategory,
@@ -14,6 +14,9 @@ import {
   type InsertBlogAuthor
 } from "@shared/schema";
 import { z } from "zod";
+import multer from "multer";
+import { parse as csvParse } from "csv-parse/sync";
+import * as cheerio from "cheerio";
 
 const router = Router();
 
@@ -559,6 +562,312 @@ router.delete("/admin/blog/authors/:id", async (req, res) => {
   } catch (error) {
     console.error("Error deleting blog author:", error);
     res.status(500).json({ error: "Failed to delete blog author" });
+  }
+});
+
+// ── CSV IMPORT ────────────────────────────────────────────────────────────
+
+// Multer instance for CSV uploads (memory storage, no disk writes)
+const csvUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB
+  fileFilter: (_req, file, cb) => {
+    if (
+      file.mimetype === "text/csv" ||
+      file.mimetype === "application/vnd.ms-excel" ||
+      file.originalname.endsWith(".csv")
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only CSV files are accepted"));
+    }
+  },
+});
+
+function slugifyForBlog(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/\.html?$/i, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function generateBlockId(): string {
+  return Math.random().toString(36).slice(2, 11) + Date.now().toString(36);
+}
+
+/** Convert page-builder blocks back to an HTML string for blog post storage */
+function blocksToHtml(sections: any[]): string {
+  return sections
+    .map((block: any) => {
+      switch (block.type) {
+        case "heading": {
+          const level = block.props?.level || 2;
+          const id = block.props?.anchorId ? ` id="${block.props.anchorId}"` : "";
+          const text = block.props?.text || "";
+          return `<h${level}${id}>${text}</h${level}>`;
+        }
+        case "text":
+          return block.props?.content || "";
+        case "image": {
+          const url = block.props?.url || "";
+          const alt = block.props?.alt ? ` alt="${block.props.alt}"` : "";
+          const srcset = block.props?.srcset ? ` srcset="${block.props.srcset}"` : "";
+          return url ? `<img src="${url}"${alt}${srcset} style="max-width:100%;height:auto" loading="lazy" />` : "";
+        }
+        case "html":
+          return block.props?.code || "";
+        case "toc":
+          return ""; // skip – will be generated from headings
+        default:
+          return "";
+      }
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** Fetch a blog URL and parse its content into page-builder blocks + metadata */
+async function fetchAndParseBlogUrl(url: string): Promise<{
+  title: string;
+  metaDescription: string;
+  ogImageUrl: string;
+  sections: any[];
+}> {
+  const res = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; SpyglassCMS/1.0)" },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+  const html = await res.text();
+  const $ = cheerio.load(html);
+
+  const title = $("title").first().text().trim() || "";
+  const metaDescription = $("meta[name='description']").attr("content") || "";
+  const ogImageUrl = $("meta[property='og:image']").attr("content") || "";
+
+  // Prefer the article.block--lightest container; fall back to main/body
+  const articleEl = $("article.block--lightest, article[class*='block'], article").first();
+  const container = articleEl.length ? articleEl : $("main, .content, body");
+
+  const sections: any[] = [];
+
+  container.children().each((_i: number, el: any) => {
+    const tagName = ((el.tagName || el.name) as string || "").toLowerCase();
+    const elem = $(el);
+
+    if (tagName === "h1" || tagName === "h2" || tagName === "h3") {
+      const level = parseInt(tagName[1], 10);
+      const text = elem.text().trim();
+      if (text) {
+        sections.push({
+          id: generateBlockId(),
+          type: "heading",
+          props: {
+            level,
+            text,
+            alignment: "left",
+            color: "#000000",
+            anchorId: elem.attr("id") || slugifyForBlog(text),
+          },
+        });
+      }
+    } else if (tagName === "p") {
+      const innerHtml = elem.html() || "";
+      if (innerHtml.trim()) {
+        sections.push({ id: generateBlockId(), type: "text", props: { content: innerHtml, alignment: "left" } });
+      }
+    } else if (tagName === "img") {
+      const src = elem.attr("src") || elem.attr("data-src") || "";
+      const srcset = elem.attr("srcset") || "";
+      let imgUrl = src;
+      if (srcset) {
+        const parts = srcset.split(",").map((s: string) => s.trim().split(/\s+/));
+        const largest = parts.sort((a: string[], b: string[]) => parseInt(b[1] || "0", 10) - parseInt(a[1] || "0", 10))[0];
+        if (largest?.[0]) imgUrl = largest[0];
+      }
+      if (imgUrl) {
+        sections.push({
+          id: generateBlockId(),
+          type: "image",
+          props: { url: imgUrl, alt: elem.attr("alt") || "", width: "100%", alignment: "center", srcset },
+        });
+      }
+    } else if (tagName === "ul" || tagName === "ol" || tagName === "blockquote") {
+      const innerHtml = $.html(el);
+      if (innerHtml.trim()) {
+        sections.push({ id: generateBlockId(), type: "text", props: { content: innerHtml, alignment: "left" } });
+      }
+    } else if (tagName === "table") {
+      sections.push({ id: generateBlockId(), type: "html", props: { code: $.html(el) } });
+    } else if (tagName === "div") {
+      const cls = elem.attr("class") || "";
+      if (cls.includes("highlight")) {
+        sections.push({ id: generateBlockId(), type: "toc", props: { headings: [] } });
+      } else {
+        const innerHtml = elem.html() || "";
+        if (innerHtml.trim()) {
+          sections.push({ id: generateBlockId(), type: "html", props: { code: $.html(el) } });
+        }
+      }
+    }
+  });
+
+  // Fallback if content area was empty
+  if (sections.length === 0) {
+    const h1 = $("h1").first().text().trim();
+    if (h1) {
+      sections.push({
+        id: generateBlockId(),
+        type: "heading",
+        props: { level: 1, text: h1, alignment: "left", color: "#000000", anchorId: slugifyForBlog(h1) },
+      });
+    }
+  }
+
+  return { title, metaDescription, ogImageUrl, sections };
+}
+
+/** Ensure the default Spyglass Realty author exists; return its id */
+async function getOrCreateDefaultAuthor(): Promise<string> {
+  const [existing] = await db
+    .select({ id: blogAuthors.id })
+    .from(blogAuthors)
+    .where(eq(blogAuthors.name, "Spyglass Realty"))
+    .limit(1);
+
+  if (existing) return existing.id;
+
+  const [created] = await db
+    .insert(blogAuthors)
+    .values({ name: "Spyglass Realty" })
+    .returning({ id: blogAuthors.id });
+
+  return created.id;
+}
+
+// POST /api/admin/blog/import-csv
+router.post("/admin/blog/import-csv", csvUpload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No CSV file uploaded" });
+    }
+
+    const csvText = req.file.buffer.toString("utf-8");
+
+    let rows: Record<string, string>[];
+    try {
+      rows = csvParse(csvText, {
+        columns: true,        // use first row as column headers
+        skip_empty_lines: true,
+        trim: true,
+        relax_column_count: true,
+      }) as Record<string, string>[];
+    } catch (parseErr: any) {
+      return res.status(400).json({ error: `CSV parse error: ${parseErr.message}` });
+    }
+
+    if (!rows.length) {
+      return res.status(400).json({ error: "CSV file is empty" });
+    }
+
+    const authorId = await getOrCreateDefaultAuthor();
+
+    const results: Array<{
+      row: number;
+      title: string;
+      slug: string;
+      success: boolean;
+      postId?: string;
+      error?: string;
+    }> = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const title = row["Blog Title"] || row["blog_title"] || row["Title"] || "";
+      const rawSlug = row["URL Slug"] || row["url_slug"] || row["Slug"] || "";
+      const blogUrl = row["Blog URL"] || row["blog_url"] || row["URL"] || "";
+      const heroImage = row["Hero Image"] || row["hero_image"] || row["Image"] || "";
+
+      if (!title || !blogUrl) {
+        results.push({ row: i + 2, title: title || "(no title)", slug: "", success: false, error: "Missing Blog Title or Blog URL" });
+        continue;
+      }
+
+      // Clean the slug
+      const slug = slugifyForBlog(rawSlug || title);
+
+      // Check for duplicate slug
+      const [existing] = await db
+        .select({ id: blogPosts.id })
+        .from(blogPosts)
+        .where(eq(blogPosts.slug, slug))
+        .limit(1);
+
+      if (existing) {
+        results.push({ row: i + 2, title, slug, success: false, error: `Slug "${slug}" already exists` });
+        continue;
+      }
+
+      // Fetch and parse the blog URL
+      let content = "";
+      let metaDescription = "";
+      let ogImageUrl = heroImage || "";
+
+      try {
+        const parsed = await fetchAndParseBlogUrl(blogUrl);
+        content = blocksToHtml(parsed.sections);
+        metaDescription = parsed.metaDescription;
+        // Prefer the CSV hero image over the og:image from the page
+        if (!ogImageUrl) ogImageUrl = parsed.ogImageUrl;
+        // Use parsed title if CSV title is missing (shouldn't happen, but just in case)
+      } catch (fetchErr: any) {
+        results.push({ row: i + 2, title, slug, success: false, error: `Fetch error: ${fetchErr.message}` });
+        continue;
+      }
+
+      if (!content.trim()) {
+        content = `<p>${title}</p>`;
+      }
+
+      try {
+        const readingTime = calculateReadingTime(content);
+        const tableOfContents = generateTableOfContents(content);
+
+        const [newPost] = await db
+          .insert(blogPosts)
+          .values({
+            title,
+            slug,
+            content,
+            excerpt: metaDescription || undefined,
+            featuredImageUrl: heroImage || undefined,
+            ogImageUrl: ogImageUrl || undefined,
+            metaTitle: title,
+            metaDescription: metaDescription || undefined,
+            authorId,
+            status: "draft",
+            categoryIds: [],
+            tags: [],
+            readingTime,
+            tableOfContents,
+            indexingDirective: "index,follow",
+            updatedAt: new Date(),
+          })
+          .returning({ id: blogPosts.id, slug: blogPosts.slug });
+
+        results.push({ row: i + 2, title, slug: newPost.slug, success: true, postId: newPost.id });
+      } catch (dbErr: any) {
+        results.push({ row: i + 2, title, slug, success: false, error: `DB error: ${dbErr.message}` });
+      }
+    }
+
+    const successCount = results.filter((r) => r.success).length;
+    const failCount = results.filter((r) => !r.success).length;
+
+    res.json({ results, successCount, failCount, total: rows.length });
+  } catch (error: any) {
+    console.error("Error importing CSV:", error);
+    res.status(500).json({ error: "Failed to import CSV" });
   }
 });
 
