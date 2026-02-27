@@ -141,10 +141,21 @@ router.post("/admin/pages", async (req, res) => {
     const seoScore = calculateSeoScore(data as any);
     const { publishDate, modifiedDate } = parseBlogDates(data);
 
+    // Ensure slug is unique — append suffix if needed
+    let slug = data.slug;
+    let suffix = 0;
+    while (true) {
+      const [existing] = await db.select({ id: landingPages.id }).from(landingPages).where(eq(landingPages.slug, slug));
+      if (!existing) break;
+      suffix++;
+      slug = `${data.slug}-${suffix}`;
+    }
+
     const [newPage] = await db
       .insert(landingPages)
       .values({
         ...data,
+        slug,
         publishDate,
         modifiedDate,
         seoScore,
