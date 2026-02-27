@@ -956,7 +956,6 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
       // Parse article body HTML into granular blocks
       if (articleHtml) {
         const $ = cheerio.load(articleHtml);
-        const bodyRoot = $.root();
 
         function walkDocElements(elements: any) {
           $(elements).each((_i: number, el: any) => {
@@ -1106,7 +1105,7 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
           });
         }
 
-        walkDocElements(bodyRoot.children());
+        walkDocElements($('body').children());
       }
 
       // Fallback if no sections were extracted
