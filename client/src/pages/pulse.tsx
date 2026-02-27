@@ -272,6 +272,8 @@ export default function PulsePage() {
                   <HistoricalChart
                     selectedLayerId={selectedLayerId}
                     selectedZip={selectedZip}
+                    filteredZips={filteredZips}
+                    filterLabel={filterLabel}
                     period={period}
                     onPeriodChange={setPeriod}
                     className="h-full border-0 rounded-none"
@@ -303,6 +305,8 @@ export default function PulsePage() {
                   <HistoricalChart
                     selectedLayerId={selectedLayerId}
                     selectedZip={selectedZip}
+                    filteredZips={filteredZips}
+                    filterLabel={filterLabel}
                     period={period}
                     onPeriodChange={setPeriod}
                     className="h-full border-0 rounded-none"

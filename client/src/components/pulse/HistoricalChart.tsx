@@ -150,9 +150,47 @@ function generateMockTimeseries(layerId: string, period: "yearly" | "monthly", z
   };
 }
 
+// Generate averaged timeseries across multiple zips (for city/county filters)
+function generateAveragedTimeseries(
+  layerId: string,
+  period: "yearly" | "monthly",
+  zips: string[]
+): TimeseriesData {
+  if (zips.length === 0) return generateMockTimeseries(layerId, period, null);
+
+  // Generate timeseries for each zip
+  const allSeries = zips.map((zip) => generateMockTimeseries(layerId, period, zip));
+
+  // Average the values at each time point
+  const pointCount = allSeries[0].data.length;
+  const avgPoints: TimeseriesPoint[] = [];
+
+  for (let i = 0; i < pointCount; i++) {
+    const date = allSeries[0].data[i].date;
+    const sum = allSeries.reduce((acc, s) => acc + s.data[i].value, 0);
+    avgPoints.push({
+      date,
+      value: Math.round((sum / allSeries.length) * 100) / 100,
+    });
+  }
+
+  const avg = avgPoints.reduce((sum, p) => sum + p.value, 0) / avgPoints.length;
+
+  return {
+    layerId,
+    zip: "filtered",
+    period,
+    data: avgPoints,
+    average: Math.round(avg * 100) / 100,
+    unit: allSeries[0].unit,
+  };
+}
+
 interface HistoricalChartProps {
   selectedLayerId: string;
   selectedZip: string | null;
+  filteredZips?: string[] | null;
+  filterLabel?: string | null;
   period: "yearly" | "monthly";
   onPeriodChange: (period: "yearly" | "monthly") => void;
   className?: string;
@@ -161,6 +199,8 @@ interface HistoricalChartProps {
 export default function HistoricalChart({
   selectedLayerId,
   selectedZip,
+  filteredZips,
+  filterLabel,
   period,
   onPeriodChange,
   className = "",
@@ -173,10 +213,19 @@ export default function HistoricalChart({
   const gridColor = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
   const textColor = isDark ? "#999" : "#666";
 
+  // Determine if we have an active area filter (city/county) without a specific zip
+  const hasAreaFilter = !!(filteredZips && filteredZips.length > 0 && !selectedZip);
+
   // Fetch timeseries — falls back to mock
   const { data: timeseries, isLoading } = useQuery<TimeseriesData>({
-    queryKey: ["/api/pulse/v2/layer", selectedLayerId, "timeseries", selectedZip, period],
+    queryKey: ["/api/pulse/v2/layer", selectedLayerId, "timeseries", selectedZip, filteredZips?.join(","), period],
     queryFn: async () => {
+      // When a city/county filter is active (no specific zip selected),
+      // compute an average across all filtered zips
+      if (hasAreaFilter) {
+        return generateAveragedTimeseries(selectedLayerId, period, filteredZips!);
+      }
+
       // Convert frontend layer ID (kebab-case) to backend (snake_case) 
       const backendLayerId = selectedLayerId.replace(/-/g, "_");
       const zip = selectedZip || "78704";
@@ -257,9 +306,17 @@ export default function HistoricalChart({
             <h3 className="text-base font-display font-bold text-foreground truncate">
               {layer?.label || "Select a Data Layer"}
             </h3>
-            {selectedZip && (
+            {selectedZip ? (
               <p className="text-xs text-muted-foreground mt-0.5">
                 ZIP {selectedZip} • {period === "yearly" ? "Yearly" : "Monthly"} Data
+              </p>
+            ) : hasAreaFilter ? (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                <span className="text-[#EF4923] font-medium">{filterLabel}</span> Average · {filteredZips!.length} zip{filteredZips!.length !== 1 ? "s" : ""}
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Austin Metro Average
               </p>
             )}
           </div>
@@ -355,9 +412,9 @@ export default function HistoricalChart({
           <Skeleton className="h-full w-full min-h-[280px]" />
         ) : !timeseries || timeseries.data.length === 0 ? (
           <div className="h-full flex items-center justify-center text-sm text-muted-foreground min-h-[280px]">
-            {!selectedZip
+            {!selectedZip && !hasAreaFilter
               ? "Click a zip code on the map to see historical data"
-              : `No historical data available for ZIP ${selectedZip}`}
+              : `No historical data available${selectedZip ? ` for ZIP ${selectedZip}` : ""}`}
           </div>
         ) : chartType === "line" ? (
           <ResponsiveContainer width="100%" height={320}>
