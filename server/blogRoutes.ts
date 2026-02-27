@@ -1343,4 +1343,293 @@ router.get("/blog/categories", async (req, res) => {
   }
 });
 
+// ── IMPORT: Google Sheets Blog Import ──────────────────────────────────────
+
+// POST /api/admin/blog/import-sheet - Import blogs from Google Sheets
+router.post("/admin/blog/import-sheet", async (req, res) => {
+  try {
+    const { sheetUrl } = req.body;
+    if (!sheetUrl || typeof sheetUrl !== 'string') {
+      return res.status(400).json({ error: "sheetUrl is required" });
+    }
+
+    // Extract spreadsheet ID from URL
+    const sheetIdMatch = sheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    if (!sheetIdMatch) {
+      return res.status(400).json({ error: "Invalid Google Sheets URL" });
+    }
+    const spreadsheetId = sheetIdMatch[1];
+
+    // Download as XLSX
+    const xlsxUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=xlsx`;
+    const xlsxResponse = await fetch(xlsxUrl);
+    if (!xlsxResponse.ok) {
+      return res.status(400).json({ error: "Failed to download spreadsheet. Make sure it's publicly shared." });
+    }
+    const xlsxBuffer = Buffer.from(await xlsxResponse.arrayBuffer());
+
+    // Parse XLSX
+    const XLSX = require('xlsx');
+    const workbook = XLSX.read(xlsxBuffer, { cellFormula: true });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+
+    // Helper: extract URL from HYPERLINK formula
+    function extractHyperlink(cell: any): string | null {
+      if (!cell) return null;
+      if (cell.l?.Target) return cell.l.Target;
+      if (cell.f) {
+        const match = cell.f.match(/HYPERLINK\("([^"]+)"/);
+        if (match) return match[1];
+      }
+      return null;
+    }
+
+    // Helper: convert Google Drive view URL to direct URL
+    function driveToDirectUrl(url: string | null): string | null {
+      if (!url) return null;
+      // https://drive.google.com/file/d/FILE_ID/view -> direct URL
+      const fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (fileMatch) {
+        return `https://drive.google.com/uc?export=view&id=${fileMatch[1]}`;
+      }
+      return url;
+    }
+
+    // Helper: parse date like "January 29th, 2026"
+    function parsePublishedDate(dateStr: string | null): Date | null {
+      if (!dateStr) return null;
+      // Strip ordinal suffixes
+      const cleaned = dateStr.replace(/(\d+)(st|nd|rd|th)/g, '$1');
+      const parsed = new Date(cleaned);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    // Helper: extract Google Doc ID from URL
+    function extractDocId(url: string | null): string | null {
+      if (!url) return null;
+      const match = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+      return match ? match[1] : null;
+    }
+
+    // Get or create default author "Spyglass Realty"
+    let [defaultAuthor] = await db
+      .select()
+      .from(blogAuthors)
+      .where(eq(blogAuthors.name, 'Spyglass Realty'));
+
+    if (!defaultAuthor) {
+      [defaultAuthor] = await db
+        .insert(blogAuthors)
+        .values({ name: 'Spyglass Realty' })
+        .returning();
+    }
+
+    const results: { imported: number; failed: Array<{ title: string; error: string }> } = {
+      imported: 0,
+      failed: [],
+    };
+
+    // Process each data row (skip header row 0)
+    for (let row = range.s.r + 1; row <= range.e.r; row++) {
+      const titleCell = sheet[XLSX.utils.encode_cell({ r: row, c: 0 })];
+      const slugCell = sheet[XLSX.utils.encode_cell({ r: row, c: 1 })];
+      const docCell = sheet[XLSX.utils.encode_cell({ r: row, c: 2 })];
+      const heroCell = sheet[XLSX.utils.encode_cell({ r: row, c: 3 })];
+      const ogCell = sheet[XLSX.utils.encode_cell({ r: row, c: 4 })];
+      const photosCell = sheet[XLSX.utils.encode_cell({ r: row, c: 5 })];
+      const dateCell = sheet[XLSX.utils.encode_cell({ r: row, c: 6 })];
+
+      const title = titleCell?.v?.toString()?.trim();
+      if (!title) continue; // Skip empty rows
+
+      let rawSlug = slugCell?.v?.toString()?.trim() || '';
+      // Strip .html extension
+      rawSlug = rawSlug.replace(/\.html?$/i, '');
+      // Clean slug
+      const slug = rawSlug
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+
+      if (!slug) {
+        results.failed.push({ title, error: 'Invalid or missing slug' });
+        continue;
+      }
+
+      try {
+        // Check if slug already exists
+        const [existing] = await db
+          .select({ id: blogPosts.id })
+          .from(blogPosts)
+          .where(eq(blogPosts.slug, slug));
+
+        if (existing) {
+          results.failed.push({ title, error: `Slug "${slug}" already exists` });
+          continue;
+        }
+
+        // Extract URLs from HYPERLINK formulas
+        const docUrl = extractHyperlink(docCell);
+        const heroImageUrl = driveToDirectUrl(extractHyperlink(heroCell));
+        const ogImageUrl = driveToDirectUrl(extractHyperlink(ogCell));
+        const datePublished = parsePublishedDate(dateCell?.v?.toString());
+
+        // Fetch and parse Google Doc content
+        let content = '';
+        let excerpt = '';
+        let metaTitle = title;
+        let metaDescription = '';
+
+        const docId = extractDocId(docUrl);
+        if (docId) {
+          try {
+            const docHtmlUrl = `https://docs.google.com/document/d/${docId}/export?format=html`;
+            const docResponse = await fetch(docHtmlUrl);
+            if (docResponse.ok) {
+              const docHtml = await docResponse.text();
+
+              // Extract title from <title> tag
+              const titleMatch = docHtml.match(/<title[^>]*>(.*?)<\/title>/is);
+              if (titleMatch) {
+                metaTitle = titleMatch[1].replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n))).trim();
+              }
+
+              // Extract meta description
+              const metaMatch = docHtml.match(/<meta\s+name=["']description["']\s+content=["'](.*?)["']/is);
+              if (metaMatch) {
+                metaDescription = metaMatch[1]
+                  .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n)))
+                  .replace(/&amp;/g, '&')
+                  .replace(/&lt;/g, '<')
+                  .replace(/&gt;/g, '>')
+                  .replace(/&quot;/g, '"')
+                  .trim();
+                excerpt = metaDescription;
+              }
+
+              // Extract body content - Google Docs export wraps in <body>
+              const bodyMatch = docHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+              if (bodyMatch) {
+                let bodyContent = bodyMatch[1];
+
+                // Google Docs exports have styled content - clean it up
+                // Remove Google Docs style tags
+                bodyContent = bodyContent.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+
+                // Check if the body contains raw HTML source code (paragraphs containing HTML tags as text)
+                // This is the case when the Google Doc stores HTML code as text content
+                const paragraphs = bodyContent.match(/<p[^>]*>([\s\S]*?)<\/p>/gi) || [];
+                let decodedContent = '';
+
+                // Check first paragraph for HTML-encoded content
+                const firstP = paragraphs[0] || '';
+                const hasEncodedHtml = firstP.includes('&lt;') || firstP.includes('&amp;lt;');
+
+                if (hasEncodedHtml) {
+                  // The doc contains HTML source as text - decode it
+                  for (const p of paragraphs) {
+                    let text = p.replace(/<\/?p[^>]*>/gi, '').replace(/<\/?span[^>]*>/gi, '');
+                    // Decode HTML entities
+                    text = text
+                      .replace(/&amp;/g, '&')
+                      .replace(/&lt;/g, '<')
+                      .replace(/&gt;/g, '>')
+                      .replace(/&quot;/g, '"')
+                      .replace(/&#39;/g, "'")
+                      .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n)));
+                    decodedContent += text + '\n';
+                  }
+
+                  // Extract <article> content from decoded HTML
+                  const articleMatch = decodedContent.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
+                  if (articleMatch) {
+                    content = articleMatch[1].trim();
+                  } else {
+                    // No article tag, use everything after any meta tags
+                    content = decodedContent
+                      .replace(/<title[^>]*>.*?<\/title>/gi, '')
+                      .replace(/<meta[^>]*>/gi, '')
+                      .trim();
+                  }
+
+                  // Re-extract title and description from decoded content
+                  const decodedTitleMatch = decodedContent.match(/<title[^>]*>(.*?)<\/title>/is);
+                  if (decodedTitleMatch) metaTitle = decodedTitleMatch[1].trim();
+
+                  const decodedMetaMatch = decodedContent.match(/<meta\s+name=["']description["']\s+content=["'](.*?)["']/is);
+                  if (decodedMetaMatch) {
+                    metaDescription = decodedMetaMatch[1].trim();
+                    excerpt = metaDescription;
+                  }
+                } else {
+                  // The doc contains actual formatted content (not source code)
+                  content = bodyContent.trim();
+                }
+              }
+            } else {
+              results.failed.push({ title, error: `Failed to fetch Google Doc (HTTP ${docResponse.status}). Is it publicly shared?` });
+              continue;
+            }
+          } catch (docError: any) {
+            results.failed.push({ title, error: `Error fetching Google Doc: ${docError.message}` });
+            continue;
+          }
+        }
+
+        if (!content) {
+          results.failed.push({ title, error: 'No content could be extracted from Google Doc' });
+          continue;
+        }
+
+        // Calculate reading time
+        const textContent = content.replace(/<[^>]*>/g, '');
+        const wordCount = textContent.split(/\s+/).length;
+        const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+
+        // Generate table of contents
+        const toc: Array<{ id: string; title: string; level: number }> = [];
+        const headingRegex = /<h([1-6])[^>]*>(.*?)<\/h[1-6]>/gi;
+        let headingMatch;
+        while ((headingMatch = headingRegex.exec(content)) !== null) {
+          const level = parseInt(headingMatch[1]);
+          const headingTitle = headingMatch[2].replace(/<[^>]*>/g, '').trim();
+          const id = headingTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+          toc.push({ id, title: headingTitle, level });
+        }
+
+        // Insert blog post as draft
+        await db.insert(blogPosts).values({
+          title,
+          slug,
+          content,
+          excerpt: excerpt || null,
+          featuredImageUrl: heroImageUrl || null,
+          ogImageUrl: ogImageUrl || null,
+          authorId: defaultAuthor.id,
+          status: 'draft',
+          publishedAt: datePublished,
+          metaTitle: metaTitle !== title ? metaTitle : null,
+          metaDescription: metaDescription || null,
+          readingTime,
+          tableOfContents: toc.length > 0 ? toc : null,
+          tags: [],
+          categoryIds: [],
+        });
+
+        results.imported++;
+      } catch (rowError: any) {
+        results.failed.push({ title, error: rowError.message || 'Unknown error' });
+      }
+    }
+
+    res.json(results);
+  } catch (error: any) {
+    console.error("Error importing from Google Sheet:", error);
+    res.status(500).json({ error: `Import failed: ${error.message}` });
+  }
+});
+
+
 export default router;
