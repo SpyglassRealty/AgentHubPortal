@@ -62,7 +62,7 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
     case 'text':
       return (
         <div
-          className="prose prose-sm max-w-none dark:prose-invert"
+          className="prose prose-sm max-w-none dark:prose-invert [&_a]:text-[#EF4923] [&_a]:no-underline [&_a:hover]:underline"
           style={{ textAlign: props.alignment || 'left' }}
           dangerouslySetInnerHTML={{ __html: (props.content || '').replace(/\n/g, '<br/>') }}
         />
@@ -148,7 +148,7 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
     case 'html':
       return (
         <div
-          className="prose prose-sm max-w-none dark:prose-invert"
+          className="prose prose-sm max-w-none dark:prose-invert [&_a]:text-[#EF4923] [&_a]:no-underline [&_a:hover]:underline"
           dangerouslySetInnerHTML={{ __html: props.code || '' }}
         />
       );

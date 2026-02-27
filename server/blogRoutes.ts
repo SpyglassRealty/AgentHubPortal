@@ -742,6 +742,7 @@ async function fetchGoogleDocHtml(docId: string): Promise<{
   metaDescription: string;
   h1: string;
   articleHtml: string;
+  publishDateRaw: string;
 }> {
   const exportUrl = `https://docs.google.com/document/d/${docId}/export?format=html`;
   const res = await fetch(exportUrl, {
@@ -771,7 +772,10 @@ async function fetchGoogleDocHtml(docId: string): Promise<{
   const h1 = $blog("h1").first().text().trim();
   const articleHtml = $blog("article").html() || $blog("body").html() || "";
 
-  return { title, metaDescription, h1, articleHtml };
+  const timeEl = $blog('time[datetime]').first();
+  const publishDateRaw = timeEl.attr('datetime') || '';
+
+  return { title, metaDescription, h1, articleHtml, publishDateRaw };
 }
 
 // POST /api/admin/blog/import-sheet
@@ -896,6 +900,7 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
       let metaDescription = "";
       let h1Text = "";
       let articleHtml = "";
+      let publishDateRaw = "";
 
       if (googleDocUrl) {
         const docId = extractDocId(googleDocUrl);
@@ -909,6 +914,7 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
           metaDescription = parsed.metaDescription;
           h1Text = parsed.h1;
           articleHtml = parsed.articleHtml;
+          publishDateRaw = parsed.publishDateRaw;
         } catch (fetchErr: any) {
           results.push({ row: i + 2, title, slug, success: false, error: `Doc fetch error: ${fetchErr.message}` });
           continue;
@@ -1132,7 +1138,7 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
             author: "Spyglass Realty",
             canonicalUrl: `https://www.spyglassrealty.com/blog/${finalSlug}`,
             isPublished: false,
-            publishDate: new Date(),
+            publishDate: publishDateRaw ? new Date(publishDateRaw) : new Date(),
             modifiedDate: new Date(),
             updatedAt: new Date(),
           })
