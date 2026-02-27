@@ -172,7 +172,7 @@ export default function PulseMap({
           box-shadow: 0 2px 8px rgba(0,0,0,0.3);
           transition: transform 0.15s ease, box-shadow 0.15s ease;
           text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-          ${isSelected ? "transform: scale(1.25); box-shadow: 0 4px 16px rgba(239,73,35,0.5); z-index: 10;" : ""}
+          ${isSelected ? "scale: 1.25; box-shadow: 0 4px 16px rgba(239,73,35,0.5); z-index: 10;" : ""}
         `;
 
         // Label: prefer V2 label (pre-formatted by backend), fall back to local formatting
@@ -188,13 +188,13 @@ export default function PulseMap({
 
         el.addEventListener("mouseenter", () => {
           if (selectedZip !== item.zip) {
-            el.style.transform = "scale(1.15)";
+            el.style.scale = "1.15";
             el.style.boxShadow = "0 4px 12px rgba(0,0,0,0.4)";
           }
         });
         el.addEventListener("mouseleave", () => {
           if (selectedZip !== item.zip) {
-            el.style.transform = "scale(1)";
+            el.style.scale = "1";
             el.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
           }
         });
