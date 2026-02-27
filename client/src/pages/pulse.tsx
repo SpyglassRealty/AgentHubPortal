@@ -9,6 +9,7 @@ import {
   HistoricalChart,
   AffordabilityChart,
   PulseMap,
+  PulseSearchBar,
   HeroStatsBar,
   MarketTrends,
   NeighborhoodExplorer,
@@ -27,6 +28,8 @@ export default function PulsePage() {
   const [selectedLayerId, setSelectedLayerId] = useState("home-value");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [period, setPeriod] = useState<"yearly" | "monthly">("yearly");
+  const [filteredZips, setFilteredZips] = useState<string[] | null>(null);
+  const [filterLabel, setFilterLabel] = useState<string | null>(null);
   const mapSectionRef = useRef<HTMLDivElement>(null);
 
   const handleZipSelect = useCallback((zip: string) => {
@@ -34,6 +37,20 @@ export default function PulsePage() {
     setTimeout(() => {
       mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 100);
+  }, []);
+
+  const handleFilterZips = useCallback((zips: string[], label: string) => {
+    setFilteredZips(zips);
+    setFilterLabel(label);
+    setSelectedZip(null);
+    setTimeout(() => {
+      mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  }, []);
+
+  const handleClearFilter = useCallback(() => {
+    setFilteredZips(null);
+    setFilterLabel(null);
   }, []);
 
   const handleLayerSelect = useCallback((layerId: string) => {
@@ -94,7 +111,7 @@ export default function PulsePage() {
 
   // Merge V2 layer data into the heatmap items so the map can display
   // the selected metric value instead of just MLS median price
-  const zipData = useMemo(() => {
+  const allZipData = useMemo(() => {
     const baseZips = heatmapData?.zipData || [];
     if (!v2LayerData?.data?.length) return baseZips;
 
@@ -114,6 +131,13 @@ export default function PulsePage() {
       };
     });
   }, [heatmapData?.zipData, v2LayerData?.data]);
+
+  // Apply zip filter (from search bar city/county selection)
+  const zipData = useMemo(() => {
+    if (!filteredZips) return allZipData;
+    const filterSet = new Set(filteredZips);
+    return allZipData.filter(item => filterSet.has(item.zip));
+  }, [allZipData, filteredZips]);
 
   return (
     <Layout>
@@ -152,6 +176,14 @@ export default function PulsePage() {
 
         {/* ─── Hero Stats ──────────────────────────────── */}
         <HeroStatsBar data={overview} isLoading={overviewLoading} />
+
+        {/* ─── Search Bar ──────────────────────────────── */}
+        <PulseSearchBar
+          onZipSelect={handleZipSelect}
+          onFilterZips={handleFilterZips}
+          onClearFilter={handleClearFilter}
+          activeFilter={filterLabel}
+        />
 
         {/* ─── 3-Panel Layout: Sidebar | Center Content | RightChart ── */}
         <div ref={mapSectionRef} className="flex gap-0 rounded-xl border border-border overflow-hidden bg-card shadow-sm" style={{ minHeight: "600px" }}>
