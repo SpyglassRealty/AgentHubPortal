@@ -602,16 +602,22 @@ function populateTocBlocks(sections: any[]): any[] {
   });
 }
 
-/** Strip .html from blog/ links in all text and html block content */
+/** Strip .html from blog/ links in all block content (text, html, buttons, etc.) */
 function stripHtmlFromBlogLinks(sections: any[]): any[] {
-  // Regex: match href="...blog/some-slug.html" and remove the .html
   const blogLinkRegex = /(href=["'][^"']*?blog\/[^"']*?)\.html(["'])/gi;
+  const stripUrl = (url: string) => url.replace(/(blog\/[^"'?#]*?)\.html(?=["'?#]|$)/i, "$1");
   return sections.map(block => {
     if (block.type === "text" && block.props?.content) {
       return { ...block, props: { ...block.props, content: block.props.content.replace(blogLinkRegex, "$1$2") } };
     }
     if (block.type === "html" && block.props?.code) {
       return { ...block, props: { ...block.props, code: block.props.code.replace(blogLinkRegex, "$1$2") } };
+    }
+    if (block.type === "button" && block.props?.url) {
+      return { ...block, props: { ...block.props, url: stripUrl(block.props.url) } };
+    }
+    if (block.type === "image" && block.props?.link) {
+      return { ...block, props: { ...block.props, link: stripUrl(block.props.link) } };
     }
     return block;
   });
