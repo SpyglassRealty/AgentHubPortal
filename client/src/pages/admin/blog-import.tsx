@@ -40,7 +40,7 @@ interface ImportResult {
   title: string;
   slug: string;
   success: boolean;
-  postId?: string;
+  pageId?: string;
   error?: string;
 }
 
@@ -432,10 +432,10 @@ export default function BlogImportPage() {
                         </TableCell>
                         <TableCell>
                           {result.success ? (
-                            <Link href={`/admin/blog/posts/${result.slug}`}>
+                            <Link href={`/admin/pages/blog/${result.pageId}/edit`}>
                               <Button variant="outline" size="sm" className="gap-1 text-xs h-7">
                                 <FileText className="h-3 w-3" />
-                                Edit post
+                                Edit in page builder
                               </Button>
                             </Link>
                           ) : (

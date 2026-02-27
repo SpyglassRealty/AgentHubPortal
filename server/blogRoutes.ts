@@ -6,6 +6,7 @@ import {
   blogCategories,
   blogAuthors,
   blogPostCategories,
+  landingPages,
   type BlogPost,
   type BlogCategory,
   type BlogAuthor,
@@ -727,25 +728,9 @@ async function fetchAndParseBlogUrl(url: string): Promise<{
   return { title, metaDescription, ogImageUrl, sections };
 }
 
-/** Ensure the default Spyglass Realty author exists; return its id */
-async function getOrCreateDefaultAuthor(): Promise<string> {
-  const [existing] = await db
-    .select({ id: blogAuthors.id })
-    .from(blogAuthors)
-    .where(eq(blogAuthors.name, "Spyglass Realty"))
-    .limit(1);
-
-  if (existing) return existing.id;
-
-  const [created] = await db
-    .insert(blogAuthors)
-    .values({ name: "Spyglass Realty" })
-    .returning({ id: blogAuthors.id });
-
-  return created.id;
-}
-
 // POST /api/admin/blog/import-csv
+// Saves imported blogs into the landingPages table (pageType='blog') with page-builder blocks
+// so they appear in the blog page editor for proofing and editing.
 router.post("/admin/blog/import-csv", csvUpload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
@@ -757,7 +742,7 @@ router.post("/admin/blog/import-csv", csvUpload.single("file"), async (req, res)
     let rows: Record<string, string>[];
     try {
       rows = csvParse(csvText, {
-        columns: true,        // use first row as column headers
+        columns: true,
         skip_empty_lines: true,
         trim: true,
         relax_column_count: true,
@@ -770,14 +755,12 @@ router.post("/admin/blog/import-csv", csvUpload.single("file"), async (req, res)
       return res.status(400).json({ error: "CSV file is empty" });
     }
 
-    const authorId = await getOrCreateDefaultAuthor();
-
     const results: Array<{
       row: number;
       title: string;
       slug: string;
       success: boolean;
-      postId?: string;
+      pageId?: string;
       error?: string;
     }> = [];
 
@@ -793,14 +776,17 @@ router.post("/admin/blog/import-csv", csvUpload.single("file"), async (req, res)
         continue;
       }
 
-      // Clean the slug
-      const slug = slugifyForBlog(rawSlug || title);
+      // Clean the slug — strip .html extension and slugify
+      const cleanedSlug = rawSlug
+        ? rawSlug.replace(/\.html?$/i, "").replace(/[^a-z0-9-]/gi, "-").toLowerCase().replace(/^-|-$/g, "")
+        : slugifyForBlog(title);
+      const slug = cleanedSlug;
 
-      // Check for duplicate slug
+      // Check for duplicate slug in landingPages
       const [existing] = await db
-        .select({ id: blogPosts.id })
-        .from(blogPosts)
-        .where(eq(blogPosts.slug, slug))
+        .select({ id: landingPages.id })
+        .from(landingPages)
+        .where(eq(landingPages.slug, slug))
         .limit(1);
 
       if (existing) {
@@ -808,54 +794,47 @@ router.post("/admin/blog/import-csv", csvUpload.single("file"), async (req, res)
         continue;
       }
 
-      // Fetch and parse the blog URL
-      let content = "";
+      // Fetch and parse the blog URL into page-builder blocks
+      let sections: any[] = [];
       let metaDescription = "";
       let ogImageUrl = heroImage || "";
 
       try {
         const parsed = await fetchAndParseBlogUrl(blogUrl);
-        content = blocksToHtml(parsed.sections);
+        sections = parsed.sections;
         metaDescription = parsed.metaDescription;
-        // Prefer the CSV hero image over the og:image from the page
         if (!ogImageUrl) ogImageUrl = parsed.ogImageUrl;
-        // Use parsed title if CSV title is missing (shouldn't happen, but just in case)
       } catch (fetchErr: any) {
         results.push({ row: i + 2, title, slug, success: false, error: `Fetch error: ${fetchErr.message}` });
         continue;
       }
 
-      if (!content.trim()) {
-        content = `<p>${title}</p>`;
-      }
+      // Also generate flat HTML content for the content field
+      const htmlContent = blocksToHtml(sections);
 
       try {
-        const readingTime = calculateReadingTime(content);
-        const tableOfContents = generateTableOfContents(content);
-
-        const [newPost] = await db
-          .insert(blogPosts)
+        const [newPage] = await db
+          .insert(landingPages)
           .values({
             title,
             slug,
-            content,
-            excerpt: metaDescription || undefined,
-            featuredImageUrl: heroImage || undefined,
-            ogImageUrl: ogImageUrl || undefined,
+            pageType: "blog",
+            content: htmlContent || " ",
+            sections,
             metaTitle: title,
             metaDescription: metaDescription || undefined,
-            authorId,
-            status: "draft",
-            categoryIds: [],
-            tags: [],
-            readingTime,
-            tableOfContents,
+            ogImageUrl: ogImageUrl || undefined,
             indexingDirective: "index,follow",
+            author: "Spyglass Realty",
+            canonicalUrl: `https://www.spyglassrealty.com/blog/${slug}`,
+            isPublished: false,
+            publishDate: new Date(),
+            modifiedDate: new Date(),
             updatedAt: new Date(),
           })
-          .returning({ id: blogPosts.id, slug: blogPosts.slug });
+          .returning({ id: landingPages.id, slug: landingPages.slug });
 
-        results.push({ row: i + 2, title, slug: newPost.slug, success: true, postId: newPost.id });
+        results.push({ row: i + 2, title, slug: newPage.slug, success: true, pageId: newPage.id });
       } catch (dbErr: any) {
         results.push({ row: i + 2, title, slug, success: false, error: `DB error: ${dbErr.message}` });
       }
