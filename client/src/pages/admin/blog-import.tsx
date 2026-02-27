@@ -199,7 +199,7 @@ export default function BlogImportPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link href="/admin/blog/posts">
+        <Link href="/admin/pages">
           <Button variant="ghost" size="sm" className="gap-2">
             <ArrowLeft className="h-4 w-4" />
             Back to Blog Posts
@@ -452,10 +452,10 @@ export default function BlogImportPage() {
 
           {/* Actions */}
           <div className="flex gap-3">
-            <Link href="/admin/blog/posts">
+            <Link href="/admin/pages">
               <Button variant="outline" className="gap-2">
                 <ArrowLeft className="h-4 w-4" />
-                View all blog posts
+                Back to Pages
               </Button>
             </Link>
             <Button
