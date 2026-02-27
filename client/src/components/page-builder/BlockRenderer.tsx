@@ -50,12 +50,13 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
       };
       const headingClass = `${sizes[level]} leading-tight`;
       const text = props.text || 'Heading';
-      if (level === 1) return <h1 className={headingClass} style={headingStyle}>{text}</h1>;
-      if (level === 3) return <h3 className={headingClass} style={headingStyle}>{text}</h3>;
-      if (level === 4) return <h4 className={headingClass} style={headingStyle}>{text}</h4>;
-      if (level === 5) return <h5 className={headingClass} style={headingStyle}>{text}</h5>;
-      if (level === 6) return <h6 className={headingClass} style={headingStyle}>{text}</h6>;
-      return <h2 className={headingClass} style={headingStyle}>{text}</h2>;
+      const anchorId = props.anchorId;
+      if (level === 1) return <h1 id={anchorId} className={headingClass} style={headingStyle}>{text}</h1>;
+      if (level === 3) return <h3 id={anchorId} className={headingClass} style={headingStyle}>{text}</h3>;
+      if (level === 4) return <h4 id={anchorId} className={headingClass} style={headingStyle}>{text}</h4>;
+      if (level === 5) return <h5 id={anchorId} className={headingClass} style={headingStyle}>{text}</h5>;
+      if (level === 6) return <h6 id={anchorId} className={headingClass} style={headingStyle}>{text}</h6>;
+      return <h2 id={anchorId} className={headingClass} style={headingStyle}>{text}</h2>;
     }
 
     case 'text':
@@ -67,7 +68,7 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
         />
       );
 
-    case 'image':
+    case 'image': {
       if (!props.url) {
         return (
           <div
@@ -76,24 +77,35 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
           >
             <div className="text-4xl mb-2">🖼️</div>
             <p className="text-sm">Add an image URL in settings</p>
+            {!props.alt && (
+              <p className="text-xs text-red-400 mt-1">Alt text required</p>
+            )}
           </div>
         );
       }
-      const img = (
+      const imgEl = (
         <img
           src={props.url}
           alt={props.alt || ''}
           className="max-w-full rounded-lg"
           style={{ width: props.width || '100%' }}
+          loading={props.loading || 'lazy'}
+          srcSet={props.srcset || undefined}
         />
       );
       return (
-        <div style={{ textAlign: props.alignment || 'center' }}>
+        <div style={{ textAlign: props.alignment || 'center' }} className="relative">
           {props.link ? (
-            <a href={props.link} target="_blank" rel="noopener noreferrer">{img}</a>
-          ) : img}
+            <a href={props.link} target="_blank" rel="noopener noreferrer">{imgEl}</a>
+          ) : imgEl}
+          {!props.alt && !isPreview && (
+            <div className="absolute top-1 right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded">
+              Alt required
+            </div>
+          )}
         </div>
       );
+    }
 
     case 'button': {
       const btnStyles: Record<string, string> = {
@@ -333,6 +345,35 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
               </div>
             </details>
           ))}
+        </div>
+      );
+    }
+
+    case 'toc': {
+      const headings = props.headings || [];
+      if (headings.length === 0) {
+        return (
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center text-gray-400">
+            <div className="text-2xl mb-1">📋</div>
+            <p className="text-sm">Table of Contents (auto-generates from headings)</p>
+          </div>
+        );
+      }
+      return (
+        <div className="highlight bg-gray-50 border border-gray-200 rounded-lg p-5 my-4">
+          <p className="font-semibold text-sm text-gray-700 mb-3 uppercase tracking-wide">Table of Contents</p>
+          <ul className="space-y-1.5">
+            {headings.map((h: any, i: number) => (
+              <li key={i} style={{ paddingLeft: h.level === 3 ? '1rem' : '0' }}>
+                <a
+                  href={`#${h.anchorId}`}
+                  className="text-sm text-[#EF4923] hover:underline"
+                >
+                  {h.text}
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
       );
     }

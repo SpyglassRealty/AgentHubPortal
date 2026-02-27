@@ -1112,7 +1112,13 @@ export const landingPages = pgTable("landing_pages", {
   
   // Page-specific scripts and content
   customScripts: text("custom_scripts"), // For page-specific scripts/schema
-  
+
+  // Blog-specific fields
+  author: varchar("author", { length: 255 }),
+  publishDate: timestamp("publish_date"),
+  modifiedDate: timestamp("modified_date"),
+  canonicalUrl: varchar("canonical_url", { length: 500 }),
+
   // Publishing
   isPublished: boolean("is_published").default(false),
   

@@ -65,6 +65,16 @@ export function BlockSettingsPanel({ block, onUpdate, onClose }: BlockSettingsPa
                 <Input value={props.color || '#000000'} onChange={e => update('color', e.target.value)} className="flex-1" />
               </div>
             </Field>
+            {(props.level === 2 || props.level === 3) && (
+              <Field label="Anchor ID">
+                <Input
+                  value={props.anchorId || ''}
+                  onChange={e => update('anchorId', e.target.value)}
+                  placeholder="auto-generated from text"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Used for TOC links. Auto-set from heading text.</p>
+              </Field>
+            )}
           </>
         );
 
@@ -84,13 +94,38 @@ export function BlockSettingsPanel({ block, onUpdate, onClose }: BlockSettingsPa
             <Field label="Image URL">
               <Input value={props.url || ''} onChange={e => update('url', e.target.value)} placeholder="https://..." />
             </Field>
-            <Field label="Alt Text">
-              <Input value={props.alt || ''} onChange={e => update('alt', e.target.value)} />
+            <Field label="Alt Text *">
+              <Input
+                value={props.alt || ''}
+                onChange={e => update('alt', e.target.value)}
+                className={!props.alt ? 'border-red-400 focus-visible:ring-red-400' : ''}
+              />
+              {!props.alt && (
+                <p className="text-xs text-red-500 mt-1 font-medium">Alt text is required for accessibility & SEO</p>
+              )}
             </Field>
             <Field label="Width">
               <Input value={props.width || '100%'} onChange={e => update('width', e.target.value)} placeholder="100% or 500px" />
             </Field>
             <AlignmentField value={props.alignment} onChange={v => update('alignment', v)} />
+            <Field label="Lazy Loading">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={(props.loading || 'lazy') === 'lazy'}
+                  onCheckedChange={v => update('loading', v ? 'lazy' : 'eager')}
+                />
+                <span className="text-sm text-gray-500">{(props.loading || 'lazy') === 'lazy' ? 'Lazy (recommended)' : 'Eager'}</span>
+              </div>
+            </Field>
+            <Field label="Srcset (optional)">
+              <Textarea
+                value={props.srcset || ''}
+                onChange={e => update('srcset', e.target.value)}
+                placeholder="img-400.jpg 400w, img-800.jpg 800w"
+                rows={2}
+                className="text-xs"
+              />
+            </Field>
             <Field label="Link URL (optional)">
               <Input value={props.link || ''} onChange={e => update('link', e.target.value)} placeholder="https://..." />
             </Field>
@@ -425,6 +460,33 @@ export function BlockSettingsPanel({ block, onUpdate, onClose }: BlockSettingsPa
             }}>
               <Plus className="h-3 w-3 mr-1" /> Add FAQ Item
             </Button>
+          </div>
+        );
+
+      case 'toc':
+        return (
+          <div className="space-y-3">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-700 font-medium">Auto-Generated Block</p>
+              <p className="text-xs text-blue-600 mt-1">
+                The Table of Contents automatically updates based on H2 and H3 headings in this page.
+                No manual editing needed.
+              </p>
+            </div>
+            <div className="text-xs text-gray-500">
+              <p className="font-medium mb-1">Currently tracking:</p>
+              {(props.headings || []).length === 0 ? (
+                <p className="italic">No H2/H3 headings on this page yet.</p>
+              ) : (
+                <ul className="space-y-0.5">
+                  {(props.headings || []).map((h: any, i: number) => (
+                    <li key={i} style={{ paddingLeft: h.level === 3 ? '0.75rem' : '0' }}>
+                      {h.level === 2 ? '▸' : '↳'} {h.text}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         );
 

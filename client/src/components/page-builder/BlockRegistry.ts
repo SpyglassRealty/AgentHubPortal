@@ -140,6 +140,13 @@ export const blockRegistry: WidgetDefinition[] = [
       ],
     },
   },
+  {
+    type: 'toc',
+    label: 'Table of Contents',
+    icon: '📋',
+    category: 'Content',
+    defaultProps: { headings: [] },
+  },
 ];
 
 export const widgetCategories: WidgetCategory[] = ['Layout', 'Basic', 'Media', 'Content'];
