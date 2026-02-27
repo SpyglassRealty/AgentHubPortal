@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2, Upload } from 'lucide-react';
 import { getWidgetDefinition } from './BlockRegistry';
 
 interface BlockSettingsPanelProps {
@@ -238,29 +238,76 @@ export function BlockSettingsPanel({ block, onUpdate, onClose }: BlockSettingsPa
             <Field label="Heading">
               <Input value={props.heading || ''} onChange={e => update('heading', e.target.value)} />
             </Field>
-            <Field label="Subtitle">
-              <Textarea value={props.subtext || ''} onChange={e => update('subtext', e.target.value)} rows={3} />
-            </Field>
-            <Field label="Background Image URL">
-              <Input value={props.bgImage || ''} onChange={e => update('bgImage', e.target.value)} placeholder="https://..." />
+            <Field label="Hero Image">
+              <div className="space-y-2">
+                {props.bgImage && (
+                  <img src={props.bgImage} alt="Hero preview" className="w-full h-32 object-cover rounded-lg" />
+                )}
+                <div className="flex gap-2">
+                  <Input
+                    value={props.bgImage || ''}
+                    onChange={e => update('bgImage', e.target.value)}
+                    placeholder="Image URL or upload below..."
+                    className="flex-1"
+                  />
+                </div>
+                <label className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm">
+                  <Upload className="h-4 w-4" />
+                  <span>Upload Image</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append('image', file);
+                      try {
+                        const res = await fetch('/api/admin/uploads', { method: 'POST', credentials: 'include', body: formData });
+                        const data = await res.json();
+                        if (data.success && data.url) {
+                          update('bgImage', data.url);
+                        }
+                      } catch (err) {
+                        console.error('Upload failed:', err);
+                      }
+                    }}
+                  />
+                </label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={async () => {
+                    const imageUrl = props.bgImage;
+                    if (!imageUrl || imageUrl.startsWith('/uploads/')) return;
+                    try {
+                      const res = await fetch('/api/admin/uploads/from-url', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ url: imageUrl }),
+                      });
+                      const data = await res.json();
+                      if (data.success && data.url) {
+                        update('bgImage', data.url);
+                      }
+                    } catch (err) {
+                      console.error('URL import failed:', err);
+                    }
+                  }}
+                  disabled={!props.bgImage || props.bgImage.startsWith('/uploads/')}
+                >
+                  Download &amp; Host Image
+                </Button>
+              </div>
             </Field>
             <Field label="Dark Overlay">
               <div className="flex items-center gap-2">
                 <Switch checked={props.overlay ?? true} onCheckedChange={v => update('overlay', v)} />
                 <span className="text-sm text-gray-500">{props.overlay !== false ? 'On' : 'Off'}</span>
               </div>
-            </Field>
-            <Field label="CTA Button 1 Text">
-              <Input value={props.ctaText || ''} onChange={e => update('ctaText', e.target.value)} />
-            </Field>
-            <Field label="CTA Button 1 URL">
-              <Input value={props.ctaUrl || ''} onChange={e => update('ctaUrl', e.target.value)} />
-            </Field>
-            <Field label="CTA Button 2 Text (optional)">
-              <Input value={props.ctaText2 || ''} onChange={e => update('ctaText2', e.target.value)} />
-            </Field>
-            <Field label="CTA Button 2 URL">
-              <Input value={props.ctaUrl2 || ''} onChange={e => update('ctaUrl2', e.target.value)} />
             </Field>
           </>
         );

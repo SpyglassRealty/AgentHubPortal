@@ -921,37 +921,38 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
       // Build granular page builder blocks from the Google Doc content
       const sections: any[] = [];
 
-      // Block 1: Hero image (if present)
+      // Block 1: Hero block (combined image + heading)
+      let localHeroUrl = heroImageDirectUrl;
       if (heroImageDirectUrl) {
-        sections.push({
-          id: generateBlockId(),
-          type: "image",
-          props: {
-            url: heroImageDirectUrl,
-            alt: title,
-            width: "100%",
-            alignment: "center",
-            link: "",
-            loading: "lazy",
-            srcset: "",
-          },
-        });
+        try {
+          const imgRes = await fetch(heroImageDirectUrl);
+          if (imgRes.ok) {
+            const buffer = Buffer.from(await imgRes.arrayBuffer());
+            const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+            const ext = contentType.includes('png') ? '.png' : contentType.includes('webp') ? '.webp' : '.jpg';
+            const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 12)}${ext}`;
+            const uploadsDir = require('path').join(process.cwd(), 'dist', 'public', 'uploads');
+            require('fs').mkdirSync(uploadsDir, { recursive: true });
+            require('fs').writeFileSync(require('path').join(uploadsDir, filename), buffer);
+            localHeroUrl = `/uploads/${filename}`;
+          }
+        } catch (e) { /* keep original URL as fallback */ }
       }
 
-      // Block 2: H1 heading
-      if (h1Text) {
-        sections.push({
-          id: generateBlockId(),
-          type: "heading",
-          props: {
-            level: 1,
-            text: h1Text,
-            alignment: "left",
-            color: "#000000",
-            anchorId: h1Text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
-          },
-        });
-      }
+      sections.push({
+        id: generateBlockId(),
+        type: "hero",
+        props: {
+          heading: h1Text || title,
+          subtext: "",
+          bgImage: localHeroUrl,
+          overlay: true,
+          ctaText: "",
+          ctaUrl: "",
+          ctaText2: "",
+          ctaUrl2: "",
+        },
+      });
 
       // Parse article body HTML into granular blocks
       if (articleHtml) {
