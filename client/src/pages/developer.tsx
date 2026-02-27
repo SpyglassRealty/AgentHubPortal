@@ -873,9 +873,16 @@ function DeveloperPage() {
                                 {entry.status.replace('_', ' ')}
                               </Badge>
                               {(entry.commit_hash || entry.commitHash) && (
-                                <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
-                                  {entry.commit_hash || entry.commitHash}
-                                </code>
+                                <a
+                                  href={`https://github.com/SpyglassRealty/AgentHubPortal/commit/${entry.id || entry.commit_hash || entry.commitHash}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="hover:underline"
+                                >
+                                  <code className="text-xs bg-muted px-2 py-1 rounded font-mono cursor-pointer hover:bg-muted/80">
+                                    {entry.commit_hash || entry.commitHash}
+                                  </code>
+                                </a>
                               )}
                             </div>
                             <p className="text-sm font-medium mb-1">{entry.description}</p>
