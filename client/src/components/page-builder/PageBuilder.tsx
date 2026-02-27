@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -82,6 +82,50 @@ export function PageBuilder({ blocks: initialBlocks, onChange }: PageBuilderProp
   const [isPreview, setIsPreview] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  // ── Auto-sync TOC blocks from heading blocks ──────────────────
+  const tocSyncRef = useRef<string>('');
+  useEffect(() => {
+    const hasToc = blocks.some(b => b.type === 'toc');
+    if (!hasToc) return;
+
+    // Collect all H2/H3 heading blocks (also scan inside columns)
+    const headings: Array<{ text: string; level: number; anchorId: string }> = [];
+    const collectHeadings = (blockList: BlockData[]) => {
+      for (const b of blockList) {
+        if (b.type === 'heading') {
+          const level = b.props.level || 2;
+          if (level === 2 || level === 3) {
+            const text = b.props.text || 'Heading';
+            const anchorId = b.props.anchorId || text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            headings.push({ text, level, anchorId });
+          }
+        }
+        // Also scan column children
+        if (b.children) {
+          for (const col of b.children) {
+            collectHeadings(col);
+          }
+        }
+      }
+    };
+    collectHeadings(blocks);
+
+    // Only update if headings actually changed (avoid infinite loop)
+    const headingsKey = JSON.stringify(headings);
+    if (headingsKey === tocSyncRef.current) return;
+    tocSyncRef.current = headingsKey;
+
+    // Update all TOC blocks with the collected headings
+    const updatedBlocks = blocks.map(b => {
+      if (b.type === 'toc') {
+        return { ...b, props: { ...b.props, headings } };
+      }
+      return b;
+    });
+    push(updatedBlocks);
+    onChange(updatedBlocks);
+  }, [blocks, push, onChange]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

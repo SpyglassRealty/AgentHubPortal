@@ -46,7 +46,15 @@ export function BlockSettingsPanel({ block, onUpdate, onClose }: BlockSettingsPa
         return (
           <>
             <Field label="Text">
-              <Input value={props.text || ''} onChange={e => update('text', e.target.value)} />
+              <Input value={props.text || ''} onChange={e => {
+                const newText = e.target.value;
+                const autoAnchor = newText.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                const currentAnchor = props.anchorId || '';
+                const prevAutoAnchor = (props.text || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                // Auto-update anchorId if it was auto-generated or empty
+                const newAnchor = (!currentAnchor || currentAnchor === prevAutoAnchor) ? autoAnchor : currentAnchor;
+                onUpdate(block.id, { ...props, text: newText, anchorId: newAnchor });
+              }} />
             </Field>
             <Field label="Level">
               <Select value={String(props.level || 2)} onValueChange={v => update('level', Number(v))}>

@@ -579,6 +579,29 @@ function generateBlockId(): string {
   return Math.random().toString(36).slice(2, 11) + Date.now().toString(36);
 }
 
+/** Populate TOC blocks with headings collected from heading blocks in the sections list */
+function populateTocBlocks(sections: any[]): any[] {
+  // Collect all H2/H3 headings
+  const headings: Array<{ text: string; level: number; anchorId: string }> = [];
+  for (const block of sections) {
+    if (block.type === "heading") {
+      const level = block.props?.level || 2;
+      if (level === 2 || level === 3) {
+        const text = block.props?.text || "Heading";
+        const anchorId = block.props?.anchorId || text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        headings.push({ text, level, anchorId });
+      }
+    }
+  }
+  // Inject headings into all TOC blocks
+  return sections.map(block => {
+    if (block.type === "toc") {
+      return { ...block, props: { ...block.props, headings } };
+    }
+    return block;
+  });
+}
+
 /** Convert page-builder blocks back to an HTML string for blog post storage */
 function blocksToHtml(sections: any[]): string {
   return sections
@@ -707,7 +730,7 @@ async function fetchAndParseBlogUrl(url: string): Promise<{
     }
   }
 
-  return { title, metaDescription, ogImageUrl, sections };
+  return { title, metaDescription, ogImageUrl, sections: populateTocBlocks(sections) };
 }
 
 /** Extract a URL from a HYPERLINK formula like: HYPERLINK("https://...", "View Doc") */
@@ -1120,6 +1143,9 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
         sections.push({ id: generateBlockId(), type: "html", props: { code: articleHtml || "<p>No content found</p>" } });
       }
 
+      // Populate TOC blocks with collected headings
+      const finalSections = populateTocBlocks(sections);
+
       const fullContent = articleHtml || " ";
 
       try {
@@ -1130,7 +1156,7 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
             slug: finalSlug,
             pageType: "blog",
             content: fullContent || " ",
-            sections,
+            sections: finalSections,
             metaTitle: docTitle || title,
             metaDescription: metaDescription || undefined,
             ogImageUrl: heroImageDirectUrl || undefined,
