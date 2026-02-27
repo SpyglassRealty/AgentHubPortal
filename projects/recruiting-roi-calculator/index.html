@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What If You Switched? — Spyglass Realty</title>
+  <meta name="description" content="See how much more you could earn at Spyglass Realty. Free ROI calculator for Austin real estate agents.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-hover: #334155;
+      --border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #F97316;
+      --accent-light: #FB923C;
+      --success: #22c55e;
+      --success-bg: rgba(34, 197, 94, 0.1);
+      --warning: #eab308;
+      --danger: #ef4444;
+      --blue: #3b82f6;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding-top: 2rem;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      padding: 0.4rem 1rem;
+      border-radius: 999px;
+      background: rgba(249, 115, 22, 0.1);
+      color: var(--accent);
+      border: 1px solid rgba(249, 115, 22, 0.2);
+      margin-bottom: 1.5rem;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 1rem;
+    }
+
+    .hero h1 span { color: var(--accent); }
+
+    .hero p {
+      font-size: 1.125rem;
+      color: var(--muted);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Calculator Grid */
+    .calc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .calc-grid { grid-template-columns: 1fr; }
+    }
+
+    .calc-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 2rem;
+    }
+
+    .calc-card h2 {
+      font-size: 0.875rem;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .calc-card h2 .icon { margin-right: 0.5rem; }
+
+    /* Form Groups */
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+
+    .form-group .hint {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+
+    input[type="number"],
+    input[type="text"],
+    select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      color: var(--text);
+      font-size: 1rem;
+      font-family: 'Inter', system-ui, sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent);
+    }
+
+    .input-prefix {
+      position: relative;
+    }
+
+    .input-prefix::before {
+      content: '$';
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .input-prefix input {
+      padding-left: 1.75rem;
+    }
+
+    .input-suffix {
+      position: relative;
+    }
+
+    .input-suffix::after {
+      content: '%';
+      position: absolute;
+      right: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .input-suffix input {
+      padding-right: 2rem;
+    }
+
+    /* Slider */
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 10px rgba(249, 115, 22, 0.3);
+    }
+
+    .slider-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--accent);
+      min-width: 60px;
+      text-align: right;
+    }
+
+    /* Brokerage Presets */
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .preset-btn {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .preset-btn.active {
+      background: rgba(249, 115, 22, 0.1);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Results */
+    .results {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .results::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--success));
+    }
+
+    .results h2 {
+      font-size: 0.875rem;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .result-grid { grid-template-columns: 1fr; }
+    }
+
+    .result-block {
+      text-align: center;
+      padding: 1.5rem;
+      background: var(--bg);
+      border-radius: 0.75rem;
+      border: 1px solid var(--border);
+    }
+
+    .result-block .label {
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .result-block .value {
+      font-size: 2rem;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .result-block .sub {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+
+    .positive { color: var(--success); }
+    .negative { color: var(--danger); }
+    .neutral { color: var(--text); }
+
+    /* Comparison Bar */
+    .comparison-bar {
+      margin-top: 1.5rem;
+    }
+
+    .bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .bar-track {
+      height: 32px;
+      background: var(--bg);
+      border-radius: 0.5rem;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid var(--border);
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 1rem;
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      transition: width 0.5s ease;
+      min-width: 80px;
+    }
+
+    .bar-current { background: var(--surface-hover); color: var(--muted); }
+    .bar-spyglass { background: linear-gradient(90deg, var(--accent), var(--accent-light)); color: white; }
+
+    /* Bottom Benefits */
+    .benefits {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .benefits { grid-template-columns: 1fr; }
+    }
+
+    .benefit {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      text-align: center;
+      transition: all 0.3s;
+    }
+
+    .benefit:hover {
+      border-color: rgba(249, 115, 22, 0.3);
+      box-shadow: 0 0 20px rgba(249, 115, 22, 0.1);
+    }
+
+    .benefit .icon {
+      font-size: 2rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .benefit h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .benefit p {
+      font-size: 0.875rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* CTA */
+    .cta {
+      text-align: center;
+      margin-top: 3rem;
+      padding: 3rem 2rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+    }
+
+    .cta h2 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+
+    .cta p {
+      color: var(--muted);
+      margin-bottom: 2rem;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .cta-btn {
+      display: inline-block;
+      padding: 1rem 2.5rem;
+      background: var(--accent);
+      color: white;
+      font-size: 1.125rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 0.75rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-decoration: none;
+    }
+
+    .cta-btn:hover {
+      background: var(--accent-light);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(249, 115, 22, 0.3);
+    }
+
+    .footer {
+      text-align: center;
+      padding: 2rem 0;
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 2rem 0;
+    }
+
+    /* Spyglass badge */
+    .spyglass-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--accent);
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+
+    /* Number animation */
+    .animate-number {
+      transition: all 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-badge">🔍 Agent ROI Calculator</div>
+      <h1>What If You <span>Switched?</span></h1>
+      <p>See how much more you could keep — or earn — by joining Spyglass Realty. No fluff, just math.</p>
+    </div>
+
+    <!-- Calculator -->
+    <div class="calc-grid">
+      <!-- Your Current Situation -->
+      <div class="calc-card">
+        <h2><span class="icon">📊</span> Your Current Numbers</h2>
+
+        <div class="form-group">
+          <label>Annual Sales Volume</label>
+          <div class="input-prefix">
+            <input type="number" id="volume" value="5000000" step="100000" oninput="calculate()">
+          </div>
+          <p class="hint">Total value of homes you sold last year</p>
+        </div>
+
+        <div class="form-group">
+          <label>Number of Transactions</label>
+          <input type="number" id="transactions" value="15" step="1" oninput="calculate()">
+        </div>
+
+        <div class="form-group">
+          <label>Average Commission Rate</label>
+          <div class="input-suffix">
+            <input type="number" id="commRate" value="2.75" step="0.05" oninput="calculate()">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Current Brokerage</label>
+          <div class="presets" id="presets">
+            <button class="preset-btn" onclick="setPreset('kw')">KW</button>
+            <button class="preset-btn" onclick="setPreset('compass')">Compass</button>
+            <button class="preset-btn" onclick="setPreset('exp')">eXp</button>
+            <button class="preset-btn" onclick="setPreset('ra')">Realty Austin</button>
+            <button class="preset-btn" onclick="setPreset('real')">REAL</button>
+            <button class="preset-btn" onclick="setPreset('custom')">Custom</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Your Split (agent side)</label>
+          <div class="slider-group">
+            <input type="range" id="currentSplit" min="50" max="100" value="70" step="1" oninput="calculate()">
+            <span class="slider-value" id="splitDisplay">70%</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Annual Brokerage Fees & Costs</label>
+          <div class="input-prefix">
+            <input type="number" id="currentFees" value="5000" step="100" oninput="calculate()">
+          </div>
+          <p class="hint">Desk fees, tech fees, E&O, franchise fees, etc.</p>
+        </div>
+
+        <div class="form-group">
+          <label>Cap (annual max paid to brokerage)</label>
+          <div class="input-prefix">
+            <input type="number" id="currentCap" value="25000" step="500" oninput="calculate()">
+          </div>
+          <p class="hint">0 if no cap — you always pay the split</p>
+        </div>
+      </div>
+
+      <!-- Spyglass Offer -->
+      <div class="calc-card" style="border-color: rgba(249, 115, 22, 0.3);">
+        <h2><span class="icon">🔍</span> Spyglass Realty</h2>
+
+        <div class="spyglass-badge">🔍 Spyglass Realty — Austin + Houston</div>
+
+        <div style="margin-top: 1.25rem;">
+          <div class="form-group">
+            <label>Your Spyglass Split</label>
+            <div class="slider-group">
+              <input type="range" id="spyglassSplit" min="70" max="95" value="80" step="1" oninput="calculate()">
+              <span class="slider-value" id="spySplitDisplay">80%</span>
+            </div>
+            <p class="hint">Competitive splits that grow with your production</p>
+          </div>
+
+          <div class="form-group">
+            <label>Annual Fees at Spyglass</label>
+            <div class="input-prefix">
+              <input type="number" id="spyglassFees" value="2400" step="100" oninput="calculate()">
+            </div>
+            <p class="hint">Simple, transparent fee structure</p>
+          </div>
+
+          <div class="form-group">
+            <label>Cap at Spyglass</label>
+            <div class="input-prefix">
+              <input type="number" id="spyglassCap" value="18000" step="500" oninput="calculate()">
+            </div>
+            <p class="hint">Once you cap, you keep more</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <div style="padding: 1rem; background: rgba(249, 115, 22, 0.05); border-radius: 0.75rem; border: 1px solid rgba(249, 115, 22, 0.15);">
+            <h3 style="font-size: 0.875rem; font-weight: 600; color: var(--accent); margin-bottom: 0.75rem;">What You Get (Included)</h3>
+            <ul style="list-style: none; font-size: 0.875rem; color: var(--muted); line-height: 2;">
+              <li>✅ Zillow Premier Flex leads (highest rated in Central TX)</li>
+              <li>✅ Dedicated training & mentorship</li>
+              <li>✅ In-house marketing support</li>
+              <li>✅ Tech stack (CRM, lead gen, agent tools)</li>
+              <li>✅ 1,000+ five-star reviews (brand power)</li>
+              <li>✅ Agent Hub portal & mission control</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results" id="results">
+      <h2>📈 Your Annual Comparison</h2>
+
+      <div class="result-grid">
+        <div class="result-block">
+          <p class="label">Current Take-Home</p>
+          <p class="value neutral" id="currentTakeHome">$0</p>
+          <p class="sub">After brokerage split + fees</p>
+        </div>
+        <div class="result-block">
+          <p class="label">Spyglass Take-Home</p>
+          <p class="value positive" id="spyglassTakeHome">$0</p>
+          <p class="sub">After split + fees</p>
+        </div>
+        <div class="result-block" style="border-color: var(--accent);">
+          <p class="label">You'd Keep</p>
+          <p class="value" id="difference">$0</p>
+          <p class="sub" id="diffSub">more at Spyglass</p>
+        </div>
+      </div>
+
+      <!-- Comparison Bars -->
+      <div class="comparison-bar">
+        <div class="bar-label">
+          <span style="color: var(--muted)">Current Brokerage</span>
+          <span style="font-family: 'JetBrains Mono'; color: var(--muted)" id="barCurrentVal">$0</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill bar-current" id="barCurrent" style="width: 50%">$0</div>
+        </div>
+      </div>
+
+      <div class="comparison-bar" style="margin-top: 1rem;">
+        <div class="bar-label">
+          <span style="color: var(--accent)">Spyglass Realty</span>
+          <span style="font-family: 'JetBrains Mono'; color: var(--accent)" id="barSpyglassVal">$0</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill bar-spyglass" id="barSpyglass" style="width: 60%">$0</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Per-Transaction -->
+      <div class="result-grid" style="margin-top: 1.5rem;">
+        <div class="result-block">
+          <p class="label">Per Transaction (Current)</p>
+          <p class="value neutral" id="perTxCurrent" style="font-size: 1.5rem;">$0</p>
+        </div>
+        <div class="result-block">
+          <p class="label">Per Transaction (Spyglass)</p>
+          <p class="value positive" id="perTxSpyglass" style="font-size: 1.5rem;">$0</p>
+        </div>
+        <div class="result-block">
+          <p class="label">Extra Per Deal</p>
+          <p class="value" id="perTxDiff" style="font-size: 1.5rem;">$0</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Benefits -->
+    <div class="benefits">
+      <div class="benefit">
+        <div class="icon">🏆</div>
+        <h3>1,000+ 5-Star Reviews</h3>
+        <p>The most reviewed brokerage in Austin. Clients find <em>you</em> through our reputation.</p>
+      </div>
+      <div class="benefit">
+        <div class="icon">📱</div>
+        <h3>Zillow Premier Flex</h3>
+        <p>Highest-rated partner in Central Texas. Opt-in leads that actually convert.</p>
+      </div>
+      <div class="benefit">
+        <div class="icon">🛠️</div>
+        <h3>Agent Tech Stack</h3>
+        <p>Mission Control, market intelligence, CMA tools, and AI-powered agent hub — all built in-house.</p>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta">
+      <h2>Ready to see for yourself?</h2>
+      <p>Schedule a confidential conversation. No pressure, no pitch — just numbers and honest answers.</p>
+      <a href="https://www.spyglassrealty.com/austin-real-estate-agent-faq.php" class="cta-btn">Let's Talk →</a>
+    </div>
+
+    <div class="footer">
+      <p>Built by Spyglass Realty · Austin + Houston · 179 agents and growing</p>
+      <p style="margin-top: 0.5rem; font-size: 0.625rem;">Numbers are estimates based on inputs provided. Actual compensation varies by individual agreement.</p>
+    </div>
+  </div>
+
+  <script>
+    const presets = {
+      kw: { split: 64, fees: 6000, cap: 22000, name: 'KW' },
+      compass: { split: 75, fees: 4800, cap: 0, name: 'Compass' },
+      exp: { split: 80, fees: 3600, cap: 16000, name: 'eXp' },
+      ra: { split: 70, fees: 3000, cap: 20000, name: 'Realty Austin' },
+      real: { split: 85, fees: 2400, cap: 12000, name: 'REAL' },
+      custom: { split: 70, fees: 5000, cap: 25000, name: 'Custom' },
+    };
+
+    let activePreset = null;
+
+    function setPreset(key) {
+      const p = presets[key];
+      document.getElementById('currentSplit').value = p.split;
+      document.getElementById('currentFees').value = p.fees;
+      document.getElementById('currentCap').value = p.cap;
+
+      // Update active state
+      document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      activePreset = key;
+
+      calculate();
+    }
+
+    function fmt(n) {
+      if (Math.abs(n) >= 1000) {
+        return '$' + Math.round(n).toLocaleString('en-US');
+      }
+      return '$' + Math.round(n);
+    }
+
+    function calculateTakeHome(volume, txns, commRate, split, fees, cap) {
+      const grossComm = volume * (commRate / 100);
+      const brokerCut = grossComm * ((100 - split) / 100);
+      const actualBrokerCut = cap > 0 ? Math.min(brokerCut, cap) : brokerCut;
+      const takeHome = grossComm - actualBrokerCut - fees;
+      return { grossComm, brokerCut: actualBrokerCut, fees, takeHome };
+    }
+
+    function calculate() {
+      const volume = parseFloat(document.getElementById('volume').value) || 0;
+      const txns = parseInt(document.getElementById('transactions').value) || 1;
+      const commRate = parseFloat(document.getElementById('commRate').value) || 2.75;
+
+      const currentSplit = parseInt(document.getElementById('currentSplit').value);
+      const currentFees = parseFloat(document.getElementById('currentFees').value) || 0;
+      const currentCap = parseFloat(document.getElementById('currentCap').value) || 0;
+
+      const spyglassSplit = parseInt(document.getElementById('spyglassSplit').value);
+      const spyglassFees = parseFloat(document.getElementById('spyglassFees').value) || 0;
+      const spyglassCap = parseFloat(document.getElementById('spyglassCap').value) || 0;
+
+      // Update split displays
+      document.getElementById('splitDisplay').textContent = currentSplit + '%';
+      document.getElementById('spySplitDisplay').textContent = spyglassSplit + '%';
+
+      const current = calculateTakeHome(volume, txns, commRate, currentSplit, currentFees, currentCap);
+      const spyglass = calculateTakeHome(volume, txns, commRate, spyglassSplit, spyglassFees, spyglassCap);
+
+      const diff = spyglass.takeHome - current.takeHome;
+
+      document.getElementById('currentTakeHome').textContent = fmt(current.takeHome);
+      document.getElementById('spyglassTakeHome').textContent = fmt(spyglass.takeHome);
+
+      const diffEl = document.getElementById('difference');
+      const diffSubEl = document.getElementById('diffSub');
+      diffEl.textContent = fmt(Math.abs(diff));
+
+      if (diff > 0) {
+        diffEl.className = 'value positive';
+        diffSubEl.textContent = 'more at Spyglass';
+        diffSubEl.style.color = 'var(--success)';
+      } else if (diff < 0) {
+        diffEl.className = 'value negative';
+        diffSubEl.textContent = 'less (but see benefits below)';
+        diffSubEl.style.color = 'var(--danger)';
+      } else {
+        diffEl.className = 'value neutral';
+        diffSubEl.textContent = 'same — but more tools & leads';
+        diffSubEl.style.color = 'var(--muted)';
+      }
+
+      // Comparison bars
+      const maxVal = Math.max(current.takeHome, spyglass.takeHome, 1);
+      const currentPct = Math.max((current.takeHome / maxVal) * 100, 5);
+      const spyglassPct = Math.max((spyglass.takeHome / maxVal) * 100, 5);
+
+      document.getElementById('barCurrent').style.width = currentPct + '%';
+      document.getElementById('barCurrent').textContent = fmt(current.takeHome);
+      document.getElementById('barCurrentVal').textContent = fmt(current.takeHome);
+      document.getElementById('barSpyglass').style.width = spyglassPct + '%';
+      document.getElementById('barSpyglass').textContent = fmt(spyglass.takeHome);
+      document.getElementById('barSpyglassVal').textContent = fmt(spyglass.takeHome);
+
+      // Per transaction
+      const perCurrent = current.takeHome / txns;
+      const perSpyglass = spyglass.takeHome / txns;
+      const perDiff = perSpyglass - perCurrent;
+
+      document.getElementById('perTxCurrent').textContent = fmt(perCurrent);
+      document.getElementById('perTxSpyglass').textContent = fmt(perSpyglass);
+
+      const perDiffEl = document.getElementById('perTxDiff');
+      perDiffEl.textContent = (perDiff >= 0 ? '+' : '') + fmt(perDiff);
+      perDiffEl.className = 'value ' + (perDiff >= 0 ? 'positive' : 'negative');
+      perDiffEl.style.fontSize = '1.5rem';
+    }
+
+    // Run on load
+    calculate();
+  </script>
+</body>
+</html>
