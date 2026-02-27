@@ -9,6 +9,7 @@ import CommunityEditorPage from "./admin/CommunityEditor";
 import BlogPostListPage from "./admin/BlogPostList";
 import BlogPostEditorPage from "./admin/BlogPostEditor";
 import BlogCategoryListPage from "./admin/BlogCategoryList";
+import BlogImportPage from "./admin/blog-import";
 import AgentListPage from "./admin/AgentList";
 import AgentEditorPage from "./admin/AgentEditor";
 import TestimonialListPage from "./admin/TestimonialList";
@@ -576,6 +577,7 @@ export default function AdminPage() {
               <Route path="/admin/communities" component={CommunityListPage} />
               <Route path="/admin/redirects" component={RedirectsListPage} />
               <Route path="/admin/global-scripts" component={GlobalScriptsListPage} />
+              <Route path="/admin/blog/import" component={BlogImportPage} />
               <Route path="/admin/blog/posts/:slug" component={BlogPostEditorPage} />
               <Route path="/admin/blog/posts" component={BlogPostListPage} />
               <Route path="/admin/blog/categories" component={BlogCategoryListPage} />

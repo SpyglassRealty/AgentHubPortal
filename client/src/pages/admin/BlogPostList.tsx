@@ -53,6 +53,7 @@ import {
   CheckCircle,
   Clock,
   TrendingUp,
+  Upload,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -249,12 +250,20 @@ export default function BlogPostList() {
               Manage your blog content and SEO optimization
             </p>
           </div>
-          <Link href="/admin/blog/posts/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New Post
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/admin/blog/import">
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                Import Blogs
+              </Button>
+            </Link>
+            <Link href="/admin/blog/posts/new">
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                New Post
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Stats Cards */}
