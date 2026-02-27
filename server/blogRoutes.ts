@@ -602,6 +602,21 @@ function populateTocBlocks(sections: any[]): any[] {
   });
 }
 
+/** Strip .html from blog/ links in all text and html block content */
+function stripHtmlFromBlogLinks(sections: any[]): any[] {
+  // Regex: match href="...blog/some-slug.html" and remove the .html
+  const blogLinkRegex = /(href=["'][^"']*?blog\/[^"']*?)\.html(["'])/gi;
+  return sections.map(block => {
+    if (block.type === "text" && block.props?.content) {
+      return { ...block, props: { ...block.props, content: block.props.content.replace(blogLinkRegex, "$1$2") } };
+    }
+    if (block.type === "html" && block.props?.code) {
+      return { ...block, props: { ...block.props, code: block.props.code.replace(blogLinkRegex, "$1$2") } };
+    }
+    return block;
+  });
+}
+
 /** Convert page-builder blocks back to an HTML string for blog post storage */
 function blocksToHtml(sections: any[]): string {
   return sections
@@ -730,7 +745,7 @@ async function fetchAndParseBlogUrl(url: string): Promise<{
     }
   }
 
-  return { title, metaDescription, ogImageUrl, sections: populateTocBlocks(sections) };
+  return { title, metaDescription, ogImageUrl, sections: stripHtmlFromBlogLinks(populateTocBlocks(sections)) };
 }
 
 /** Extract a URL from a HYPERLINK formula like: HYPERLINK("https://...", "View Doc") */
@@ -1144,9 +1159,10 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
       }
 
       // Populate TOC blocks with collected headings
-      const finalSections = populateTocBlocks(sections);
+      const finalSections = stripHtmlFromBlogLinks(populateTocBlocks(sections));
 
-      const fullContent = articleHtml || " ";
+      const blogLinkRx = /(href=["'][^"']*?blog\/[^"']*?)\.html(["'])/gi;
+      const fullContent = (articleHtml || " ").replace(blogLinkRx, "$1$2");
 
       try {
         const [newPage] = await db
