@@ -36,7 +36,6 @@ export const SITE_CONTENT_DEFAULTS: Record<string, any> = {
         type: "dropdown",
         items: [
           { href: "/sell", label: "Selling" },
-          { href: "/home-staging", label: "Home Staging" },
         ]
       },
       {
