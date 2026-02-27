@@ -3,6 +3,7 @@ import { eq, desc, asc, ilike, and, or, sql } from "drizzle-orm";
 import { db } from "./db";
 import { landingPages, type LandingPage } from "@shared/schema";
 import { z } from "zod";
+import * as cheerio from "cheerio";
 
 const router = Router();
 
@@ -31,6 +32,11 @@ const createPageSchema = z.object({
   breadcrumbPath: z.array(z.object({ name: z.string(), url: z.string() })).optional().default([]),
   customScripts: z.string().optional().default(""),
   isPublished: z.boolean().default(false),
+  // Blog-specific fields
+  author: z.string().max(255).optional().default(""),
+  publishDate: z.string().optional().nullable(),
+  modifiedDate: z.string().optional().nullable(),
+  canonicalUrl: z.string().max(500).optional().default(""),
 });
 
 const updatePageSchema = createPageSchema.partial();
@@ -121,16 +127,26 @@ router.get("/admin/pages/:id", async (req, res) => {
   }
 });
 
+function parseBlogDates(data: any) {
+  return {
+    publishDate: data.publishDate ? new Date(data.publishDate) : undefined,
+    modifiedDate: data.modifiedDate ? new Date(data.modifiedDate) : undefined,
+  };
+}
+
 // POST /api/admin/pages — Create new page
 router.post("/admin/pages", async (req, res) => {
   try {
     const data = createPageSchema.parse(req.body);
     const seoScore = calculateSeoScore(data as any);
+    const { publishDate, modifiedDate } = parseBlogDates(data);
 
     const [newPage] = await db
       .insert(landingPages)
       .values({
         ...data,
+        publishDate,
+        modifiedDate,
         seoScore,
         updatedAt: new Date(),
       })
@@ -155,13 +171,16 @@ router.put("/admin/pages/:id", async (req, res) => {
     const [existing] = await db.select().from(landingPages).where(eq(landingPages.id, id));
     if (!existing) return res.status(404).json({ error: "Page not found" });
 
-    const merged = { ...existing, ...data };
+    const merged = { ...existing, ...data } as Partial<LandingPage>;
     const seoScore = calculateSeoScore(merged);
+    const { publishDate, modifiedDate } = parseBlogDates(data);
 
     const [updated] = await db
       .update(landingPages)
       .set({
         ...data,
+        publishDate,
+        modifiedDate,
         seoScore,
         updatedAt: new Date(),
       })
@@ -232,6 +251,229 @@ router.post("/admin/pages/:id/duplicate", async (req, res) => {
   } catch (error) {
     console.error("Error duplicating page:", error);
     res.status(500).json({ error: "Failed to duplicate page" });
+  }
+});
+
+// ── URL IMPORT ───────────────────────────────────────────────────────
+
+function slugifyText(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function generateId(): string {
+  return Math.random().toString(36).slice(2, 11) + Date.now().toString(36);
+}
+
+async function importFromUrl(url: string): Promise<any> {
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; SpyglassCMS/1.0)',
+    },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch URL: ${res.status} ${res.statusText}`);
+  const html = await res.text();
+  const $ = cheerio.load(html);
+
+  const title = $('title').first().text().trim() || '';
+  const metaDescription = $('meta[name="description"]').attr('content') || '';
+  const canonicalUrl = $('link[rel="canonical"]').attr('href') || '';
+  const ogImageUrl = $('meta[property="og:image"]').attr('content') || '';
+  const h1Text = $('h1').first().text().trim() || '';
+
+  // Derive slug from URL path
+  const urlPath = new URL(url).pathname;
+  const slugRaw = urlPath.replace(/\.html?$/, '').split('/').filter(Boolean).pop() || '';
+  const slug = slugifyText(slugRaw);
+
+  // Try to extract author and publish date from common meta tags
+  const author =
+    $('meta[name="author"]').attr('content') ||
+    $('meta[property="article:author"]').attr('content') ||
+    $('[class*="author"]').first().text().trim() ||
+    'Spyglass Realty';
+
+  const publishDateRaw =
+    $('meta[property="article:published_time"]').attr('content') ||
+    $('meta[name="pubdate"]').attr('content') ||
+    $('time[datetime]').first().attr('datetime') ||
+    '';
+  const publishDate = publishDateRaw ? new Date(publishDateRaw).toISOString() : new Date().toISOString();
+
+  // Parse article content
+  const article = $('article.block--lightest, article[class*="block"], article').first();
+  const sections: any[] = [];
+
+  // Blocks to parse from article content
+  const articleEl = article.length ? article : $('main, .content, body');
+
+  articleEl.children().each((_i: number, el: any) => {
+    const tagName = (el.tagName || el.name || '').toLowerCase();
+    const elem = $(el);
+
+    if (tagName === 'h1') {
+      sections.push({
+        id: generateId(),
+        type: 'heading',
+        props: {
+          level: 1,
+          text: elem.text().trim(),
+          alignment: 'left',
+          color: '#000000',
+          anchorId: elem.attr('id') || slugifyText(elem.text().trim()),
+        },
+      });
+    } else if (tagName === 'h2') {
+      const text = elem.text().trim();
+      sections.push({
+        id: generateId(),
+        type: 'heading',
+        props: {
+          level: 2,
+          text,
+          alignment: 'left',
+          color: '#000000',
+          anchorId: elem.attr('id') || slugifyText(text),
+        },
+      });
+    } else if (tagName === 'h3') {
+      const text = elem.text().trim();
+      sections.push({
+        id: generateId(),
+        type: 'heading',
+        props: {
+          level: 3,
+          text,
+          alignment: 'left',
+          color: '#000000',
+          anchorId: elem.attr('id') || slugifyText(text),
+        },
+      });
+    } else if (tagName === 'p') {
+      const html = elem.html() || '';
+      if (html.trim()) {
+        sections.push({
+          id: generateId(),
+          type: 'text',
+          props: { content: html, alignment: 'left' },
+        });
+      }
+    } else if (tagName === 'img') {
+      const src = elem.attr('src') || elem.attr('data-src') || '';
+      const srcset = elem.attr('srcset') || '';
+      // Use the largest srcset image if available
+      let imgUrl = src;
+      if (srcset) {
+        const parts = srcset.split(',').map((s: string) => s.trim().split(/\s+/));
+        const largest = parts.sort((a: string[], b: string[]) => {
+          const aw = parseInt(a[1] || '0', 10);
+          const bw = parseInt(b[1] || '0', 10);
+          return bw - aw;
+        })[0];
+        if (largest && largest[0]) imgUrl = largest[0];
+      }
+      if (imgUrl) {
+        sections.push({
+          id: generateId(),
+          type: 'image',
+          props: {
+            url: imgUrl,
+            alt: elem.attr('alt') || '',
+            width: '100%',
+            alignment: 'center',
+            link: '',
+            loading: 'lazy',
+            srcset,
+          },
+        });
+      }
+    } else if (tagName === 'ul' || tagName === 'ol') {
+      sections.push({
+        id: generateId(),
+        type: 'text',
+        props: { content: $.html(el), alignment: 'left' },
+      });
+    } else if (tagName === 'blockquote') {
+      sections.push({
+        id: generateId(),
+        type: 'text',
+        props: { content: $.html(el), alignment: 'left' },
+      });
+    } else if (tagName === 'table') {
+      sections.push({
+        id: generateId(),
+        type: 'html',
+        props: { code: $.html(el) },
+      });
+    } else if (tagName === 'div') {
+      const cls = elem.attr('class') || '';
+      if (cls.includes('highlight')) {
+        // TOC block — let the editor handle this
+        sections.push({
+          id: generateId(),
+          type: 'toc',
+          props: { headings: [] }, // will be computed by editor
+        });
+      } else {
+        // Try to get any meaningful text content
+        const innerHtml = elem.html() || '';
+        if (innerHtml.trim()) {
+          sections.push({
+            id: generateId(),
+            type: 'html',
+            props: { code: $.html(el) },
+          });
+        }
+      }
+    }
+  });
+
+  // If no sections found (SPA or JS-rendered), try a simpler extraction
+  if (sections.length === 0 && h1Text) {
+    sections.push({
+      id: generateId(),
+      type: 'heading',
+      props: { level: 1, text: h1Text, alignment: 'left', color: '#000000', anchorId: slugifyText(h1Text) },
+    });
+  }
+
+  return {
+    title: title || h1Text,
+    slug,
+    metaTitle: title,
+    metaDescription,
+    canonicalUrl,
+    ogImageUrl,
+    author,
+    publishDate,
+    sections,
+  };
+}
+
+// POST /api/admin/pages/import-url — Import page(s) from URL(s)
+router.post("/admin/pages/import-url", async (req, res) => {
+  try {
+    const { urls } = req.body;
+    if (!urls || !Array.isArray(urls) || urls.length === 0) {
+      return res.status(400).json({ error: "urls array is required" });
+    }
+
+    const results: any[] = [];
+    for (const url of urls) {
+      try {
+        const data = await importFromUrl(url.trim());
+        results.push({ url, success: true, data });
+      } catch (err: any) {
+        results.push({ url, success: false, error: err.message });
+      }
+    }
+
+    res.json({ results });
+  } catch (error) {
+    console.error("Error importing from URL:", error);
+    res.status(500).json({ error: "Failed to import URL" });
   }
 });
 

@@ -15,7 +15,8 @@ export type BlockType =
   | 'testimonial'
   | 'cta'
   | 'image-gallery'
-  | 'faq';
+  | 'faq'
+  | 'toc';
 
 export interface BlockBase {
   id: string;
@@ -31,6 +32,7 @@ export interface HeadingProps {
   text: string;
   alignment: 'left' | 'center' | 'right';
   color: string;
+  anchorId?: string;
 }
 
 export interface TextProps {
@@ -44,6 +46,8 @@ export interface ImageProps {
   width: string;
   alignment: 'left' | 'center' | 'right';
   link: string;
+  loading?: 'lazy' | 'eager';
+  srcset?: string;
 }
 
 export interface ButtonProps {
@@ -132,6 +136,16 @@ export interface FaqItem {
 
 export interface FaqProps {
   items: FaqItem[];
+}
+
+export interface TocHeading {
+  text: string;
+  level: 2 | 3;
+  anchorId: string;
+}
+
+export interface TocProps {
+  headings: TocHeading[];
 }
 
 // ── Union type ──────────────────────────────────────────────
