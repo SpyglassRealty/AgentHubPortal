@@ -997,7 +997,7 @@ export default function BlogPageEditorPage() {
 
       {/* Page Builder */}
       <div className="flex-1 overflow-hidden">
-        <PageBuilder blocks={page.sections} onChange={handleBlocksChange} />
+        <PageBuilder key={`${pageId || 'new'}-${data?.page?.id || 'pending'}`} blocks={page.sections} onChange={handleBlocksChange} />
       </div>
     </div>
   );
