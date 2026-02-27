@@ -163,7 +163,7 @@ export default function BlogImportPage() {
           </div>
 
           <div className="text-xs text-muted-foreground space-y-1">
-            <p><strong>Expected columns:</strong> Blog Title, URL Slug, Google Doc (HYPERLINK), Hero Image (HYPERLINK), Date Crawled</p>
+            <p><strong>Expected columns:</strong> Blog Title, URL Slug, Google Doc (HYPERLINK), Hero Image (HYPERLINK), OG Image (HYPERLINK), Blog Photos (HYPERLINK), Date Published, Date Crawled</p>
             <p><strong>Requirements:</strong> The sheet and all linked Google Docs must be shared publicly (Anyone with the link → Viewer)</p>
           </div>
         </CardContent>
