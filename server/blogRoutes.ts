@@ -773,6 +773,74 @@ function extractDocId(url: string): string {
 }
 
 /** Extract Google Drive file ID from a URL */
+// List files in a public Google Drive folder by scraping the folder page
+async function listDriveFolderFiles(folderUrl: string): Promise<Array<{ name: string; fileId: string }>> {
+  // Extract folder ID
+  const folderMatch = folderUrl.match(/folders\/([a-zA-Z0-9_-]+)/);
+  if (!folderMatch) return [];
+  const folderId = folderMatch[1];
+  
+  try {
+    const res = await fetch(`https://drive.google.com/drive/folders/${folderId}`);
+    if (!res.ok) return [];
+    const html = await res.text();
+    
+    // Unescape \xNN sequences in the Drive HTML
+    const unescaped = html.replace(/\\x([0-9a-fA-F]{2})/g, (_: string, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+    
+    // Find all image filenames in the page (common image extensions)
+    const filenamePattern = /([a-zA-Z0-9_-]+\.(?:jpg|jpeg|png|gif|webp|svg))/gi;
+    const allFilenames = [...new Set([...unescaped.matchAll(filenamePattern)].map(m => m[1]))];
+    
+    const results: Array<{ name: string; fileId: string }> = [];
+    
+    for (const fname of allFilenames) {
+      // For each filename, look backwards in the text to find the associated file ID
+      const idx = unescaped.indexOf(fname);
+      if (idx === -1) continue;
+      
+      const before = unescaped.substring(Math.max(0, idx - 500), idx);
+      const ids = [...before.matchAll(/([a-zA-Z0-9_-]{20,})/g)].map(m => m[1]);
+      const fileId = ids.filter(id => id !== folderId && id.length >= 20 && id.length <= 60).pop();
+      
+      if (fileId && !results.some(r => r.fileId === fileId)) {
+        results.push({ name: fname, fileId });
+      }
+    }
+    
+    return results;
+  } catch (e) {
+    console.error("Error listing Drive folder:", e);
+    return [];
+  }
+}
+
+// Download an image from Google Drive and save locally, returns local path
+async function downloadDriveImage(fileId: string, filename: string): Promise<string | null> {
+  try {
+    const url = `https://drive.google.com/uc?export=view&id=${fileId}`;
+    const res = await fetch(url, { redirect: 'follow' });
+    if (!res.ok) return null;
+    
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (buffer.length < 100) return null; // Too small, probably an error page
+    
+    const path = require('path');
+    const fs = require('fs');
+    const uploadsDir = path.join(process.cwd(), 'dist', 'public', 'uploads');
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    
+    const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const uniqueName = `${Date.now()}-${safeName}`;
+    fs.writeFileSync(path.join(uploadsDir, uniqueName), buffer);
+    
+    return `/uploads/${uniqueName}`;
+  } catch (e) {
+    console.error(`Error downloading Drive image ${fileId}:`, e);
+    return null;
+  }
+}
+
 function extractDriveFileId(url: string): string {
   const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
   return match ? match[1] : "";
@@ -983,6 +1051,22 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
         if (!isNaN(d.getTime())) parsedPublishDate = d;
       }
 
+      // Download images from Blog Photos folder and build filename->localPath map
+      const blogPhotoMap: Record<string, string> = {};
+      if (blogPhotosUrl) {
+        try {
+          const folderFiles = await listDriveFolderFiles(blogPhotosUrl);
+          for (const file of folderFiles) {
+            const localPath = await downloadDriveImage(file.fileId, file.name);
+            if (localPath) {
+              blogPhotoMap[file.name] = localPath;
+            }
+          }
+        } catch (photoErr) {
+          console.error("Error downloading blog photos:", photoErr);
+        }
+      }
+
       // Fetch and parse the Google Doc
       let docTitle = "";
       let metaDescription = "";
@@ -1010,6 +1094,16 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
       } else {
         results.push({ row: i + 2, title, slug, success: false, error: "No Google Doc URL found" });
         continue;
+      }
+
+      // Replace old image paths in content with downloaded Blog Photos
+      if (Object.keys(blogPhotoMap).length > 0) {
+        for (const [filename, localPath] of Object.entries(blogPhotoMap)) {
+          // Replace any src that ends with this filename (handles paths like /uploads/agent-1/07 - Blogs/filename.jpg)
+          const escapedName = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const imgSrcPattern = new RegExp(`(src=["'])[^"']*?${escapedName}(["'])`, 'gi');
+          articleHtml = articleHtml.replace(imgSrcPattern, `$1${localPath}$2`);
+        }
       }
 
       // Build granular page builder blocks from the Google Doc content
@@ -1212,7 +1306,16 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
       const finalSections = stripHtmlFromBlogLinks(populateTocBlocks(sections));
 
       const blogLinkRx = /(href=["'][^"']*?blog\/[^"']*?)\.html(["'])/gi;
-      const fullContent = (articleHtml || " ").replace(blogLinkRx, "$1$2");
+      let fullContent = (articleHtml || " ").replace(blogLinkRx, "$1$2");
+
+      // Replace old image paths in fullContent with downloaded Blog Photos
+      if (Object.keys(blogPhotoMap).length > 0) {
+        for (const [filename, localPath] of Object.entries(blogPhotoMap)) {
+          const escapedName = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const imgSrcPattern = new RegExp(`(src=["'])[^"']*?${escapedName}(["'])`, 'gi');
+          fullContent = fullContent.replace(imgSrcPattern, `$1${localPath}$2`);
+        }
+      }
 
       try {
         const [newPage] = await db
