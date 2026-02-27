@@ -217,25 +217,29 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
           )}
           <div className="relative z-10 flex flex-col items-center justify-center text-center p-12 min-h-[400px]">
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">{props.heading || 'Hero Heading'}</h1>
-            <p className="text-lg md:text-xl text-white/80 mb-8 max-w-2xl">{props.subtext || 'Subtitle text goes here'}</p>
-            <div className="flex gap-4 flex-wrap justify-center">
-              {props.ctaText && (
-                <a
-                  href={props.ctaUrl || '#'}
-                  className="px-8 py-3 bg-[#EF4923] text-white rounded-lg font-medium hover:bg-[#d63d1c] transition-colors"
-                >
-                  {props.ctaText}
-                </a>
-              )}
-              {props.ctaText2 && (
-                <a
-                  href={props.ctaUrl2 || '#'}
-                  className="px-8 py-3 border-2 border-white text-white rounded-lg font-medium hover:bg-white/10 transition-colors"
-                >
-                  {props.ctaText2}
-                </a>
-              )}
-            </div>
+            {props.subtext ? (
+              <p className="text-lg md:text-xl text-white/80 mb-8 max-w-2xl">{props.subtext}</p>
+            ) : null}
+            {(props.ctaText || props.ctaText2) && (
+              <div className="flex gap-4 flex-wrap justify-center">
+                {props.ctaText && (
+                  <a
+                    href={props.ctaUrl || '#'}
+                    className="px-8 py-3 bg-[#EF4923] text-white rounded-lg font-medium hover:bg-[#d63d1c] transition-colors"
+                  >
+                    {props.ctaText}
+                  </a>
+                )}
+                {props.ctaText2 && (
+                  <a
+                    href={props.ctaUrl2 || '#'}
+                    className="px-8 py-3 border-2 border-white text-white rounded-lg font-medium hover:bg-white/10 transition-colors"
+                  >
+                    {props.ctaText2}
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         </div>
       );

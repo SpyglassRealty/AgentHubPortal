@@ -52,6 +52,57 @@ const upload = multer({
   },
 });
 
+// Image upload from external URL endpoint
+router.post('/uploads/from-url', isAuthenticated, async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ error: 'URL is required' });
+    }
+
+    console.log(`[Upload] Downloading image from URL: ${url}`);
+    const imgRes = await fetch(url);
+    if (!imgRes.ok) {
+      return res.status(400).json({ error: `Failed to fetch image: ${imgRes.status} ${imgRes.statusText}` });
+    }
+
+    const buffer = Buffer.from(await imgRes.arrayBuffer());
+    const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+
+    // Validate it's an image
+    if (!contentType.startsWith('image/')) {
+      return res.status(400).json({ error: `URL did not return an image (got ${contentType})` });
+    }
+
+    const ext = contentType.includes('png') ? '.png' : contentType.includes('webp') ? '.webp' : contentType.includes('gif') ? '.gif' : '.jpg';
+    const filename = `${Date.now()}-${nanoid(10)}${ext}`;
+
+    // Ensure uploads dir exists
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    fs.writeFileSync(path.join(uploadsDir, filename), buffer);
+    const imageUrl = `/uploads/${filename}`;
+
+    console.log(`[Upload] Image downloaded and saved: ${filename}`);
+
+    res.json({
+      success: true,
+      url: imageUrl,
+      filename,
+      size: buffer.length,
+      mimeType: contentType,
+    });
+  } catch (error) {
+    console.error('[Upload] Error downloading image from URL:', error);
+    res.status(500).json({
+      error: 'Failed to download image',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
 // Image upload endpoint
 router.post('/uploads', isAuthenticated, upload.single('image'), (req, res) => {
   try {
