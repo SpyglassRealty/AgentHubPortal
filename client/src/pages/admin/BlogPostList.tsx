@@ -37,6 +37,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Plus,
@@ -53,6 +62,8 @@ import {
   CheckCircle,
   Clock,
   TrendingUp,
+  Upload,
+  Loader2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -152,6 +163,13 @@ export default function BlogPostList() {
   const [sortOrder, setSortOrder] = useState("desc");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState<BlogPost | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importSheetUrl, setImportSheetUrl] = useState("");
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResults, setImportResults] = useState<{
+    imported: number;
+    failed: Array<{ title: string; error: string }>;
+  } | null>(null);
   
   // ── Data Queries ───────────────────────────────────────────────────
   const { data: postsData, isLoading: postsLoading } = useQuery<BlogPostsResponse>({
@@ -228,6 +246,34 @@ export default function BlogPostList() {
     }
   };
 
+  const handleImportSheet = async () => {
+    if (!importSheetUrl.trim()) return;
+    setImportLoading(true);
+    setImportResults(null);
+    try {
+      const res = await fetch("/api/admin/blog/import-sheet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ sheetUrl: importSheetUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: "Import Error", description: data.error, variant: "destructive" });
+        return;
+      }
+      setImportResults(data);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/blog/posts"] });
+      if (data.imported > 0) {
+        toast({ title: "Import Complete", description: `${data.imported} post(s) imported as drafts.` });
+      }
+    } catch (err: any) {
+      toast({ title: "Import Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
   // ── Computed Values ────────────────────────────────────────────────
   const posts = postsData?.posts || [];
   const authors = authorsData?.authors || [];
@@ -249,12 +295,18 @@ export default function BlogPostList() {
               Manage your blog content and SEO optimization
             </p>
           </div>
-          <Link href="/admin/blog/posts/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New Post
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => { setImportDialogOpen(true); setImportResults(null); setImportSheetUrl(""); }}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import Blogs
             </Button>
-          </Link>
+            <Link href="/admin/blog/posts/new">
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                New Post
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -580,6 +632,77 @@ export default function BlogPostList() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Import Blogs Dialog */}
+        <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Import Blogs from Google Sheets</DialogTitle>
+              <DialogDescription>
+                Paste a Google Sheets URL containing blog posts. Posts will be imported as drafts.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="sheet-url">Google Sheets URL</Label>
+                <Input
+                  id="sheet-url"
+                  placeholder="https://docs.google.com/spreadsheets/d/..."
+                  value={importSheetUrl}
+                  onChange={(e) => setImportSheetUrl(e.target.value)}
+                  disabled={importLoading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Expected columns: Blog Title, URL Slug, Google Doc, Hero Image, OG Image, Blog Photos, Date Published, Date Crawled
+                </p>
+              </div>
+
+              {importResults && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium">{importResults.imported} post(s) imported</span>
+                  </div>
+                  {importResults.failed.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                        <span className="text-sm font-medium">{importResults.failed.length} failed</span>
+                      </div>
+                      <div className="max-h-40 overflow-y-auto bg-muted rounded-md p-2">
+                        {importResults.failed.map((f, i) => (
+                          <p key={i} className="text-xs text-muted-foreground">
+                            <span className="font-medium">{f.title}:</span> {f.error}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setImportDialogOpen(false)}>
+                {importResults ? "Close" : "Cancel"}
+              </Button>
+              {!importResults && (
+                <Button onClick={handleImportSheet} disabled={importLoading || !importSheetUrl.trim()}>
+                  {importLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Import
+                    </>
+                  )}
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
   );
 }
