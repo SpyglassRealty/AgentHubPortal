@@ -541,7 +541,7 @@ export default function BlogPostList() {
                                 </Link>
                                 {post.status === 'published' && (
                                   <DropdownMenuItem
-                                    onClick={() => window.open(`/blog/${post.slug}`, '_blank')}
+                                    onClick={() => window.open(`https://spyglass-idx.vercel.app/blog/${post.slug}`, '_blank')}
                                   >
                                     <Eye className="h-4 w-4 mr-2" />
                                     View Live

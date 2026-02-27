@@ -300,7 +300,7 @@ export default function LandingPageListPage() {
                               </code>
                               {page.isPublished && (
                                 <a 
-                                  href={`https://spyglassrealty.com/${page.slug}`}
+                                  href={`https://spyglass-idx.vercel.app${page.pageType === 'blog' ? '/blog' : ''}/${page.slug}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
@@ -358,7 +358,7 @@ export default function LandingPageListPage() {
                               </DropdownMenuItem>
                               {page.isPublished && (
                                 <DropdownMenuItem
-                                  onClick={() => window.open(`https://spyglassrealty.com/${page.slug}`, '_blank')}
+                                  onClick={() => window.open(`https://spyglass-idx.vercel.app${page.pageType === 'blog' ? '/blog' : ''}/${page.slug}`, '_blank')}
                                 >
                                   <ExternalLink className="h-4 w-4 mr-2" />
                                   View Live
