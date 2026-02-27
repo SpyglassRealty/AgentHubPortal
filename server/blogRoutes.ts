@@ -15,9 +15,8 @@ import {
   type InsertBlogAuthor
 } from "@shared/schema";
 import { z } from "zod";
-import multer from "multer";
-import { parse as csvParse } from "csv-parse/sync";
 import * as cheerio from "cheerio";
+import XLSX from "xlsx";
 
 const router = Router();
 
@@ -566,24 +565,7 @@ router.delete("/admin/blog/authors/:id", async (req, res) => {
   }
 });
 
-// ── CSV IMPORT ────────────────────────────────────────────────────────────
-
-// Multer instance for CSV uploads (memory storage, no disk writes)
-const csvUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB
-  fileFilter: (_req, file, cb) => {
-    if (
-      file.mimetype === "text/csv" ||
-      file.mimetype === "application/vnd.ms-excel" ||
-      file.originalname.endsWith(".csv")
-    ) {
-      cb(null, true);
-    } else {
-      cb(new Error("Only CSV files are accepted"));
-    }
-  },
-});
+// ── GOOGLE SHEETS IMPORT ──────────────────────────────────────────────────
 
 function slugifyForBlog(text: string): string {
   return text
@@ -728,31 +710,149 @@ async function fetchAndParseBlogUrl(url: string): Promise<{
   return { title, metaDescription, ogImageUrl, sections };
 }
 
-// POST /api/admin/blog/import-csv
-// Saves imported blogs into the landingPages table (pageType='blog') with page-builder blocks
-// so they appear in the blog page editor for proofing and editing.
-router.post("/admin/blog/import-csv", csvUpload.single("file"), async (req, res) => {
+/** Extract a URL from a HYPERLINK formula like: HYPERLINK("https://...", "View Doc") */
+function extractUrlFromFormula(formula: string): string {
+  const match = formula.match(/HYPERLINK\("([^"]+)"/i);
+  return match ? match[1] : "";
+}
+
+/** Extract Google Sheet ID from a URL */
+function extractSheetId(url: string): string {
+  const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : "";
+}
+
+/** Extract Google Doc ID from a URL */
+function extractDocId(url: string): string {
+  const match = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : "";
+}
+
+/** Extract Google Drive file ID from a URL */
+function extractDriveFileId(url: string): string {
+  const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : "";
+}
+
+/** Fetch a Google Doc exported as HTML and parse the blog content from it.
+ *  The doc contains HTML source code as plain text in <p><span> elements.
+ *  We extract all paragraph text, join it, then parse as HTML. */
+async function fetchGoogleDocHtml(docId: string): Promise<{
+  title: string;
+  metaDescription: string;
+  h1: string;
+  articleHtml: string;
+}> {
+  const exportUrl = `https://docs.google.com/document/d/${docId}/export?format=html`;
+  const res = await fetch(exportUrl, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; SpyglassCMS/1.0)" },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch Google Doc: ${res.status}`);
+  const html = await res.text();
+  const $ = cheerio.load(html);
+
+  // The Google Doc contains HTML source code as plain text in <p> elements
+  const lines: string[] = [];
+  $("body p").each((_i: number, el: any) => {
+    const text = $(el).text().trim();
+    if (text) lines.push(text);
+  });
+
+  const rawHtml = lines.join("\n");
+
+  // Parse the assembled HTML source code
+  const $blog = cheerio.load(rawHtml);
+
+  // Extract title (clean trailing social share text like "FacebookTwitterEmail")
+  let title = $blog("title").text().trim();
+  title = title.replace(/Facebook.*$/i, "").trim();
+
+  const metaDescription = $blog('meta[name="description"]').attr("content") || "";
+  const h1 = $blog("h1").first().text().trim();
+  const articleHtml = $blog("article").html() || $blog("body").html() || "";
+
+  return { title, metaDescription, h1, articleHtml };
+}
+
+// POST /api/admin/blog/import-sheet
+// Accepts a Google Sheets URL, fetches the sheet, parses Google Doc content,
+// and creates draft blog pages in the page builder (landingPages table).
+router.post("/admin/blog/import-sheet", async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No CSV file uploaded" });
+    const { sheetUrl } = req.body;
+    if (!sheetUrl) {
+      return res.status(400).json({ error: "sheetUrl is required" });
     }
 
-    const csvText = req.file.buffer.toString("utf-8");
-
-    let rows: Record<string, string>[];
-    try {
-      rows = csvParse(csvText, {
-        columns: true,
-        skip_empty_lines: true,
-        trim: true,
-        relax_column_count: true,
-      }) as Record<string, string>[];
-    } catch (parseErr: any) {
-      return res.status(400).json({ error: `CSV parse error: ${parseErr.message}` });
+    const sheetId = extractSheetId(sheetUrl);
+    if (!sheetId) {
+      return res.status(400).json({ error: "Invalid Google Sheets URL" });
     }
 
-    if (!rows.length) {
-      return res.status(400).json({ error: "CSV file is empty" });
+    // Fetch the sheet as XLSX (preserves HYPERLINK formulas)
+    const xlsxUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
+    const xlsxRes = await fetch(xlsxUrl);
+    if (!xlsxRes.ok) {
+      return res.status(400).json({ error: `Failed to fetch sheet: ${xlsxRes.status}. Make sure it's shared publicly.` });
+    }
+    const xlsxBuffer = Buffer.from(await xlsxRes.arrayBuffer());
+
+    // Parse the XLSX with formula support
+    const wb = XLSX.read(xlsxBuffer, { cellFormula: true, type: "buffer" });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    if (!ws || !ws["!ref"]) {
+      return res.status(400).json({ error: "Sheet is empty" });
+    }
+
+    const range = XLSX.utils.decode_range(ws["!ref"]);
+    const dataRows: Array<{
+      title: string;
+      slug: string;
+      googleDocUrl: string;
+      heroImageUrl: string;
+    }> = [];
+
+    // Skip header row (row 0), process data rows
+    for (let r = range.s.r + 1; r <= range.e.r; r++) {
+      const getCell = (c: number) => {
+        const addr = XLSX.utils.encode_cell({ r, c });
+        return ws[addr] || null;
+      };
+
+      const titleCell = getCell(0);
+      const slugCell = getCell(1);
+      const docCell = getCell(2);
+      const imageCell = getCell(3);
+
+      const title = titleCell?.v?.toString() || "";
+      const rawSlug = slugCell?.v?.toString() || "";
+
+      // Extract URLs from HYPERLINK formulas
+      let googleDocUrl = "";
+      if (docCell?.f) {
+        googleDocUrl = extractUrlFromFormula(docCell.f);
+      } else if (docCell?.l?.Target) {
+        googleDocUrl = docCell.l.Target;
+      } else if (docCell?.v && typeof docCell.v === "string" && docCell.v.startsWith("http")) {
+        googleDocUrl = docCell.v;
+      }
+
+      let heroImageUrl = "";
+      if (imageCell?.f) {
+        heroImageUrl = extractUrlFromFormula(imageCell.f);
+      } else if (imageCell?.l?.Target) {
+        heroImageUrl = imageCell.l.Target;
+      } else if (imageCell?.v && typeof imageCell.v === "string" && imageCell.v.startsWith("http")) {
+        heroImageUrl = imageCell.v;
+      }
+
+      if (title) {
+        dataRows.push({ title, slug: rawSlug, googleDocUrl, heroImageUrl });
+      }
+    }
+
+    if (!dataRows.length) {
+      return res.status(400).json({ error: "No data rows found in sheet" });
     }
 
     const results: Array<{
@@ -764,25 +864,13 @@ router.post("/admin/blog/import-csv", csvUpload.single("file"), async (req, res)
       error?: string;
     }> = [];
 
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      const title = row["Blog Title"] || row["blog_title"] || row["Title"] || "";
-      const rawSlug = row["URL Slug"] || row["url_slug"] || row["Slug"] || "";
-      const blogUrl = row["Blog URL"] || row["blog_url"] || row["URL"] || "";
-      const heroImage = row["Hero Image"] || row["hero_image"] || row["Image"] || "";
+    for (let i = 0; i < dataRows.length; i++) {
+      const { title, slug: rawSlug, googleDocUrl, heroImageUrl: rawHeroUrl } = dataRows[i];
 
-      if (!title || !blogUrl) {
-        results.push({ row: i + 2, title: title || "(no title)", slug: "", success: false, error: "Missing Blog Title or Blog URL" });
-        continue;
-      }
+      // Clean the slug
+      const slug = slugifyForBlog(rawSlug || title);
 
-      // Clean the slug — strip .html extension and slugify
-      const cleanedSlug = rawSlug
-        ? rawSlug.replace(/\.html?$/i, "").replace(/[^a-z0-9-]/gi, "-").toLowerCase().replace(/^-|-$/g, "")
-        : slugifyForBlog(title);
-      const slug = cleanedSlug;
-
-      // Check for duplicate slug in landingPages
+      // Check for duplicate slug
       const [existing] = await db
         .select({ id: landingPages.id })
         .from(landingPages)
@@ -794,23 +882,58 @@ router.post("/admin/blog/import-csv", csvUpload.single("file"), async (req, res)
         continue;
       }
 
-      // Fetch and parse the blog URL into page-builder blocks
-      let sections: any[] = [];
-      let metaDescription = "";
-      let ogImageUrl = heroImage || "";
+      // Resolve hero image URL from Google Drive
+      let heroImageDirectUrl = rawHeroUrl;
+      const driveFileId = extractDriveFileId(rawHeroUrl);
+      if (driveFileId) {
+        heroImageDirectUrl = `https://drive.google.com/uc?export=view&id=${driveFileId}`;
+      }
 
-      try {
-        const parsed = await fetchAndParseBlogUrl(blogUrl);
-        sections = parsed.sections;
-        metaDescription = parsed.metaDescription;
-        if (!ogImageUrl) ogImageUrl = parsed.ogImageUrl;
-      } catch (fetchErr: any) {
-        results.push({ row: i + 2, title, slug, success: false, error: `Fetch error: ${fetchErr.message}` });
+      // Fetch and parse the Google Doc
+      let docTitle = "";
+      let metaDescription = "";
+      let h1Text = "";
+      let articleHtml = "";
+
+      if (googleDocUrl) {
+        const docId = extractDocId(googleDocUrl);
+        if (!docId) {
+          results.push({ row: i + 2, title, slug, success: false, error: "Could not extract Google Doc ID from URL" });
+          continue;
+        }
+        try {
+          const parsed = await fetchGoogleDocHtml(docId);
+          docTitle = parsed.title;
+          metaDescription = parsed.metaDescription;
+          h1Text = parsed.h1;
+          articleHtml = parsed.articleHtml;
+        } catch (fetchErr: any) {
+          results.push({ row: i + 2, title, slug, success: false, error: `Doc fetch error: ${fetchErr.message}` });
+          continue;
+        }
+      } else {
+        results.push({ row: i + 2, title, slug, success: false, error: "No Google Doc URL found" });
         continue;
       }
 
-      // Also generate flat HTML content for the content field
-      const htmlContent = blocksToHtml(sections);
+      // Build two page builder blocks:
+      // Block 1: Hero image + title/meta/h1 embed code
+      const block1Html = [
+        heroImageDirectUrl ? `<img src="${heroImageDirectUrl}" alt="${title}" style="width:100%;max-width:100%;height:auto" />` : "",
+        docTitle ? `<title>${docTitle}</title>` : "",
+        metaDescription ? `<meta name="description" content="${metaDescription.replace(/"/g, "&quot;")}">` : "",
+        h1Text ? `<h1>${h1Text}</h1>` : "",
+      ].filter(Boolean).join("\n");
+
+      // Block 2: The rest of the article body HTML
+      const block2Html = articleHtml || "<p>No content found</p>";
+
+      const sections = [
+        { id: generateBlockId(), type: "html", props: { code: block1Html } },
+        { id: generateBlockId(), type: "html", props: { code: block2Html } },
+      ];
+
+      const fullContent = block1Html + "\n" + block2Html;
 
       try {
         const [newPage] = await db
@@ -819,11 +942,11 @@ router.post("/admin/blog/import-csv", csvUpload.single("file"), async (req, res)
             title,
             slug,
             pageType: "blog",
-            content: htmlContent || " ",
+            content: fullContent || " ",
             sections,
-            metaTitle: title,
+            metaTitle: docTitle || title,
             metaDescription: metaDescription || undefined,
-            ogImageUrl: ogImageUrl || undefined,
+            ogImageUrl: heroImageDirectUrl || undefined,
             indexingDirective: "index,follow",
             author: "Spyglass Realty",
             canonicalUrl: `https://www.spyglassrealty.com/blog/${slug}`,
@@ -843,10 +966,10 @@ router.post("/admin/blog/import-csv", csvUpload.single("file"), async (req, res)
     const successCount = results.filter((r) => r.success).length;
     const failCount = results.filter((r) => !r.success).length;
 
-    res.json({ results, successCount, failCount, total: rows.length });
+    res.json({ results, successCount, failCount, total: dataRows.length });
   } catch (error: any) {
-    console.error("Error importing CSV:", error);
-    res.status(500).json({ error: "Failed to import CSV" });
+    console.error("Error importing from sheet:", error);
+    res.status(500).json({ error: `Failed to import: ${error.message}` });
   }
 });
 
