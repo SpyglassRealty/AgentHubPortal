@@ -34,6 +34,12 @@ function useHistory(initial: BlockData[]) {
 
   const current = history[index];
 
+  // Sync when external blocks change (e.g., import populates sections, or data loads from API)
+  const reset = useCallback((newBlocks: BlockData[]) => {
+    setHistory([newBlocks]);
+    setIndex(0);
+  }, []);
+
   const push = useCallback((newState: BlockData[]) => {
     setHistory(prev => {
       const sliced = prev.slice(0, index + 1);
@@ -50,14 +56,29 @@ function useHistory(initial: BlockData[]) {
     setIndex(prev => Math.min(prev + 1, history.length - 1));
   }, [history.length]);
 
-  return { current, push, undo, redo, canUndo: index > 0, canRedo: index < history.length - 1 };
+  return { current, push, reset, undo, redo, canUndo: index > 0, canRedo: index < history.length - 1 };
 }
 
 // ── Main Page Builder ──────────────────────────────────
 
 export function PageBuilder({ blocks: initialBlocks, onChange }: PageBuilderProps) {
-  const { current: blocks, push, undo, redo, canUndo, canRedo } = useHistory(initialBlocks);
+  const { current: blocks, push, reset, undo, redo, canUndo, canRedo } = useHistory(initialBlocks);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+
+  // Sync when parent passes new blocks (e.g., URL import or API data load)
+  const prevBlocksRef = React.useRef(initialBlocks);
+  React.useEffect(() => {
+    // Only reset if the incoming blocks actually changed (different reference AND different content)
+    if (initialBlocks !== prevBlocksRef.current && initialBlocks.length > 0) {
+      // Check if content actually differs (avoid reset on same data)
+      const prevIds = prevBlocksRef.current.map(b => b.id).join(',');
+      const newIds = initialBlocks.map(b => b.id).join(',');
+      if (prevIds !== newIds) {
+        reset(initialBlocks);
+      }
+    }
+    prevBlocksRef.current = initialBlocks;
+  }, [initialBlocks, reset]);
   const [isPreview, setIsPreview] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
