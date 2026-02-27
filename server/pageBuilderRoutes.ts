@@ -313,133 +313,280 @@ async function importFromUrl(url: string): Promise<any> {
     '';
   const publishDate = publishDateRaw ? new Date(publishDateRaw).toISOString() : new Date().toISOString();
 
-  // Parse article content
-  const article = $('article.block--lightest, article[class*="block"], article').first();
+  // ── Recursive block extractor ──────────────────────────────────
+  // Walks the DOM tree and extracts granular blocks from any nesting depth.
   const sections: any[] = [];
 
-  // Blocks to parse from article content
-  const articleEl = article.length ? article : $('main, .content, body');
+  function extractImageBlock(elem: any): any | null {
+    const src = $(elem).attr('src') || $(elem).attr('data-src') || '';
+    const srcset = $(elem).attr('srcset') || '';
+    let imgUrl = src;
+    if (srcset) {
+      const parts = srcset.split(',').map((s: string) => s.trim().split(/\s+/));
+      const largest = parts.sort((a: string[], b: string[]) => {
+        const aw = parseInt(a[1] || '0', 10);
+        const bw = parseInt(b[1] || '0', 10);
+        return bw - aw;
+      })[0];
+      if (largest && largest[0]) imgUrl = largest[0];
+    }
+    if (!imgUrl) return null;
+    return {
+      id: generateId(),
+      type: 'image',
+      props: {
+        url: imgUrl,
+        alt: $(elem).attr('alt') || '',
+        width: '100%',
+        alignment: 'center',
+        link: '',
+        loading: 'lazy',
+        srcset,
+      },
+    };
+  }
 
-  articleEl.children().each((_i: number, el: any) => {
-    const tagName = (el.tagName || el.name || '').toLowerCase();
-    const elem = $(el);
+  function walkElements(elements: any) {
+    $(elements).each((_i: number, el: any) => {
+      const tagName = (el.tagName || el.name || '').toLowerCase();
+      const elem = $(el);
 
-    if (tagName === 'h1') {
-      sections.push({
-        id: generateId(),
-        type: 'heading',
-        props: {
-          level: 1,
-          text: elem.text().trim(),
-          alignment: 'left',
-          color: '#000000',
-          anchorId: elem.attr('id') || slugifyText(elem.text().trim()),
-        },
-      });
-    } else if (tagName === 'h2') {
-      const text = elem.text().trim();
-      sections.push({
-        id: generateId(),
-        type: 'heading',
-        props: {
-          level: 2,
-          text,
-          alignment: 'left',
-          color: '#000000',
-          anchorId: elem.attr('id') || slugifyText(text),
-        },
-      });
-    } else if (tagName === 'h3') {
-      const text = elem.text().trim();
-      sections.push({
-        id: generateId(),
-        type: 'heading',
-        props: {
-          level: 3,
-          text,
-          alignment: 'left',
-          color: '#000000',
-          anchorId: elem.attr('id') || slugifyText(text),
-        },
-      });
-    } else if (tagName === 'p') {
-      const html = elem.html() || '';
-      if (html.trim()) {
+      // Skip non-visible elements
+      if (tagName === 'script' || tagName === 'style' || tagName === 'link' || tagName === 'meta' || tagName === 'title' || tagName === 'noscript') {
+        // But capture <title> content for SEO if needed — already handled above
+        return;
+      }
+
+      // Headings → heading blocks
+      if (/^h[1-6]$/.test(tagName)) {
+        const level = parseInt(tagName[1], 10);
+        const text = elem.text().trim();
+        if (text) {
+          sections.push({
+            id: generateId(),
+            type: 'heading',
+            props: {
+              level,
+              text,
+              alignment: 'left',
+              color: '#000000',
+              anchorId: elem.attr('id') || slugifyText(text),
+            },
+          });
+        }
+        return;
+      }
+
+      // Standalone images → image blocks
+      if (tagName === 'img') {
+        const block = extractImageBlock(el);
+        if (block) sections.push(block);
+        return;
+      }
+
+      // Paragraphs → text blocks (may contain inline images or buttons)
+      if (tagName === 'p') {
+        const innerHtml = (elem.html() || '').trim();
+        if (!innerHtml) return;
+
+        // Skip paragraphs that only contain script/style tags (no visible content)
+        const textOnly = elem.text().trim();
+        const hasOnlyScriptOrStyle = !textOnly && (elem.find('script').length > 0 || elem.find('style').length > 0);
+        if (hasOnlyScriptOrStyle) return;
+
+        // Check if paragraph only contains an image
+        const children = elem.children();
+        if (children.length === 1 && (children.first().is('img') || (children.first().is('a') && children.first().find('img').length === 1))) {
+          const imgEl = children.first().is('img') ? children.first() : children.first().find('img').first();
+          const block = extractImageBlock(imgEl[0]);
+          if (block) {
+            // If wrapped in a link, add the link URL
+            if (children.first().is('a')) {
+              block.props.link = children.first().attr('href') || '';
+            }
+            sections.push(block);
+            return;
+          }
+        }
+
+        // Check if paragraph only contains a button/CTA link
+        if (children.length === 1 && children.first().is('a')) {
+          const link = children.first();
+          const style = link.attr('style') || '';
+          // Detect CTA-style buttons (inline-block, background-color, border-radius, etc.)
+          if (style.includes('inline-block') && (style.includes('background-color') || style.includes('border-radius'))) {
+            sections.push({
+              id: generateId(),
+              type: 'button',
+              props: {
+                text: link.text().trim(),
+                url: link.attr('href') || '#',
+                alignment: 'center',
+                style: 'primary',
+                size: 'md',
+              },
+            });
+            return;
+          }
+        }
+
+        // Regular paragraph → text block
         sections.push({
           id: generateId(),
           type: 'text',
-          props: { content: html, alignment: 'left' },
+          props: { content: innerHtml, alignment: 'left' },
         });
+        return;
       }
-    } else if (tagName === 'img') {
-      const src = elem.attr('src') || elem.attr('data-src') || '';
-      const srcset = elem.attr('srcset') || '';
-      // Use the largest srcset image if available
-      let imgUrl = src;
-      if (srcset) {
-        const parts = srcset.split(',').map((s: string) => s.trim().split(/\s+/));
-        const largest = parts.sort((a: string[], b: string[]) => {
-          const aw = parseInt(a[1] || '0', 10);
-          const bw = parseInt(b[1] || '0', 10);
-          return bw - aw;
-        })[0];
-        if (largest && largest[0]) imgUrl = largest[0];
-      }
-      if (imgUrl) {
+
+      // Lists → text blocks
+      if (tagName === 'ul' || tagName === 'ol') {
         sections.push({
           id: generateId(),
-          type: 'image',
-          props: {
-            url: imgUrl,
-            alt: elem.attr('alt') || '',
-            width: '100%',
-            alignment: 'center',
-            link: '',
-            loading: 'lazy',
-            srcset,
-          },
+          type: 'text',
+          props: { content: $.html(el), alignment: 'left' },
         });
+        return;
       }
-    } else if (tagName === 'ul' || tagName === 'ol') {
-      sections.push({
-        id: generateId(),
-        type: 'text',
-        props: { content: $.html(el), alignment: 'left' },
-      });
-    } else if (tagName === 'blockquote') {
-      sections.push({
-        id: generateId(),
-        type: 'text',
-        props: { content: $.html(el), alignment: 'left' },
-      });
-    } else if (tagName === 'table') {
-      sections.push({
-        id: generateId(),
-        type: 'html',
-        props: { code: $.html(el) },
-      });
-    } else if (tagName === 'div') {
-      const cls = elem.attr('class') || '';
-      if (cls.includes('highlight')) {
-        // TOC block — let the editor handle this
+
+      // Blockquotes → text blocks
+      if (tagName === 'blockquote') {
         sections.push({
           id: generateId(),
-          type: 'toc',
-          props: { headings: [] }, // will be computed by editor
+          type: 'text',
+          props: { content: $.html(el), alignment: 'left' },
         });
-      } else {
-        // Try to get any meaningful text content
-        const innerHtml = elem.html() || '';
-        if (innerHtml.trim()) {
+        return;
+      }
+
+      // Tables → html blocks
+      if (tagName === 'table') {
+        sections.push({
+          id: generateId(),
+          type: 'html',
+          props: { code: $.html(el) },
+        });
+        return;
+      }
+
+      // Standalone <a> that looks like a CTA button
+      if (tagName === 'a') {
+        const style = elem.attr('style') || '';
+        if (style.includes('inline-block') && (style.includes('background-color') || style.includes('border-radius'))) {
+          sections.push({
+            id: generateId(),
+            type: 'button',
+            props: {
+              text: elem.text().trim(),
+              url: elem.attr('href') || '#',
+              alignment: 'center',
+              style: 'primary',
+              size: 'md',
+            },
+          });
+          return;
+        }
+      }
+
+      // <small> / author byline → text block
+      if (tagName === 'small') {
+        const innerHtml = (elem.html() || '').trim();
+        if (innerHtml) {
+          sections.push({
+            id: generateId(),
+            type: 'text',
+            props: { content: innerHtml, alignment: 'left' },
+          });
+        }
+        return;
+      }
+
+      // Divs and other containers — decide whether to recurse or keep as HTML block
+      if (tagName === 'div' || tagName === 'section' || tagName === 'article' || tagName === 'main' || tagName === 'span' || tagName === 'figure') {
+        const cls = elem.attr('class') || '';
+        const style = elem.attr('style') || '';
+
+        // TOC container → toc block
+        if (cls.includes('highlight') || elem.find('#table-of-contents').length > 0) {
+          sections.push({
+            id: generateId(),
+            type: 'toc',
+            props: { headings: [] }, // auto-computed by editor
+          });
+          return;
+        }
+
+        // Styled callout/info boxes (has border-left, background-color, padding — keep as HTML)
+        if (style.includes('border-left') && style.includes('background-color')) {
           sections.push({
             id: generateId(),
             type: 'html',
             props: { code: $.html(el) },
           });
+          return;
         }
+
+        // CTA box with bg color and centered text (keep as HTML block)
+        if (style.includes('background-color') && style.includes('text-align: center')) {
+          sections.push({
+            id: generateId(),
+            type: 'html',
+            props: { code: $.html(el) },
+          });
+          return;
+        }
+
+        // Social share buttons, navigation, etc. — skip
+        if (cls.includes('entry__buttons') || cls.includes('buttons') || cls.includes('share') || cls.includes('social')) {
+          return;
+        }
+
+        // Otherwise, recurse into the container's children to extract granular blocks
+        const children = elem.children();
+        if (children.length > 0) {
+          walkElements(children);
+        } else {
+          // Leaf div with text content
+          const text = elem.text().trim();
+          if (text) {
+            sections.push({
+              id: generateId(),
+              type: 'text',
+              props: { content: elem.html() || text, alignment: 'left' },
+            });
+          }
+        }
+        return;
       }
-    }
-  });
+
+      // <hr> → divider block
+      if (tagName === 'hr') {
+        sections.push({
+          id: generateId(),
+          type: 'divider',
+          props: { style: 'solid', color: '#e5e7eb', width: '100%' },
+        });
+        return;
+      }
+
+      // Anything else with meaningful content → html block
+      const outerHtml = $.html(el);
+      if (outerHtml && outerHtml.trim()) {
+        sections.push({
+          id: generateId(),
+          type: 'html',
+          props: { code: outerHtml },
+        });
+      }
+    });
+  }
+
+  // Find the best content root
+  const article = $('article.block--lightest, article[class*="block"], article').first();
+  const contentRoot = article.length ? article : $('main, .content, body').first();
+
+  // Walk all children recursively
+  walkElements(contentRoot.children());
 
   // If no sections found (SPA or JS-rendered), try a simpler extraction
   if (sections.length === 0 && h1Text) {
