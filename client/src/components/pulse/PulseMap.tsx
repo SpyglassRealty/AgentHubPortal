@@ -90,6 +90,7 @@ export default function PulseMap({
 
   // Mapbox token state
   const [mapboxToken, setMapboxToken] = useState('');
+  const [mapReady, setMapReady] = useState(false);
 
   const layer = getLayerById(selectedLayerId);
 
@@ -118,17 +119,22 @@ export default function PulseMap({
     map.addControl(new mapboxgl.NavigationControl(), "top-right");
     mapRef.current = map;
 
+    map.on("load", () => {
+      setMapReady(true);
+    });
+
     return () => {
       markersRef.current.forEach((m) => m.remove());
       map.remove();
       mapRef.current = null;
+      setMapReady(false);
     };
   }, [isDark, mapboxToken]);
 
-  // Update markers when data changes
+  // Update markers when data changes or map becomes ready
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !zipData.length || !layer) return;
+    if (!map || !mapReady || !zipData.length || !layer) return;
 
     const updateMarkers = () => {
       markersRef.current.forEach((m) => m.remove());
@@ -214,12 +220,8 @@ export default function PulseMap({
       });
     };
 
-    if (map.loaded()) {
-      updateMarkers();
-    } else {
-      map.on("load", updateMarkers);
-    }
-  }, [zipData, selectedLayerId, selectedZip, onZipSelect, layer]);
+    updateMarkers();
+  }, [zipData, selectedLayerId, selectedZip, onZipSelect, layer, mapReady]);
 
   return (
     <div className="relative w-full h-full rounded-lg overflow-hidden border border-border">
