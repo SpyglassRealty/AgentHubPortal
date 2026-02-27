@@ -870,16 +870,18 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
       // Clean the slug
       const slug = slugifyForBlog(rawSlug || title);
 
-      // Check for duplicate slug
-      const [existing] = await db
-        .select({ id: landingPages.id })
-        .from(landingPages)
-        .where(eq(landingPages.slug, slug))
-        .limit(1);
-
-      if (existing) {
-        results.push({ row: i + 2, title, slug, success: false, error: `Slug "${slug}" already exists` });
-        continue;
+      // Auto-deduplicate slug if it already exists
+      let finalSlug = slug;
+      let slugSuffix = 0;
+      while (true) {
+        const [existing] = await db
+          .select({ id: landingPages.id })
+          .from(landingPages)
+          .where(eq(landingPages.slug, finalSlug))
+          .limit(1);
+        if (!existing) break;
+        slugSuffix++;
+        finalSlug = `${slug}-${slugSuffix}`;
       }
 
       // Resolve hero image URL from Google Drive
@@ -916,31 +918,210 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
         continue;
       }
 
-      // Build two page builder blocks:
-      // Block 1: Hero image + title/meta/h1 embed code
-      const block1Html = [
-        heroImageDirectUrl ? `<img src="${heroImageDirectUrl}" alt="${title}" style="width:100%;max-width:100%;height:auto" />` : "",
-        docTitle ? `<title>${docTitle}</title>` : "",
-        metaDescription ? `<meta name="description" content="${metaDescription.replace(/"/g, "&quot;")}">` : "",
-        h1Text ? `<h1>${h1Text}</h1>` : "",
-      ].filter(Boolean).join("\n");
+      // Build granular page builder blocks from the Google Doc content
+      const sections: any[] = [];
 
-      // Block 2: The rest of the article body HTML
-      const block2Html = articleHtml || "<p>No content found</p>";
+      // Block 1: Hero image (if present)
+      if (heroImageDirectUrl) {
+        sections.push({
+          id: generateBlockId(),
+          type: "image",
+          props: {
+            url: heroImageDirectUrl,
+            alt: title,
+            width: "100%",
+            alignment: "center",
+            link: "",
+            loading: "lazy",
+            srcset: "",
+          },
+        });
+      }
 
-      const sections = [
-        { id: generateBlockId(), type: "html", props: { code: block1Html } },
-        { id: generateBlockId(), type: "html", props: { code: block2Html } },
-      ];
+      // Block 2: H1 heading
+      if (h1Text) {
+        sections.push({
+          id: generateBlockId(),
+          type: "heading",
+          props: {
+            level: 1,
+            text: h1Text,
+            alignment: "left",
+            color: "#000000",
+            anchorId: h1Text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+          },
+        });
+      }
 
-      const fullContent = block1Html + "\n" + block2Html;
+      // Parse article body HTML into granular blocks
+      if (articleHtml) {
+        const $ = cheerio.load(articleHtml);
+        const bodyRoot = $.root();
+
+        function walkDocElements(elements: any) {
+          $(elements).each((_i: number, el: any) => {
+            const tagName = (el.tagName || el.name || "").toLowerCase();
+            const elem = $(el);
+
+            // Skip script/style/meta
+            if (["script", "style", "link", "meta", "title", "noscript"].includes(tagName)) return;
+
+            // Headings → heading blocks
+            if (/^h[1-6]$/.test(tagName)) {
+              const level = parseInt(tagName[1], 10);
+              const text = elem.text().trim();
+              if (text) {
+                sections.push({
+                  id: generateBlockId(),
+                  type: "heading",
+                  props: {
+                    level,
+                    text,
+                    alignment: "left",
+                    color: "#000000",
+                    anchorId: text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+                  },
+                });
+              }
+              return;
+            }
+
+            // Images → image blocks
+            if (tagName === "img") {
+              const src = elem.attr("src") || elem.attr("data-src") || "";
+              if (src) {
+                sections.push({
+                  id: generateBlockId(),
+                  type: "image",
+                  props: { url: src, alt: elem.attr("alt") || "", width: "100%", alignment: "center", link: "", loading: "lazy", srcset: elem.attr("srcset") || "" },
+                });
+              }
+              return;
+            }
+
+            // Paragraphs → text or button blocks
+            if (tagName === "p") {
+              const innerHtml = (elem.html() || "").trim();
+              if (!innerHtml) return;
+
+              // Skip paragraphs that only contain script/style
+              const textOnly = elem.text().trim();
+              if (!textOnly && (elem.find("script").length > 0 || elem.find("style").length > 0)) return;
+
+              // Check if paragraph only contains an image
+              const children = elem.children();
+              if (children.length === 1 && children.first().is("img")) {
+                const src = children.first().attr("src") || "";
+                if (src) {
+                  sections.push({ id: generateBlockId(), type: "image", props: { url: src, alt: children.first().attr("alt") || "", width: "100%", alignment: "center", link: "", loading: "lazy", srcset: "" } });
+                  return;
+                }
+              }
+
+              // Check for CTA button links
+              if (children.length === 1 && children.first().is("a")) {
+                const link = children.first();
+                const style = link.attr("style") || "";
+                if (style.includes("inline-block") && (style.includes("background-color") || style.includes("border-radius"))) {
+                  sections.push({ id: generateBlockId(), type: "button", props: { text: link.text().trim(), url: link.attr("href") || "#", alignment: "center", style: "primary", size: "md" } });
+                  return;
+                }
+              }
+
+              sections.push({ id: generateBlockId(), type: "text", props: { content: innerHtml, alignment: "left" } });
+              return;
+            }
+
+            // Lists → text blocks
+            if (tagName === "ul" || tagName === "ol") {
+              sections.push({ id: generateBlockId(), type: "text", props: { content: $.html(el), alignment: "left" } });
+              return;
+            }
+
+            // Blockquotes → text blocks
+            if (tagName === "blockquote") {
+              sections.push({ id: generateBlockId(), type: "text", props: { content: $.html(el), alignment: "left" } });
+              return;
+            }
+
+            // Tables → html blocks
+            if (tagName === "table") {
+              sections.push({ id: generateBlockId(), type: "html", props: { code: $.html(el) } });
+              return;
+            }
+
+            // Standalone CTA buttons
+            if (tagName === "a") {
+              const style = elem.attr("style") || "";
+              if (style.includes("inline-block") && (style.includes("background-color") || style.includes("border-radius"))) {
+                sections.push({ id: generateBlockId(), type: "button", props: { text: elem.text().trim(), url: elem.attr("href") || "#", alignment: "center", style: "primary", size: "md" } });
+                return;
+              }
+            }
+
+            // Divs — recurse or preserve as HTML
+            if (["div", "section", "article", "main", "span", "figure"].includes(tagName)) {
+              const cls = elem.attr("class") || "";
+              const style = elem.attr("style") || "";
+
+              // TOC container
+              if (cls.includes("highlight") || elem.find("#table-of-contents").length > 0) {
+                sections.push({ id: generateBlockId(), type: "toc", props: { headings: [] } });
+                return;
+              }
+
+              // Styled callout boxes — keep as HTML
+              if (style.includes("border-left") && style.includes("background-color")) {
+                sections.push({ id: generateBlockId(), type: "html", props: { code: $.html(el) } });
+                return;
+              }
+
+              // CTA boxes — keep as HTML
+              if (style.includes("background-color") && style.includes("text-align: center")) {
+                sections.push({ id: generateBlockId(), type: "html", props: { code: $.html(el) } });
+                return;
+              }
+
+              // Share/social buttons — skip
+              if (cls.includes("entry__buttons") || cls.includes("buttons") || cls.includes("share") || cls.includes("social")) return;
+
+              // Recurse into children
+              const ch = elem.children();
+              if (ch.length > 0) {
+                walkDocElements(ch);
+              } else {
+                const text = elem.text().trim();
+                if (text) {
+                  sections.push({ id: generateBlockId(), type: "text", props: { content: elem.html() || text, alignment: "left" } });
+                }
+              }
+              return;
+            }
+
+            // HR → divider
+            if (tagName === "hr") {
+              sections.push({ id: generateBlockId(), type: "divider", props: { style: "solid", color: "#e5e7eb", width: "100%" } });
+              return;
+            }
+          });
+        }
+
+        walkDocElements(bodyRoot.children());
+      }
+
+      // Fallback if no sections were extracted
+      if (sections.length === 0) {
+        sections.push({ id: generateBlockId(), type: "html", props: { code: articleHtml || "<p>No content found</p>" } });
+      }
+
+      const fullContent = articleHtml || " ";
 
       try {
         const [newPage] = await db
           .insert(landingPages)
           .values({
             title,
-            slug,
+            slug: finalSlug,
             pageType: "blog",
             content: fullContent || " ",
             sections,
@@ -949,7 +1130,7 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
             ogImageUrl: heroImageDirectUrl || undefined,
             indexingDirective: "index,follow",
             author: "Spyglass Realty",
-            canonicalUrl: `https://www.spyglassrealty.com/blog/${slug}`,
+            canonicalUrl: `https://www.spyglassrealty.com/blog/${finalSlug}`,
             isPublished: false,
             publishDate: new Date(),
             modifiedDate: new Date(),
