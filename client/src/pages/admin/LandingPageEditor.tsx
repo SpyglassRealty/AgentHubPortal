@@ -342,7 +342,10 @@ export default function LandingPageEditorPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => window.open(`https://spyglass-idx.vercel.app/${formData.slug}`, '_blank')}
+                    onClick={() => {
+                      const prefix = formData.pageType === 'blog' ? '/blog' : '';
+                      window.open(`https://spyglass-idx.vercel.app${prefix}/${formData.slug}`, '_blank');
+                    }}
                   >
                     <Globe className="h-4 w-4 mr-2" />
                     {formData.isPublished ? 'View Live' : 'Preview'}

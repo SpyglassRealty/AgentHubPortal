@@ -9,18 +9,26 @@ import { db } from '../server/db';
 import { communities, type InsertCommunity } from '@shared/schema';
 import { eq, count } from 'drizzle-orm';
 
-// Import IDX data
+// Import IDX data using ESM imports
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+
+import { fileURLToPath } from 'url';
+import path from 'path';
+import { readFileSync } from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const getIdxCommunities = () => {
   try {
-    // Import austin-communities (polygon-based neighborhoods)
-    const { austinCommunities } = require('../../spyglass-idx/src/data/austin-communities');
-    
-    // Import area-communities (zip/city based)
-    const { ALL_AREA_COMMUNITIES } = require('../../spyglass-idx/src/data/area-communities');
+    const dataPath = path.resolve(__dirname, 'idx-communities-data.json');
+    const raw = readFileSync(dataPath, 'utf-8');
+    const data = JSON.parse(raw);
     
     return {
-      polygonCommunities: austinCommunities,
-      areaCommunities: ALL_AREA_COMMUNITIES,
+      polygonCommunities: data.polygonCommunities,
+      areaCommunities: data.areaCommunities,
     };
   } catch (error) {
     console.error('[Import] Error loading IDX community data:', error);
@@ -221,16 +229,14 @@ function formatCommunityName(name: string): string {
 }
 
 // Run the import
-if (require.main === module) {
-  importIdxCommunities()
-    .then(() => {
-      console.log('[Import] Script completed successfully');
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error('[Import] Script failed:', error);
-      process.exit(1);
-    });
-}
+importIdxCommunities()
+  .then(() => {
+    console.log('[Import] Script completed successfully');
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('[Import] Script failed:', error);
+    process.exit(1);
+  });
 
 export { importIdxCommunities };

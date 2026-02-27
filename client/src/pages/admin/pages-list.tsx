@@ -388,7 +388,7 @@ export default function PagesListPage() {
                             {page.isPublished && (
                               <DropdownMenuItem onClick={(e) => {
                                 e.stopPropagation();
-                                window.open(`/p/${page.slug}`, '_blank');
+                                window.open(`https://spyglass-idx.vercel.app${page.pageType === 'blog' ? '/blog' : ''}/${page.slug}`, '_blank');
                               }}>
                                 <ExternalLink className="h-4 w-4 mr-2" />
                                 View Live
