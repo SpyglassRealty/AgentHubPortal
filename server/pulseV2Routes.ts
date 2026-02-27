@@ -159,8 +159,8 @@ const AUSTIN_ZIPS = [
   "78731","78732","78733","78734","78735","78736","78737","78738","78739",
   "78741","78742","78744","78745","78746","78747","78748","78749","78750",
   "78751","78752","78753","78754","78756","78757","78758","78759",
-  "78610","78613","78617","78620","78628","78634","78641","78645",
-  "78653","78660","78664","78665","78681","78717","78660",
+  "78610","78613","78617","78620","78628","78634","78640","78641","78645",
+  "78653","78660","78664","78665","78681",
   "76574","78621","78626","78633","78642","78654","78669",
 ];
 
@@ -645,73 +645,96 @@ async function queryTimeseries(layer: LayerDef, zip: string, period: "monthly" |
   }
 }
 
-// ─── Zip metadata mock (another agent building real data) ───────────
+// ─── Comprehensive Zip → City / County mapping (Austin Metro) ───────
 
-const ZIP_META: Record<string, { county: string; city?: string }> = {
-  "78701": { county: "Travis", city: "Austin" },
-  "78702": { county: "Travis", city: "Austin" },
-  "78703": { county: "Travis", city: "Austin" },
-  "78704": { county: "Travis", city: "Austin" },
-  "78705": { county: "Travis", city: "Austin" },
-  "78712": { county: "Travis", city: "Austin" },
-  "78717": { county: "Travis", city: "Austin" },
-  "78721": { county: "Travis", city: "Austin" },
-  "78722": { county: "Travis", city: "Austin" },
-  "78723": { county: "Travis", city: "Austin" },
-  "78724": { county: "Travis", city: "Austin" },
-  "78725": { county: "Travis", city: "Austin" },
-  "78726": { county: "Williamson", city: "Austin" },
-  "78727": { county: "Travis", city: "Austin" },
-  "78728": { county: "Williamson", city: "Austin" },
-  "78729": { county: "Williamson", city: "Austin" },
-  "78730": { county: "Travis", city: "Austin" },
-  "78731": { county: "Travis", city: "Austin" },
-  "78732": { county: "Travis", city: "Austin" },
-  "78733": { county: "Travis", city: "Austin" },
-  "78734": { county: "Travis", city: "Austin" },
-  "78735": { county: "Travis", city: "Austin" },
-  "78736": { county: "Travis", city: "Austin" },
-  "78737": { county: "Hays", city: "Austin" },
-  "78738": { county: "Travis", city: "Austin" },
-  "78739": { county: "Travis", city: "Austin" },
-  "78741": { county: "Travis", city: "Austin" },
-  "78742": { county: "Travis", city: "Austin" },
-  "78744": { county: "Travis", city: "Austin" },
-  "78745": { county: "Travis", city: "Austin" },
-  "78746": { county: "Travis", city: "Austin" },
-  "78747": { county: "Travis", city: "Austin" },
-  "78748": { county: "Travis", city: "Austin" },
-  "78749": { county: "Travis", city: "Austin" },
-  "78750": { county: "Travis", city: "Austin" },
-  "78751": { county: "Travis", city: "Austin" },
-  "78752": { county: "Travis", city: "Austin" },
-  "78753": { county: "Travis", city: "Austin" },
-  "78754": { county: "Travis", city: "Austin" },
-  "78756": { county: "Travis", city: "Austin" },
-  "78757": { county: "Travis", city: "Austin" },
-  "78758": { county: "Travis", city: "Austin" },
-  "78759": { county: "Travis", city: "Austin" },
-  "78610": { county: "Hays", city: "Buda" },
-  "78613": { county: "Williamson", city: "Cedar Park" },
+const ZIP_META: Record<string, { county: string; city: string; neighborhood?: string }> = {
+  // ── Travis County — Austin ──
+  "78701": { county: "Travis", city: "Austin", neighborhood: "Downtown" },
+  "78702": { county: "Travis", city: "Austin", neighborhood: "East Austin" },
+  "78703": { county: "Travis", city: "Austin", neighborhood: "Tarrytown / Old West Austin" },
+  "78704": { county: "Travis", city: "Austin", neighborhood: "Travis Heights / SoCo" },
+  "78705": { county: "Travis", city: "Austin", neighborhood: "UT Campus / North University" },
+  "78712": { county: "Travis", city: "Austin", neighborhood: "UT Main Campus" },
+  "78717": { county: "Travis", city: "Austin", neighborhood: "Brushy Creek" },
+  "78719": { county: "Travis", city: "Austin", neighborhood: "SE Austin / Airport" },
+  "78721": { county: "Travis", city: "Austin", neighborhood: "East Austin / MLK" },
+  "78722": { county: "Travis", city: "Austin", neighborhood: "Cherrywood / French Place" },
+  "78723": { county: "Travis", city: "Austin", neighborhood: "Windsor Park / Mueller" },
+  "78724": { county: "Travis", city: "Austin", neighborhood: "East Austin (Outer)" },
+  "78725": { county: "Travis", city: "Austin", neighborhood: "SE Austin" },
+  "78727": { county: "Travis", city: "Austin", neighborhood: "Scofield / NW Austin" },
+  "78730": { county: "Travis", city: "Austin", neighborhood: "River Place" },
+  "78731": { county: "Travis", city: "Austin", neighborhood: "NW Hills / Far West" },
+  "78732": { county: "Travis", city: "Austin", neighborhood: "Steiner Ranch" },
+  "78733": { county: "Travis", city: "Austin", neighborhood: "Bee Cave Rd / West Lake Hills" },
+  "78734": { county: "Travis", city: "Austin", neighborhood: "Lakeway" },
+  "78735": { county: "Travis", city: "Austin", neighborhood: "Circle C / SW Austin" },
+  "78736": { county: "Travis", city: "Austin", neighborhood: "Oak Hill" },
+  "78738": { county: "Travis", city: "Austin", neighborhood: "Bee Cave / Lake Travis" },
+  "78739": { county: "Travis", city: "Austin", neighborhood: "Circle C South / Mopac S" },
+  "78741": { county: "Travis", city: "Austin", neighborhood: "East Riverside" },
+  "78742": { county: "Travis", city: "Austin", neighborhood: "Montopolis / SE" },
+  "78744": { county: "Travis", city: "Austin", neighborhood: "South Austin / Slaughter" },
+  "78745": { county: "Travis", city: "Austin", neighborhood: "South Austin / Stassney" },
+  "78746": { county: "Travis", city: "Austin", neighborhood: "Westlake Hills / Eanes" },
+  "78747": { county: "Travis", city: "Austin", neighborhood: "SE Austin / McKinney Falls" },
+  "78748": { county: "Travis", city: "Austin", neighborhood: "South Austin / Shady Hollow" },
+  "78749": { county: "Travis", city: "Austin", neighborhood: "SW Austin / Great Hills S" },
+  "78750": { county: "Travis", city: "Austin", neighborhood: "NW Austin / Balcones" },
+  "78751": { county: "Travis", city: "Austin", neighborhood: "Hyde Park / North Loop" },
+  "78752": { county: "Travis", city: "Austin", neighborhood: "Windsor Hills / North Austin" },
+  "78753": { county: "Travis", city: "Austin", neighborhood: "North Austin / Rundberg" },
+  "78754": { county: "Travis", city: "Austin", neighborhood: "NE Austin / Dessau" },
+  "78756": { county: "Travis", city: "Austin", neighborhood: "Brentwood / Crestview" },
+  "78757": { county: "Travis", city: "Austin", neighborhood: "Allandale" },
+  "78758": { county: "Travis", city: "Austin", neighborhood: "North Austin / Metric" },
+  "78759": { county: "Travis", city: "Austin", neighborhood: "Great Hills / Arboretum" },
+  // ── Travis County — Austin but Williamson County portion ──
+  "78726": { county: "Williamson", city: "Austin", neighborhood: "Canyon Creek / NW Austin" },
+  "78728": { county: "Williamson", city: "Austin", neighborhood: "Wells Branch" },
+  "78729": { county: "Williamson", city: "Austin", neighborhood: "Anderson Mill" },
+  // ── Travis County — Other Cities ──
   "78617": { county: "Travis", city: "Del Valle" },
-  "78620": { county: "Hays", city: "Dripping Springs" },
-  "78628": { county: "Williamson", city: "Georgetown" },
-  "78634": { county: "Williamson", city: "Hutto" },
-  "78641": { county: "Williamson", city: "Leander" },
   "78645": { county: "Travis", city: "Lago Vista" },
   "78653": { county: "Travis", city: "Manor" },
+  "78669": { county: "Travis", city: "Spicewood" },
+  // ── Williamson County ──
+  "78613": { county: "Williamson", city: "Cedar Park" },
+  "78628": { county: "Williamson", city: "Georgetown" },
+  "78626": { county: "Williamson", city: "Georgetown" },
+  "78633": { county: "Williamson", city: "Georgetown", neighborhood: "Sun City" },
+  "78634": { county: "Williamson", city: "Hutto" },
+  "78641": { county: "Williamson", city: "Leander" },
+  "78642": { county: "Williamson", city: "Liberty Hill" },
   "78660": { county: "Williamson", city: "Pflugerville" },
   "78664": { county: "Williamson", city: "Round Rock" },
-  "78665": { county: "Williamson", city: "Round Rock" },
-  "78681": { county: "Williamson", city: "Round Rock" },
+  "78665": { county: "Williamson", city: "Round Rock", neighborhood: "Round Rock South" },
+  "78681": { county: "Williamson", city: "Round Rock", neighborhood: "Round Rock West" },
   "76574": { county: "Williamson", city: "Taylor" },
+  // ── Hays County ──
+  "78610": { county: "Hays", city: "Buda" },
+  "78620": { county: "Hays", city: "Dripping Springs" },
+  "78640": { county: "Hays", city: "Kyle" },
+  "78737": { county: "Hays", city: "Austin", neighborhood: "Shady Hollow / Buda Border" },
+  // ── Bastrop County ──
   "78621": { county: "Bastrop", city: "Elgin" },
-  "78626": { county: "Williamson", city: "Georgetown" },
-  "78633": { county: "Williamson", city: "Georgetown" },
-  "78642": { county: "Williamson", city: "Liberty Hill" },
+  // ── Burnet County ──
   "78654": { county: "Burnet", city: "Marble Falls" },
-  "78669": { county: "Travis", city: "Spicewood" },
 };
+
+// ── Build reverse lookups for search ──
+const CITIES_TO_ZIPS = new Map<string, string[]>();
+const COUNTIES_TO_ZIPS = new Map<string, string[]>();
+
+for (const [zip, meta] of Object.entries(ZIP_META)) {
+  const cityKey = meta.city.toLowerCase();
+  if (!CITIES_TO_ZIPS.has(cityKey)) CITIES_TO_ZIPS.set(cityKey, []);
+  CITIES_TO_ZIPS.get(cityKey)!.push(zip);
+
+  const countyKey = meta.county.toLowerCase();
+  if (!COUNTIES_TO_ZIPS.has(countyKey)) COUNTIES_TO_ZIPS.set(countyKey, []);
+  COUNTIES_TO_ZIPS.get(countyKey)!.push(zip);
+}
 
 // ─── Register Routes ────────────────────────────────────────────────
 
@@ -1280,5 +1303,94 @@ export function registerPulseV2Routes(app: Express): void {
     }
   });
 
-  console.log("[Pulse V2] Registered 9 route groups under /api/pulse/v2/*");
+  // ═══════════════════════════════════════════════════════════════════
+  // 10. GET /api/pulse/v2/search?q=... — Search zips, cities, counties
+  // ═══════════════════════════════════════════════════════════════════
+  app.get("/api/pulse/v2/search", isAuthenticated, (req: Request, res: Response) => {
+    const q = ((req.query.q as string) || "").trim().toLowerCase();
+
+    if (!q || q.length < 1) {
+      return res.json({ results: { zips: [], cities: [], counties: [] } });
+    }
+
+    // Search zip codes (prefix match)
+    const matchingZips = AUSTIN_ZIPS.filter(zip => zip.startsWith(q)).map(zip => {
+      const meta = ZIP_META[zip];
+      return {
+        zip,
+        city: meta?.city || "Austin",
+        county: meta?.county || "Travis",
+        neighborhood: meta?.neighborhood || null,
+      };
+    });
+
+    // Search cities (partial match)
+    const matchingCities: { city: string; county: string; zips: string[] }[] = [];
+    for (const [cityKey, zips] of Array.from(CITIES_TO_ZIPS.entries())) {
+      if (cityKey.includes(q)) {
+        // Look up county from the first zip
+        const county = ZIP_META[zips[0]]?.county || "Travis";
+        matchingCities.push({
+          city: ZIP_META[zips[0]]?.city || cityKey,
+          county,
+          zips: [...zips].sort(),
+        });
+      }
+    }
+
+    // Search counties (partial match)
+    const matchingCounties: { county: string; zips: string[] }[] = [];
+    for (const [countyKey, zips] of Array.from(COUNTIES_TO_ZIPS.entries())) {
+      if (countyKey.includes(q)) {
+        // Capitalize properly
+        const countyName = countyKey.charAt(0).toUpperCase() + countyKey.slice(1);
+        matchingCounties.push({
+          county: countyName,
+          zips: [...zips].sort(),
+        });
+      }
+    }
+
+    // Also match neighborhoods
+    const matchingNeighborhoods: { neighborhood: string; zip: string; city: string; county: string }[] = [];
+    for (const [zip, meta] of Object.entries(ZIP_META)) {
+      if (meta.neighborhood && meta.neighborhood.toLowerCase().includes(q)) {
+        matchingNeighborhoods.push({
+          neighborhood: meta.neighborhood,
+          zip,
+          city: meta.city,
+          county: meta.county,
+        });
+      }
+    }
+
+    res.json({
+      results: {
+        zips: matchingZips.slice(0, 15),
+        cities: matchingCities.slice(0, 10),
+        counties: matchingCounties.slice(0, 5),
+        neighborhoods: matchingNeighborhoods.slice(0, 10),
+      },
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 11. GET /api/pulse/v2/city/:city/zips — Get all zips for a city
+  // ═══════════════════════════════════════════════════════════════════
+  app.get("/api/pulse/v2/city/:city/zips", isAuthenticated, (req: Request, res: Response) => {
+    const city = req.params.city.toLowerCase();
+    const zips = CITIES_TO_ZIPS.get(city) || [];
+    res.json({ city: req.params.city, zips });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 12. GET /api/pulse/v2/county/:county/zips — Get all zips for a county
+  // ═══════════════════════════════════════════════════════════════════
+  app.get("/api/pulse/v2/county/:county/zips", isAuthenticated, (req: Request, res: Response) => {
+    const county = req.params.county.toLowerCase();
+    const zips = COUNTIES_TO_ZIPS.get(county) || [];
+    res.json({ county: req.params.county, zips });
+  });
+
+  console.log("[Pulse V2] Registered 12 route groups under /api/pulse/v2/*");
 }
