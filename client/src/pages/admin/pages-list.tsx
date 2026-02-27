@@ -53,6 +53,7 @@ import {
   PenTool,
   Building2,
   Layout,
+  Upload,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -184,13 +185,22 @@ export default function PagesListPage() {
               </p>
             </div>
           </div>
-          <Button
-            className="bg-[#EF4923] hover:bg-[#d63d1c]"
-            onClick={() => setIsNewPageDialogOpen(true)}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            New Page
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setLocation('/admin/blog/import')}
+            >
+              <Upload className="h-4 w-4 mr-1" />
+              Import Blogs
+            </Button>
+            <Button
+              className="bg-[#EF4923] hover:bg-[#d63d1c]"
+              onClick={() => setIsNewPageDialogOpen(true)}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              New Page
+            </Button>
+          </div>
         </div>
 
         {/* New Page Type Selection Dialog */}
