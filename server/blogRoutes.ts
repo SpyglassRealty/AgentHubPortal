@@ -1036,11 +1036,17 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
         heroImageDirectUrl = `https://drive.google.com/uc?export=view&id=${driveFileId}`;
       }
 
-      // Resolve OG image URL from Google Drive
+      // Resolve and download OG image from Google Drive
       let ogImageDirectUrl = rawOgUrl;
       const ogDriveFileId = extractDriveFileId(rawOgUrl);
       if (ogDriveFileId) {
-        ogImageDirectUrl = `https://drive.google.com/uc?export=view&id=${ogDriveFileId}`;
+        // Download OG image locally
+        const ogLocalPath = await downloadDriveImage(ogDriveFileId, `og-${slug}.jpg`);
+        if (ogLocalPath) {
+          ogImageDirectUrl = ogLocalPath;
+        } else {
+          ogImageDirectUrl = `https://drive.google.com/uc?export=view&id=${ogDriveFileId}`;
+        }
       }
 
       // Parse date published (handles formats like "January 29th, 2026")
