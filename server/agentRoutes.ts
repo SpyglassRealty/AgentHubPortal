@@ -23,7 +23,7 @@ const createAgentProfileSchema = z.object({
   professionalTitle: z.string().optional(),
   licenseNumber: z.string().optional(),
   websiteUrl: z.string().url().optional().or(z.literal('')),
-  headshotUrl: z.string().url().optional().or(z.literal('')),
+  headshotUrl: z.string().optional().or(z.literal('')),
   socialLinks: z.object({
     facebook: z.string().optional(),
     instagram: z.string().optional(),
