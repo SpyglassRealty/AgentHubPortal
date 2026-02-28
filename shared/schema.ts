@@ -1048,7 +1048,7 @@ export const agentDirectoryProfiles = pgTable("agent_directory_profiles", {
   professionalTitle: varchar("professional_title", { length: 255 }),
   licenseNumber: varchar("license_number", { length: 100 }),
   websiteUrl: varchar("website_url", { length: 500 }),
-  headshotUrl: varchar("headshot_url", { length: 500 }),
+  headshotUrl: text("headshot_url"),
   socialLinks: jsonb("social_links").$type<{
     facebook?: string;
     instagram?: string;
