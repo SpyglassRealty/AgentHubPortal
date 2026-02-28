@@ -7,25 +7,12 @@ import { isAuthenticated } from "./replitAuth";
 
 const router = Router();
 
-// Ensure uploads directory exists
+// Ensure uploads directory exists (for backward compat)
 const uploadsDir = path.join(process.cwd(), "dist", "public", "uploads");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
   console.log(`[Upload] Created uploads directory: ${uploadsDir}`);
 }
-
-// Configure multer for image uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename with original extension
-    const fileExtension = path.extname(file.originalname).toLowerCase();
-    const uniqueName = `${Date.now()}-${nanoid(10)}${fileExtension}`;
-    cb(null, uniqueName);
-  },
-});
 
 // File filter for images only
 const fileFilter = (req: any, file: any, cb: any) => {
@@ -44,12 +31,46 @@ const fileFilter = (req: any, file: any, cb: any) => {
   }
 };
 
+// Use memory storage so we can convert to base64 (Render has ephemeral disk)
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
+});
+
+// Image upload endpoint - returns base64 data URL for persistent DB storage
+router.post('/uploads', isAuthenticated, upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ 
+        error: 'No image file provided' 
+      });
+    }
+
+    // Convert to base64 data URL so it persists in the database
+    // (Render's ephemeral disk loses files on redeploy)
+    const base64 = req.file.buffer.toString('base64');
+    const dataUrl = `data:${req.file.mimetype};base64,${base64}`;
+    
+    console.log(`[Upload] Image converted to base64: ${req.file.originalname} (${Math.round(req.file.size / 1024)}KB)`);
+    
+    res.json({
+      success: true,
+      url: dataUrl,
+      filename: req.file.originalname,
+      originalName: req.file.originalname,
+      size: req.file.size,
+      mimeType: req.file.mimetype,
+    });
+  } catch (error) {
+    console.error('[Upload] Error uploading image:', error);
+    res.status(500).json({ 
+      error: 'Failed to upload image',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 });
 
 // Image upload from external URL endpoint
@@ -74,23 +95,16 @@ router.post('/uploads/from-url', isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: `URL did not return an image (got ${contentType})` });
     }
 
-    const ext = contentType.includes('png') ? '.png' : contentType.includes('webp') ? '.webp' : contentType.includes('gif') ? '.gif' : '.jpg';
-    const filename = `${Date.now()}-${nanoid(10)}${ext}`;
+    // Convert to base64 data URL
+    const base64 = buffer.toString('base64');
+    const dataUrl = `data:${contentType};base64,${base64}`;
 
-    // Ensure uploads dir exists
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-
-    fs.writeFileSync(path.join(uploadsDir, filename), buffer);
-    const imageUrl = `/uploads/${filename}`;
-
-    console.log(`[Upload] Image downloaded and saved: ${filename}`);
+    console.log(`[Upload] Image from URL converted to base64 (${Math.round(buffer.length / 1024)}KB)`);
 
     res.json({
       success: true,
-      url: imageUrl,
-      filename,
+      url: dataUrl,
+      filename: `downloaded-${Date.now()}`,
       size: buffer.length,
       mimeType: contentType,
     });
@@ -99,37 +113,6 @@ router.post('/uploads/from-url', isAuthenticated, async (req, res) => {
     res.status(500).json({
       error: 'Failed to download image',
       message: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-});
-
-// Image upload endpoint
-router.post('/uploads', isAuthenticated, upload.single('image'), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ 
-        error: 'No image file provided' 
-      });
-    }
-
-    // Generate the public URL for the uploaded file
-    const imageUrl = `/uploads/${req.file.filename}`;
-    
-    console.log(`[Upload] Image uploaded successfully: ${req.file.filename}`);
-    
-    res.json({
-      success: true,
-      url: imageUrl,
-      filename: req.file.filename,
-      originalName: req.file.originalname,
-      size: req.file.size,
-      mimeType: req.file.mimetype,
-    });
-  } catch (error) {
-    console.error('[Upload] Error uploading image:', error);
-    res.status(500).json({ 
-      error: 'Failed to upload image',
-      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
