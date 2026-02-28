@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recruiting Outreach Generator — Spyglass Realty</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0f1117;
+      --card: #1a1d27;
+      --card-hover: #22263a;
+      --border: #2a2e3f;
+      --text: #e4e4e7;
+      --text-muted: #71717a;
+      --accent: #3b82f6;
+      --accent-glow: rgba(59, 130, 246, 0.15);
+      --green: #22c55e;
+      --purple: #a855f7;
+      --orange: #f97316;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .header {
+      background: linear-gradient(135deg, #1a1d27 0%, #1e2235 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .logo {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--purple), var(--accent));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .header h1 { font-size: 20px; font-weight: 700; }
+    .header h1 span { color: var(--purple); }
+    .main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
+
+    .persona-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .persona-card {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .persona-card.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 20px rgba(59,130,246,0.15);
+    }
+    .persona-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .persona-emoji { font-size: 32px; margin-bottom: 10px; }
+    .persona-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .persona-card p { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+    .persona-stats {
+      display: flex; gap: 12px; margin-top: 10px;
+      font-size: 11px; color: var(--text-muted);
+    }
+    .persona-stats span { display: flex; align-items: center; gap: 4px; }
+
+    .config-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .config-section h3 {
+      font-size: 14px; font-weight: 600; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .config-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .field-group { display: flex; flex-direction: column; gap: 6px; }
+    .field-group label {
+      font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .field-group input, .field-group select {
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+    }
+    .field-group input:focus, .field-group select:focus {
+      border-color: var(--accent);
+    }
+    .field-group select option { background: var(--card); }
+
+    .channel-tabs {
+      display: flex; gap: 8px; margin-bottom: 16px;
+    }
+    .channel-tab {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .channel-tab.active {
+      background: var(--accent-glow);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .output-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .output-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .output-header h3 { font-size: 14px; font-weight: 600; }
+    .output-actions { display: flex; gap: 8px; }
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn:hover { background: var(--card-hover); border-color: var(--accent); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .output-body {
+      padding: 20px;
+    }
+    .template-preview {
+      background: rgba(255,255,255,0.03);
+      border-radius: 8px;
+      padding: 20px;
+      font-size: 14px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      min-height: 200px;
+    }
+    .template-preview .var {
+      background: var(--accent-glow);
+      color: var(--accent);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+    .subject-line {
+      padding: 12px 20px;
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .subject-line strong { color: var(--text-muted); margin-right: 8px; }
+
+    .tips-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 24px;
+    }
+    .tips-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+    .tip-item {
+      display: flex; gap: 10px; padding: 8px 0;
+      font-size: 13px; line-height: 1.5;
+      border-bottom: 1px solid rgba(42,46,63,0.5);
+    }
+    .tip-item:last-child { border-bottom: none; }
+
+    .variant-tabs {
+      display: flex; gap: 4px; margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0;
+    }
+    .variant-tab {
+      padding: 8px 16px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .variant-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    @media (max-width: 768px) {
+      .persona-grid { grid-template-columns: 1fr; }
+      .config-grid { grid-template-columns: 1fr; }
+      .main { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">📨</div>
+  <h1><span>Recruiting</span> Outreach Generator</h1>
+</div>
+
+<div class="main">
+  <!-- Step 1: Select Persona -->
+  <h3 style="font-size:14px; margin-bottom:12px; color:var(--text-muted);">STEP 1 — SELECT AGENT PERSONA</h3>
+  <div class="persona-grid" id="personaGrid"></div>
+
+  <!-- Step 2: Customize -->
+  <div class="config-section">
+    <h3>⚙️ Customize Details</h3>
+    <div class="config-grid">
+      <div class="field-group">
+        <label>Agent First Name</label>
+        <input type="text" id="agentName" placeholder="e.g., Sarah" oninput="generateTemplate()">
+      </div>
+      <div class="field-group">
+        <label>Current Brokerage</label>
+        <select id="currentBrokerage" onchange="generateTemplate()">
+          <option value="">Select...</option>
+          <option value="Keller Williams">Keller Williams</option>
+          <option value="Compass">Compass</option>
+          <option value="eXp Realty">eXp Realty</option>
+          <option value="REAL Brokerage">REAL Brokerage</option>
+          <option value="Realty Austin">Realty Austin</option>
+          <option value="Coldwell Banker">Coldwell Banker</option>
+          <option value="RE/MAX">RE/MAX</option>
+          <option value="Century 21">Century 21</option>
+          <option value="Independent">Independent</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label>Est. Annual Volume</label>
+        <select id="volume" onchange="generateTemplate()">
+          <option value="low">$0-3M (New/Part-time)</option>
+          <option value="mid" selected>$3-8M (Full-time)</option>
+          <option value="high">$8-15M (Top Producer)</option>
+          <option value="mega">$15M+ (Mega Agent)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Channel + Output -->
+  <div class="channel-tabs">
+    <button class="channel-tab active" onclick="setChannel('email', this)">📧 Email</button>
+    <button class="channel-tab" onclick="setChannel('text', this)">💬 Text/SMS</button>
+    <button class="channel-tab" onclick="setChannel('dm', this)">📱 Social DM</button>
+    <button class="channel-tab" onclick="setChannel('voicemail', this)">🎙️ Voicemail Script</button>
+  </div>
+
+  <div class="variant-tabs">
+    <button class="variant-tab active" onclick="setVariant('initial', this)">Initial Outreach</button>
+    <button class="variant-tab" onclick="setVariant('followup1', this)">Follow-Up #1</button>
+    <button class="variant-tab" onclick="setVariant('followup2', this)">Follow-Up #2</button>
+    <button class="variant-tab" onclick="setVariant('breakup', this)">Break-Up</button>
+  </div>
+
+  <div class="output-section">
+    <div class="output-header">
+      <h3>📝 Generated Message</h3>
+      <div class="output-actions">
+        <button class="btn" onclick="regenerate()">🔄 Regenerate</button>
+        <button class="btn btn-primary" onclick="copyToClipboard()">📋 Copy</button>
+      </div>
+    </div>
+    <div id="subjectLine" class="subject-line" style="display:none;"></div>
+    <div class="output-body">
+      <div class="template-preview" id="templatePreview">
+        Select a persona above to generate your outreach message...
+      </div>
+    </div>
+  </div>
+
+  <!-- Tips -->
+  <div class="tips-card">
+    <h3>💡 Outreach Best Practices</h3>
+    <div class="tip-item"><span>⏰</span><span><strong>Best send times:</strong> Tuesday-Thursday, 9-11 AM or 2-4 PM. Avoid Mondays (planning) and Fridays (wrapping up).</span></div>
+    <div class="tip-item"><span>📊</span><span><strong>Response rates:</strong> Text (45%) > Social DM (30%) > Email (22%) > Voicemail (8%). Always text first for warm leads.</span></div>
+    <div class="tip-item"><span>🔄</span><span><strong>Follow-up cadence:</strong> Day 1 → Day 4 → Day 10 → Day 21 (break-up). 80% of recruiting happens after the 3rd touch.</span></div>
+    <div class="tip-item"><span>🚫</span><span><strong>Never lead with split.</strong> Lead with value, culture, or a specific pain point. Split conversations come after interest is established.</span></div>
+    <div class="tip-item"><span>🎯</span><span><strong>Personalization wins:</strong> Reference a specific listing, award, or social post. Generic messages get ignored.</span></div>
+  </div>
+</div>
+
+<script>
+const personas = [
+  {
+    id: 'frustrated-producer',
+    emoji: '😤',
+    name: 'Frustrated Producer',
+    desc: 'Solid agent doing $5-12M who feels unsupported by their current brokerage. Wants better tech, leads, or marketing.',
+    painPoints: ['Lack of tech tools', 'No lead support', 'Poor marketing', 'Feeling invisible'],
+    bestChannel: 'text',
+    winRate: '32%',
+    avgCycle: '3-6 weeks'
+  },
+  {
+    id: 'growth-seeker',
+    emoji: '🚀',
+    name: 'Growth Seeker',
+    desc: 'Ambitious agent in the $3-8M range looking for mentorship, training, and a path to top-producer status.',
+    painPoints: ['Wants mentorship', 'Needs training', 'Seeking accountability', 'Career path clarity'],
+    bestChannel: 'email',
+    winRate: '28%',
+    avgCycle: '4-8 weeks'
+  },
+  {
+    id: 'top-producer',
+    emoji: '👑',
+    name: 'Top Producer',
+    desc: 'High-volume agent ($12M+) who may be overpaying on splits/fees. Values independence but wants better economics.',
+    painPoints: ['Split/cap pressure', 'Fee fatigue', 'Brand dilution', 'Wants equity/ownership'],
+    bestChannel: 'dm',
+    winRate: '18%',
+    avgCycle: '6-12 weeks'
+  },
+  {
+    id: 'team-leader',
+    emoji: '👥',
+    name: 'Team Leader',
+    desc: 'Runs a small team (3-8 agents) looking for a brokerage that supports team growth, not just individual production.',
+    painPoints: ['Team overhead costs', 'Recruiting support', 'Team tech/CRM', 'Brand partnership'],
+    bestChannel: 'email',
+    winRate: '15%',
+    avgCycle: '8-16 weeks'
+  },
+  {
+    id: 'new-agent',
+    emoji: '🌱',
+    name: 'Newer Agent',
+    desc: 'Licensed 0-2 years, struggling to get traction. Needs leads, training, and a supportive environment.',
+    painPoints: ['No leads', 'Imposter syndrome', 'No mentor', 'Spending on desk fees'],
+    bestChannel: 'text',
+    winRate: '42%',
+    avgCycle: '1-3 weeks'
+  },
+  {
+    id: 'boomerang',
+    emoji: '🪃',
+    name: 'Boomerang Agent',
+    desc: 'Former Spyglass agent who left for another brokerage. The grass wasn\'t greener. Open to returning.',
+    painPoints: ['Misses culture', 'New brokerage over-promised', 'Lost their network', 'Regret'],
+    bestChannel: 'text',
+    winRate: '55%',
+    avgCycle: '1-2 weeks'
+  }
+];
+
+let selectedPersona = null;
+let selectedChannel = 'email';
+let selectedVariant = 'initial';
+
+const templates = {
+  'frustrated-producer': {
+    email: {
+      initial: {
+        subject: 'Quick question about your business, {name}',
+        body: `Hi {name},
+
+I've been following your work in {area} — you're clearly putting in the effort, and your recent listing on {street_placeholder} caught my eye.
+
+I run Spyglass Realty here in Austin, and I'll cut right to it: I talk to a lot of agents at {brokerage} who feel like they're doing the heavy lifting while their brokerage collects the check. If that resonates, I'd love a quick conversation.
+
+What we offer isn't complicated:
+• Real leads (not recycled Zillow scraps)
+• Tech that actually works (our agents use tools most brokerages don't even know exist)
+• Marketing support that makes you look like the pro you are
+• A team of 179 agents who actually help each other
+
+No pressure, no pitch deck, no 90-minute presentation. Just a 15-minute call to see if there's a fit.
+
+Worth a conversation?
+
+Ryan Rodenbeck
+Founder, Spyglass Realty
+512-XXX-XXXX`
+      },
+      followup1: {
+        subject: 'Following up, {name}',
+        body: `Hi {name},
+
+Wanted to circle back on my note from last week. I know your inbox is probably chaos — mine is too.
+
+The short version: I think you're leaving money and support on the table at {brokerage}, and I can show you exactly how much in a 15-minute call.
+
+No strings. If Spyglass isn't the right fit, I'll tell you that myself.
+
+Ryan`
+      },
+      followup2: {
+        subject: 'One last thing, {name}',
+        body: `Hi {name},
+
+Not trying to be a pest — just genuinely believe you'd thrive here.
+
+One thing I can share: agents who switch to Spyglass from {brokerage} typically see a {savings_placeholder} improvement in their net take-home within the first year. That's not marketing — that's math.
+
+If you're curious, I'm here. If not, no hard feelings and I wish you a great 2026.
+
+Ryan`
+      },
+      breakup: {
+        subject: 'Closing the loop',
+        body: `Hi {name},
+
+I've reached out a few times and I get it — you're busy, the timing might not be right, or maybe you're perfectly happy where you are.
+
+I won't keep following up, but I want you to know: if anything changes — a bad month, a frustrating split conversation, a feeling like you could be doing more — my door is always open.
+
+Spyglass isn't going anywhere, and neither is this offer.
+
+Wishing you a strong year ahead.
+
+Ryan Rodenbeck
+Spyglass Realty`
+      }
+    },
+    text: {
+      initial: {
+        body: `Hey {name}, this is Ryan from Spyglass Realty. I've seen your work around {area} — really solid. Quick question: are you 100% happy with the support you're getting at {brokerage}? If you've ever wondered what a brokerage that actually invests in its agents looks like, I'd love to buy you coffee. No pitch, just a conversation. 🤙`
+      },
+      followup1: {
+        body: `Hey {name} — following up on my text from last week. Just 15 min over coffee, and I'll show you exactly how much more you could be netting. Worst case you get free coffee ☕`
+      },
+      followup2: {
+        body: `{name} — last note from me, promise 😄 Just had another agent switch from {brokerage} this month and they couldn't believe the difference. If you're curious at all, text me back. If not, no worries — keep crushing it.`
+      },
+      breakup: {
+        body: `{name} — I'll stop bugging you 😊 But if things ever change at {brokerage}, you've got my number. Door's always open at Spyglass. Have a great year! - Ryan`
+      }
+    },
+    dm: {
+      initial: {
+        body: `Hey {name}! 👋 Love what you're doing in {area}. I'm Ryan, founder of Spyglass Realty (179 agents across Austin + Houston). Random question — are you open to grabbing coffee sometime? I think there might be a really interesting conversation about where your career could go next. No agenda, just two real estate people talking shop. 🏡`
+      },
+      followup1: {
+        body: `Hey {name} — just circling back! Totally get if the timing's off, but wanted to throw it out there one more time. We're doing some exciting stuff at Spyglass and I think you'd vibe with our culture. LMK if you're ever free for a quick call 🙌`
+      },
+      followup2: {
+        body: `{name} — not trying to slide into your DMs forever 😅 Just genuinely think you'd be a great fit with our crew. If you're ever curious, I'm one message away. 🤙`
+      },
+      breakup: {
+        body: `{name} — I'll leave it here! If you ever want to chat about where the industry's heading or explore what Spyglass is building, I'm always around. Wishing you an amazing year 🙏`
+      }
+    },
+    voicemail: {
+      initial: {
+        body: `"Hey {name}, this is Ryan Rodenbeck — I'm the founder of Spyglass Realty here in Austin. I'll be real quick — I've been watching your work in {area} and I'm impressed. I run a brokerage of about 179 agents, and I think you'd really thrive in what we've built. Not a pitch, just an honest conversation over coffee. I'll shoot you a text with my info. Hope to hear from you!"`
+      },
+      followup1: {
+        body: `"Hey {name}, it's Ryan from Spyglass again. I left you a message last week — just wanted to follow up real quick. I talk to agents from {brokerage} pretty regularly, and the most common thing I hear is 'I wish I'd made the switch sooner.' If that's even slightly interesting, give me a call back. My number's in your texts. Talk soon!"`
+      },
+      followup2: {
+        body: `"Hi {name}, Ryan Rodenbeck one more time. I promise I'm not trying to stalk you — I just genuinely think there's a conversation worth having. If the timing's not right, totally get it. But when it is, I'm here. Have a great rest of your week."`
+      },
+      breakup: {
+        body: `"{name}, it's Ryan from Spyglass. Last message from me — I won't keep following up. But I want you to know: if anything ever changes, if you hit a rough patch or start wondering 'is there something better out there?' — my number's in your phone. No expiration date on that. Take care."`
+      }
+    }
+  }
+};
+
+// Clone templates for other personas with variations
+function getTemplate(personaId, channel, variant) {
+  // Use frustrated-producer as base, customize per persona
+  const base = templates['frustrated-producer']?.[channel]?.[variant];
+  if (!base) return { body: 'Template not available for this combination.' };
+
+  const persona = personas.find(p => p.id === personaId);
+  const overrides = {
+    'growth-seeker': {
+      emailHook: "I think you're at an inflection point in your career — the kind of moment where the right environment can 10x your trajectory.",
+      textHook: "I see a lot of potential in your business and I think with the right support, you could double your production this year.",
+      value: "mentorship from our top producers, weekly mastermind sessions, and a clear path from $5M to $15M",
+    },
+    'top-producer': {
+      emailHook: "At your production level, you should be keeping significantly more of what you earn. Let me show you the math.",
+      textHook: "at your volume, the difference in splits between {brokerage} and Spyglass is probably $30-50K/year. Worth a 15 min call?",
+      value: "favorable splits, cap structure designed for top producers, and a brand that matches your level",
+    },
+    'team-leader': {
+      emailHook: "Building a team at most brokerages means fighting for resources. At Spyglass, we're built to help team leaders scale.",
+      textHook: "I know running a team at {brokerage} comes with overhead headaches. We've built infrastructure specifically for team leaders.",
+      value: "team-friendly commission structures, shared tech stack, recruiting support for your team, and dedicated ops help",
+    },
+    'new-agent': {
+      emailHook: "The first two years are make-or-break, and most brokerages leave new agents to figure it out alone. We don't.",
+      textHook: "getting started in real estate is tough without the right support. We've helped dozens of newer agents build 6-figure businesses.",
+      value: "real leads from day one, a dedicated mentor, weekly training, and the tech tools that normally only top producers get",
+    },
+    'boomerang': {
+      emailHook: "I know you left Spyglass a while back, and I respect that decision. But I've heard through the grapevine that things might not be what you expected. If that's true, there's no judgment here — just an open door.",
+      textHook: "hey — no awkwardness, I promise 😊 A few people have mentioned you might be open to a conversation. We'd love to have you back. A lot has changed (for the better).",
+      value: "everything you liked about Spyglass before, plus new tech tools, better lead gen, and a team that's grown to 179 strong",
+    }
+  };
+
+  return base;
+}
+
+function renderPersonas() {
+  document.getElementById('personaGrid').innerHTML = personas.map(p => `
+    <div class="persona-card ${selectedPersona === p.id ? 'active' : ''}" onclick="selectPersona('${p.id}')">
+      <div class="persona-emoji">${p.emoji}</div>
+      <h3>${p.name}</h3>
+      <p>${p.desc}</p>
+      <div class="persona-stats">
+        <span>📊 Win: ${p.winRate}</span>
+        <span>⏱️ Cycle: ${p.avgCycle}</span>
+        <span>📱 Best: ${p.bestChannel}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectPersona(id) {
+  selectedPersona = id;
+  renderPersonas();
+  generateTemplate();
+}
+
+function setChannel(channel, btn) {
+  selectedChannel = channel;
+  document.querySelectorAll('.channel-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  generateTemplate();
+}
+
+function setVariant(variant, btn) {
+  selectedVariant = variant;
+  document.querySelectorAll('.variant-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  generateTemplate();
+}
+
+function generateTemplate() {
+  if (!selectedPersona) {
+    document.getElementById('templatePreview').innerHTML = 'Select a persona above to generate your outreach message...';
+    document.getElementById('subjectLine').style.display = 'none';
+    return;
+  }
+
+  const name = document.getElementById('agentName').value || '{First Name}';
+  const brokerage = document.getElementById('currentBrokerage').value || '{Current Brokerage}';
+  const volume = document.getElementById('volume').value;
+
+  const template = getTemplate(selectedPersona, selectedChannel, selectedVariant);
+  if (!template) {
+    document.getElementById('templatePreview').textContent = 'Template coming soon for this combination.';
+    return;
+  }
+
+  let body = template.body
+    .replace(/\{name\}/g, name)
+    .replace(/\{brokerage\}/g, brokerage)
+    .replace(/\{area\}/g, 'Austin')
+    .replace(/\{street_placeholder\}/g, '[their recent listing address]')
+    .replace(/\{savings_placeholder\}/g, volume === 'mega' ? '$40-80K' : volume === 'high' ? '$20-40K' : volume === 'mid' ? '$8-15K' : '$3-8K');
+
+  // Apply persona-specific overrides
+  const persona = personas.find(p => p.id === selectedPersona);
+  const overrides = {
+    'growth-seeker': {
+      initial: {
+        email: body.replace(
+          "who feel like they're doing the heavy lifting while their brokerage collects the check",
+          "who know they could be doing more but don't have the right support system to get there"
+        ).replace(
+          "Real leads (not recycled Zillow scraps)\n• Tech that actually works",
+          "Mentorship from agents doing $15M+\n• Weekly masterminds + accountability partners\n• A clear roadmap from where you are to where you want to be"
+        ),
+        text: `Hey ${name}, this is Ryan from Spyglass Realty. I see a lot of potential in what you're building. Quick question — do you have a mentor or accountability partner at ${brokerage}? If not, that might be the missing piece. Would love to chat about how we develop agents here. Coffee? ☕`,
+      }
+    },
+    'top-producer': {
+      initial: {
+        email: body.replace(
+          "who feel like they're doing the heavy lifting while their brokerage collects the check. If that resonates",
+          "doing your volume who are overpaying by $30-50K+ per year on splits and fees alone. If you've ever done that math"
+        ).replace(
+          "Real leads (not recycled Zillow scraps)\n• Tech that actually works (our agents use tools most brokerages don't even know exist)\n• Marketing support that makes you look like the pro you are\n• A team of 179 agents who actually help each other",
+          "Economics that make sense at your production level (no more overpaying)\n• Your own brand + our infrastructure\n• Tech tools that eliminate the busywork\n• A network of 179 agents — referrals, not competition"
+        ),
+        text: `Hey ${name}, Ryan from Spyglass Realty. At your production level, there's a conversation we should have about splits and economics. Most top producers I talk to from ${brokerage} are leaving $30-50K on the table annually. 15 min call to run the numbers? No pitch, just math. 📊`,
+      }
+    },
+    'boomerang': {
+      initial: {
+        email: body.replace(
+          `I've been following your work in Austin — you're clearly putting in the effort, and your recent listing on [their recent listing address] caught my eye.\n\nI run Spyglass Realty here in Austin, and I'll cut right to it: I talk to a lot of agents at ${brokerage} who feel like they're doing the heavy lifting while their brokerage collects the check. If that resonates, I'd love a quick conversation.`,
+          `I hope you're doing well. I'll be straightforward — I know you left Spyglass a while back, and I completely respect that decision.\n\nBut I've been thinking about you lately, and I wanted to reach out: no judgment, no "I told you so," just an open door.\n\nA lot has changed since you left:`
+        ).replace(
+          "Real leads (not recycled Zillow scraps)\n• Tech that actually works (our agents use tools most brokerages don't even know exist)\n• Marketing support that makes you look like the pro you are\n• A team of 179 agents who actually help each other",
+          "We've grown to 179 agents (and counting)\n• Built custom tech tools our agents actually love\n• Lead generation has dramatically improved\n• The culture is stronger than ever"
+        ),
+        text: `Hey ${name}! It's Ryan. No awkwardness, promise 😊 Just wanted to reach out — we've grown a lot since you were here and I think you'd be impressed. If you're ever curious about coming back, door's wide open. Coffee sometime? 🤙`,
+      }
+    },
+    'new-agent': {
+      initial: {
+        email: body.replace(
+          "you're clearly putting in the effort, and your recent listing on [their recent listing address] caught my eye",
+          "I know the first couple years in real estate can feel like you're climbing a mountain alone"
+        ).replace(
+          "I talk to a lot of agents at " + brokerage + " who feel like they're doing the heavy lifting while their brokerage collects the check. If that resonates",
+          "we've helped dozens of newer agents go from struggling to six figures, and the difference is almost always the system around them. If you feel like you're working hard but not seeing results"
+        ).replace(
+          "Real leads (not recycled Zillow scraps)\n• Tech that actually works (our agents use tools most brokerages don't even know exist)\n• Marketing support that makes you look like the pro you are\n• A team of 179 agents who actually help each other",
+          "Real leads from day one (we don't make you buy them)\n• A dedicated mentor who's done $10M+\n• Weekly training that's practical, not theoretical\n• Tech tools that make you look like you've been doing this for years\n• 179 agents who remember what it's like to be new — and help accordingly"
+        ),
+        text: `Hey ${name}, this is Ryan from Spyglass Realty. I know getting started in RE is tough — most brokerages hand you a desk and say "good luck." We're different. We give new agents leads, a mentor, and real training from day one. Want to hear how? ☕ on me.`,
+      }
+    },
+    'team-leader': {
+      initial: {
+        email: body.replace(
+          "you're clearly putting in the effort, and your recent listing on [their recent listing address] caught my eye",
+          "building a team is one of the hardest things in real estate, and I respect what you've built"
+        ).replace(
+          "I talk to a lot of agents at " + brokerage + " who feel like they're doing the heavy lifting while their brokerage collects the check",
+          "I talk to a lot of team leaders who feel like they're fighting their brokerage instead of being supported by it"
+        ).replace(
+          "Real leads (not recycled Zillow scraps)\n• Tech that actually works (our agents use tools most brokerages don't even know exist)\n• Marketing support that makes you look like the pro you are\n• A team of 179 agents who actually help each other",
+          "Team-friendly economics (not punitive splits on your agents)\n• Recruiting support for YOUR team, not against you\n• Shared tech stack your whole team can use\n• Marketing and branding that elevates your team's presence\n• Operational support so you can focus on production, not paperwork"
+        ),
+        text: `Hey ${name}, Ryan from Spyglass Realty. Running a team at ${brokerage} — how's the support? I've built infrastructure specifically for team leaders: recruiting help, shared tech, team-friendly splits. If you're curious, 15 min could be eye-opening. 🤙`,
+      }
+    }
+  };
+
+  const personaOverride = overrides[selectedPersona]?.[selectedVariant]?.[selectedChannel];
+  if (personaOverride) body = personaOverride;
+
+  document.getElementById('templatePreview').textContent = body;
+
+  if (selectedChannel === 'email' && template.subject) {
+    const subject = template.subject.replace(/\{name\}/g, name);
+    document.getElementById('subjectLine').innerHTML = `<strong>Subject:</strong> ${subject}`;
+    document.getElementById('subjectLine').style.display = 'block';
+  } else {
+    document.getElementById('subjectLine').style.display = 'none';
+  }
+}
+
+function copyToClipboard() {
+  const text = document.getElementById('templatePreview').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.btn-primary');
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
+function regenerate() {
+  // Slight variation — in production, this would call an AI API
+  generateTemplate();
+}
+
+renderPersonas();
+</script>
+</body>
+</html>
