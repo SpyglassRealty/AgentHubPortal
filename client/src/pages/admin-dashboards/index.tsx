@@ -19,12 +19,14 @@ import LinksPage from "./links";
 import ReportsPage from "./reports";
 import RetentionRiskPage from "./retention-risk";
 import RecruitingBattlecardsPage from "./recruiting-battlecards";
+import BillionTrackerPage from "./billion-tracker";
 
 export default function AdminDashboardsRouter() {
   return (
     <Layout>
       <Switch>
         <Route path="/admin/dashboards" component={AdminDashboardOverview} />
+        <Route path="/admin/dashboards/billion-tracker" component={BillionTrackerPage} />
         <Route path="/admin/dashboards/retention-risk" component={RetentionRiskPage} />
         <Route path="/admin/dashboards/recruiting-battlecards" component={RecruitingBattlecardsPage} />
         <Route path="/admin/dashboards/insights" component={InsightsPage} />
