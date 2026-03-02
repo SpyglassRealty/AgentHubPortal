@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spyglass Realty — Agent Production Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); }
+        .card { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(148, 163, 184, 0.1); }
+        .spyglass-gradient { background: linear-gradient(135deg, #ea580c, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .input-field { background: rgba(51, 65, 85, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); color: white; }
+        .input-field:focus { border-color: #f97316; outline: none; box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2); }
+        .progress-ring { transition: stroke-dashoffset 0.5s ease; }
+        .status-ahead { color: #22c55e; }
+        .status-on-track { color: #f97316; }
+        .status-behind { color: #ef4444; }
+        .glow { box-shadow: 0 0 20px rgba(249, 115, 22, 0.15); }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-slate-200">
+    <header class="border-b border-slate-700/50">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-lg">S</div>
+                <div>
+                    <h1 class="text-lg font-bold text-white">Agent Production Planner</h1>
+                    <p class="text-xs text-slate-400">Plan your year. Track your pace. Hit your goals.</p>
+                </div>
+            </div>
+            <button onclick="resetAll()" class="px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition">🔄 Reset</button>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        <!-- Goal Setup -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
+            <div class="card rounded-xl p-5">
+                <label class="block text-xs text-slate-400 mb-2 uppercase tracking-wider">Income Goal</label>
+                <div class="flex items-center gap-1">
+                    <span class="text-slate-500 text-xl">$</span>
+                    <input type="text" id="incomeGoal" class="input-field rounded-lg px-2 py-1.5 text-xl font-bold w-full" value="200,000" oninput="recalc()">
+                </div>
+            </div>
+            <div class="card rounded-xl p-5">
+                <label class="block text-xs text-slate-400 mb-2 uppercase tracking-wider">Avg Sale Price</label>
+                <div class="flex items-center gap-1">
+                    <span class="text-slate-500 text-xl">$</span>
+                    <input type="text" id="avgPrice" class="input-field rounded-lg px-2 py-1.5 text-xl font-bold w-full" value="500,000" oninput="recalc()">
+                </div>
+            </div>
+            <div class="card rounded-xl p-5">
+                <label class="block text-xs text-slate-400 mb-2 uppercase tracking-wider">Commission Rate</label>
+                <div class="flex items-center gap-1">
+                    <input type="text" id="commRate" class="input-field rounded-lg px-2 py-1.5 text-xl font-bold w-full" value="2.75" oninput="recalc()">
+                    <span class="text-slate-500 text-xl">%</span>
+                </div>
+            </div>
+            <div class="card rounded-xl p-5">
+                <label class="block text-xs text-slate-400 mb-2 uppercase tracking-wider">Deals Closed YTD</label>
+                <input type="number" id="dealsYTD" class="input-field rounded-lg px-2 py-1.5 text-xl font-bold w-full" value="0" min="0" oninput="recalc()">
+            </div>
+        </div>
+
+        <!-- Dashboard KPIs -->
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <div class="card rounded-xl p-4 text-center">
+                <div class="text-xs text-slate-400 mb-1">Deals Needed</div>
+                <div class="text-3xl font-black text-white" id="kpi-deals">0</div>
+                <div class="text-xs text-slate-500">this year</div>
+            </div>
+            <div class="card rounded-xl p-4 text-center">
+                <div class="text-xs text-slate-400 mb-1">Deals Remaining</div>
+                <div class="text-3xl font-black text-orange-400" id="kpi-remaining">0</div>
+                <div class="text-xs text-slate-500">to goal</div>
+            </div>
+            <div class="card rounded-xl p-4 text-center">
+                <div class="text-xs text-slate-400 mb-1">Monthly Target</div>
+                <div class="text-3xl font-black text-white" id="kpi-monthly">0</div>
+                <div class="text-xs text-slate-500">deals/month</div>
+            </div>
+            <div class="card rounded-xl p-4 text-center">
+                <div class="text-xs text-slate-400 mb-1">Weekly Target</div>
+                <div class="text-3xl font-black text-white" id="kpi-weekly">0</div>
+                <div class="text-xs text-slate-500">deals/week</div>
+            </div>
+            <div class="card rounded-xl p-4 text-center glow">
+                <div class="text-xs text-slate-400 mb-1">Status</div>
+                <div class="text-2xl font-black" id="kpi-status">—</div>
+                <div class="text-xs text-slate-500" id="kpi-statusDetail">enter data</div>
+            </div>
+        </div>
+
+        <!-- Monthly Tracker + Activity Math -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Monthly Progress -->
+            <div class="lg:col-span-2 card rounded-xl p-6">
+                <h3 class="text-sm font-semibold text-white mb-4">📅 Monthly Deal Tracker</h3>
+                <p class="text-xs text-slate-400 mb-4">Click to log deals each month. Stay on pace.</p>
+                <div class="grid grid-cols-4 md:grid-cols-6 gap-3" id="monthGrid"></div>
+                <canvas id="paceChart" class="mt-6" height="200"></canvas>
+            </div>
+
+            <!-- Activity Math -->
+            <div class="card rounded-xl p-6">
+                <h3 class="text-sm font-semibold text-white mb-4">🔢 Activity Reverse-Engineering</h3>
+                <p class="text-xs text-slate-400 mb-4">How many conversations does it take to close a deal?</p>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs text-slate-400">Lead-to-Appointment Rate</label>
+                        <div class="flex items-center gap-2 mt-1">
+                            <input type="number" id="leadToAppt" class="input-field rounded-lg px-2 py-1 text-sm w-20" value="20" min="1" max="100" oninput="recalc()">
+                            <span class="text-xs text-slate-500">%</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400">Appointment-to-Contract Rate</label>
+                        <div class="flex items-center gap-2 mt-1">
+                            <input type="number" id="apptToContract" class="input-field rounded-lg px-2 py-1 text-sm w-20" value="40" min="1" max="100" oninput="recalc()">
+                            <span class="text-xs text-slate-500">%</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400">Contract-to-Close Rate</label>
+                        <div class="flex items-center gap-2 mt-1">
+                            <input type="number" id="contractToClose" class="input-field rounded-lg px-2 py-1 text-sm w-20" value="85" min="1" max="100" oninput="recalc()">
+                            <span class="text-xs text-slate-500">%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 space-y-3 border-t border-slate-700 pt-4">
+                    <h4 class="text-xs text-slate-400 uppercase tracking-wider">Monthly Activity Needed</h4>
+                    <div class="flex justify-between"><span class="text-sm text-slate-300">📞 Leads to generate</span><span class="text-sm font-bold text-orange-400" id="act-leads">0</span></div>
+                    <div class="flex justify-between"><span class="text-sm text-slate-300">🤝 Appointments to set</span><span class="text-sm font-bold text-white" id="act-appts">0</span></div>
+                    <div class="flex justify-between"><span class="text-sm text-slate-300">📝 Contracts to write</span><span class="text-sm font-bold text-white" id="act-contracts">0</span></div>
+                    <div class="flex justify-between"><span class="text-sm text-slate-300">🏠 Closings needed</span><span class="text-sm font-bold text-green-400" id="act-closings">0</span></div>
+                </div>
+
+                <div class="mt-4 space-y-3 border-t border-slate-700 pt-4">
+                    <h4 class="text-xs text-slate-400 uppercase tracking-wider">Weekly Activity Needed</h4>
+                    <div class="flex justify-between"><span class="text-sm text-slate-300">📞 Leads/week</span><span class="text-sm font-bold text-orange-400" id="act-leadsW">0</span></div>
+                    <div class="flex justify-between"><span class="text-sm text-slate-300">🤝 Appointments/week</span><span class="text-sm font-bold text-white" id="act-apptsW">0</span></div>
+                    <div class="flex justify-between"><span class="text-sm text-slate-300">📞 Calls/day (5 days)</span><span class="text-sm font-bold text-orange-400" id="act-callsDay">0</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Income Breakdown -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Income Timeline -->
+            <div class="card rounded-xl p-6">
+                <h3 class="text-sm font-semibold text-white mb-4">💰 Income Projection (Cumulative)</h3>
+                <canvas id="incomeChart" height="250"></canvas>
+            </div>
+
+            <!-- Expense Planning -->
+            <div class="card rounded-xl p-6">
+                <h3 class="text-sm font-semibold text-white mb-4">📊 Business Economics</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-xs text-slate-400">Estimated Business Expenses/Year</label>
+                        <div class="flex items-center gap-1 mt-1">
+                            <span class="text-slate-500">$</span>
+                            <input type="text" id="expenses" class="input-field rounded-lg px-2 py-1 text-sm w-full" value="25,000" oninput="recalc()">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400">Tax Reserve Rate</label>
+                        <div class="flex items-center gap-1 mt-1">
+                            <input type="number" id="taxRate" class="input-field rounded-lg px-2 py-1 text-sm w-20" value="30" min="0" max="50" oninput="recalc()">
+                            <span class="text-xs text-slate-500">%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 space-y-2 border-t border-slate-700 pt-4">
+                    <div class="flex justify-between"><span class="text-sm text-slate-400">Gross Commission Income</span><span class="text-sm font-bold text-white" id="econ-gci">$0</span></div>
+                    <div class="flex justify-between"><span class="text-sm text-slate-400">Brokerage Fees (Spyglass)</span><span class="text-sm text-red-400" id="econ-brokerage">-$0</span></div>
+                    <div class="flex justify-between"><span class="text-sm text-slate-400">Net Commission</span><span class="text-sm font-bold text-white" id="econ-net">$0</span></div>
+                    <div class="flex justify-between"><span class="text-sm text-slate-400">Business Expenses</span><span class="text-sm text-red-400" id="econ-expenses">-$0</span></div>
+                    <div class="flex justify-between"><span class="text-sm text-slate-400">Tax Reserve</span><span class="text-sm text-red-400" id="econ-tax">-$0</span></div>
+                    <div class="flex justify-between border-t border-slate-600 pt-2">
+                        <span class="text-sm font-semibold text-orange-300">True Take-Home</span>
+                        <span class="text-lg font-black text-orange-300" id="econ-takehome">$0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-slate-400">Monthly Take-Home</span>
+                        <span class="text-sm font-bold text-white" id="econ-monthly">$0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pipeline Health -->
+        <div class="card rounded-xl p-6 mb-8">
+            <h3 class="text-sm font-semibold text-white mb-4">📋 Quick Pipeline Check</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="text-xs text-slate-400">Active Listings</label>
+                    <input type="number" id="pipe-listings" class="input-field rounded-lg px-2 py-1 text-sm w-full mt-1" value="0" min="0" oninput="recalc()">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400">Pending Contracts</label>
+                    <input type="number" id="pipe-pending" class="input-field rounded-lg px-2 py-1 text-sm w-full mt-1" value="0" min="0" oninput="recalc()">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400">Active Buyers</label>
+                    <input type="number" id="pipe-buyers" class="input-field rounded-lg px-2 py-1 text-sm w-full mt-1" value="0" min="0" oninput="recalc()">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400">Leads Nurturing</label>
+                    <input type="number" id="pipe-leads" class="input-field rounded-lg px-2 py-1 text-sm w-full mt-1" value="0" min="0" oninput="recalc()">
+                </div>
+            </div>
+            <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-slate-800/50 rounded-lg p-3 text-center">
+                    <div class="text-xs text-slate-400">Pipeline Volume</div>
+                    <div class="text-lg font-bold text-white" id="pipe-volume">$0</div>
+                </div>
+                <div class="bg-slate-800/50 rounded-lg p-3 text-center">
+                    <div class="text-xs text-slate-400">Projected GCI</div>
+                    <div class="text-lg font-bold text-orange-400" id="pipe-gci">$0</div>
+                </div>
+                <div class="bg-slate-800/50 rounded-lg p-3 text-center">
+                    <div class="text-xs text-slate-400">Pipeline Coverage</div>
+                    <div class="text-lg font-bold" id="pipe-coverage">0x</div>
+                </div>
+                <div class="bg-slate-800/50 rounded-lg p-3 text-center">
+                    <div class="text-xs text-slate-400">Health Score</div>
+                    <div class="text-lg font-bold" id="pipe-health">—</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Motivational Footer -->
+        <div class="text-center py-6 text-slate-500 text-sm">
+            <p id="motivationalQuote"></p>
+        </div>
+    </main>
+
+    <footer class="border-t border-slate-700/50 py-4 text-center text-xs text-slate-500">
+        <p>Spyglass Realty Agent Production Planner — Built by the Spyglass AI Team 🐾 — March 2026</p>
+    </footer>
+
+    <script>
+    // ========== MONTHS DATA ==========
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    // Austin RE seasonality weights (normalized to avg 1.0)
+    const seasonality = [0.6, 0.7, 0.9, 1.1, 1.3, 1.4, 1.3, 1.2, 1.0, 0.9, 0.7, 0.5];
+    let monthlyDeals = new Array(12).fill(0);
+    let paceChart = null;
+    let incomeChart = null;
+
+    // ========== INIT MONTH GRID ==========
+    function initMonthGrid() {
+        const grid = document.getElementById('monthGrid');
+        grid.innerHTML = months.map((m, i) => `
+            <div class="bg-slate-800/80 rounded-lg p-3 text-center cursor-pointer hover:bg-slate-700/80 transition" onclick="adjustMonth(${i}, event)">
+                <div class="text-xs text-slate-400 mb-1">${m}</div>
+                <div class="text-2xl font-black text-white" id="month-${i}">${monthlyDeals[i]}</div>
+                <div class="flex justify-center gap-1 mt-1">
+                    <button class="w-6 h-6 bg-slate-600 hover:bg-slate-500 rounded text-xs text-white" onclick="event.stopPropagation(); changeMonth(${i}, -1)">−</button>
+                    <button class="w-6 h-6 bg-orange-600 hover:bg-orange-500 rounded text-xs text-white" onclick="event.stopPropagation(); changeMonth(${i}, 1)">+</button>
+                </div>
+                <div class="text-[10px] text-slate-500 mt-1" id="month-target-${i}">target: 0</div>
+            </div>
+        `).join('');
+    }
+
+    function changeMonth(idx, delta) {
+        monthlyDeals[idx] = Math.max(0, monthlyDeals[idx] + delta);
+        document.getElementById('month-' + idx).textContent = monthlyDeals[idx];
+        document.getElementById('dealsYTD').value = monthlyDeals.reduce((a,b) => a+b, 0);
+        recalc();
+    }
+
+    function adjustMonth(idx, e) {
+        if (e.target.tagName === 'BUTTON') return;
+        const val = prompt(`Deals closed in ${months[idx]}:`, monthlyDeals[idx]);
+        if (val !== null && !isNaN(val)) {
+            monthlyDeals[idx] = Math.max(0, parseInt(val));
+            document.getElementById('month-' + idx).textContent = monthlyDeals[idx];
+            document.getElementById('dealsYTD').value = monthlyDeals.reduce((a,b) => a+b, 0);
+            recalc();
+        }
+    }
+
+    // ========== MAIN RECALC ==========
+    function recalc() {
+        const incomeGoal = parseNumber(document.getElementById('incomeGoal').value);
+        const avgPrice = parseNumber(document.getElementById('avgPrice').value);
+        const commRate = parseFloat(document.getElementById('commRate').value) / 100;
+        const dealsYTD = parseInt(document.getElementById('dealsYTD').value) || 0;
+        const expenses = parseNumber(document.getElementById('expenses').value);
+        const taxRate = parseFloat(document.getElementById('taxRate').value) / 100;
+
+        // Conversion rates
+        const leadToAppt = parseFloat(document.getElementById('leadToAppt').value) / 100;
+        const apptToContract = parseFloat(document.getElementById('apptToContract').value) / 100;
+        const contractToClose = parseFloat(document.getElementById('contractToClose').value) / 100;
+
+        // Pipeline
+        const listings = parseInt(document.getElementById('pipe-listings').value) || 0;
+        const pending = parseInt(document.getElementById('pipe-pending').value) || 0;
+        const buyers = parseInt(document.getElementById('pipe-buyers').value) || 0;
+        const leads = parseInt(document.getElementById('pipe-leads').value) || 0;
+
+        // ---- Core math ----
+        const avgCommission = avgPrice * commRate;
+        
+        // Spyglass cost model: 85/15 split, $12K cap, $285/txn post-cap
+        const grossNeeded = incomeGoal; // This IS the net income goal
+        // Reverse: incomeGoal = GCI - brokerageCost
+        // We need to figure out GCI that nets incomeGoal after Spyglass fees
+        // Iterative approach
+        let gci = incomeGoal * 1.1; // Start estimate
+        for (let i = 0; i < 20; i++) {
+            const numTxns = Math.ceil(gci / avgCommission);
+            const cost = calcSpyglassCost(gci, numTxns);
+            const net = gci - cost;
+            gci = gci + (incomeGoal - net) * 0.5;
+        }
+
+        const totalDealsNeeded = Math.ceil(gci / avgCommission);
+        const dealsRemaining = Math.max(0, totalDealsNeeded - dealsYTD);
+
+        // Current month (0-indexed)
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const monthsLeft = 12 - currentMonth;
+        const weeksLeft = monthsLeft * 4.33;
+
+        const monthlyTarget = dealsRemaining / Math.max(1, monthsLeft);
+        const weeklyTarget = dealsRemaining / Math.max(1, weeksLeft);
+
+        // Pace status
+        const expectedByNow = totalDealsNeeded * (currentMonth / 12);
+        const paceRatio = dealsYTD / Math.max(1, expectedByNow);
+        let status, statusDetail, statusClass;
+        if (dealsYTD === 0 && currentMonth < 2) {
+            status = '🚀'; statusDetail = 'Year just started'; statusClass = 'text-orange-400';
+        } else if (paceRatio >= 1.1) {
+            status = '🔥 AHEAD'; statusDetail = `${Math.round((paceRatio - 1) * 100)}% above pace`; statusClass = 'status-ahead';
+        } else if (paceRatio >= 0.85) {
+            status = '✅ ON TRACK'; statusDetail = 'Keep it up'; statusClass = 'status-on-track';
+        } else {
+            status = '⚠️ BEHIND'; statusDetail = `${Math.round((1 - paceRatio) * 100)}% below pace`; statusClass = 'status-behind';
+        }
+
+        // Update KPIs
+        document.getElementById('kpi-deals').textContent = totalDealsNeeded;
+        document.getElementById('kpi-remaining').textContent = dealsRemaining;
+        document.getElementById('kpi-monthly').textContent = monthlyTarget.toFixed(1);
+        document.getElementById('kpi-weekly').textContent = weeklyTarget.toFixed(1);
+        document.getElementById('kpi-status').textContent = status;
+        document.getElementById('kpi-status').className = `text-2xl font-black ${statusClass}`;
+        document.getElementById('kpi-statusDetail').textContent = statusDetail;
+
+        // Monthly targets (seasonality-adjusted)
+        const totalWeight = seasonality.reduce((a,b) => a+b, 0);
+        months.forEach((m, i) => {
+            const target = Math.round(totalDealsNeeded * seasonality[i] / totalWeight * 10) / 10;
+            document.getElementById('month-target-' + i).textContent = `target: ${target.toFixed(1)}`;
+        });
+
+        // Activity math
+        const monthlyClosings = monthlyTarget;
+        const monthlyContracts = monthlyClosings / contractToClose;
+        const monthlyAppts = monthlyContracts / apptToContract;
+        const monthlyLeads = monthlyAppts / leadToAppt;
+
+        document.getElementById('act-leads').textContent = Math.ceil(monthlyLeads);
+        document.getElementById('act-appts').textContent = Math.ceil(monthlyAppts);
+        document.getElementById('act-contracts').textContent = Math.ceil(monthlyContracts);
+        document.getElementById('act-closings').textContent = monthlyTarget.toFixed(1);
+
+        document.getElementById('act-leadsW').textContent = Math.ceil(monthlyLeads / 4.33);
+        document.getElementById('act-apptsW').textContent = Math.ceil(monthlyAppts / 4.33);
+        document.getElementById('act-callsDay').textContent = Math.ceil(monthlyLeads / 4.33 / 5);
+
+        // Economics
+        const actualGCI = dealsYTD > 0 ? dealsYTD * avgCommission : gci;
+        const brokerageCost = calcSpyglassCost(gci, totalDealsNeeded);
+        const netComm = gci - brokerageCost;
+        const taxReserve = netComm * taxRate;
+        const takeHome = netComm - expenses - taxReserve;
+
+        document.getElementById('econ-gci').textContent = '$' + formatNum(Math.round(gci));
+        document.getElementById('econ-brokerage').textContent = '-$' + formatNum(Math.round(brokerageCost));
+        document.getElementById('econ-net').textContent = '$' + formatNum(Math.round(netComm));
+        document.getElementById('econ-expenses').textContent = '-$' + formatNum(Math.round(expenses));
+        document.getElementById('econ-tax').textContent = '-$' + formatNum(Math.round(taxReserve));
+        document.getElementById('econ-takehome').textContent = '$' + formatNum(Math.round(takeHome));
+        document.getElementById('econ-monthly').textContent = '$' + formatNum(Math.round(takeHome / 12));
+
+        // Pipeline
+        const pipeDeals = listings + pending + buyers;
+        const pipeVolume = pipeDeals * avgPrice;
+        const pipeGCI = pipeVolume * commRate;
+        const monthlyGCINeeded = (gci / 12);
+        const coverage = monthlyGCINeeded > 0 ? (pipeGCI / (monthlyGCINeeded * 3)).toFixed(1) : 0; // 3-month coverage
+        
+        document.getElementById('pipe-volume').textContent = '$' + formatNum(Math.round(pipeVolume));
+        document.getElementById('pipe-gci').textContent = '$' + formatNum(Math.round(pipeGCI));
+        document.getElementById('pipe-coverage').textContent = coverage + 'x';
+
+        let healthLabel, healthColor;
+        if (coverage >= 1.5) { healthLabel = '💪 Strong'; healthColor = 'text-green-400'; }
+        else if (coverage >= 0.8) { healthLabel = '👍 OK'; healthColor = 'text-orange-400'; }
+        else { healthLabel = '⚠️ Low'; healthColor = 'text-red-400'; }
+        
+        const healthEl = document.getElementById('pipe-health');
+        healthEl.textContent = healthLabel;
+        healthEl.className = `text-lg font-bold ${healthColor}`;
+
+        const coverageEl = document.getElementById('pipe-coverage');
+        coverageEl.className = `text-lg font-bold ${coverage >= 1 ? 'text-green-400' : 'text-red-400'}`;
+
+        // Charts
+        updatePaceChart(totalDealsNeeded);
+        updateIncomeChart(gci, totalDealsNeeded, avgCommission);
+    }
+
+    // ========== SPYGLASS COST MODEL ==========
+    function calcSpyglassCost(gci, numTxns) {
+        const brokeragePct = 0.15;
+        const cap = 12000;
+        const splitPaid = Math.min(gci * brokeragePct, cap);
+        let totalCost = splitPaid;
+        if (gci * brokeragePct > cap) {
+            const commAtCap = cap / brokeragePct;
+            const avgPerTxn = gci / numTxns;
+            const txnsBefore = Math.ceil(commAtCap / avgPerTxn);
+            const txnsAfter = Math.max(0, numTxns - txnsBefore);
+            totalCost += txnsAfter * 285;
+        }
+        return totalCost;
+    }
+
+    // ========== CHARTS ==========
+    function updatePaceChart(totalNeeded) {
+        if (paceChart) paceChart.destroy();
+        const ctx = document.getElementById('paceChart').getContext('2d');
+
+        // Cumulative actual
+        let cumActual = [];
+        let sum = 0;
+        monthlyDeals.forEach(d => { sum += d; cumActual.push(sum); });
+
+        // Cumulative target (seasonality)
+        const totalWeight = seasonality.reduce((a,b) => a+b, 0);
+        let cumTarget = [];
+        let tsum = 0;
+        seasonality.forEach(s => { tsum += totalNeeded * s / totalWeight; cumTarget.push(Math.round(tsum * 10) / 10); });
+
+        paceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [
+                    {
+                        label: 'Target Pace',
+                        data: cumTarget,
+                        borderColor: '#475569',
+                        borderDash: [5, 5],
+                        pointRadius: 3,
+                        tension: 0.3,
+                        fill: false,
+                    },
+                    {
+                        label: 'Actual Deals',
+                        data: cumActual,
+                        borderColor: '#f97316',
+                        backgroundColor: 'rgba(249,115,22,0.1)',
+                        pointRadius: 5,
+                        pointBackgroundColor: '#f97316',
+                        tension: 0.3,
+                        fill: true,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { labels: { color: '#94a3b8' } } },
+                scales: {
+                    y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.1)' } },
+                    x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    function updateIncomeChart(gci, totalDeals, avgComm) {
+        if (incomeChart) incomeChart.destroy();
+        const ctx = document.getElementById('incomeChart').getContext('2d');
+
+        const totalWeight = seasonality.reduce((a,b) => a+b, 0);
+        let cumIncome = [];
+        let cumGoal = [];
+        let isum = 0, gsum = 0;
+
+        months.forEach((m, i) => {
+            const monthDeals = monthlyDeals[i];
+            isum += monthDeals * avgComm;
+            cumIncome.push(Math.round(isum));
+
+            gsum += (gci * seasonality[i] / totalWeight);
+            cumGoal.push(Math.round(gsum));
+        });
+
+        incomeChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [
+                    {
+                        label: 'GCI Target',
+                        data: cumGoal,
+                        borderColor: '#475569',
+                        borderDash: [5, 5],
+                        pointRadius: 3,
+                        tension: 0.3,
+                        fill: false,
+                    },
+                    {
+                        label: 'Actual GCI',
+                        data: cumIncome,
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34,197,94,0.1)',
+                        pointRadius: 5,
+                        pointBackgroundColor: '#22c55e',
+                        tension: 0.3,
+                        fill: true,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { labels: { color: '#94a3b8' } } },
+                scales: {
+                    y: { ticks: { callback: v => '$' + formatNum(v), color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.1)' } },
+                    x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // ========== UTILS ==========
+    function formatNum(n) { return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+    function parseNumber(s) { return parseInt(String(s).replace(/[^0-9.-]/g, '')) || 0; }
+
+    function resetAll() {
+        monthlyDeals = new Array(12).fill(0);
+        document.getElementById('incomeGoal').value = '200,000';
+        document.getElementById('avgPrice').value = '500,000';
+        document.getElementById('commRate').value = '2.75';
+        document.getElementById('dealsYTD').value = '0';
+        document.getElementById('expenses').value = '25,000';
+        document.getElementById('taxRate').value = '30';
+        initMonthGrid();
+        recalc();
+    }
+
+    // Motivational quotes
+    const quotes = [
+        "\"The best time to plant a tree was 20 years ago. The second best time is now.\" — Chinese Proverb",
+        "\"Success is not the key to happiness. Happiness is the key to success.\" — Albert Schweitzer",
+        "\"The only way to do great work is to love what you do.\" — Steve Jobs",
+        "\"Don't count the days, make the days count.\" — Muhammad Ali",
+        "\"Your income is directly related to your philosophy, not the economy.\" — Jim Rohn",
+        "\"The harder I work, the luckier I get.\" — Samuel Goldwyn",
+        "\"Success usually comes to those who are too busy to be looking for it.\" — Henry David Thoreau",
+    ];
+    document.getElementById('motivationalQuote').textContent = quotes[Math.floor(Math.random() * quotes.length)];
+
+    // Init
+    initMonthGrid();
+    recalc();
+    </script>
+</body>
+</html>

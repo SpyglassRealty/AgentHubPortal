@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spyglass Realty — Commission Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); }
+        .card { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(148, 163, 184, 0.1); }
+        .card-highlight { background: linear-gradient(135deg, rgba(234, 88, 12, 0.15), rgba(249, 115, 22, 0.05)); border: 1px solid rgba(234, 88, 12, 0.3); }
+        .spyglass-gradient { background: linear-gradient(135deg, #ea580c, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .bar-spyglass { background: linear-gradient(90deg, #ea580c, #f97316); }
+        .bar-competitor { background: linear-gradient(90deg, #475569, #64748b); }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #f97316; cursor: pointer; border: 2px solid #fff; }
+        .slider::-webkit-slider-track { background: #334155; border-radius: 8px; height: 6px; }
+        .slider { -webkit-appearance: none; width: 100%; background: transparent; }
+        .pulse { animation: pulse 2s ease-in-out infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .tab-active { border-bottom: 2px solid #f97316; color: #f97316; }
+        .tab-inactive { border-bottom: 2px solid transparent; color: #94a3b8; }
+        .tooltip { position: relative; }
+        .tooltip:hover::after { content: attr(data-tip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); padding: 4px 8px; background: #1e293b; color: #e2e8f0; border-radius: 4px; font-size: 12px; white-space: nowrap; z-index: 50; border: 1px solid rgba(148,163,184,0.2); }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; color: black !important; }
+            .card { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; }
+        }
+        .savings-pop { animation: savingsPop 0.3s ease-out; }
+        @keyframes savingsPop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-slate-200">
+    <!-- Header -->
+    <header class="border-b border-slate-700/50 no-print">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-lg">S</div>
+                <div>
+                    <h1 class="text-lg font-bold text-white">Spyglass Realty</h1>
+                    <p class="text-xs text-slate-400">Commission Calculator & Comparison</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="window.print()" class="px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition">🖨️ Print</button>
+                <button onclick="shareResults()" class="px-3 py-1.5 text-xs bg-orange-600 hover:bg-orange-500 rounded-lg transition text-white">📤 Share</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Hero Section -->
+        <div class="text-center mb-10">
+            <h2 class="text-4xl font-bold mb-3">
+                <span class="text-white">What Are You </span>
+                <span class="spyglass-gradient">Really</span>
+                <span class="text-white"> Earning?</span>
+            </h2>
+            <p class="text-slate-400 text-lg max-w-2xl mx-auto">See exactly how your commission stacks up. Adjust the numbers to match your production — the results might surprise you.</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex gap-6 mb-8 border-b border-slate-700/50 no-print">
+            <button onclick="switchTab('calculator')" id="tab-calculator" class="pb-3 text-sm font-medium tab-active transition">💰 Calculator</button>
+            <button onclick="switchTab('compare')" id="tab-compare" class="pb-3 text-sm font-medium tab-inactive transition">⚔️ Compare Brokerages</button>
+            <button onclick="switchTab('scenarios')" id="tab-scenarios" class="pb-3 text-sm font-medium tab-inactive transition">📊 Growth Scenarios</button>
+        </div>
+
+        <!-- Tab: Calculator -->
+        <div id="panel-calculator">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Input Panel -->
+                <div class="card rounded-2xl p-6 space-y-6">
+                    <h3 class="text-lg font-semibold text-white flex items-center gap-2">⚙️ Your Numbers</h3>
+                    
+                    <!-- Annual Volume -->
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2">Annual Sales Volume</label>
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl font-bold text-white">$<span id="volumeDisplay">5,000,000</span></span>
+                        </div>
+                        <input type="range" id="volumeSlider" class="slider mt-2" min="500000" max="30000000" step="250000" value="5000000" oninput="updateCalc()">
+                        <div class="flex justify-between text-xs text-slate-500 mt-1">
+                            <span>$500K</span><span>$30M</span>
+                        </div>
+                    </div>
+
+                    <!-- Avg Sale Price -->
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2">Average Sale Price</label>
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl font-bold text-white">$<span id="priceDisplay">500,000</span></span>
+                        </div>
+                        <input type="range" id="priceSlider" class="slider mt-2" min="150000" max="2000000" step="25000" value="500000" oninput="updateCalc()">
+                        <div class="flex justify-between text-xs text-slate-500 mt-1">
+                            <span>$150K</span><span>$2M</span>
+                        </div>
+                    </div>
+
+                    <!-- Avg Commission Rate -->
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2">Average Commission Rate</label>
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl font-bold text-white"><span id="rateDisplay">2.75</span>%</span>
+                        </div>
+                        <input type="range" id="rateSlider" class="slider mt-2" min="1.5" max="4.0" step="0.25" value="2.75" oninput="updateCalc()">
+                        <div class="flex justify-between text-xs text-slate-500 mt-1">
+                            <span>1.5%</span><span>4.0%</span>
+                        </div>
+                    </div>
+
+                    <!-- Current Brokerage -->
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2">Current Brokerage</label>
+                        <select id="currentBrokerage" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm" onchange="updateCalc()">
+                            <option value="kw">Keller Williams</option>
+                            <option value="compass">Compass</option>
+                            <option value="exp">eXp Realty</option>
+                            <option value="remax">RE/MAX</option>
+                            <option value="realtyaustin">Realty Austin</option>
+                            <option value="independentHigh">Independent (80/20)</option>
+                            <option value="independentLow">Independent (70/30)</option>
+                            <option value="custom">Custom Split...</option>
+                        </select>
+                    </div>
+
+                    <!-- Custom Split (hidden by default) -->
+                    <div id="customSplitSection" class="hidden">
+                        <label class="block text-sm text-slate-400 mb-2">Your Split (Agent %)</label>
+                        <input type="number" id="customSplit" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm" value="75" min="50" max="100" oninput="updateCalc()">
+                        <label class="block text-sm text-slate-400 mb-2 mt-3">Annual Cap ($)</label>
+                        <input type="number" id="customCap" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm" value="20000" min="0" max="100000" oninput="updateCalc()">
+                        <label class="block text-sm text-slate-400 mb-2 mt-3">Monthly Fees ($)</label>
+                        <input type="number" id="customMonthly" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm" value="150" min="0" max="2000" oninput="updateCalc()">
+                    </div>
+
+                    <div class="pt-2">
+                        <p class="text-xs text-slate-500">💡 Tip: Adjust to match your actual last-12-month production for the most accurate comparison.</p>
+                    </div>
+                </div>
+
+                <!-- Results Panel -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Savings Hero -->
+                    <div id="savingsHero" class="card-highlight rounded-2xl p-6 text-center savings-pop">
+                        <p class="text-sm text-orange-300 mb-1">With Spyglass Realty, you'd keep</p>
+                        <div class="text-5xl font-black text-white mb-1">$<span id="spyglassNet">0</span></div>
+                        <p class="text-sm text-slate-400 mb-4">per year</p>
+                        <div id="savingsLine" class="text-xl font-bold text-orange-400"></div>
+                    </div>
+
+                    <!-- Side by Side -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Spyglass Card -->
+                        <div class="card-highlight rounded-2xl p-5">
+                            <div class="flex items-center gap-2 mb-4">
+                                <div class="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center text-white font-bold text-sm">S</div>
+                                <div>
+                                    <h4 class="font-semibold text-white">Spyglass Realty</h4>
+                                    <p class="text-xs text-orange-300">REAL Brokerage | 85/15 Split</p>
+                                </div>
+                            </div>
+                            <div class="space-y-3 text-sm">
+                                <div class="flex justify-between"><span class="text-slate-400">Gross Commission</span><span class="text-white font-medium" id="sg-gross">$0</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Split (until cap)</span><span class="text-white font-medium" id="sg-split">85/15</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Annual Cap</span><span class="text-white font-medium">$12,000</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Monthly Fees</span><span class="text-white font-medium">$0</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Transaction Fee (post-cap)</span><span class="text-white font-medium">$285/txn</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Total Brokerage Cost</span><span class="text-red-400 font-medium" id="sg-cost">$0</span></div>
+                                <div class="border-t border-slate-600 pt-2 flex justify-between">
+                                    <span class="text-orange-300 font-semibold">Net Take-Home</span>
+                                    <span class="text-orange-300 font-bold text-lg" id="sg-net">$0</span>
+                                </div>
+                                <div class="flex justify-between"><span class="text-slate-400">Effective Split</span><span class="text-green-400 font-bold" id="sg-effective">0%</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Current Brokerage Card -->
+                        <div class="card rounded-2xl p-5">
+                            <div class="flex items-center gap-2 mb-4">
+                                <div class="w-8 h-8 rounded-lg bg-slate-600 flex items-center justify-center text-white font-bold text-sm" id="comp-icon">K</div>
+                                <div>
+                                    <h4 class="font-semibold text-white" id="comp-name">Keller Williams</h4>
+                                    <p class="text-xs text-slate-400" id="comp-split-label">70/30 Split</p>
+                                </div>
+                            </div>
+                            <div class="space-y-3 text-sm">
+                                <div class="flex justify-between"><span class="text-slate-400">Gross Commission</span><span class="text-white font-medium" id="comp-gross">$0</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Split (until cap)</span><span class="text-white font-medium" id="comp-split">70/30</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Annual Cap</span><span class="text-white font-medium" id="comp-cap">$0</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Monthly Fees</span><span class="text-white font-medium" id="comp-monthly">$0</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Transaction Fee</span><span class="text-white font-medium" id="comp-txnfee">$0</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Total Brokerage Cost</span><span class="text-red-400 font-medium" id="comp-cost">$0</span></div>
+                                <div class="border-t border-slate-600 pt-2 flex justify-between">
+                                    <span class="text-slate-300 font-semibold">Net Take-Home</span>
+                                    <span class="text-slate-300 font-bold text-lg" id="comp-net">$0</span>
+                                </div>
+                                <div class="flex justify-between"><span class="text-slate-400">Effective Split</span><span class="text-slate-300 font-bold" id="comp-effective">0%</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visual Bar Comparison -->
+                    <div class="card rounded-2xl p-5">
+                        <h4 class="text-sm font-semibold text-slate-300 mb-4">Annual Take-Home Comparison</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-orange-400">Spyglass Realty</span>
+                                    <span class="text-white font-medium" id="bar-sg-label">$0</span>
+                                </div>
+                                <div class="w-full bg-slate-700 rounded-full h-6 overflow-hidden">
+                                    <div id="bar-sg" class="bar-spyglass h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-slate-400" id="bar-comp-name">Competitor</span>
+                                    <span class="text-white font-medium" id="bar-comp-label">$0</span>
+                                </div>
+                                <div class="w-full bg-slate-700 rounded-full h-6 overflow-hidden">
+                                    <div id="bar-comp" class="bar-competitor h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Per-Transaction Breakdown -->
+                    <div class="card rounded-2xl p-5">
+                        <h4 class="text-sm font-semibold text-slate-300 mb-4">Per-Transaction Breakdown</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="text-slate-400 border-b border-slate-700">
+                                        <th class="text-left pb-2">Metric</th>
+                                        <th class="text-right pb-2 text-orange-400">Spyglass</th>
+                                        <th class="text-right pb-2" id="th-comp">Competitor</th>
+                                        <th class="text-right pb-2 text-green-400">Difference</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-white" id="txnTable">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Compare All -->
+        <div id="panel-compare" class="hidden">
+            <div class="card rounded-2xl p-6 mb-6">
+                <h3 class="text-lg font-semibold text-white mb-2">⚔️ All-Brokerage Comparison</h3>
+                <p class="text-sm text-slate-400 mb-6">Based on your production numbers. See how every major brokerage stacks up.</p>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm" id="allBrokerageTable">
+                        <thead>
+                            <tr class="text-slate-400 border-b border-slate-700">
+                                <th class="text-left pb-3">Brokerage</th>
+                                <th class="text-right pb-3">Split</th>
+                                <th class="text-right pb-3">Cap</th>
+                                <th class="text-right pb-3">Monthly Fees</th>
+                                <th class="text-right pb-3">Total Cost</th>
+                                <th class="text-right pb-3">Net Take-Home</th>
+                                <th class="text-right pb-3">Effective %</th>
+                                <th class="text-right pb-3">vs. Spyglass</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card rounded-2xl p-6">
+                <h4 class="text-sm font-semibold text-slate-300 mb-4">Annual Net Income by Brokerage</h4>
+                <canvas id="compareChart" height="300"></canvas>
+            </div>
+        </div>
+
+        <!-- Tab: Scenarios -->
+        <div id="panel-scenarios" class="hidden">
+            <div class="card rounded-2xl p-6 mb-6">
+                <h3 class="text-lg font-semibold text-white mb-2">📊 Growth Scenarios at Spyglass</h3>
+                <p class="text-sm text-slate-400 mb-6">See how increasing your production impacts earnings at Spyglass vs. your current brokerage.</p>
+                <canvas id="scenarioChart" height="350"></canvas>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="scenarioCards">
+            </div>
+        </div>
+
+        <!-- Benefits Section -->
+        <div class="mt-12 card rounded-2xl p-8 no-print">
+            <h3 class="text-xl font-bold text-white mb-6 text-center">Beyond the Split — What You Get at Spyglass</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="text-center">
+                    <div class="text-3xl mb-2">🏢</div>
+                    <h4 class="font-semibold text-white mb-1">Premium Office</h4>
+                    <p class="text-sm text-slate-400">3,400 sq ft at Reunion Park, North Austin. 50-person training room. No desk fees.</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl mb-2">🤖</div>
+                    <h4 class="font-semibold text-white mb-1">AI-Powered Tools</h4>
+                    <p class="text-sm text-slate-400">Mission Control with Pulse market intelligence, CMA builder, AI search — tech others don't have.</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl mb-2">📈</div>
+                    <h4 class="font-semibold text-white mb-1">Lead Generation</h4>
+                    <p class="text-sm text-slate-400">#1 converting team at Zillow. Proprietary lead gen through spyglassrealty.com & community pages.</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl mb-2">💎</div>
+                    <h4 class="font-semibold text-white mb-1">REAL Brokerage</h4>
+                    <p class="text-sm text-slate-400">Revenue sharing, stock awards, $12K cap. The best agent economics in the industry.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="mt-8 text-center no-print">
+            <p class="text-slate-400 mb-4">Ready to see what Spyglass can do for your career?</p>
+            <a href="https://www.spyglassrealty.com/join" target="_blank" class="inline-block px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl hover:from-orange-600 hover:to-orange-700 transition shadow-lg shadow-orange-500/20">
+                Let's Talk →
+            </a>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-700/50 mt-16 py-6 text-center text-xs text-slate-500 no-print">
+        <p>Spyglass Realty Commission Calculator — For illustration purposes. Actual splits and fees vary. Updated March 2026.</p>
+        <p class="mt-1">Built by the Spyglass AI Team 🐾</p>
+    </footer>
+
+    <script>
+    // ========== BROKERAGE DATA ==========
+    const brokerages = {
+        spyglass: {
+            name: 'Spyglass Realty',
+            icon: 'S',
+            splitLabel: '85/15',
+            agentPct: 0.85,
+            cap: 12000,
+            monthlyFee: 0,
+            txnFeePostCap: 285,
+            annualFee: 0,
+            franchise: 0,
+            color: '#f97316'
+        },
+        kw: {
+            name: 'Keller Williams',
+            icon: 'K',
+            splitLabel: '70/30',
+            agentPct: 0.70,
+            cap: 22000,
+            monthlyFee: 85,
+            txnFeePostCap: 0,
+            annualFee: 0,
+            franchise: 0.03, // 3% franchise fee on gross (before split)
+            color: '#dc2626'
+        },
+        compass: {
+            name: 'Compass',
+            icon: 'C',
+            splitLabel: '75/25',
+            agentPct: 0.75,
+            cap: 0, // No cap — split all year
+            monthlyFee: 0,
+            txnFeePostCap: 0,
+            annualFee: 0,
+            franchise: 0,
+            color: '#1d4ed8'
+        },
+        exp: {
+            name: 'eXp Realty',
+            icon: 'e',
+            splitLabel: '80/20',
+            agentPct: 0.80,
+            cap: 16000,
+            monthlyFee: 85,
+            txnFeePostCap: 250,
+            annualFee: 0,
+            franchise: 0,
+            color: '#2563eb'
+        },
+        remax: {
+            name: 'RE/MAX',
+            icon: 'R',
+            splitLabel: '95/5',
+            agentPct: 0.95,
+            cap: 23000,
+            monthlyFee: 250,
+            txnFeePostCap: 0,
+            annualFee: 0,
+            franchise: 0,
+            color: '#dc2626'
+        },
+        realtyaustin: {
+            name: 'Realty Austin',
+            icon: 'RA',
+            splitLabel: '75/25',
+            agentPct: 0.75,
+            cap: 18000,
+            monthlyFee: 100,
+            txnFeePostCap: 0,
+            annualFee: 0,
+            franchise: 0,
+            color: '#059669'
+        },
+        independentHigh: {
+            name: 'Independent (80/20)',
+            icon: 'I',
+            splitLabel: '80/20',
+            agentPct: 0.80,
+            cap: 0,
+            monthlyFee: 150,
+            txnFeePostCap: 0,
+            annualFee: 0,
+            franchise: 0,
+            color: '#7c3aed'
+        },
+        independentLow: {
+            name: 'Independent (70/30)',
+            icon: 'I',
+            splitLabel: '70/30',
+            agentPct: 0.70,
+            cap: 0,
+            monthlyFee: 100,
+            txnFeePostCap: 0,
+            annualFee: 0,
+            franchise: 0,
+            color: '#6d28d9'
+        }
+    };
+
+    let compareChart = null;
+    let scenarioChart = null;
+
+    // ========== CALCULATION ENGINE ==========
+    function calcBrokerageCost(brokerage, grossCommission, numTransactions) {
+        let totalCost = 0;
+        let remaining = grossCommission;
+
+        // Monthly fees
+        const monthlyTotal = brokerage.monthlyFee * 12;
+        totalCost += monthlyTotal;
+
+        // Annual fee
+        totalCost += brokerage.annualFee || 0;
+
+        // Franchise fee (KW charges on gross)
+        const franchiseFee = grossCommission * (brokerage.franchise || 0);
+        totalCost += franchiseFee;
+
+        // Split calculation
+        const brokeragePct = 1 - brokerage.agentPct;
+        
+        if (brokerage.cap > 0) {
+            // Has a cap — pay split until cap, then post-cap fees
+            const splitPaid = Math.min(grossCommission * brokeragePct, brokerage.cap);
+            totalCost += splitPaid;
+
+            // Figure out how many transactions happen after cap
+            if (grossCommission * brokeragePct > brokerage.cap) {
+                // Agent hit the cap — calculate post-cap transactions
+                const commissionAtCap = brokerage.cap / brokeragePct;
+                const avgPerTxn = grossCommission / numTransactions;
+                const txnsBeforeCap = Math.ceil(commissionAtCap / avgPerTxn);
+                const txnsAfterCap = Math.max(0, numTransactions - txnsBeforeCap);
+                totalCost += txnsAfterCap * (brokerage.txnFeePostCap || 0);
+            }
+        } else {
+            // No cap — split applies to everything
+            totalCost += grossCommission * brokeragePct;
+        }
+
+        const netIncome = grossCommission - totalCost;
+        const effectivePct = grossCommission > 0 ? (netIncome / grossCommission * 100) : 0;
+
+        return { totalCost, netIncome, effectivePct, monthlyTotal, franchiseFee };
+    }
+
+    function getCustomBrokerage() {
+        const split = parseFloat(document.getElementById('customSplit').value) || 75;
+        const cap = parseFloat(document.getElementById('customCap').value) || 0;
+        const monthly = parseFloat(document.getElementById('customMonthly').value) || 0;
+        return {
+            name: 'Your Brokerage',
+            icon: '?',
+            splitLabel: `${split}/${100-split}`,
+            agentPct: split / 100,
+            cap: cap,
+            monthlyFee: monthly,
+            txnFeePostCap: 0,
+            annualFee: 0,
+            franchise: 0,
+            color: '#64748b'
+        };
+    }
+
+    // ========== UPDATE CALCULATOR ==========
+    function updateCalc() {
+        const volume = parseInt(document.getElementById('volumeSlider').value);
+        const avgPrice = parseInt(document.getElementById('priceSlider').value);
+        const commRate = parseFloat(document.getElementById('rateSlider').value);
+        const compKey = document.getElementById('currentBrokerage').value;
+
+        // Update displays
+        document.getElementById('volumeDisplay').textContent = formatNum(volume);
+        document.getElementById('priceDisplay').textContent = formatNum(avgPrice);
+        document.getElementById('rateDisplay').textContent = commRate.toFixed(2);
+
+        // Show/hide custom
+        document.getElementById('customSplitSection').classList.toggle('hidden', compKey !== 'custom');
+
+        // Derived
+        const numTxns = Math.round(volume / avgPrice);
+        const grossCommission = volume * (commRate / 100);
+
+        // Spyglass calc
+        const sg = calcBrokerageCost(brokerages.spyglass, grossCommission, numTxns);
+
+        // Competitor calc
+        const competitor = compKey === 'custom' ? getCustomBrokerage() : brokerages[compKey];
+        const comp = calcBrokerageCost(competitor, grossCommission, numTxns);
+
+        // Savings
+        const savings = sg.netIncome - comp.netIncome;
+
+        // Update Savings Hero
+        document.getElementById('spyglassNet').textContent = formatNum(Math.round(sg.netIncome));
+        const savingsLine = document.getElementById('savingsLine');
+        if (savings > 0) {
+            savingsLine.textContent = `That's $${formatNum(Math.round(savings))} MORE than ${competitor.name}`;
+            savingsLine.className = 'text-xl font-bold text-green-400';
+        } else if (savings < 0) {
+            savingsLine.textContent = `That's $${formatNum(Math.abs(Math.round(savings)))} less than ${competitor.name}`;
+            savingsLine.className = 'text-xl font-bold text-red-400';
+        } else {
+            savingsLine.textContent = `Same as ${competitor.name}`;
+            savingsLine.className = 'text-xl font-bold text-slate-400';
+        }
+
+        // Update Spyglass card
+        document.getElementById('sg-gross').textContent = '$' + formatNum(Math.round(grossCommission));
+        document.getElementById('sg-cost').textContent = '-$' + formatNum(Math.round(sg.totalCost));
+        document.getElementById('sg-net').textContent = '$' + formatNum(Math.round(sg.netIncome));
+        document.getElementById('sg-effective').textContent = sg.effectivePct.toFixed(1) + '%';
+
+        // Update Competitor card
+        document.getElementById('comp-icon').textContent = competitor.icon;
+        document.getElementById('comp-name').textContent = competitor.name;
+        document.getElementById('comp-split-label').textContent = competitor.splitLabel + ' Split';
+        document.getElementById('comp-gross').textContent = '$' + formatNum(Math.round(grossCommission));
+        document.getElementById('comp-split').textContent = competitor.splitLabel;
+        document.getElementById('comp-cap').textContent = competitor.cap > 0 ? '$' + formatNum(competitor.cap) : 'No Cap';
+        document.getElementById('comp-monthly').textContent = '$' + formatNum(competitor.monthlyFee) + '/mo';
+        document.getElementById('comp-txnfee').textContent = competitor.txnFeePostCap > 0 ? '$' + competitor.txnFeePostCap + '/txn' : '$0';
+        document.getElementById('comp-cost').textContent = '-$' + formatNum(Math.round(comp.totalCost));
+        document.getElementById('comp-net').textContent = '$' + formatNum(Math.round(comp.netIncome));
+        document.getElementById('comp-effective').textContent = comp.effectivePct.toFixed(1) + '%';
+
+        // Bars
+        const maxNet = Math.max(sg.netIncome, comp.netIncome);
+        document.getElementById('bar-sg').style.width = (sg.netIncome / maxNet * 100) + '%';
+        document.getElementById('bar-comp').style.width = (comp.netIncome / maxNet * 100) + '%';
+        document.getElementById('bar-sg-label').textContent = '$' + formatNum(Math.round(sg.netIncome));
+        document.getElementById('bar-comp-label').textContent = '$' + formatNum(Math.round(comp.netIncome));
+        document.getElementById('bar-comp-name').textContent = competitor.name;
+        document.getElementById('th-comp').textContent = competitor.name;
+
+        // Per-transaction table
+        const avgCommPerTxn = grossCommission / numTxns;
+        const sgPerTxn = sg.netIncome / numTxns;
+        const compPerTxn = comp.netIncome / numTxns;
+        const sgCostPerTxn = sg.totalCost / numTxns;
+        const compCostPerTxn = comp.totalCost / numTxns;
+
+        document.getElementById('txnTable').innerHTML = `
+            <tr class="border-b border-slate-700/50"><td class="py-2 text-slate-400">Transactions/Year</td><td class="text-right text-orange-300">${numTxns}</td><td class="text-right">${numTxns}</td><td class="text-right text-slate-500">—</td></tr>
+            <tr class="border-b border-slate-700/50"><td class="py-2 text-slate-400">Avg Commission/Txn</td><td class="text-right text-orange-300">$${formatNum(Math.round(avgCommPerTxn))}</td><td class="text-right">$${formatNum(Math.round(avgCommPerTxn))}</td><td class="text-right text-slate-500">—</td></tr>
+            <tr class="border-b border-slate-700/50"><td class="py-2 text-slate-400">Avg Cost/Txn</td><td class="text-right text-orange-300">$${formatNum(Math.round(sgCostPerTxn))}</td><td class="text-right">$${formatNum(Math.round(compCostPerTxn))}</td><td class="text-right ${sgCostPerTxn < compCostPerTxn ? 'text-green-400' : 'text-red-400'}">$${formatNum(Math.abs(Math.round(sgCostPerTxn - compCostPerTxn)))}</td></tr>
+            <tr><td class="py-2 text-slate-400 font-semibold">Net Per Transaction</td><td class="text-right text-orange-300 font-bold">$${formatNum(Math.round(sgPerTxn))}</td><td class="text-right font-bold">$${formatNum(Math.round(compPerTxn))}</td><td class="text-right font-bold ${sgPerTxn > compPerTxn ? 'text-green-400' : 'text-red-400'}">${sgPerTxn > compPerTxn ? '+' : '-'}$${formatNum(Math.abs(Math.round(sgPerTxn - compPerTxn)))}</td></tr>
+        `;
+
+        // Update compare tab
+        updateCompareTab(grossCommission, numTxns);
+        updateScenarioTab(avgPrice, commRate);
+    }
+
+    // ========== COMPARE ALL BROKERAGES ==========
+    function updateCompareTab(grossCommission, numTxns) {
+        const results = [];
+        const sg = calcBrokerageCost(brokerages.spyglass, grossCommission, numTxns);
+
+        for (const [key, b] of Object.entries(brokerages)) {
+            const calc = calcBrokerageCost(b, grossCommission, numTxns);
+            const diff = calc.netIncome - sg.netIncome;
+            results.push({ key, ...b, ...calc, diff });
+        }
+
+        results.sort((a, b) => b.netIncome - a.netIncome);
+
+        const tbody = document.querySelector('#allBrokerageTable tbody');
+        tbody.innerHTML = results.map(r => {
+            const isSpyglass = r.key === 'spyglass';
+            const rowClass = isSpyglass ? 'bg-orange-500/10' : '';
+            const nameClass = isSpyglass ? 'text-orange-400 font-semibold' : 'text-white';
+            const diffStr = r.diff === 0 ? '—' : (r.diff > 0 ? `+$${formatNum(Math.round(r.diff))}` : `-$${formatNum(Math.abs(Math.round(r.diff)))}`);
+            const diffColor = r.diff === 0 ? 'text-slate-500' : (r.diff > 0 ? 'text-green-400' : 'text-red-400');
+            return `<tr class="${rowClass} border-b border-slate-700/30">
+                <td class="py-3 ${nameClass}">${isSpyglass ? '🏆 ' : ''}${r.name}</td>
+                <td class="text-right text-slate-300">${r.splitLabel}</td>
+                <td class="text-right text-slate-300">${r.cap > 0 ? '$'+formatNum(r.cap) : 'None'}</td>
+                <td class="text-right text-slate-300">$${formatNum(r.monthlyFee)}</td>
+                <td class="text-right text-red-400">$${formatNum(Math.round(r.totalCost))}</td>
+                <td class="text-right ${isSpyglass ? 'text-orange-300' : 'text-white'} font-semibold">$${formatNum(Math.round(r.netIncome))}</td>
+                <td class="text-right ${isSpyglass ? 'text-orange-300' : 'text-white'}">${r.effectivePct.toFixed(1)}%</td>
+                <td class="text-right ${diffColor} font-medium">${diffStr}</td>
+            </tr>`;
+        }).join('');
+
+        // Chart
+        if (compareChart) compareChart.destroy();
+        const ctx = document.getElementById('compareChart').getContext('2d');
+        compareChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: results.map(r => r.name),
+                datasets: [{
+                    label: 'Net Take-Home',
+                    data: results.map(r => Math.round(r.netIncome)),
+                    backgroundColor: results.map(r => r.key === 'spyglass' ? '#f97316' : '#475569'),
+                    borderRadius: 6,
+                    barThickness: 40,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => `$${formatNum(ctx.raw)}`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        ticks: { callback: v => '$' + formatNum(v), color: '#94a3b8' },
+                        grid: { color: 'rgba(148,163,184,0.1)' }
+                    },
+                    x: {
+                        ticks: { color: '#94a3b8', maxRotation: 45 },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    // ========== GROWTH SCENARIOS ==========
+    function updateScenarioTab(avgPrice, commRate) {
+        const compKey = document.getElementById('currentBrokerage').value;
+        const competitor = compKey === 'custom' ? getCustomBrokerage() : brokerages[compKey];
+
+        const volumes = [2000000, 5000000, 8000000, 12000000, 18000000, 25000000];
+        const sgData = [];
+        const compData = [];
+        const scenarioData = [];
+
+        volumes.forEach(vol => {
+            const numTxns = Math.round(vol / avgPrice);
+            const gc = vol * (commRate / 100);
+            const sg = calcBrokerageCost(brokerages.spyglass, gc, numTxns);
+            const comp = calcBrokerageCost(competitor, gc, numTxns);
+            sgData.push(Math.round(sg.netIncome));
+            compData.push(Math.round(comp.netIncome));
+            scenarioData.push({ vol, sg, comp, numTxns, gc });
+        });
+
+        // Chart
+        if (scenarioChart) scenarioChart.destroy();
+        const ctx = document.getElementById('scenarioChart').getContext('2d');
+        scenarioChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: volumes.map(v => '$' + (v / 1000000).toFixed(1) + 'M'),
+                datasets: [
+                    {
+                        label: 'Spyglass Realty',
+                        data: sgData,
+                        borderColor: '#f97316',
+                        backgroundColor: 'rgba(249,115,22,0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#f97316',
+                    },
+                    {
+                        label: competitor.name,
+                        data: compData,
+                        borderColor: '#64748b',
+                        backgroundColor: 'rgba(100,116,139,0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#64748b',
+                        borderDash: [5, 5],
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { labels: { color: '#94a3b8' } },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => `${ctx.dataset.label}: $${formatNum(ctx.raw)}`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        ticks: { callback: v => '$' + formatNum(v), color: '#94a3b8' },
+                        grid: { color: 'rgba(148,163,184,0.1)' }
+                    },
+                    x: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // Scenario cards
+        const highlights = [scenarioData[0], scenarioData[2], scenarioData[4]];
+        const labels = ['Emerging Agent', 'Solid Producer', 'Top Producer'];
+        document.getElementById('scenarioCards').innerHTML = highlights.map((s, i) => {
+            const diff = s.sg.netIncome - s.comp.netIncome;
+            return `<div class="card rounded-2xl p-5">
+                <div class="text-xs text-slate-400 mb-1">${labels[i]}</div>
+                <div class="text-lg font-bold text-white mb-1">$${(s.vol/1000000).toFixed(1)}M volume</div>
+                <div class="text-sm text-slate-400 mb-3">${s.numTxns} transactions/year</div>
+                <div class="flex justify-between text-sm mb-2">
+                    <span class="text-orange-400">Spyglass</span>
+                    <span class="text-white font-medium">$${formatNum(Math.round(s.sg.netIncome))}</span>
+                </div>
+                <div class="flex justify-between text-sm mb-3">
+                    <span class="text-slate-400">${competitor.name}</span>
+                    <span class="text-white font-medium">$${formatNum(Math.round(s.comp.netIncome))}</span>
+                </div>
+                <div class="border-t border-slate-700 pt-2 text-center">
+                    <span class="text-sm font-bold ${diff > 0 ? 'text-green-400' : diff < 0 ? 'text-red-400' : 'text-slate-500'}">${diff > 0 ? '+' : ''}$${formatNum(Math.round(diff))}/year at Spyglass</span>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // ========== TABS ==========
+    function switchTab(tab) {
+        ['calculator', 'compare', 'scenarios'].forEach(t => {
+            document.getElementById('panel-' + t).classList.toggle('hidden', t !== tab);
+            document.getElementById('tab-' + t).className = t === tab ? 'pb-3 text-sm font-medium tab-active transition' : 'pb-3 text-sm font-medium tab-inactive transition';
+        });
+    }
+
+    // ========== SHARE ==========
+    function shareResults() {
+        const volume = document.getElementById('volumeSlider').value;
+        const price = document.getElementById('priceSlider').value;
+        const rate = document.getElementById('rateSlider').value;
+        const comp = document.getElementById('currentBrokerage').value;
+        const params = new URLSearchParams({ v: volume, p: price, r: rate, c: comp });
+        const url = window.location.origin + window.location.pathname + '?' + params.toString();
+        
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Link copied! Share it with anyone to show this comparison.');
+            });
+        } else {
+            prompt('Copy this link:', url);
+        }
+    }
+
+    // ========== UTILS ==========
+    function formatNum(n) {
+        return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    // Load from URL params
+    function loadFromURL() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('v')) document.getElementById('volumeSlider').value = params.get('v');
+        if (params.has('p')) document.getElementById('priceSlider').value = params.get('p');
+        if (params.has('r')) document.getElementById('rateSlider').value = params.get('r');
+        if (params.has('c')) document.getElementById('currentBrokerage').value = params.get('c');
+    }
+
+    // Init
+    loadFromURL();
+    updateCalc();
+    </script>
+</body>
+</html>
