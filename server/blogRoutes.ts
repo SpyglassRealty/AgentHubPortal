@@ -1060,11 +1060,17 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
         finalSlug = `${slug}-${slugSuffix}`;
       }
 
-      // Resolve hero image URL from Google Drive
+      // Resolve hero image URL from Google Drive — download locally first
       let heroImageDirectUrl = rawHeroUrl;
-      const driveFileId = extractDriveFileId(rawHeroUrl);
-      if (driveFileId) {
-        heroImageDirectUrl = `https://drive.google.com/uc?export=view&id=${driveFileId}`;
+      const heroDriveFileId = extractDriveFileId(rawHeroUrl);
+      if (heroDriveFileId) {
+        // Download to Render first; Google Drive URLs are unreliable for cross-origin fetch from Vercel
+        const heroLocalPath = await downloadDriveImage(heroDriveFileId, `hero-${slug}.jpg`);
+        if (heroLocalPath) {
+          heroImageDirectUrl = heroLocalPath;
+        } else {
+          heroImageDirectUrl = `https://drive.google.com/uc?export=view&id=${heroDriveFileId}`;
+        }
       }
 
       // Resolve and download OG image from Google Drive, then upload to Blob
@@ -1081,9 +1087,16 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
       }
       // Upload OG image to Vercel Blob if we have a valid URL
       let ogBlobUrl: string | null = null;
-      if (ogImageDirectUrl && ogImageDirectUrl.startsWith('http')) {
+      if (ogImageDirectUrl) {
         try {
-          ogBlobUrl = await uploadImageToVercelBlob(ogImageDirectUrl, 'blog-images');
+          let ogUploadUrl = ogImageDirectUrl;
+          if (ogUploadUrl.startsWith('/')) {
+            const RENDER_BASE_OG = process.env.RENDER_EXTERNAL_URL || 'https://missioncontrol-tjfm.onrender.com';
+            ogUploadUrl = `${RENDER_BASE_OG}${ogUploadUrl}`;
+          }
+          if (ogUploadUrl.startsWith('http')) {
+            ogBlobUrl = await uploadImageToVercelBlob(ogUploadUrl, 'blog-images');
+          }
         } catch (e) { /* keep original URL as fallback */ }
       }
 
@@ -1157,7 +1170,13 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
       let localHeroUrl = heroImageDirectUrl;
       if (heroImageDirectUrl) {
         try {
-          const blobUrl = await uploadImageToVercelBlob(heroImageDirectUrl, 'blog-images');
+          // Convert relative /uploads/ paths to full URLs for the Blob upload API
+          let heroUploadUrl = heroImageDirectUrl;
+          if (heroUploadUrl.startsWith('/')) {
+            const RENDER_BASE_H = process.env.RENDER_EXTERNAL_URL || 'https://missioncontrol-tjfm.onrender.com';
+            heroUploadUrl = `${RENDER_BASE_H}${heroUploadUrl}`;
+          }
+          const blobUrl = await uploadImageToVercelBlob(heroUploadUrl, 'blog-images');
           if (blobUrl) localHeroUrl = blobUrl;
         } catch (e) { /* keep original URL as fallback */ }
       }
