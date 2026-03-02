@@ -2082,24 +2082,6 @@ export default function CmaBuilderPage() {
               Save CMA
             </Button>
             <Button
-              variant="outline"
-              disabled={!cma.subjectProperty || cma.comparableProperties.length === 0}
-              onClick={() => {
-                toast({ title: "Share feature", description: "Share functionality coming soon!", variant: "default" });
-              }}
-            >
-              Share
-            </Button>
-            <Button
-              variant="outline"
-              disabled={!cma.subjectProperty || cma.comparableProperties.length === 0}
-              onClick={() => {
-                toast({ title: "Export feature", description: "Export functionality coming soon!", variant: "default" });
-              }}
-            >
-              Export
-            </Button>
-            <Button
               className="bg-[#EF4923] hover:bg-[#d4401f] text-white"
               onClick={handleCmaPresentation}
               disabled={saveMutation.isPending || cma.comparableProperties.length === 0}
