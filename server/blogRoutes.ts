@@ -766,10 +766,19 @@ function extractSheetId(url: string): string {
   return match ? match[1] : "";
 }
 
-/** Extract Google Doc ID from a URL */
+/** Extract Google Doc ID from a URL (supports multiple formats) */
 function extractDocId(url: string): string {
-  const match = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
-  return match ? match[1] : "";
+  // Standard: docs.google.com/document/d/<ID>/...
+  const docMatch = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+  if (docMatch) return docMatch[1];
+  // drive.google.com/open?id=<ID> or drive.google.com/file/d/<ID>
+  const openMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (openMatch) return openMatch[1];
+  const fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (fileMatch) return fileMatch[1];
+  // If the value looks like a bare doc ID (no slashes, long alphanumeric)
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(url.trim())) return url.trim();
+  return "";
 }
 
 /** Extract Google Drive file ID from a URL */
