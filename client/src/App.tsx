@@ -25,6 +25,7 @@ import CmaPresentationPage from "@/components/cma-presentation/pages/CMAPresenta
 import CMAPresentationBuilder from "@/pages/CMAPresentationBuilder";
 import SharedCmaPage from "@/pages/shared-cma";
 import PulsePage from "@/pages/pulse";
+import CallDutyPage from "@/pages/call-duty";
 import AdminSettingsPage from "@/pages/admin-settings";
 import AdminPage from "@/pages/admin";
 import AdminDashboardsRouter from "@/pages/admin-dashboards";
@@ -103,6 +104,7 @@ function Router() {
       {/* Backward compatibility redirect */}
       <Route path="/cma/:id/presentation" component={CmaPresentationRedirect} />
       <Route path="/cma/:id" component={CmaBuilderPage} />
+      <Route path="/call-duty" component={CallDutyPage} />
       <Route path="/marketing" component={MarketingPage} />
       <Route path="/marketing-calendar" component={MarketingCalendarPage} />
       <Route path="/training" component={TrainingPage} />
