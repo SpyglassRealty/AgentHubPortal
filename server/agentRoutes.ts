@@ -40,6 +40,7 @@ const createAgentProfileSchema = z.object({
   indexingDirective: z.string().default('index,follow'),
   customSchema: z.record(z.any()).optional(),
   videoUrl: z.string().url().optional().or(z.literal('')),
+  repliersAgentId: z.string().max(50).optional().or(z.literal('')),
 });
 
 const updateAgentProfileSchema = createAgentProfileSchema.partial().extend({

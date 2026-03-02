@@ -24,6 +24,7 @@ import LandingPageListPage from "./admin/LandingPageList";
 import LandingPageEditorPage from "./admin/LandingPageEditor";
 import RedirectsListPage from "./admin/RedirectsList";
 import GlobalScriptsListPage from "./admin/GlobalScriptsList";
+import SavedSearchDashboard from "./admin/SavedSearchDashboard";
 import AdminBeaconPage from "./admin-beacon";
 import AdminSettingsPage from "./admin-settings";
 import AdminDashboardsRouter from "./admin-dashboards";
@@ -71,6 +72,7 @@ import {
   ArrowRightLeft as RedirectIcon,
   PenTool,
   Globe,
+  Search,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -431,6 +433,7 @@ export default function AdminPage() {
       title: "PEOPLE",
       items: [
         { name: "Agents", href: "/admin/agents", icon: Users },
+        { name: "Saved Searches", href: "/admin/saved-searches", icon: Search },
         { name: "Testimonials", href: "/admin/testimonials", icon: MessageSquare },
         { name: "Review Sources", href: "/admin/review-sources", icon: Star },
       ]
@@ -594,6 +597,7 @@ export default function AdminPage() {
               <Route path="/admin/pages" component={PagesListPage} />
               <Route path="/admin/landing-pages/:id" component={LandingPageEditorPage} />
               <Route path="/admin/landing-pages" component={LandingPageListPage} />
+              <Route path="/admin/saved-searches" component={SavedSearchDashboard} />
               <Route path="/admin/testimonials/sources" component={ReviewSourceManagerPage} />
               <Route path="/admin/testimonials/:id" component={TestimonialEditorPage} />
               <Route path="/admin/testimonials" component={TestimonialListPage} />

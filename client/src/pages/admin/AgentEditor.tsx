@@ -75,6 +75,7 @@ interface AgentFormData {
   indexingDirective: string;
   customSchema: object;
   videoUrl: string;
+  repliersAgentId: string;
 }
 
 const defaultFormData: AgentFormData = {
@@ -105,6 +106,7 @@ const defaultFormData: AgentFormData = {
   indexingDirective: "index,follow",
   customSchema: {},
   videoUrl: "",
+  repliersAgentId: "",
 };
 
 export default function AgentEditorPage() {
@@ -159,6 +161,7 @@ export default function AgentEditorPage() {
         indexingDirective: agent.indexingDirective || "index,follow",
         customSchema: agent.customSchema || {},
         videoUrl: agent.videoUrl || "",
+        repliersAgentId: agent.repliersAgentId || "",
       });
     }
   }, [agentData]);
@@ -601,6 +604,26 @@ export default function AgentEditorPage() {
                         onChange={(e) => handleInputChange("websiteUrl", e.target.value)}
                         placeholder="https://yourwebsite.com"
                       />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Repliers Integration</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="repliersAgentId">Repliers Agent ID</Label>
+                      <Input
+                        id="repliersAgentId"
+                        value={formData.repliersAgentId}
+                        onChange={(e) => handleInputChange("repliersAgentId", e.target.value)}
+                        placeholder="e.g., 106875"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Links this agent to the Repliers saved search system. Used for managing client saved searches, alerts, and messaging in Mission Control.
+                      </p>
                     </div>
                   </CardContent>
                 </Card>

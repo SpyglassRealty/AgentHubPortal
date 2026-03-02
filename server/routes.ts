@@ -114,6 +114,7 @@ import { registerDeveloperRoutes } from "./developerRoutes";
 import blogRoutes from "./blogRoutes";
 import agentRoutes from "./agentRoutes";
 import landingPageRoutes from "./landingPageRoutes";
+import savedSearchRoutes from "./savedSearchRoutes";
 import testimonialRoutes from "./testimonialRoutes";
 import pageBuilderRoutes from "./pageBuilderRoutes";
 import uploadRoutes from "./uploadRoutes";
@@ -230,6 +231,18 @@ export async function registerRoutes(
       console.log('[Migration] ✅ Blog posts custom_schema column added');
     } catch (e) {
       console.warn('[Migration] Blog posts custom_schema column migration skipped:', e.message);
+    }
+  })();
+
+  // Phase 5: Repliers Agent ID on agent directory profiles
+  (async () => {
+    try {
+      await db.execute(sql`
+        ALTER TABLE agent_directory_profiles ADD COLUMN IF NOT EXISTS repliers_agent_id VARCHAR(50)
+      `);
+      console.log('[Migration] ✅ agent_directory_profiles.repliers_agent_id column added');
+    } catch (e) {
+      console.warn('[Migration] repliers_agent_id column migration skipped:', e.message);
     }
   })();
 
@@ -5477,6 +5490,9 @@ Respond with valid JSON in this exact format:
 
   // Call Duty / Lead Duty shift scheduling
   app.use('/api/call-duty', callDutyRoutes);
+
+  // Register Phase 5 - Saved Search Dashboard (Repliers integration)
+  app.use('/api', savedSearchRoutes);
 
   // ==========================================
   // DEBUG ENDPOINT FOR DATABASE DIAGNOSIS
