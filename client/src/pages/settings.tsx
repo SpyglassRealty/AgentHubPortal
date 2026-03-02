@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1046,18 +1047,14 @@ export default function SettingsPage() {
                     
                     <div className="space-y-3">
                       <div>
-                        <Textarea
-                          id="bio"
-                          placeholder="Write about your experience, specialties, and what makes you unique as a real estate professional..."
+                        <RichTextEditor
                           value={profileForm.bio}
-                          onChange={(e) => handleProfileFormChange('bio', e.target.value)}
-                          disabled={isAgentProfileLoading || updateBioMutation.isPending}
-                          className="min-h-[120px] resize-none"
-                          maxLength={500}
+                          onChange={(html) => handleProfileFormChange('bio', html)}
+                          placeholder="Write about your experience, specialties, and what makes you unique as a real estate professional..."
                         />
                         <div className="flex justify-between items-center mt-1">
                           <span className="text-xs text-muted-foreground">
-                            {profileForm.bio.length}/500 characters
+                            Supports rich formatting: bold, italic, headings, lists, and links.
                           </span>
                           {bioChanges && (
                             <Button
