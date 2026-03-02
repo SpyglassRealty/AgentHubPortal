@@ -5652,5 +5652,191 @@ Respond with valid JSON in this exact format:
     });
   }
 
+  // Developer-only middleware
+  const isDeveloper = async (req: any, res: any, next: any) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user || user.role !== 'developer') {
+        return res.status(403).json({ message: "Developer access required" });
+      }
+      next();
+    } catch (error) {
+      console.error('[Developer Auth] Error:', error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  };
+
+  // ==========================================
+  // Developer Dashboard API Endpoints
+  // ==========================================
+
+  // Changelog endpoints
+  app.post('/api/developer/changelog', isAuthenticated, isDeveloper, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      const { description, requestedBy, commitHash, category, status } = req.body;
+      
+      if (!description) {
+        return res.status(400).json({ message: "Description is required" });
+      }
+
+      const entry = await storage.createChangelogEntry({
+        description,
+        developerName: `${user.firstName} ${user.lastName}`.trim() || user.email,
+        developerEmail: user.email,
+        requestedBy,
+        commitHash,
+        category: category || 'feature',
+        status: status || 'deployed'
+      });
+
+      res.json(entry);
+    } catch (error) {
+      console.error('[Developer API] Create changelog error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/developer/changelog', isAuthenticated, isDeveloper, async (req: any, res) => {
+    try {
+      const { category, status, developer, limit = 50, offset = 0 } = req.query;
+      const entries = await storage.getChangelogEntries({
+        category,
+        status,
+        developer,
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+      res.json(entries);
+    } catch (error) {
+      console.error('[Developer API] Get changelog error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/developer/changelog/:id', isAuthenticated, isDeveloper, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+      const entry = await storage.updateChangelogEntry(parseInt(id), updateData);
+      res.json(entry);
+    } catch (error) {
+      console.error('[Developer API] Update changelog error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/developer/changelog/:id', isAuthenticated, isDeveloper, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteChangelogEntry(parseInt(id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Developer API] Delete changelog error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Activity logs endpoint
+  app.get('/api/developer/activity-logs', isAuthenticated, isDeveloper, async (req: any, res) => {
+    try {
+      const { userEmail, actionType, dateFrom, dateTo, limit = 100, offset = 0 } = req.query;
+      const logs = await storage.getActivityLogs({
+        userEmail,
+        actionType,
+        dateFrom,
+        dateTo,
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+      res.json(logs);
+    } catch (error) {
+      console.error('[Developer API] Get activity logs error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // User management endpoints
+  app.get('/api/developer/users', isAuthenticated, isDeveloper, async (req: any, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error('[Developer API] Get users error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/developer/users/:id/role', isAuthenticated, isDeveloper, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { role } = req.body;
+      
+      if (!['developer', 'admin', 'agent', 'viewer'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+
+      const user = await storage.updateUserRole(id, role);
+      res.json(user);
+    } catch (error) {
+      console.error('[Developer API] Update user role error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Invite co-developer endpoint
+  app.post('/api/developer/invite', isAuthenticated, isDeveloper, async (req: any, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email || !email.includes('@spyglassrealty.com')) {
+        return res.status(400).json({ message: "Spyglass email address required" });
+      }
+
+      const user = await storage.inviteDeveloper(email);
+      res.json(user);
+    } catch (error) {
+      console.error('[Developer API] Invite developer error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // System health endpoint
+  app.get('/api/developer/system-health', isAuthenticated, isDeveloper, async (req: any, res) => {
+    try {
+      // Get integration status
+      const integrations = await storage.getAllIntegrations();
+      
+      // Get basic stats
+      const stats = await storage.getSystemStats();
+      
+      // Get recent errors (last 24 hours)
+      const errors = await storage.getRecentErrors();
+
+      const health = {
+        integrations: integrations.map(int => ({
+          name: int.displayName,
+          status: int.lastTestResult === 'success' ? 'connected' : 'error',
+          lastTested: int.lastTestedAt,
+          isActive: int.isActive
+        })),
+        stats,
+        errors,
+        deployment: {
+          lastDeployment: process.env.RENDER_GIT_COMMIT ? {
+            commit: process.env.RENDER_GIT_COMMIT.substring(0, 8),
+            timestamp: process.env.RENDER_DEPLOY_HOOK ? new Date().toISOString() : null
+          } : null
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      res.json(health);
+    } catch (error) {
+      console.error('[Developer API] System health error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }
