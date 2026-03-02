@@ -1508,3 +1508,44 @@ export const updateCmsPageSchema = z.object({
   category: z.string().optional(),
 });
 
+// =====================================================
+// Call Duty / Lead Duty — shift scheduling
+// =====================================================
+
+export const callDutySlots = pgTable("call_duty_slots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  date: date("date").notNull(),
+  shiftType: varchar("shift_type").notNull(), // 'morning' | 'midday' | 'evening'
+  startTime: varchar("start_time").notNull(), // '08:00' | '12:00' | '16:00'
+  endTime: varchar("end_time").notNull(),     // '12:00' | '16:00' | '20:00'
+  maxSignups: integer("max_signups").notNull().default(1),
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("idx_call_duty_slots_date_shift").on(table.date, table.shiftType),
+  index("idx_call_duty_slots_date").on(table.date),
+  index("idx_call_duty_slots_active").on(table.isActive),
+]);
+
+export type CallDutySlot = typeof callDutySlots.$inferSelect;
+export type InsertCallDutySlot = typeof callDutySlots.$inferInsert;
+
+export const callDutySignups = pgTable("call_duty_signups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slotId: varchar("slot_id").notNull().references(() => callDutySlots.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  status: varchar("status").default("active"), // 'active' | 'cancelled'
+  signedUpAt: timestamp("signed_up_at").defaultNow(),
+  cancelledAt: timestamp("cancelled_at"),
+}, (table) => [
+  uniqueIndex("idx_call_duty_signups_slot_user").on(table.slotId, table.userId),
+  index("idx_call_duty_signups_user").on(table.userId),
+  index("idx_call_duty_signups_slot").on(table.slotId),
+  index("idx_call_duty_signups_status").on(table.status),
+]);
+
+export type CallDutySignup = typeof callDutySignups.$inferSelect;
+export type InsertCallDutySignup = typeof callDutySignups.$inferInsert;
+
