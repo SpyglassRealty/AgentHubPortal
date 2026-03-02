@@ -117,6 +117,7 @@ import landingPageRoutes from "./landingPageRoutes";
 import testimonialRoutes from "./testimonialRoutes";
 import pageBuilderRoutes from "./pageBuilderRoutes";
 import uploadRoutes from "./uploadRoutes";
+import callDutyRoutes from "./callDutyRoutes";
 
 
 // Helper function to get the actual database user from request
@@ -5473,6 +5474,9 @@ Respond with valid JSON in this exact format:
   // Register CMS Enhancement Phase 4 - Testimonials & Reviews System
   app.use(testimonialRoutes);
   app.use('/api', pageBuilderRoutes);
+
+  // Call Duty / Lead Duty shift scheduling
+  app.use('/api/call-duty', callDutyRoutes);
 
   // ==========================================
   // DEBUG ENDPOINT FOR DATABASE DIAGNOSIS
