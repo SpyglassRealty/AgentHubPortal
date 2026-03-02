@@ -846,6 +846,28 @@ function extractDriveFileId(url: string): string {
   return match ? match[1] : "";
 }
 
+/** Upload an image to Vercel Blob via the spyglass-idx upload API.
+ *  Returns the permanent Blob URL, or null on failure. */
+async function uploadImageToVercelBlob(imageUrl: string, _folder = 'blog-images'): Promise<string | null> {
+  const IDX_UPLOAD_URL = process.env.IDX_UPLOAD_URL || 'https://idx.spyglassrealty.com/api/upload';
+  try {
+    const res = await fetch(IDX_UPLOAD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: imageUrl }),
+    });
+    if (!res.ok) {
+      console.error(`Blob upload failed: ${res.status}`);
+      return null;
+    }
+    const data = await res.json();
+    return data.url || null;
+  } catch (err) {
+    console.error('Blob upload error:', err);
+    return null;
+  }
+}
+
 /** Fetch a Google Doc exported as HTML and parse the blog content from it.
  *  The doc contains HTML source code as plain text in <p><span> elements.
  *  We extract all paragraph text, join it, then parse as HTML. */
@@ -1119,17 +1141,8 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
       let localHeroUrl = heroImageDirectUrl;
       if (heroImageDirectUrl) {
         try {
-          const imgRes = await fetch(heroImageDirectUrl);
-          if (imgRes.ok) {
-            const buffer = Buffer.from(await imgRes.arrayBuffer());
-            const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
-            const ext = contentType.includes('png') ? '.png' : contentType.includes('webp') ? '.webp' : '.jpg';
-            const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 12)}${ext}`;
-            const uploadsDir = require('path').join(process.cwd(), 'dist', 'public', 'uploads');
-            require('fs').mkdirSync(uploadsDir, { recursive: true });
-            require('fs').writeFileSync(require('path').join(uploadsDir, filename), buffer);
-            localHeroUrl = `/uploads/${filename}`;
-          }
+          const blobUrl = await uploadImageToVercelBlob(heroImageDirectUrl, 'blog-images');
+          if (blobUrl) localHeroUrl = blobUrl;
         } catch (e) { /* keep original URL as fallback */ }
       }
 
@@ -1309,7 +1322,17 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
       }
 
       // Populate TOC blocks with collected headings
-      const finalSections = stripHtmlFromBlogLinks(populateTocBlocks(sections));
+      let finalSections = stripHtmlFromBlogLinks(populateTocBlocks(sections));
+
+      // Upload all image block URLs to Vercel Blob for permanent hosting
+      for (const section of finalSections) {
+        if (section.type === 'image' && section.props?.url) {
+          try {
+            const blobUrl = await uploadImageToVercelBlob(section.props.url, 'blog-images');
+            if (blobUrl) section.props.url = blobUrl;
+          } catch (e) { /* keep original URL as fallback */ }
+        }
+      }
 
       const blogLinkRx = /(href=["'][^"']*?blog\/[^"']*?)\.html(["'])/gi;
       let fullContent = (articleHtml || " ").replace(blogLinkRx, "$1$2");
@@ -1334,7 +1357,7 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
             sections: finalSections,
             metaTitle: docTitle || title,
             metaDescription: metaDescription || undefined,
-            ogImageUrl: ogImageDirectUrl || heroImageDirectUrl || undefined,
+            ogImageUrl: localHeroUrl || ogImageDirectUrl || heroImageDirectUrl || undefined,
             indexingDirective: "index,follow",
             author: "Spyglass Realty",
             canonicalUrl: `https://www.spyglassrealty.com/blog/${finalSlug}`,
