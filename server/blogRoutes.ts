@@ -849,7 +849,7 @@ function extractDriveFileId(url: string): string {
 /** Upload an image to Vercel Blob via the spyglass-idx upload API.
  *  Returns the permanent Blob URL, or null on failure. */
 async function uploadImageToVercelBlob(imageUrl: string, _folder = 'blog-images'): Promise<string | null> {
-  const IDX_UPLOAD_URL = process.env.IDX_UPLOAD_URL || 'https://idx.spyglassrealty.com/api/upload';
+  const IDX_UPLOAD_URL = process.env.IDX_UPLOAD_URL || 'https://spyglass-idx.vercel.app/api/upload';
   try {
     const res = await fetch(IDX_UPLOAD_URL, {
       method: 'POST',
