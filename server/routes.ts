@@ -4906,6 +4906,7 @@ Respond with valid JSON in this exact format:
   });
 
   // GET /api/pulse/trends — Market trends for last 6 months
+  // Uses Repliers statistics endpoint for accurate median/avg across full dataset
   app.get('/api/pulse/trends', isAuthenticated, async (_req: any, res) => {
     try {
       const headers = pulseHeaders();
@@ -4913,58 +4914,58 @@ Respond with valid JSON in this exact format:
       const areaParams = PULSE_MSA_AREAS.map(a => `area=${encodeURIComponent(a)}`).join('&');
 
       const now = new Date();
-      const months: { label: string; startDate: string; endDate: string }[] = [];
+      // Build month labels for the 6-month window
+      const months: { label: string; key: string }[] = [];
       for (let i = 5; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
         months.push({
           label: d.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
-          startDate: d.toISOString().split('T')[0],
-          endDate: end.toISOString().split('T')[0],
+          key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
         });
       }
 
-      // Fetch closed sales per month (parallel)
-      const closedPromises = months.map(m => {
-        const url = `${baseUrl}?listings=true&type=Sale&status=U&lastStatus=Sld&minSoldDate=${m.startDate}&maxSoldDate=${m.endDate}&${areaParams}&resultsPerPage=100&fields=soldPrice,listPrice,daysOnMarket`;
-        return fetch(url, { headers }).then(r => r.ok ? r.json() : { listings: [], count: 0 });
-      });
+      const minSoldDate = `${months[0].key}-01`;
 
-      // Fetch active inventory per month (current snapshot for each — approximate with current)
-      // For simplicity, we'll use current active count and the closed data to compute trends
+      // Single API call: server-side statistics with monthly grouping
+      // Gets median sold price, avg days on market, and closed count across the FULL dataset
+      const statsUrl = `${baseUrl}?status=U&lastStatus=Sld&type=Sale&minSoldDate=${minSoldDate}&${areaParams}&statistics=med-soldPrice,avg-daysOnMarket,cnt-closed,grp-mth&listings=false`;
+
+      // Active inventory (current snapshot)
       const activeUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active&${areaParams}`;
-      const activePromise = fetch(activeUrl, { headers }).then(r => r.ok ? r.json() : { count: 0 });
 
-      const [closedResults, activeData] = await Promise.all([
-        Promise.all(closedPromises),
-        activePromise,
+      console.log(`[Pulse Trends] Fetching statistics: ${statsUrl}`);
+
+      const [statsRes, activeRes] = await Promise.all([
+        fetch(statsUrl, { headers }),
+        fetch(activeUrl, { headers }),
       ]);
 
-      const median = (arr: number[]) => {
-        if (!arr.length) return 0;
-        const sorted = [...arr].sort((a, b) => a - b);
-        const mid = Math.floor(sorted.length / 2);
-        return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
-      };
+      if (!statsRes.ok) {
+        const errText = await statsRes.text();
+        console.error('[Pulse Trends] Statistics API error:', statsRes.status, errText.substring(0, 300));
+        return res.status(502).json({ message: 'Repliers statistics API error' });
+      }
+
+      const statsData = await statsRes.json();
+      const activeData = activeRes.ok ? await activeRes.json() : { count: 0 };
+
+      const soldPriceStats = statsData.statistics?.soldPrice || {};
+      const domStats = statsData.statistics?.daysOnMarket || {};
 
       const trends = months.map((m, i) => {
-        const data = closedResults[i];
-        const listings = data.listings || [];
-        const count = data.count || listings.length;
-
-        const prices = listings.map((l: any) => l.soldPrice || l.closePrice || l.listPrice).filter((p: any) => p > 0);
-        const doms = listings.map((l: any) => l.daysOnMarket || l.dom || 0).filter((d: number) => d > 0);
+        const priceMonth = soldPriceStats.mth?.[m.key] || {};
+        const domMonth = domStats.mth?.[m.key] || {};
 
         return {
           month: m.label,
-          closedCount: count,
-          medianPrice: median(prices),
-          avgDom: doms.length > 0 ? Math.round(doms.reduce((a: number, b: number) => a + b, 0) / doms.length) : 0,
+          closedCount: priceMonth.count || 0,
+          medianPrice: Math.round(priceMonth.med || 0),
+          avgDom: Math.round(domMonth.avg || 0),
           activeInventory: i === months.length - 1 ? (activeData.count || 0) : null,
         };
       });
 
-      console.log(`[Pulse Trends] Returning ${trends.length} months of data`);
+      console.log(`[Pulse Trends] Returning ${trends.length} months of data (statistics API — full dataset)`);
       res.json({ trends });
     } catch (error) {
       console.error('[Pulse Trends] Error:', error);
