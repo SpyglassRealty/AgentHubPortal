@@ -71,8 +71,7 @@ export function registerCommunityPublicRoutes(app: Express) {
         .from(communities)
         .where(whereClause)
         .orderBy(
-          featured ? desc(communities.featured) : undefined,
-          asc(communities.name)
+          ...(featured ? [desc(communities.featured), asc(communities.name)] : [asc(communities.name)])
         )
         .limit(limit)
         .offset(offset);

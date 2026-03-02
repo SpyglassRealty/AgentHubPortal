@@ -16,6 +16,8 @@ import {
   agentResources,
   integrationConfigs,
   appVisibility,
+  devChangelog,
+  developerActivityLogs,
   type User, 
   type UpsertUser,
   type AgentProfile,
@@ -46,6 +48,10 @@ import {
   type IntegrationConfig,
   type InsertIntegrationConfig,
   type AppVisibility,
+  type DevChangelog,
+  type InsertDevChangelog,
+  type DeveloperActivityLog,
+  type InsertDeveloperActivityLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ne, desc, sql, gt, lt } from "drizzle-orm";
@@ -1040,6 +1046,122 @@ export class DatabaseStorage implements IStorage {
       console.warn('admin_activity_logs table does not exist, returning empty array:', error);
       return [];
     }
+  }
+
+  // Developer Dashboard Methods
+
+  async createChangelogEntry(data: InsertDevChangelog): Promise<DevChangelog> {
+    const [entry] = await db.insert(devChangelog).values(data).returning();
+    return entry;
+  }
+
+  async getChangelogEntries(filters: {
+    category?: string;
+    status?: string;
+    developer?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<DevChangelog[]> {
+    let query = db.select().from(devChangelog);
+    
+    // Apply filters (simplified for now - can be enhanced with proper where clauses)
+    const entries = await query.orderBy(desc(devChangelog.createdAt)).limit(filters.limit || 50);
+    return entries;
+  }
+
+  async updateChangelogEntry(id: number, data: Partial<InsertDevChangelog>): Promise<DevChangelog> {
+    const [entry] = await db.update(devChangelog).set({
+      ...data,
+      updatedAt: new Date()
+    }).where(eq(devChangelog.id, id)).returning();
+    return entry;
+  }
+
+  async deleteChangelogEntry(id: number): Promise<void> {
+    await db.delete(devChangelog).where(eq(devChangelog.id, id));
+  }
+
+  async logActivity(data: InsertDeveloperActivityLog): Promise<void> {
+    try {
+      await db.insert(developerActivityLogs).values(data);
+    } catch (error) {
+      console.error('Error logging activity:', error);
+      // Don't throw - activity logging shouldn't break the app
+    }
+  }
+
+  async getActivityLogs(filters: {
+    userEmail?: string;
+    actionType?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<DeveloperActivityLog[]> {
+    let query = db.select().from(developerActivityLogs);
+    
+    // Apply filters (simplified for now)
+    const logs = await query.orderBy(desc(developerActivityLogs.createdAt)).limit(filters.limit || 100);
+    return logs;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(users.firstName, users.lastName);
+  }
+
+  async updateUserRole(userId: string, role: string): Promise<User> {
+    const [user] = await db.update(users).set({ 
+      role,
+      updatedAt: new Date()
+    }).where(eq(users.id, userId)).returning();
+    return user;
+  }
+
+  async inviteDeveloper(email: string): Promise<User> {
+    // Check if user exists
+    const existingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    
+    if (existingUser.length > 0) {
+      // Update existing user to developer role
+      return await this.updateUserRole(existingUser[0].id, 'developer');
+    } else {
+      // Create new user with developer role
+      const [newUser] = await db.insert(users).values({
+        email,
+        role: 'developer',
+        firstName: email.split('@')[0].split('.')[0] || 'Developer',
+        lastName: email.split('@')[0].split('.')[1] || '',
+      }).returning();
+      return newUser;
+    }
+  }
+
+  async getSystemStats(): Promise<any> {
+    try {
+      const userCount = await db.select({ count: sql`count(*)` }).from(users);
+      const cmaCount = await db.select({ count: sql`count(*)` }).from(cmas);
+      
+      return {
+        totalUsers: userCount[0]?.count || 0,
+        totalCMAs: cmaCount[0]?.count || 0,
+        // Add more stats as needed
+      };
+    } catch (error) {
+      console.error('Error getting system stats:', error);
+      return {
+        totalUsers: 0,
+        totalCMAs: 0,
+      };
+    }
+  }
+
+  async getRecentErrors(): Promise<any[]> {
+    // For now, return empty array - can be enhanced to track actual errors
+    return [];
+  }
+
+  async getAllIntegrations(): Promise<IntegrationConfig[]> {
+    return await db.select().from(integrationConfigs);
   }
 }
 

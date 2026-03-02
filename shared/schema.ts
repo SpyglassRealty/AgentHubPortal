@@ -41,6 +41,7 @@ export const users = pgTable("users", {
   fubUserId: integer("fub_user_id"),
   rezenYentaId: varchar("rezen_yenta_id"),
   isSuperAdmin: boolean("is_super_admin").default(false),
+  role: varchar("role").default("agent"), // 'developer', 'admin', 'agent', 'viewer'
   theme: varchar("theme").default("light"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -1292,6 +1293,37 @@ export const reviewSources = pgTable("review_sources", {
 
 export type ReviewSource = typeof reviewSources.$inferSelect;
 export type InsertReviewSource = typeof reviewSources.$inferInsert;
+
+// Developer Dashboard Tables
+export const devChangelog = pgTable("dev_changelog", {
+  id: serial("id").primaryKey(),
+  description: text("description").notNull(),
+  developerName: varchar("developer_name"),
+  developerEmail: varchar("developer_email"),
+  requestedBy: varchar("requested_by"),
+  commitHash: varchar("commit_hash", { length: 100 }),
+  category: varchar("category", { length: 50 }), // 'bug_fix', 'feature', 'ui', 'database', 'api', 'deployment'
+  status: varchar("status", { length: 50 }).default("deployed"), // 'deployed', 'in_progress', 'reverted', 'pending'
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const developerActivityLogs = pgTable("developer_activity_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id"),
+  userEmail: varchar("user_email"),
+  userName: varchar("user_name"),
+  actionType: varchar("action_type", { length: 100 }), // 'create', 'update', 'delete', 'view', 'login', 'export', 'search'
+  description: text("description"),
+  metadata: jsonb("metadata"), // extra context
+  ipAddress: varchar("ip_address", { length: 45 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type DevChangelog = typeof devChangelog.$inferSelect;
+export type InsertDevChangelog = typeof devChangelog.$inferInsert;
+export type DeveloperActivityLog = typeof developerActivityLogs.$inferSelect;
+export type InsertDeveloperActivityLog = typeof developerActivityLogs.$inferInsert;
 
 export const INTEGRATION_DEFINITIONS = [
   {
