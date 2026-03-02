@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -677,15 +678,13 @@ export default function AgentEditorPage() {
                   <CardContent className="space-y-4">
                     <div>
                       <Label htmlFor="bio">Biography</Label>
-                      <Textarea
-                        id="bio"
+                      <RichTextEditor
                         value={formData.bio}
-                        onChange={(e) => handleInputChange("bio", e.target.value)}
-                        rows={6}
+                        onChange={(html) => handleInputChange("bio", html)}
                         placeholder="Tell us about yourself, your experience, and what makes you unique..."
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        {formData.bio.length} characters (recommended: 300+)
+                        Supports rich formatting: bold, italic, headings, lists, links, and images.
                       </p>
                     </div>
                     
