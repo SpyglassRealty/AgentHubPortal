@@ -1072,6 +1072,9 @@ export const agentDirectoryProfiles = pgTable("agent_directory_profiles", {
   // Custom content
   videoUrl: varchar("video_url", { length: 500 }), // Custom intro video
   
+  // Repliers integration
+  repliersAgentId: varchar("repliers_agent_id", { length: 50 }), // Repliers Agent ID for saved search management
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
