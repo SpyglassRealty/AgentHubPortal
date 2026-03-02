@@ -1058,7 +1058,7 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
         heroImageDirectUrl = `https://drive.google.com/uc?export=view&id=${driveFileId}`;
       }
 
-      // Resolve and download OG image from Google Drive
+      // Resolve and download OG image from Google Drive, then upload to Blob
       let ogImageDirectUrl = rawOgUrl;
       const ogDriveFileId = extractDriveFileId(rawOgUrl);
       if (ogDriveFileId) {
@@ -1069,6 +1069,13 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
         } else {
           ogImageDirectUrl = `https://drive.google.com/uc?export=view&id=${ogDriveFileId}`;
         }
+      }
+      // Upload OG image to Vercel Blob if we have a valid URL
+      let ogBlobUrl: string | null = null;
+      if (ogImageDirectUrl && ogImageDirectUrl.startsWith('http')) {
+        try {
+          ogBlobUrl = await uploadImageToVercelBlob(ogImageDirectUrl, 'blog-images');
+        } catch (e) { /* keep original URL as fallback */ }
       }
 
       // Parse date published (handles formats like "January 29th, 2026")
@@ -1325,10 +1332,16 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
       let finalSections = stripHtmlFromBlogLinks(populateTocBlocks(sections));
 
       // Upload all image block URLs to Vercel Blob for permanent hosting
+      const RENDER_BASE = process.env.RENDER_EXTERNAL_URL || 'https://missioncontrol-tjfm.onrender.com';
       for (const section of finalSections) {
         if (section.type === 'image' && section.props?.url) {
           try {
-            const blobUrl = await uploadImageToVercelBlob(section.props.url, 'blog-images');
+            // Convert relative /uploads/ paths to full URLs so the Blob upload API can fetch them
+            let imageUrl = section.props.url;
+            if (imageUrl.startsWith('/')) {
+              imageUrl = `${RENDER_BASE}${imageUrl}`;
+            }
+            const blobUrl = await uploadImageToVercelBlob(imageUrl, 'blog-images');
             if (blobUrl) section.props.url = blobUrl;
           } catch (e) { /* keep original URL as fallback */ }
         }
@@ -1357,7 +1370,7 @@ router.post("/admin/blog/import-sheet", async (req, res) => {
             sections: finalSections,
             metaTitle: docTitle || title,
             metaDescription: metaDescription || undefined,
-            ogImageUrl: localHeroUrl || ogImageDirectUrl || heroImageDirectUrl || undefined,
+            ogImageUrl: ogBlobUrl || ogImageDirectUrl || localHeroUrl || heroImageDirectUrl || undefined,
             indexingDirective: "index,follow",
             author: "Spyglass Realty",
             canonicalUrl: `https://www.spyglassrealty.com/blog/${finalSlug}`,
