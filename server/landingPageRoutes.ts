@@ -17,15 +17,18 @@ const pageTypeOptions = [
   'join-team', 'join-real', 'about', 'newsroom', 'faq', 'custom'
 ] as const;
 
+// Page-builder block: { id, type, props: { ... } } — accept any shape
 const sectionSchema = z.object({
   id: z.string(),
-  heading: z.string(),
-  content: z.string(),
+  type: z.string().optional(),
+  heading: z.string().optional(),
+  content: z.string().optional(),
+  props: z.record(z.any()).optional(),
   imageUrl: z.string().optional(),
   ctaText: z.string().optional(),
   ctaUrl: z.string().optional(),
-  order: z.number().int(),
-});
+  order: z.number().int().optional(),
+}).passthrough();
 
 const createLandingPageSchema = z.object({
   title: z.string().min(1, "Title is required").max(255),
