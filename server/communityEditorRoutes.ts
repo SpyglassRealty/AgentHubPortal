@@ -356,4 +356,122 @@ export function registerCommunityEditorRoutes(app: Express) {
       res.status(500).json({ message: "Failed to toggle publish status" });
     }
   });
+
+  // ── GET /api/listings/by-polygon — fetch Repliers listings within a community polygon ──
+  // Public route (no auth) — used by published CMS pages
+  app.get("/api/listings/by-polygon", async (req: any, res) => {
+    try {
+      const communityId = parseInt(req.query.communityId as string, 10);
+      if (!communityId || isNaN(communityId)) {
+        return res.status(400).json({ message: "communityId is required" });
+      }
+
+      const apiKey = process.env.IDX_GRID_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ message: "Listings API not configured" });
+      }
+
+      // Look up community polygon
+      const [community] = await db
+        .select({ polygon: communities.polygon, name: communities.name, locationType: communities.locationType, filterValue: communities.filterValue })
+        .from(communities)
+        .where(eq(communities.id, communityId))
+        .limit(1);
+
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+
+      if (!community.polygon || community.polygon.length < 3) {
+        return res.status(400).json({ message: "Community does not have a valid polygon" });
+      }
+
+      // Convert DB format [lng, lat][] to Repliers format "lat,lng|lat,lng|..."
+      // Also close the polygon (first and last point must be the same)
+      const polygonCoords = community.polygon.map(([lng, lat]: [number, number]) => `${lat},${lng}`);
+      // Close the ring
+      const firstCoord = polygonCoords[0];
+      const lastCoord = polygonCoords[polygonCoords.length - 1];
+      if (firstCoord !== lastCoord) {
+        polygonCoords.push(firstCoord);
+      }
+      const polygonParam = polygonCoords.join("|");
+
+      // Build query params
+      const type = (req.query.type as string) || "Sale";
+      const searchClass = (req.query.class as string) || "residential";
+      const sort = (req.query.sort as string) || "createdOnDesc";
+      const limit = Math.min(Math.max(1, parseInt((req.query.limit as string) || "12", 10)), 50);
+      const page = Math.max(1, parseInt((req.query.page as string) || "1", 10));
+
+      // Optional filters
+      const minPrice = req.query.minPrice as string;
+      const maxPrice = req.query.maxPrice as string;
+      const minBeds = req.query.minBeds as string;
+      const minBaths = req.query.minBaths as string;
+      const status = (req.query.status as string) || "Active";
+
+      const params = new URLSearchParams({
+        type,
+        class: searchClass,
+        status: status === "Active" ? "A" : status,
+        sortBy: sort,
+        resultsPerPage: limit.toString(),
+        pageNum: page.toString(),
+        map: polygonParam,
+      });
+
+      if (minPrice) params.append("minPrice", minPrice);
+      if (maxPrice) params.append("maxPrice", maxPrice);
+      if (minBeds) params.append("minBeds", minBeds);
+      if (minBaths) params.append("minBaths", minBaths);
+
+      const url = `https://api.repliers.io/listings?${params.toString()}`;
+      console.log(`[Listings by Polygon] Fetching for community "${community.name}" (${community.polygon.length} pts)`);
+
+      const response = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+          "REPLIERS-API-KEY": apiKey,
+        },
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error(`[Listings by Polygon] Repliers API error ${response.status}:`, errText.substring(0, 500));
+        return res.status(response.status).json({ message: "Failed to fetch listings from MLS" });
+      }
+
+      const data = await response.json();
+      const listings = (data.listings || []).map((listing: any) => ({
+        mlsNumber: listing.mlsNumber,
+        listPrice: listing.listPrice,
+        address: listing.address?.unparsedAddress || listing.address?.streetName || "Address unavailable",
+        city: listing.address?.city || "",
+        state: listing.address?.state || "TX",
+        postalCode: listing.address?.postalCode || "",
+        bedrooms: listing.details?.numBedrooms || listing.details?.numBedroomsTotal || 0,
+        bathrooms: listing.details?.numBathrooms || listing.details?.numBathroomsFull || 0,
+        sqft: listing.details?.sqft || listing.details?.livingArea || 0,
+        photo: listing.images?.[0] || null,
+        photos: (listing.images || []).slice(0, 6),
+        status: listing.standardStatus || listing.status || "Active",
+        daysOnMarket: listing.daysOnMarket || 0,
+        yearBuilt: listing.details?.yearBuilt || null,
+        propertyType: listing.details?.propertyType || listing.type || "",
+        listDate: listing.listDate || null,
+      }));
+
+      res.json({
+        listings,
+        count: data.count || listings.length,
+        page,
+        limit,
+        communityName: community.name,
+      });
+    } catch (error) {
+      console.error("[Listings by Polygon] Error:", error);
+      res.status(500).json({ message: "Failed to fetch listings" });
+    }
+  });
 }

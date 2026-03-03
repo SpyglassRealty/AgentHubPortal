@@ -403,7 +403,40 @@ function HtmlBlock({ content }: { content: Record<string, any> }) {
   );
 }
 
+interface IdxListing {
+  mlsNumber: string;
+  listPrice: number;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  bedrooms: number;
+  bathrooms: number;
+  sqft: number;
+  photo: string | null;
+  photos: string[];
+  status: string;
+  daysOnMarket: number;
+  yearBuilt: number | null;
+  propertyType: string;
+  listDate: string | null;
+}
+
 function IdxFeedBlock({ content }: { content: Record<string, any> }) {
+  const communityId = content.communityId;
+  const limit = content.pageLimit || 12;
+  const sortField = content.sortField || "ListingPrice";
+  const sortOrder = content.sortOrder || "DESC";
+
+  // Map sort fields to Repliers sortBy format
+  const sortByMap: Record<string, string> = {
+    ListingPrice: sortOrder === "ASC" ? "listPriceAsc" : "listPriceDesc",
+    ListDate: sortOrder === "ASC" ? "createdOnAsc" : "createdOnDesc",
+    DaysOnMarket: sortOrder === "ASC" ? "daysOnMarketAsc" : "daysOnMarketDesc",
+  };
+  const sort = sortByMap[sortField] || "createdOnDesc";
+
+  // Fetch communities for the name display
   const { data: communities } = useQuery<Array<{ id: number; name: string }>>({
     queryKey: ["/api/admin/communities/with-polygons"],
     queryFn: async () => {
@@ -414,57 +447,180 @@ function IdxFeedBlock({ content }: { content: Record<string, any> }) {
     staleTime: 60000,
   });
 
-  const communityName = content.communityId
-    ? communities?.find((c) => c.id === content.communityId)?.name || `Community #${content.communityId}`
+  const communityName = communityId
+    ? communities?.find((c) => c.id === communityId)?.name || `Community #${communityId}`
     : "All Communities";
+
+  // Fetch real listings from Repliers via polygon
+  const { data: listingsData, isLoading: listingsLoading, error: listingsError } = useQuery<{
+    listings: IdxListing[];
+    count: number;
+    communityName: string;
+  }>({
+    queryKey: ["/api/listings/by-polygon", communityId, sort, limit],
+    queryFn: async () => {
+      if (!communityId) return { listings: [], count: 0, communityName: "" };
+      const params = new URLSearchParams({
+        communityId: communityId.toString(),
+        sort,
+        limit: limit.toString(),
+        class: (content.searchType || "residential").toLowerCase(),
+      });
+      const res = await fetch(`/api/listings/by-polygon?${params.toString()}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to fetch listings");
+      }
+      return res.json();
+    },
+    enabled: !!communityId,
+    staleTime: 300000, // 5 min cache
+  });
+
+  const listings = listingsData?.listings || [];
+
+  // If no community selected, show config preview
+  if (!communityId) {
+    return (
+      <div className="border rounded-xl p-6 bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-3xl">🏘</span>
+          <div>
+            <h3 className="font-bold text-lg">IDX Listing Feed</h3>
+            <p className="text-sm text-muted-foreground">
+              Select a community in the properties panel to display live MLS listings
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="bg-white rounded-lg p-3 border">
+            <span className="text-muted-foreground text-xs">Search Type</span>
+            <p className="font-medium">{content.searchType || "Residential"}</p>
+          </div>
+          <div className="bg-white rounded-lg p-3 border">
+            <span className="text-muted-foreground text-xs">Sort</span>
+            <p className="font-medium">
+              {sortField} ({sortOrder})
+            </p>
+          </div>
+        </div>
+        {/* Placeholder skeleton cards */}
+        <div className="grid grid-cols-3 gap-2 mt-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded-lg border overflow-hidden">
+              <div className="h-16 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                <span className="text-gray-400 text-sm">🏠</span>
+              </div>
+              <div className="p-2">
+                <div className="h-2 bg-gray-200 rounded w-3/4 mb-1"></div>
+                <div className="h-2 bg-gray-100 rounded w-1/2"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="border rounded-xl p-6 bg-gradient-to-br from-blue-50 to-indigo-50">
-      <div className="flex items-center gap-3 mb-4">
-        <span className="text-3xl">🏘</span>
-        <div>
-          <h3 className="font-bold text-lg">IDX Listing Feed</h3>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">🏘</span>
+          <div>
+            <h3 className="font-bold text-lg">Listings in {communityName}</h3>
+            <p className="text-sm text-muted-foreground">
+              {listingsLoading
+                ? "Loading live MLS listings..."
+                : listingsError
+                ? "Error loading listings"
+                : `${listingsData?.count || 0} active listings`}
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2 text-xs text-muted-foreground">
+          <span className="bg-white rounded px-2 py-1 border">{content.searchType || "Residential"}</span>
+          <span className="bg-white rounded px-2 py-1 border">{sortField} {sortOrder}</span>
+        </div>
+      </div>
+
+      {/* Loading state */}
+      {listingsLoading && (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {Array.from({ length: Math.min(limit, 6) }).map((_, i) => (
+            <div key={i} className="bg-white rounded-lg border overflow-hidden animate-pulse">
+              <div className="h-32 bg-gray-200" />
+              <div className="p-3 space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-1/2" />
+                <div className="h-3 bg-gray-100 rounded w-3/4" />
+                <div className="h-3 bg-gray-100 rounded w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Error state */}
+      {listingsError && !listingsLoading && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+          <p className="text-sm text-red-600">
+            Could not load listings. The MLS API may be temporarily unavailable.
+          </p>
+        </div>
+      )}
+
+      {/* Listings grid */}
+      {!listingsLoading && !listingsError && listings.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {listings.slice(0, limit).map((listing) => (
+            <div key={listing.mlsNumber} className="bg-white rounded-lg border overflow-hidden hover:shadow-md transition-shadow">
+              {listing.photo ? (
+                <img
+                  src={listing.photo}
+                  alt={listing.address}
+                  className="w-full h-32 object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-full h-32 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                  <span className="text-2xl">🏠</span>
+                </div>
+              )}
+              <div className="p-3">
+                <p className="font-bold text-base">
+                  ${listing.listPrice?.toLocaleString() || "N/A"}
+                </p>
+                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                  {listing.address}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {listing.city}{listing.state ? `, ${listing.state}` : ""} {listing.postalCode}
+                </p>
+                <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
+                  {listing.bedrooms > 0 && <span>{listing.bedrooms} Beds</span>}
+                  {listing.bathrooms > 0 && <span>{listing.bathrooms} Baths</span>}
+                  {listing.sqft > 0 && <span>{listing.sqft.toLocaleString()} sqft</span>}
+                </div>
+                {listing.daysOnMarket > 0 && (
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {listing.daysOnMarket} days on market
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* No results */}
+      {!listingsLoading && !listingsError && listings.length === 0 && (
+        <div className="bg-white rounded-lg border p-6 text-center">
+          <span className="text-3xl block mb-2">🔍</span>
           <p className="text-sm text-muted-foreground">
-            Live MLS listings from {communityName}
+            No active listings found in this community polygon.
           </p>
         </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3 text-sm">
-        <div className="bg-white rounded-lg p-3 border">
-          <span className="text-muted-foreground text-xs">Search Type</span>
-          <p className="font-medium">{content.searchType || "Residential"}</p>
-        </div>
-        <div className="bg-white rounded-lg p-3 border">
-          <span className="text-muted-foreground text-xs">Sort</span>
-          <p className="font-medium">
-            {content.sortField || "ListingPrice"} ({content.sortOrder || "DESC"})
-          </p>
-        </div>
-        <div className="bg-white rounded-lg p-3 border">
-          <span className="text-muted-foreground text-xs">Results Per Page</span>
-          <p className="font-medium">{content.pageLimit || 12}</p>
-        </div>
-        {content.searchSubtype && (
-          <div className="bg-white rounded-lg p-3 border">
-            <span className="text-muted-foreground text-xs">Subtype</span>
-            <p className="font-medium">{content.searchSubtype}</p>
-          </div>
-        )}
-      </div>
-      {/* Placeholder listing cards */}
-      <div className="grid grid-cols-3 gap-2 mt-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-white rounded-lg border overflow-hidden">
-            <div className="h-16 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-              <span className="text-gray-400 text-sm">🏠</span>
-            </div>
-            <div className="p-2">
-              <div className="h-2 bg-gray-200 rounded w-3/4 mb-1"></div>
-              <div className="h-2 bg-gray-100 rounded w-1/2"></div>
-            </div>
-          </div>
-        ))}
-      </div>
+      )}
     </div>
   );
 }

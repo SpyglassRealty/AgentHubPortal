@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import mapboxgl from "mapbox-gl";
-import MapboxDraw from "@mapbox/mapbox-gl-draw";
-import "mapbox-gl/dist/mapbox-gl.css";
-import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import "leaflet-draw";
+import "leaflet-draw/dist/leaflet.draw.css";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,7 +39,6 @@ import {
   MapPin,
   Pencil,
   Trash2,
-  Plus,
   Save,
   Loader2,
   Map,
@@ -47,6 +46,14 @@ import {
   EyeOff,
   Search,
 } from "lucide-react";
+
+// Fix Leaflet default marker icon issue with bundlers
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
 
 interface CommunityPolygon {
   id: number;
@@ -78,9 +85,10 @@ export default function PolygonManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const drawRef = useRef<MapboxDraw | null>(null);
-  const [mapboxToken, setMapboxToken] = useState("");
+  const mapRef = useRef<L.Map | null>(null);
+  const drawControlRef = useRef<L.Control.Draw | null>(null);
+  const drawnItemsRef = useRef<L.FeatureGroup>(new L.FeatureGroup());
+  const polygonLayersRef = useRef<L.FeatureGroup>(new L.FeatureGroup());
   const [mapReady, setMapReady] = useState(false);
 
   const [editingCommunity, setEditingCommunity] = useState<CommunityPolygon | null>(null);
@@ -94,14 +102,6 @@ export default function PolygonManager() {
   const [saveSlug, setSaveSlug] = useState("");
   const [saveLocationType, setSaveLocationType] = useState<string>("polygon");
   const [saveFilterValue, setSaveFilterValue] = useState("");
-
-  // Fetch mapbox token
-  useEffect(() => {
-    fetch("/api/mapbox-token")
-      .then((res) => res.json())
-      .then((data) => setMapboxToken(data.token))
-      .catch(() => console.warn("Failed to load Mapbox token"));
-  }, []);
 
   // Fetch communities with polygons
   const { data: communities = [], isLoading } = useQuery<CommunityPolygon[]>({
@@ -147,10 +147,8 @@ export default function PolygonManager() {
       toast({ title: "Polygon saved successfully" });
       setShowSaveDialog(false);
       resetForm();
-      // Clear drawn polygon from map
-      if (drawRef.current) {
-        drawRef.current.deleteAll();
-      }
+      // Clear drawn items from map
+      drawnItemsRef.current.clearLayers();
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -179,151 +177,119 @@ export default function PolygonManager() {
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current || !mapboxToken) return;
+    if (!mapContainerRef.current || mapRef.current) return;
 
-    mapboxgl.accessToken = mapboxToken;
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/streets-v11",
-      center: [-97.7431, 30.2672],
+    const map = L.map(mapContainerRef.current, {
+      center: [30.2672, -97.7431],
       zoom: 10,
+      zoomControl: true,
     });
 
-    const draw = new MapboxDraw({
-      displayControlsDefault: false,
-      controls: {
-        polygon: true,
-        trash: true,
+    // OpenStreetMap tiles — free, no API key
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(map);
+
+    // Add layers for drawn items and community polygons
+    drawnItemsRef.current.addTo(map);
+    polygonLayersRef.current.addTo(map);
+
+    // Set up Leaflet Draw
+    const drawControl = new L.Control.Draw({
+      position: "topleft",
+      draw: {
+        polygon: {
+          allowIntersection: false,
+          showArea: true,
+          shapeOptions: {
+            color: "#3b82f6",
+            weight: 2,
+            fillOpacity: 0.2,
+          },
+        },
+        polyline: false,
+        rectangle: false,
+        circle: false,
+        circlemarker: false,
+        marker: false,
       },
-      defaultMode: "simple_select",
+      edit: {
+        featureGroup: drawnItemsRef.current,
+        remove: true,
+      },
     });
 
-    map.addControl(draw);
-    map.addControl(new mapboxgl.NavigationControl(), "top-right");
+    map.addControl(drawControl);
+    drawControlRef.current = drawControl;
 
-    map.on("draw.create", (e: any) => {
-      const coords = e.features[0]?.geometry?.coordinates?.[0];
-      if (coords) {
-        // Convert to [lng, lat][] format (remove closing duplicate point)
-        const polygon: [number, number][] = coords.slice(0, -1).map((c: number[]) => [c[0], c[1]]);
-        setDrawnPolygon(polygon);
-        setShowSaveDialog(true);
-      }
+    // Handle draw:created event
+    map.on(L.Draw.Event.CREATED, (e: any) => {
+      const layer = e.layer as L.Polygon;
+      drawnItemsRef.current.clearLayers();
+      drawnItemsRef.current.addLayer(layer);
+
+      // Extract coordinates as [lng, lat][] (DB format)
+      const latLngs = layer.getLatLngs()[0] as L.LatLng[];
+      const polygon: [number, number][] = latLngs.map((ll) => [ll.lng, ll.lat]);
+      setDrawnPolygon(polygon);
+      setShowSaveDialog(true);
     });
 
-    map.on("draw.update", (e: any) => {
-      const coords = e.features[0]?.geometry?.coordinates?.[0];
-      if (coords) {
-        const polygon: [number, number][] = coords.slice(0, -1).map((c: number[]) => [c[0], c[1]]);
-        setDrawnPolygon(polygon);
-      }
+    // Handle draw:edited event
+    map.on(L.Draw.Event.EDITED, (e: any) => {
+      const layers = e.layers;
+      layers.eachLayer((layer: any) => {
+        if (layer instanceof L.Polygon) {
+          const latLngs = layer.getLatLngs()[0] as L.LatLng[];
+          const polygon: [number, number][] = latLngs.map((ll) => [ll.lng, ll.lat]);
+          setDrawnPolygon(polygon);
+        }
+      });
     });
 
-    map.on("load", () => {
-      setMapReady(true);
-    });
-
+    setMapReady(true);
     mapRef.current = map;
-    drawRef.current = draw;
 
     return () => {
       map.remove();
       mapRef.current = null;
-      drawRef.current = null;
+      drawControlRef.current = null;
     };
-  }, [mapboxToken]);
+  }, []);
 
   // Render existing polygons on map
   useEffect(() => {
     if (!mapRef.current || !mapReady || !communities.length) return;
 
-    const map = mapRef.current;
+    // Clear previous community polygon layers
+    polygonLayersRef.current.clearLayers();
 
-    // Remove previous polygon layers/sources
-    communities.forEach((_, i) => {
-      const layerId = `community-polygon-${i}`;
-      const outlineId = `community-polygon-outline-${i}`;
-      const sourceId = `community-polygon-source-${i}`;
-      if (map.getLayer(layerId)) map.removeLayer(layerId);
-      if (map.getLayer(outlineId)) map.removeLayer(outlineId);
-      if (map.getSource(sourceId)) map.removeSource(sourceId);
-    });
-
-    // Also remove any stale layers from previous renders
-    const style = map.getStyle();
-    if (style?.layers) {
-      style.layers.forEach((layer) => {
-        if (layer.id.startsWith("community-polygon-")) {
-          map.removeLayer(layer.id);
-        }
-      });
-    }
-    if (style?.sources) {
-      Object.keys(style.sources).forEach((sourceId) => {
-        if (sourceId.startsWith("community-polygon-source-")) {
-          map.removeSource(sourceId);
-        }
-      });
-    }
-
-    communities.forEach((community, i) => {
+    communities.forEach((community) => {
       if (!community.polygon || community.polygon.length < 3) return;
 
-      const sourceId = `community-polygon-source-${i}`;
-      const layerId = `community-polygon-${i}`;
-      const outlineId = `community-polygon-outline-${i}`;
+      // Convert [lng, lat][] to [lat, lng][] for Leaflet
+      const latLngs: L.LatLngExpression[] = community.polygon.map(
+        ([lng, lat]) => [lat, lng] as [number, number]
+      );
 
-      // Close the polygon ring
-      const coords = [...community.polygon, community.polygon[0]];
+      const color = community.published ? "#3b82f6" : "#9ca3af";
+      const borderColor = community.published ? "#2563eb" : "#6b7280";
 
-      map.addSource(sourceId, {
-        type: "geojson",
-        data: {
-          type: "Feature",
-          properties: { name: community.name, id: community.id },
-          geometry: {
-            type: "Polygon",
-            coordinates: [coords],
-          },
-        },
+      const poly = L.polygon(latLngs, {
+        color: borderColor,
+        fillColor: color,
+        fillOpacity: 0.2,
+        weight: 2,
       });
 
-      map.addLayer({
-        id: layerId,
-        type: "fill",
-        source: sourceId,
-        paint: {
-          "fill-color": community.published ? "#3b82f6" : "#9ca3af",
-          "fill-opacity": 0.2,
-        },
-      });
+      poly.bindPopup(
+        `<div class="p-2"><strong>${community.name}</strong><br/><span style="font-size:12px;color:#666">${community.locationType} · ${community.polygon.length} points</span></div>`
+      );
 
-      map.addLayer({
-        id: outlineId,
-        type: "line",
-        source: sourceId,
-        paint: {
-          "line-color": community.published ? "#2563eb" : "#6b7280",
-          "line-width": 2,
-        },
-      });
+      poly.bindTooltip(community.name, { sticky: true, opacity: 0.8 });
 
-      // Add popup on click
-      map.on("click", layerId, (e: any) => {
-        new mapboxgl.Popup()
-          .setLngLat(e.lngLat)
-          .setHTML(
-            `<div class="p-2"><strong>${community.name}</strong><br/><span class="text-xs text-gray-500">${community.locationType} · ${community.polygon?.length || 0} points</span></div>`
-          )
-          .addTo(map);
-      });
-
-      map.on("mouseenter", layerId, () => {
-        map.getCanvas().style.cursor = "pointer";
-      });
-      map.on("mouseleave", layerId, () => {
-        map.getCanvas().style.cursor = "";
-      });
+      polygonLayersRef.current.addLayer(poly);
     });
   }, [communities, mapReady]);
 
@@ -361,7 +327,7 @@ export default function PolygonManager() {
   };
 
   const handleEdit = (community: CommunityPolygon) => {
-    if (!drawRef.current || !community.polygon) return;
+    if (!mapRef.current || !community.polygon) return;
 
     setEditingCommunity(community);
     setSaveName(community.name);
@@ -369,41 +335,43 @@ export default function PolygonManager() {
     setSaveLocationType(community.locationType);
     setSaveFilterValue(community.filterValue || "");
 
-    // Load polygon into draw
-    drawRef.current.deleteAll();
-    const coords = [...community.polygon, community.polygon[0]];
-    const featureId = drawRef.current.add({
-      type: "Feature",
-      properties: {},
-      geometry: {
-        type: "Polygon",
-        coordinates: [coords],
-      },
+    // Clear previously drawn items and load this polygon for editing
+    drawnItemsRef.current.clearLayers();
+
+    // Convert [lng, lat][] to [lat, lng][] for Leaflet
+    const latLngs: L.LatLngExpression[] = community.polygon.map(
+      ([lng, lat]) => [lat, lng] as [number, number]
+    );
+
+    const editPoly = L.polygon(latLngs, {
+      color: "#f59e0b",
+      fillColor: "#f59e0b",
+      fillOpacity: 0.3,
+      weight: 3,
     });
 
+    drawnItemsRef.current.addLayer(editPoly);
     setDrawnPolygon(community.polygon);
     setShowSaveDialog(true);
 
     // Fly to polygon
     if (community.centroid) {
-      mapRef.current?.flyTo({
-        center: [community.centroid.lng, community.centroid.lat],
-        zoom: 13,
-      });
-    }
-
-    // Switch to edit mode
-    if (featureId[0]) {
-      drawRef.current.changeMode("direct_select", { featureId: featureId[0] });
+      mapRef.current.flyTo([community.centroid.lat, community.centroid.lng], 13);
+    } else {
+      mapRef.current.fitBounds(editPoly.getBounds(), { padding: [40, 40] });
     }
   };
 
   const handleFlyTo = (community: CommunityPolygon) => {
-    if (!community.centroid || !mapRef.current) return;
-    mapRef.current.flyTo({
-      center: [community.centroid.lng, community.centroid.lat],
-      zoom: 13,
-    });
+    if (!mapRef.current) return;
+    if (community.centroid) {
+      mapRef.current.flyTo([community.centroid.lat, community.centroid.lng], 13);
+    } else if (community.polygon && community.polygon.length >= 3) {
+      const latLngs: L.LatLngExpression[] = community.polygon.map(
+        ([lng, lat]) => [lat, lng] as [number, number]
+      );
+      mapRef.current.fitBounds(L.latLngBounds(latLngs), { padding: [40, 40] });
+    }
   };
 
   const filteredCommunities = communities.filter(
@@ -512,23 +480,13 @@ export default function PolygonManager() {
 
       {/* Map */}
       <div className="flex-1 rounded-xl overflow-hidden border relative">
-        {!mapboxToken ? (
-          <div className="h-full flex items-center justify-center bg-muted">
-            <div className="text-center text-muted-foreground">
-              <Map className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p className="font-medium">Loading map...</p>
-              <p className="text-sm">Fetching Mapbox token</p>
-            </div>
-          </div>
-        ) : (
-          <div ref={mapContainerRef} className="h-full w-full" />
-        )}
+        <div ref={mapContainerRef} className="h-full w-full" />
 
         {/* Map instructions overlay */}
         {mapReady && (
-          <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-md">
+          <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-md z-[1000]">
             <p className="text-xs text-gray-600">
-              <strong>Draw:</strong> Click the polygon tool ▢ to draw a community boundary.{" "}
+              <strong>Draw:</strong> Click the polygon tool ▢ on the left to draw a community boundary.{" "}
               <strong>Edit:</strong> Click a saved polygon in the sidebar.
             </p>
           </div>
@@ -540,7 +498,7 @@ export default function PolygonManager() {
         if (!open) {
           setShowSaveDialog(false);
           if (!editingCommunity) {
-            drawRef.current?.deleteAll();
+            drawnItemsRef.current.clearLayers();
             resetForm();
           }
         }
@@ -616,7 +574,7 @@ export default function PolygonManager() {
               onClick={() => {
                 setShowSaveDialog(false);
                 if (!editingCommunity) {
-                  drawRef.current?.deleteAll();
+                  drawnItemsRef.current.clearLayers();
                   resetForm();
                 }
               }}
