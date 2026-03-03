@@ -117,6 +117,7 @@ import landingPageRoutes from "./landingPageRoutes";
 import savedSearchRoutes from "./savedSearchRoutes";
 import testimonialRoutes from "./testimonialRoutes";
 import pageBuilderRoutes from "./pageBuilderRoutes";
+import corePageRoutes from "./corePageRoutes";
 import uploadRoutes from "./uploadRoutes";
 import callDutyRoutes from "./callDutyRoutes";
 import multicamRoutes from "./multicamRoutes";
@@ -5505,6 +5506,9 @@ Respond with valid JSON in this exact format:
   // Register CMS Enhancement Phase 4 - Testimonials & Reviews System
   app.use(testimonialRoutes);
   app.use('/api', pageBuilderRoutes);
+
+  // Register Core Page import routes
+  app.use('/api', corePageRoutes);
 
   // Call Duty / Lead Duty shift scheduling
   app.use('/api/call-duty', callDutyRoutes);

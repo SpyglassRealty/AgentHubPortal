@@ -20,6 +20,7 @@ import PageEditorPage from "./admin/page-editor";
 import BlogPageEditorPage from "./admin/blog-page-editor";
 import CommunityPageEditorPage from "./admin/community-page-editor";
 import CorePageEditorPage from "./admin/core-page-editor";
+import CoreImportPage from "./admin/core-import";
 import LandingPageListPage from "./admin/LandingPageList";
 import LandingPageEditorPage from "./admin/LandingPageEditor";
 import RedirectsListPage from "./admin/RedirectsList";
@@ -603,6 +604,7 @@ export default function AdminPage() {
               <Route path="/admin/pages/blog/:id/edit" component={BlogPageEditorPage} />
               <Route path="/admin/pages/community/new" component={CommunityPageEditorPage} />
               <Route path="/admin/pages/community/:id/edit" component={CommunityPageEditorPage} />
+              <Route path="/admin/core/import" component={CoreImportPage} />
               <Route path="/admin/pages/core/new" component={CorePageEditorPage} />
               <Route path="/admin/pages/core/:id/edit" component={CorePageEditorPage} />
               <Route path="/admin/pages/new" component={PageEditorPage} />
