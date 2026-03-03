@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, Switch, Route } from "wouter";
 
@@ -25,7 +25,7 @@ import LandingPageEditorPage from "./admin/LandingPageEditor";
 import RedirectsListPage from "./admin/RedirectsList";
 import GlobalScriptsListPage from "./admin/GlobalScriptsList";
 import SavedSearchDashboard from "./admin/SavedSearchDashboard";
-import PolygonManagerPage from "./admin/PolygonManager";
+const PolygonManagerPage = lazy(() => import("./admin/PolygonManager"));
 import MulticamEditorPage from "./admin/MulticamEditor";
 import AdminBeaconPage from "./admin-beacon";
 import AdminSettingsPage from "./admin-settings";
@@ -582,7 +582,13 @@ export default function AdminPage() {
               <Route path="/admin/site-editor" component={() => <SiteEditorContent />} />
               <Route path="/admin/beacon" component={AdminBeaconPage} />
               <Route path="/admin/settings" component={AdminSettingsPage} />
-              <Route path="/admin/polygons" component={PolygonManagerPage} />
+              <Route path="/admin/polygons">
+                {() => (
+                  <Suspense fallback={<div className="flex items-center justify-center py-20">Loading Polygon Manager...</div>}>
+                    <PolygonManagerPage />
+                  </Suspense>
+                )}
+              </Route>
               <Route path="/admin/communities/:slug" component={CommunityEditorPage} />
               <Route path="/admin/communities" component={CommunityListPage} />
               <Route path="/admin/redirects" component={RedirectsListPage} />
