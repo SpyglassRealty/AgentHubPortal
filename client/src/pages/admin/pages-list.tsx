@@ -194,6 +194,13 @@ export default function PagesListPage() {
               Import Blogs
             </Button>
             <Button
+              variant="outline"
+              onClick={() => setLocation('/admin/core/import')}
+            >
+              <Upload className="h-4 w-4 mr-1" />
+              Import Core Pages
+            </Button>
+            <Button
               className="bg-[#EF4923] hover:bg-[#d63d1c]"
               onClick={() => setIsNewPageDialogOpen(true)}
             >
