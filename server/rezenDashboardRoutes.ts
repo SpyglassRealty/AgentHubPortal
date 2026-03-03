@@ -488,9 +488,15 @@ export function registerRezenDashboardRoutes(app: Express): void {
         }
 
         const cacheKey = `weekly_deals_${yentaId}`;
-        const cached = getCached<any>(cacheKey);
-        if (cached) {
-          return res.json(cached);
+        const skipCache = req.query.nocache === "1";
+        if (!skipCache) {
+          const cached = getCached<any>(cacheKey);
+          if (cached) {
+            console.log(`[ReZen Weekly Deals] Returning cached result`);
+            return res.json(cached);
+          }
+        } else {
+          console.log(`[ReZen Weekly Deals] Cache bypassed via ?nocache=1`);
         }
 
         // Fetch BOTH open and closed transactions to catch new deals in any state
@@ -530,6 +536,23 @@ export function registerRezenDashboardRoutes(app: Express): void {
           return 0;
         }
 
+        // Verbose logging: log every SALE transaction's date fields
+        const saleTxns = allTransactions.filter(t => t.transactionType === "SALE");
+        console.log(`[ReZen Weekly Deals] now=${new Date(now).toISOString()}, 7dAgo=${new Date(sevenDaysAgo).toISOString()}`);
+        console.log(`[ReZen Weekly Deals] Total transactions: ${allTransactions.length}, SALE: ${saleTxns.length}`);
+
+        // Log every SALE txn with all relevant dates
+        saleTxns.forEach((t, i) => {
+          const created = normalizeEpochMs(t.createdAt as number);
+          const updated = normalizeEpochMs(t.updatedAt as number);
+          const firmMs = t.firmDate ? new Date(t.firmDate).getTime() : 0;
+          const matchesCreated = created > 0 && created >= sevenDaysAgo;
+          const matchesUpdated = updated > 0 && updated >= sevenDaysAgo;
+          const matchesFirm = firmMs > 0 && !isNaN(firmMs) && firmMs >= sevenDaysAgo;
+          const matches = matchesCreated || matchesUpdated || matchesFirm;
+          console.log(`[ReZen Weekly Deals] SALE[${i}] code=${t.code} created=${created > 0 ? new Date(created).toISOString() : 'none'} updated=${updated > 0 ? new Date(updated).toISOString() : 'none'} firm=${t.firmDate || 'none'} match=${matches} (c=${matchesCreated} u=${matchesUpdated} f=${matchesFirm})`);
+        });
+
         const weeklyDeals = allTransactions.filter((t) => {
           if (t.transactionType !== "SALE") return false;
 
@@ -550,18 +573,6 @@ export function registerRezenDashboardRoutes(app: Express): void {
           return false;
         });
 
-        // Log for debugging
-        if (allTransactions.length > 0) {
-          const saleTxns = allTransactions.filter(t => t.transactionType === "SALE");
-          console.log(`[ReZen Weekly Deals] ${saleTxns.length} SALE transactions total`);
-          // Log the 3 most recently created
-          const sorted = saleTxns
-            .map(t => ({ code: t.code, created: normalizeEpochMs(t.createdAt as number), firm: t.firmDate }))
-            .sort((a, b) => b.created - a.created)
-            .slice(0, 5);
-          console.log(`[ReZen Weekly Deals] Most recent SALE createdAt:`, JSON.stringify(sorted));
-          console.log(`[ReZen Weekly Deals] 7-day cutoff: ${new Date(sevenDaysAgo).toISOString()}`);
-        }
         console.log(`[ReZen Weekly Deals] Filtered to ${weeklyDeals.length} deals in past 7 days`);
 
         // Build deal rows
