@@ -28,6 +28,143 @@ async function requireSuperAdmin(req: any, res: any, next: any) {
 }
 
 export function registerCommunityEditorRoutes(app: Express) {
+  // ── GET /api/admin/communities/with-polygons — list communities with polygon data ──
+  app.get("/api/admin/communities/with-polygons", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const rows = await db
+        .select({
+          id: communities.id,
+          slug: communities.slug,
+          name: communities.name,
+          locationType: communities.locationType,
+          filterValue: communities.filterValue,
+          polygon: communities.polygon,
+          centroid: communities.centroid,
+          published: communities.published,
+          county: communities.county,
+        })
+        .from(communities)
+        .orderBy(asc(communities.name));
+
+      res.json(rows);
+    } catch (error) {
+      console.error("[Community Editor] Error listing polygons:", error);
+      res.status(500).json({ message: "Failed to list community polygons" });
+    }
+  });
+
+  // ── POST /api/admin/communities/polygon — create community with polygon ──
+  app.post("/api/admin/communities/polygon", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { name, slug, locationType, filterValue, polygon, centroid } = req.body;
+      const user = req.dbUser;
+
+      if (!name || !slug || !polygon || polygon.length < 3) {
+        return res.status(400).json({ message: "Name, slug, and polygon (min 3 points) are required" });
+      }
+
+      // Check slug uniqueness
+      const [existing] = await db
+        .select({ id: communities.id })
+        .from(communities)
+        .where(eq(communities.slug, slug))
+        .limit(1);
+
+      if (existing) {
+        return res.status(409).json({ message: "A community with this slug already exists" });
+      }
+
+      const [created] = await db
+        .insert(communities)
+        .values({
+          name,
+          slug,
+          locationType: locationType || "polygon",
+          filterValue: filterValue || null,
+          polygon,
+          centroid,
+          updatedBy: user?.email || "admin",
+        })
+        .returning();
+
+      console.log(`[Community Editor] Created polygon for ${slug} by ${user?.email}`);
+      res.json(created);
+    } catch (error) {
+      console.error("[Community Editor] Error creating polygon:", error);
+      res.status(500).json({ message: "Failed to create community polygon" });
+    }
+  });
+
+  // ── PUT /api/admin/communities/:id/polygon — update polygon data ──
+  app.put("/api/admin/communities/:id/polygon", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { name, slug, locationType, filterValue, polygon, centroid } = req.body;
+      const user = req.dbUser;
+
+      if (!polygon || polygon.length < 3) {
+        return res.status(400).json({ message: "Polygon must have at least 3 points" });
+      }
+
+      const updateData: Record<string, any> = {
+        polygon,
+        centroid,
+        updatedAt: new Date(),
+        updatedBy: user?.email || "admin",
+      };
+
+      if (name) updateData.name = name;
+      if (slug) updateData.slug = slug;
+      if (locationType) updateData.locationType = locationType;
+      if (filterValue !== undefined) updateData.filterValue = filterValue || null;
+
+      const [updated] = await db
+        .update(communities)
+        .set(updateData)
+        .where(eq(communities.id, id))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+
+      console.log(`[Community Editor] Updated polygon for ${updated.slug} by ${user?.email}`);
+      res.json(updated);
+    } catch (error) {
+      console.error("[Community Editor] Error updating polygon:", error);
+      res.status(500).json({ message: "Failed to update polygon" });
+    }
+  });
+
+  // ── DELETE /api/admin/communities/:id/polygon — clear polygon data ──
+  app.delete("/api/admin/communities/:id/polygon", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const user = req.dbUser;
+
+      const [updated] = await db
+        .update(communities)
+        .set({
+          polygon: null,
+          centroid: null,
+          updatedAt: new Date(),
+          updatedBy: user?.email || "admin",
+        })
+        .where(eq(communities.id, id))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+
+      console.log(`[Community Editor] Deleted polygon for ${updated.slug} by ${user?.email}`);
+      res.json({ message: "Polygon deleted", community: updated });
+    } catch (error) {
+      console.error("[Community Editor] Error deleting polygon:", error);
+      res.status(500).json({ message: "Failed to delete polygon" });
+    }
+  });
+
   // ── GET /api/admin/communities — paginated list with search & filter ──
   app.get("/api/admin/communities", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
     try {

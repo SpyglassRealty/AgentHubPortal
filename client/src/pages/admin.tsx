@@ -25,6 +25,7 @@ import LandingPageEditorPage from "./admin/LandingPageEditor";
 import RedirectsListPage from "./admin/RedirectsList";
 import GlobalScriptsListPage from "./admin/GlobalScriptsList";
 import SavedSearchDashboard from "./admin/SavedSearchDashboard";
+import PolygonManagerPage from "./admin/PolygonManager";
 import AdminBeaconPage from "./admin-beacon";
 import AdminSettingsPage from "./admin-settings";
 import AdminDashboardsRouter from "./admin-dashboards";
@@ -73,6 +74,7 @@ import {
   PenTool,
   Globe,
   Search,
+  MapPin,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -423,6 +425,7 @@ export default function AdminPage() {
       title: "CONTENT", 
       items: [
         { name: "Communities", href: "/admin/communities", icon: Building2 },
+        { name: "Polygon Manager", href: "/admin/polygons", icon: MapPin },
         { name: "Blog Posts", href: "/admin/blog/posts", icon: FileText },
         { name: "Blog Categories", href: "/admin/blog/categories", icon: FileBarChart },
         { name: "Landing Pages", href: "/admin/landing-pages", icon: Globe },
@@ -576,6 +579,7 @@ export default function AdminPage() {
               <Route path="/admin/site-editor" component={() => <SiteEditorContent />} />
               <Route path="/admin/beacon" component={AdminBeaconPage} />
               <Route path="/admin/settings" component={AdminSettingsPage} />
+              <Route path="/admin/polygons" component={PolygonManagerPage} />
               <Route path="/admin/communities/:slug" component={CommunityEditorPage} />
               <Route path="/admin/communities" component={CommunityListPage} />
               <Route path="/admin/redirects" component={RedirectsListPage} />

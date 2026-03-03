@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import type { CmsBlock } from "../types";
 
 interface BlockRendererProps {
@@ -38,6 +39,8 @@ export function BlockRenderer({ block }: BlockRendererProps) {
       return <CommunityMapBlock content={block.content} />;
     case "contact-form":
       return <ContactFormBlock content={block.content} />;
+    case "idx-feed":
+      return <IdxFeedBlock content={block.content} />;
     case "cta-banner":
       return <CtaBannerBlock content={block.content} />;
     case "html":
@@ -396,6 +399,72 @@ function HtmlBlock({ content }: { content: Record<string, any> }) {
       <pre className="text-xs font-mono text-muted-foreground overflow-x-auto whitespace-pre-wrap max-h-32">
         {content.html || "<div>Custom HTML</div>"}
       </pre>
+    </div>
+  );
+}
+
+function IdxFeedBlock({ content }: { content: Record<string, any> }) {
+  const { data: communities } = useQuery<Array<{ id: number; name: string }>>({
+    queryKey: ["/api/admin/communities/with-polygons"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/communities/with-polygons", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+
+  const communityName = content.communityId
+    ? communities?.find((c) => c.id === content.communityId)?.name || `Community #${content.communityId}`
+    : "All Communities";
+
+  return (
+    <div className="border rounded-xl p-6 bg-gradient-to-br from-blue-50 to-indigo-50">
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-3xl">🏘</span>
+        <div>
+          <h3 className="font-bold text-lg">IDX Listing Feed</h3>
+          <p className="text-sm text-muted-foreground">
+            Live MLS listings from {communityName}
+          </p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <div className="bg-white rounded-lg p-3 border">
+          <span className="text-muted-foreground text-xs">Search Type</span>
+          <p className="font-medium">{content.searchType || "Residential"}</p>
+        </div>
+        <div className="bg-white rounded-lg p-3 border">
+          <span className="text-muted-foreground text-xs">Sort</span>
+          <p className="font-medium">
+            {content.sortField || "ListingPrice"} ({content.sortOrder || "DESC"})
+          </p>
+        </div>
+        <div className="bg-white rounded-lg p-3 border">
+          <span className="text-muted-foreground text-xs">Results Per Page</span>
+          <p className="font-medium">{content.pageLimit || 12}</p>
+        </div>
+        {content.searchSubtype && (
+          <div className="bg-white rounded-lg p-3 border">
+            <span className="text-muted-foreground text-xs">Subtype</span>
+            <p className="font-medium">{content.searchSubtype}</p>
+          </div>
+        )}
+      </div>
+      {/* Placeholder listing cards */}
+      <div className="grid grid-cols-3 gap-2 mt-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-white rounded-lg border overflow-hidden">
+            <div className="h-16 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+              <span className="text-gray-400 text-sm">🏠</span>
+            </div>
+            <div className="p-2">
+              <div className="h-2 bg-gray-200 rounded w-3/4 mb-1"></div>
+              <div className="h-2 bg-gray-100 rounded w-1/2"></div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
