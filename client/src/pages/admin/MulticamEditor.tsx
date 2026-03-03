@@ -210,8 +210,17 @@ function ImportStep({ jobId, onComplete }: { jobId: string; onComplete: () => vo
     }
     setImporting(true);
     try {
-      // For now, store the links — the processing service will handle download
-      toast({ title: "Google Drive import", description: `${links.length} link(s) queued for import. Processing will handle download.` });
+      const res = await fetch(`/api/admin/multicam/jobs/${jobId}/import-gdrive`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ links }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Import failed");
+      }
+      toast({ title: "Files imported", description: `${links.length} file(s) added from Google Drive` });
       onComplete();
     } catch (err: any) {
       toast({ title: "Import error", description: err.message, variant: "destructive" });

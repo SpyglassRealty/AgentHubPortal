@@ -24,6 +24,7 @@ interface MulticamFile {
   label?: string;
   duration?: number;
   path: string;
+  gdriveUrl?: string;
 }
 
 interface TimelineSegment {
@@ -157,6 +158,91 @@ async function proxyToProcessingService(
   }
 }
 
+// ── Processing Service Poller ─────────────────────────────
+
+const _activePolls: Map<string, ReturnType<typeof setInterval>> = new Map();
+
+function startProcessingPoll(jobId: string) {
+  // Clear any existing poll for this job
+  if (_activePolls.has(jobId)) {
+    clearInterval(_activePolls.get(jobId)!);
+  }
+
+  let attempts = 0;
+  const maxAttempts = 360; // 30 minutes at 5s intervals
+
+  const interval = setInterval(async () => {
+    attempts++;
+    if (attempts > maxAttempts) {
+      console.log(`[Multicam] Poll timeout for job ${jobId}`);
+      clearInterval(interval);
+      _activePolls.delete(jobId);
+      updateJob(jobId, { status: "error", error: "Processing timed out" });
+      return;
+    }
+
+    try {
+      const result = await proxyToProcessingService("GET", `/jobs/${jobId}/status`);
+      if (!result.ok) {
+        console.log(`[Multicam] Poll: service unavailable for job ${jobId}`);
+        return; // Keep polling
+      }
+
+      const { status, progress, timeline, transcript, error } = result.data;
+
+      // Update progress
+      if (typeof progress === "number") {
+        updateJob(jobId, { processingProgress: progress });
+      }
+
+      if (status === "complete" && timeline) {
+        // Convert timeline from Python format (start_time/end_time) to JS format (startTime/endTime)
+        const convertedTimeline: TimelineSegment[] = (timeline as any[]).map((seg: any) => ({
+          startTime: seg.start_time ?? seg.startTime ?? 0,
+          endTime: seg.end_time ?? seg.endTime ?? 0,
+          cameraIndex: seg.camera_index ?? seg.cameraIndex ?? 0,
+          cameraLabel: seg.speaker_name ?? seg.cameraLabel ?? undefined,
+          transitionType: (seg.transition ?? seg.transitionType ?? "cut") as "cut" | "crossfade",
+          speaker: seg.speaker_name ?? seg.speaker ?? undefined,
+        }));
+
+        const convertedTranscript: TranscriptEntry[] = transcript
+          ? (transcript as any[]).map((t: any) => ({
+              startTime: t.start ?? t.startTime ?? 0,
+              endTime: t.end ?? t.endTime ?? 0,
+              speaker: t.speaker ?? "Unknown",
+              text: t.text ?? "",
+            }))
+          : [];
+
+        updateJob(jobId, {
+          status: "ready",
+          timeline: convertedTimeline,
+          transcript: convertedTranscript.length > 0 ? convertedTranscript : undefined,
+          processingProgress: 1,
+        });
+
+        console.log(`[Multicam] Processing complete for job ${jobId}: ${convertedTimeline.length} segments`);
+        clearInterval(interval);
+        _activePolls.delete(jobId);
+        return;
+      }
+
+      if (status === "error") {
+        updateJob(jobId, { status: "error", error: error || "Processing failed" });
+        console.log(`[Multicam] Processing error for job ${jobId}: ${error}`);
+        clearInterval(interval);
+        _activePolls.delete(jobId);
+        return;
+      }
+    } catch (err: any) {
+      console.log(`[Multicam] Poll error for job ${jobId}: ${err.message}`);
+    }
+  }, 5000);
+
+  _activePolls.set(jobId, interval);
+}
+
 // ── Routes ───────────────────────────────────────────────
 
 // Job Management
@@ -266,6 +352,52 @@ router.post("/jobs/:jobId/files", isAuthenticated, upload.single("file"), async 
   }
 });
 
+// Google Drive Import
+
+// POST /api/admin/multicam/jobs/:jobId/import-gdrive — Import files from Google Drive links
+router.post("/jobs/:jobId/import-gdrive", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const job = findJob(req.params.jobId);
+    if (!job) return res.status(404).json({ error: "Job not found" });
+
+    const { links } = req.body || {};
+    if (!Array.isArray(links) || links.length === 0) {
+      return res.status(400).json({ error: "links must be a non-empty array" });
+    }
+
+    // Parse Google Drive file IDs and create MulticamFile entries
+    const newFiles: MulticamFile[] = links.map((link: string, i: number) => {
+      // Extract file ID from various GDrive URL formats
+      const fileIdMatch = link.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+                          link.match(/id=([a-zA-Z0-9_-]+)/) ||
+                          link.match(/^([a-zA-Z0-9_-]{25,})$/);
+      const fileId = fileIdMatch ? fileIdMatch[1] : `unknown_${i}`;
+
+      const role: MulticamFile["role"] = i === 0 ? "main" : "camera";
+      const label = i === 0 ? "Main" : `Camera ${i + 1}`;
+
+      return {
+        id: randomUUID(),
+        filename: `gdrive_${fileId}.mp4`,
+        role,
+        label,
+        path: "", // Will be filled when processing service downloads
+        gdriveUrl: link.trim(),
+      };
+    });
+
+    // Replace or append files
+    const updatedFiles = [...job.files, ...newFiles];
+    updateJob(job.id, { files: updatedFiles, status: "pending" });
+
+    console.log(`[Multicam] Imported ${newFiles.length} Google Drive links for job ${job.id}`);
+    res.json({ success: true, files: newFiles });
+  } catch (err: any) {
+    console.error("[Multicam] GDrive import error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Processing
 
 // POST /api/admin/multicam/jobs/:jobId/process — Start processing
@@ -285,23 +417,32 @@ router.post("/jobs/:jobId/process", isAuthenticated, async (req: Request, res: R
 
     // Try to proxy to the processing service
     const result = await proxyToProcessingService("POST", `/jobs/${job.id}/process?mode=${mode}`, {
-      files: job.files,
+      files: job.files.map(f => ({
+        id: f.id,
+        filename: f.filename,
+        role: f.role,
+        label: f.label,
+        path: f.path,
+        gdriveUrl: f.gdriveUrl,
+      })),
     });
 
-    if (!result.ok) {
-      // Processing service not available — mark as processing anyway for UI feedback
-      // In production, this would queue the job
-      console.log(`[Multicam] Processing service not available, stubbing response for job ${job.id}`);
+    if (result.ok) {
+      // Processing service accepted — start polling for results
+      console.log(`[Multicam] Processing service accepted job ${job.id}, starting poll`);
+      startProcessingPoll(job.id);
+    } else {
+      // Processing service not available — generate stub timeline as fallback
+      console.log(`[Multicam] Processing service unavailable (${result.status}), generating stub for job ${job.id}`);
       
-      // Simulate: generate a stub timeline after a short delay
       setTimeout(() => {
         const stubTimeline: TimelineSegment[] = [];
         const duration = 300; // 5 minutes default
-        const numSegments = Math.max(2, job.files.filter(f => f.role !== "audio").length * 3);
+        const cameraCount = job.files.filter(f => f.role !== "audio").length || 1;
+        const numSegments = Math.max(2, cameraCount * 3);
         const segDuration = duration / numSegments;
 
         for (let i = 0; i < numSegments; i++) {
-          const cameraCount = job.files.filter(f => f.role !== "audio").length || 1;
           stubTimeline.push({
             startTime: i * segDuration,
             endTime: (i + 1) * segDuration,
