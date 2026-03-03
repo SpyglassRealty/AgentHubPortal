@@ -14,6 +14,7 @@ import {
   addCallDutyAttendee,
   removeCallDutyAttendee,
 } from "./googleCalendarClient";
+import { sendSlackMessage } from "./slackNotify";
 
 const router = Router();
 
@@ -25,8 +26,14 @@ const MAX_SHIFTS_PER_WEEK: number | null = 5;
 /** Cancellation notice window in hours — default 24h */
 const CANCELLATION_NOTICE_HOURS = 24;
 
-/** Slack channel for future notifications */
-const CALL_DUTY_SLACK_CHANNEL = "#call-duty";
+/** Slack channel for notifications */
+const CALL_DUTY_SLACK_CHANNEL_ID = "C0AHLEPF2F9";
+
+const SHIFT_TYPE_LABELS: Record<string, string> = {
+  morning: "Morning",
+  midday: "Midday",
+  evening: "Evening",
+};
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -36,6 +43,30 @@ function getUserId(req: any): string {
 
 function getUserEmail(req: any): string | null {
   return req.user.claims.email || null;
+}
+
+function getUserName(req: any): string {
+  const first = req.user.claims.first_name || "";
+  const last = req.user.claims.last_name || "";
+  return `${first} ${last}`.trim() || req.user.claims.email || "An agent";
+}
+
+/**
+ * Fire-and-forget Slack notification for Call Duty events.
+ */
+function notifyCallDutySlack(
+  action: "signup" | "cancel",
+  agentName: string,
+  slot: { date: string; shiftType: string; startTime: string; endTime: string },
+): void {
+  const label = SHIFT_TYPE_LABELS[slot.shiftType] || slot.shiftType;
+  const emoji = action === "signup" ? "✅" : "❌";
+  const verb = action === "signup" ? "signed up for" : "cancelled";
+
+  const text = `${emoji} *${agentName}* ${verb} *${label} Shift* on *${slot.date}* (${slot.startTime}–${slot.endTime})`;
+
+  // Fire-and-forget — don't await
+  sendSlackMessage(CALL_DUTY_SLACK_CHANNEL_ID, text).catch(() => {});
 }
 
 /**
@@ -259,6 +290,9 @@ router.post("/slots/:slotId/signup", isAuthenticated, async (req: any, res) => {
       }
     }
 
+    // Slack notification (fire-and-forget)
+    notifyCallDutySlack("signup", getUserName(req), slot);
+
     res.status(201).json(signup);
   } catch (error: any) {
     console.error("[Call Duty] Error signing up:", error);
@@ -310,6 +344,11 @@ router.delete("/slots/:slotId/signup", isAuthenticated, async (req: any, res) =>
 
     if (agentEmail && slot?.googleCalendarEventId) {
       await removeCallDutyAttendee(slot.googleCalendarEventId, agentEmail);
+    }
+
+    // Slack notification (fire-and-forget)
+    if (slot) {
+      notifyCallDutySlack("cancel", getUserName(req), slot);
     }
 
     res.json(cancelled);
