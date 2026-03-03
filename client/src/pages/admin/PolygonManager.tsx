@@ -196,6 +196,15 @@ export default function PolygonManager() {
     drawnItemsRef.current.addTo(map);
     polygonLayersRef.current.addTo(map);
 
+    // Disable leaflet-draw's "two clicks in same spot = finish" detection.
+    // Users finish by clicking the first vertex or the toolbar "Finish" button.
+    const origTwoClick = (L.Draw as any).Polyline?.prototype?._isCurrentlyTwoClickDrawing;
+    if ((L.Draw as any).Polyline?.prototype) {
+      (L.Draw as any).Polyline.prototype._isCurrentlyTwoClickDrawing = function () {
+        return false;
+      };
+    }
+
     // Set up Leaflet Draw
     const drawControl = new L.Control.Draw({
       position: "topleft",
@@ -265,6 +274,10 @@ export default function PolygonManager() {
     mapRef.current = map;
 
     return () => {
+      // Restore original two-click detection if it existed
+      if (origTwoClick && (L.Draw as any).Polyline?.prototype) {
+        (L.Draw as any).Polyline.prototype._isCurrentlyTwoClickDrawing = origTwoClick;
+      }
       map.remove();
       mapRef.current = null;
       drawControlRef.current = null;
@@ -530,7 +543,8 @@ export default function PolygonManager() {
             </div>
             <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-md z-[1000]">
               <p className="text-xs text-gray-600">
-                <strong>Draw:</strong> Click the polygon tool ▢ on the left to draw a community boundary.{" "}
+                <strong>Draw:</strong> Click the polygon tool ▢ on the left, then click to place points.{" "}
+                <strong>Finish:</strong> Click the first point or use the toolbar "Finish" button.{" "}
                 <strong>Edit:</strong> Click a saved polygon in the sidebar.
               </p>
             </div>
