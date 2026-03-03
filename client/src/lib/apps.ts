@@ -26,7 +26,8 @@ import {
   Activity,
   Shield,
   Code,
-  Phone
+  Phone,
+  Search
 } from "lucide-react";
 
 export type AppConnectionType = 
@@ -216,6 +217,16 @@ export const apps: AppDefinition[] = [
     color: "bg-teal-100 text-teal-700",
     url: "https://app.jointly.com/login",
     connectionType: "redirect"
+  },
+  {
+    id: "saved-searches",
+    name: "Saved Searches",
+    description: "Manage your client saved searches, alerts, and property matches.",
+    icon: Search,
+    categories: ["Sales"],
+    color: "bg-orange-100 text-orange-700",
+    url: "/saved-searches",
+    connectionType: "embedded"
   },
 ];
 
