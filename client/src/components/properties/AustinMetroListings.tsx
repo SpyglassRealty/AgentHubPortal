@@ -1253,7 +1253,7 @@ function ListingDetailModal({ listing, isDark, onClose, formatPrice }: any) {
                       <span className={textPrimary}>{listing.yearBuilt || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className={textSecondary}>Property Type:</span>
+                      <span className={textSecondary}>Style:</span>
                       <span className={textPrimary}>{listing.propertyType || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
