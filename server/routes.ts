@@ -1353,9 +1353,9 @@ export async function registerRoutes(
         params.append('maxSqft', maxSqft.toString());
       }
 
-      // Property type filter
+      // Property type filter (maps to Repliers 'style' field, not 'propertyType')
       if (propertyType) {
-        params.append('propertyType', propertyType);
+        params.append('style', propertyType);
       }
 
       // Days on market filter
