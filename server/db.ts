@@ -50,6 +50,7 @@ async function runDirectMigrations() {
       { name: 'last_name', sql: 'ALTER TABLE users ADD COLUMN last_name varchar' },
       { name: 'profile_image_url', sql: 'ALTER TABLE users ADD COLUMN profile_image_url varchar' },
       { name: 'fub_user_id', sql: 'ALTER TABLE users ADD COLUMN fub_user_id integer' },
+      { name: 'fub_picture_url', sql: 'ALTER TABLE users ADD COLUMN fub_picture_url varchar' },
       { name: 'created_at', sql: 'ALTER TABLE users ADD COLUMN created_at timestamp DEFAULT NOW()' },
       { name: 'updated_at', sql: 'ALTER TABLE users ADD COLUMN updated_at timestamp DEFAULT NOW()' },
     ];
