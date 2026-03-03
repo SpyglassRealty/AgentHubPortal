@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 import { db } from "./db";
 import { agentDirectoryProfiles, integrationConfigs } from "@shared/schema";
 import { storage } from "./storage";
+import { isAuthenticated } from "./replitAuth";
 
 const router = Router();
 
@@ -561,6 +562,57 @@ router.get("/admin/saved-searches/dashboard", async (req, res) => {
   } catch (error: any) {
     console.error("[Saved Search] Error fetching dashboard:", error);
     res.status(500).json({ error: "Failed to fetch dashboard data" });
+  }
+});
+
+// ── Agent Self-Lookup ────────────────────────────────────────────────────────
+
+// GET /api/saved-searches/my-agent — Get the current logged-in user's Repliers agent info
+router.get("/saved-searches/my-agent", isAuthenticated, async (req: any, res) => {
+  try {
+    const sessionUserId = req.user?.claims?.sub;
+    const email = req.user?.claims?.email;
+
+    if (!email && !sessionUserId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    // Look up the user to get their email
+    let userEmail = email;
+    if (!userEmail && sessionUserId) {
+      const user = await storage.getUser(sessionUserId);
+      userEmail = user?.email;
+    }
+
+    if (!userEmail) {
+      return res.status(404).json({ error: "User email not found", repliersAgentId: null });
+    }
+
+    // Look up agent directory profile by email
+    const [profile] = await db
+      .select()
+      .from(agentDirectoryProfiles)
+      .where(eq(agentDirectoryProfiles.email, userEmail))
+      .limit(1);
+
+    if (!profile) {
+      return res.json({
+        repliersAgentId: null,
+        message: "No agent directory profile found for this email",
+      });
+    }
+
+    res.json({
+      repliersAgentId: profile.repliersAgentId || null,
+      profileId: profile.id,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      email: profile.email,
+      phone: profile.phone,
+    });
+  } catch (error: any) {
+    console.error("[Saved Search] Error looking up agent profile:", error);
+    res.status(500).json({ error: "Failed to look up agent profile" });
   }
 });
 
