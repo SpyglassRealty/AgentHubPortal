@@ -1381,9 +1381,8 @@ export async function registerRoutes(
       // Map RESO status to Repliers API parameters (same approach as Market Pulse)
       if (status && status !== 'all') {
         if (status === 'Closed') {
-          // For closed/sold listings, use status=U with lastStatus=Sld
-          params.append('status', 'U');
-          params.append('lastStatus', 'Sld');
+          // RESO-compliant closed status
+          params.append('standardStatus', 'Closed');
           
           // Use minSoldDate from URL params, or default to 30 days
           if (minSoldDate) {
