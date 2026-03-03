@@ -183,11 +183,479 @@ async function fetchGoogleDocHtml(docId: string): Promise<{
   return { title, metaDescription, h1, articleHtml };
 }
 
-// ── Core Page Block Builders ──────────────────────────────────────────
+// ── Content Section Parser ──────────────────────────────────────────
+
+/** Represents a parsed content section from the Google Doc */
+interface ParsedSection {
+  heading?: string;
+  headingLevel?: number;
+  paragraphs: string[];    // HTML paragraph content
+  images: Array<{ url: string; alt: string; srcset: string }>;
+  listItems: string[];     // Text of list items
+  listHtml: string[];      // Full HTML of list blocks
+  links: Array<{ text: string; url: string; isButton: boolean }>;
+  faqItems: Array<{ question: string; answer: string }>;
+  rawElements: Array<{ type: string; html: string }>;
+}
+
+/** Parse article HTML into structured sections split on H2 headings */
+function parseIntoSections(articleHtml: string, pagePhotosMap: Record<string, string>): ParsedSection[] {
+  if (!articleHtml) return [];
+
+  const $ = cheerio.load(articleHtml);
+  const sections: ParsedSection[] = [];
+  let currentSection: ParsedSection = {
+    paragraphs: [], images: [], listItems: [], listHtml: [],
+    links: [], faqItems: [], rawElements: [],
+  };
+
+  function resolveImageSrc(src: string): string {
+    if (!src) return src;
+    for (const [filename, localPath] of Object.entries(pagePhotosMap)) {
+      if (src.includes(filename)) return localPath;
+    }
+    return src;
+  }
+
+  function processElement(el: any) {
+    const tagName = (el.tagName || el.name || "").toLowerCase();
+    const elem = $(el);
+
+    // Skip non-content tags
+    if (["script", "style", "link", "meta", "title", "noscript"].includes(tagName)) return;
+
+    // H2 starts a new section
+    if (tagName === "h2") {
+      const text = elem.text().trim();
+      if (text) {
+        // Push current section and start a new one
+        if (currentSection.heading || currentSection.paragraphs.length > 0 || currentSection.images.length > 0 || currentSection.rawElements.length > 0) {
+          sections.push(currentSection);
+        }
+        currentSection = {
+          heading: text,
+          headingLevel: 2,
+          paragraphs: [], images: [], listItems: [], listHtml: [],
+          links: [], faqItems: [], rawElements: [],
+        };
+      }
+      return;
+    }
+
+    // H3-H6 headings go into the current section as raw elements
+    if (/^h[1-6]$/.test(tagName)) {
+      const level = parseInt(tagName[1], 10);
+      const text = elem.text().trim();
+      if (text) {
+        currentSection.rawElements.push({
+          type: "heading",
+          html: JSON.stringify({ level, text }),
+        });
+      }
+      return;
+    }
+
+    // Images
+    if (tagName === "img") {
+      let src = resolveImageSrc(elem.attr("src") || elem.attr("data-src") || "");
+      if (src) {
+        currentSection.images.push({
+          url: src,
+          alt: elem.attr("alt") || "",
+          srcset: elem.attr("srcset") || "",
+        });
+      }
+      return;
+    }
+
+    // Paragraphs
+    if (tagName === "p") {
+      const innerHtml = (elem.html() || "").trim();
+      if (!innerHtml) return;
+
+      const textOnly = elem.text().trim();
+      if (!textOnly && (elem.find("script").length > 0 || elem.find("style").length > 0)) return;
+
+      // Image inside paragraph
+      const children = elem.children();
+      if (children.length === 1 && children.first().is("img")) {
+        let src = resolveImageSrc(children.first().attr("src") || "");
+        if (src) {
+          currentSection.images.push({
+            url: src,
+            alt: children.first().attr("alt") || "",
+            srcset: "",
+          });
+          return;
+        }
+      }
+
+      // Check for button-styled links
+      if (children.length === 1 && children.first().is("a")) {
+        const link = children.first();
+        const style = link.attr("style") || "";
+        if (style.includes("inline-block") && (style.includes("background-color") || style.includes("border-radius"))) {
+          currentSection.links.push({
+            text: link.text().trim(),
+            url: link.attr("href") || "#",
+            isButton: true,
+          });
+          return;
+        }
+      }
+
+      // Check for Q&A pattern (Q: ... / A: ...)
+      if (/^(Q|Question)\s*[:\.]/i.test(textOnly)) {
+        // Start tracking a FAQ — the question part
+        currentSection.rawElements.push({ type: "faq-q", html: textOnly.replace(/^(Q|Question)\s*[:\.]\s*/i, "") });
+        return;
+      }
+      if (/^(A|Answer)\s*[:\.]/i.test(textOnly)) {
+        currentSection.rawElements.push({ type: "faq-a", html: textOnly.replace(/^(A|Answer)\s*[:\.]\s*/i, "") });
+        return;
+      }
+
+      currentSection.paragraphs.push(innerHtml);
+      return;
+    }
+
+    // Lists
+    if (tagName === "ul" || tagName === "ol") {
+      const items: string[] = [];
+      elem.find("li").each((_li: number, liEl: any) => {
+        const liText = $(liEl).text().trim();
+        if (liText) items.push(liText);
+      });
+      currentSection.listItems.push(...items);
+      currentSection.listHtml.push($.html(el));
+      return;
+    }
+
+    // Blockquotes — could be testimonials
+    if (tagName === "blockquote") {
+      currentSection.rawElements.push({ type: "blockquote", html: elem.text().trim() });
+      return;
+    }
+
+    // Tables
+    if (tagName === "table") {
+      currentSection.rawElements.push({ type: "table", html: $.html(el) });
+      return;
+    }
+
+    // Standalone links (buttons)
+    if (tagName === "a") {
+      const style = elem.attr("style") || "";
+      if (style.includes("inline-block") && (style.includes("background-color") || style.includes("border-radius"))) {
+        currentSection.links.push({
+          text: elem.text().trim(),
+          url: elem.attr("href") || "#",
+          isButton: true,
+        });
+        return;
+      }
+    }
+
+    // HR → mark section break
+    if (tagName === "hr") {
+      currentSection.rawElements.push({ type: "hr", html: "" });
+      return;
+    }
+
+    // Divs/sections — recurse
+    if (["div", "section", "article", "main", "span", "figure"].includes(tagName)) {
+      const cls = elem.attr("class") || "";
+      // Skip social/share widgets
+      if (cls.includes("entry__buttons") || cls.includes("buttons") || cls.includes("share") || cls.includes("social")) return;
+
+      const ch = elem.children();
+      if (ch.length > 0) {
+        ch.each((_ci: number, child: any) => processElement(child));
+      } else {
+        const text = elem.text().trim();
+        if (text) {
+          currentSection.paragraphs.push(elem.html() || text);
+        }
+      }
+      return;
+    }
+  }
+
+  $("body").children().each((_i: number, el: any) => processElement(el));
+
+  // Push the last section
+  if (currentSection.heading || currentSection.paragraphs.length > 0 || currentSection.images.length > 0 || currentSection.rawElements.length > 0 || currentSection.listItems.length > 0) {
+    sections.push(currentSection);
+  }
+
+  return sections;
+}
+
+// ── Smart Block Builders ──────────────────────────────────────────
+
+/** Check if list items look like card-worthy content (3+ items with similar structure) */
+function shouldConvertToCards(items: string[]): boolean {
+  if (items.length < 3) return false;
+  // Items that are short enough to be card titles/descriptions
+  const avgLen = items.reduce((sum, item) => sum + item.length, 0) / items.length;
+  return avgLen < 200; // Short items = card-like
+}
+
+/** Extract FAQ items from raw elements (Q/A pairs) */
+function extractFaqItems(rawElements: Array<{ type: string; html: string }>): Array<{ question: string; answer: string }> {
+  const faqs: Array<{ question: string; answer: string }> = [];
+  for (let i = 0; i < rawElements.length; i++) {
+    if (rawElements[i].type === "faq-q") {
+      const question = rawElements[i].html;
+      // Look for the next faq-a
+      let answer = "";
+      if (i + 1 < rawElements.length && rawElements[i + 1].type === "faq-a") {
+        answer = rawElements[i + 1].html;
+        i++; // skip the answer element
+      }
+      if (question) {
+        faqs.push({ question, answer });
+      }
+    }
+  }
+  return faqs;
+}
+
+/** Build page-builder blocks from a parsed section */
+function buildBlocksFromSection(section: ParsedSection): any[] {
+  const blocks: any[] = [];
+  const hasFaqs = extractFaqItems(section.rawElements);
+  const hasImages = section.images.length > 0;
+  const hasParagraphs = section.paragraphs.length > 0;
+  const hasLists = section.listItems.length > 0;
+
+  // Section heading
+  if (section.heading) {
+    blocks.push({
+      id: generateBlockId(),
+      type: "heading",
+      props: {
+        level: section.headingLevel || 2,
+        text: section.heading,
+        alignment: "left",
+        color: "#000000",
+        anchorId: section.heading.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+      },
+    });
+  }
+
+  // FAQ items → faq block
+  if (hasFaqs.length > 0) {
+    blocks.push({
+      id: generateBlockId(),
+      type: "faq",
+      props: {
+        items: hasFaqs,
+      },
+    });
+  }
+
+  // If section has both image(s) and text → use columns layout
+  if (hasImages && hasParagraphs && !hasLists) {
+    const imgBlock = {
+      id: generateBlockId(),
+      type: "image" as const,
+      props: {
+        url: section.images[0].url,
+        alt: section.images[0].alt,
+        width: "100%",
+        alignment: "center" as const,
+        link: "",
+        loading: "lazy",
+        srcset: section.images[0].srcset,
+      },
+    };
+
+    const textContent = section.paragraphs.map(p => `<p>${p}</p>`).join("");
+    const textBlock = {
+      id: generateBlockId(),
+      type: "text" as const,
+      props: {
+        content: textContent,
+        alignment: "left" as const,
+      },
+    };
+
+    // Alternate: even sections get image-left, odd get image-right
+    const imageFirst = blocks.length % 2 === 0;
+
+    blocks.push({
+      id: generateBlockId(),
+      type: "columns",
+      props: { columns: 2 },
+      children: imageFirst
+        ? [[imgBlock], [textBlock]]
+        : [[textBlock], [imgBlock]],
+    });
+
+    // Any additional images beyond the first go as standalone image blocks
+    for (let i = 1; i < section.images.length; i++) {
+      blocks.push({
+        id: generateBlockId(),
+        type: "image",
+        props: {
+          url: section.images[i].url,
+          alt: section.images[i].alt,
+          width: "100%",
+          alignment: "center",
+          link: "",
+          loading: "lazy",
+          srcset: section.images[i].srcset,
+        },
+      });
+    }
+  } else {
+    // No columns layout — output paragraphs, images, lists separately
+
+    // Paragraphs → text blocks (group consecutive paragraphs)
+    if (hasParagraphs) {
+      const groupedContent = section.paragraphs.map(p => `<p>${p}</p>`).join("");
+      blocks.push({
+        id: generateBlockId(),
+        type: "text",
+        props: { content: groupedContent, alignment: "left" },
+      });
+    }
+
+    // Images → image blocks or gallery
+    if (hasImages) {
+      if (section.images.length >= 3) {
+        // Multiple images → image gallery
+        blocks.push({
+          id: generateBlockId(),
+          type: "image-gallery",
+          props: {
+            images: section.images.map(img => ({ url: img.url, alt: img.alt })),
+            columns: section.images.length >= 4 ? 4 : 3,
+          },
+        });
+      } else {
+        for (const img of section.images) {
+          blocks.push({
+            id: generateBlockId(),
+            type: "image",
+            props: {
+              url: img.url,
+              alt: img.alt,
+              width: "100%",
+              alignment: "center",
+              link: "",
+              loading: "lazy",
+              srcset: img.srcset,
+            },
+          });
+        }
+      }
+    }
+
+    // Lists → cards or text blocks
+    if (hasLists) {
+      if (shouldConvertToCards(section.listItems)) {
+        blocks.push({
+          id: generateBlockId(),
+          type: "cards",
+          props: {
+            cards: section.listItems.map(item => ({
+              image: "",
+              title: item.length > 60 ? item.substring(0, 57) + "..." : item,
+              description: item.length > 60 ? item : "",
+              link: "",
+            })),
+            columns: section.listItems.length <= 3 ? 3 : 4,
+          },
+        });
+      } else {
+        // Keep as HTML list blocks
+        for (const listHtml of section.listHtml) {
+          blocks.push({
+            id: generateBlockId(),
+            type: "text",
+            props: { content: listHtml, alignment: "left" },
+          });
+        }
+      }
+    }
+  }
+
+  // Button links
+  for (const link of section.links) {
+    if (link.isButton) {
+      blocks.push({
+        id: generateBlockId(),
+        type: "button",
+        props: {
+          text: link.text,
+          url: link.url,
+          alignment: "center",
+          style: "primary",
+          size: "lg",
+        },
+      });
+    }
+  }
+
+  // Process remaining raw elements (non-FAQ)
+  for (const raw of section.rawElements) {
+    if (raw.type === "faq-q" || raw.type === "faq-a") continue; // already handled
+
+    if (raw.type === "heading") {
+      try {
+        const { level, text } = JSON.parse(raw.html);
+        blocks.push({
+          id: generateBlockId(),
+          type: "heading",
+          props: {
+            level,
+            text,
+            alignment: "left",
+            color: "#000000",
+            anchorId: text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+          },
+        });
+      } catch { /* skip malformed */ }
+    } else if (raw.type === "blockquote") {
+      // Blockquotes → testimonial blocks
+      const quoteText = raw.html;
+      if (quoteText) {
+        blocks.push({
+          id: generateBlockId(),
+          type: "testimonial",
+          props: {
+            quote: quoteText,
+            author: "",
+            rating: 5,
+            avatar: "",
+          },
+        });
+      }
+    } else if (raw.type === "table") {
+      blocks.push({
+        id: generateBlockId(),
+        type: "html",
+        props: { code: raw.html },
+      });
+    } else if (raw.type === "hr") {
+      blocks.push({
+        id: generateBlockId(),
+        type: "divider",
+        props: { style: "solid", color: "#e5e7eb", width: "100%" },
+      });
+    }
+  }
+
+  return blocks;
+}
+
+// ── Core Page Block Builder (Template-Driven) ──────────────────────────
 
 /** Build landing-page-style blocks from parsed Google Doc HTML.
- *  Creates hero, heading, text, CTA button, image, divider blocks
- *  that look like a homepage/service page rather than a blog post. */
+ *  Creates a structured page layout with hero, columns, cards, FAQ, CTA, etc.
+ *  rather than a flat dump of heading + text blocks. */
 function buildCorePageBlocks(
   h1Text: string,
   title: string,
@@ -195,208 +663,125 @@ function buildCorePageBlocks(
   articleHtml: string,
   pagePhotosMap: Record<string, string>
 ): any[] {
-  const sections: any[] = [];
+  const allBlocks: any[] = [];
 
-  // ─── Hero Block ─────────────────────────────────────────────
-  sections.push({
+  // ─── 1. Hero Block ─────────────────────────────────────────────
+  // Parse first paragraph as subtext for the hero
+  let heroSubtext = "";
+  if (articleHtml) {
+    const $temp = cheerio.load(articleHtml);
+    const firstP = $temp("p").first();
+    if (firstP.length) {
+      const firstText = firstP.text().trim();
+      // Use first paragraph as subtext if it's a reasonable intro length
+      if (firstText.length > 20 && firstText.length < 300) {
+        heroSubtext = firstText;
+        // Remove it from articleHtml so it doesn't appear twice
+        firstP.remove();
+        articleHtml = $temp("body").html() || articleHtml;
+      }
+    }
+  }
+
+  allBlocks.push({
     id: generateBlockId(),
     type: "hero",
     props: {
       heading: h1Text || title,
-      subtext: "",
+      subtext: heroSubtext,
       bgImage: heroImageUrl,
       overlay: true,
-      ctaText: "",
-      ctaUrl: "",
-      ctaText2: "",
-      ctaUrl2: "",
+      ctaText: "Learn More",
+      ctaUrl: "#content-start",
+      ctaText2: "Contact Us",
+      ctaUrl2: "https://www.spyglassrealty.com/contact",
     },
   });
 
-  // ─── Parse article body into granular blocks ────────────────
-  if (articleHtml) {
-    const $ = cheerio.load(articleHtml);
+  // ─── 2. Parse content into structured sections ───────────────────
+  const parsedSections = parseIntoSections(articleHtml, pagePhotosMap);
 
-    const walkElements = (elements: any) => {
-      $(elements).each((_i: number, el: any) => {
-        const tagName = (el.tagName || el.name || "").toLowerCase();
-        const elem = $(el);
-
-        // Skip script/style/meta
-        if (["script", "style", "link", "meta", "title", "noscript"].includes(tagName)) return;
-
-        // Headings → heading blocks
-        if (/^h[1-6]$/.test(tagName)) {
-          const level = parseInt(tagName[1], 10);
-          const text = elem.text().trim();
-          if (text) {
-            sections.push({
-              id: generateBlockId(),
-              type: "heading",
-              props: {
-                level,
-                text,
-                alignment: "left",
-                color: "#000000",
-                anchorId: text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
-              },
-            });
-          }
-          return;
-        }
-
-        // Images → image blocks
-        if (tagName === "img") {
-          let src = elem.attr("src") || elem.attr("data-src") || "";
-          // Check if this image filename matches a downloaded page photo
-          if (src && Object.keys(pagePhotosMap).length > 0) {
-            for (const [filename, localPath] of Object.entries(pagePhotosMap)) {
-              if (src.includes(filename)) {
-                src = localPath;
-                break;
-              }
-            }
-          }
-          if (src) {
-            sections.push({
-              id: generateBlockId(),
-              type: "image",
-              props: { url: src, alt: elem.attr("alt") || "", width: "100%", alignment: "center", link: "", loading: "lazy", srcset: elem.attr("srcset") || "" },
-            });
-          }
-          return;
-        }
-
-        // Paragraphs
-        if (tagName === "p") {
-          const innerHtml = (elem.html() || "").trim();
-          if (!innerHtml) return;
-
-          const textOnly = elem.text().trim();
-          if (!textOnly && (elem.find("script").length > 0 || elem.find("style").length > 0)) return;
-
-          // Paragraph containing only an image
-          const children = elem.children();
-          if (children.length === 1 && children.first().is("img")) {
-            let src = children.first().attr("src") || "";
-            if (src) {
-              sections.push({ id: generateBlockId(), type: "image", props: { url: src, alt: children.first().attr("alt") || "", width: "100%", alignment: "center", link: "", loading: "lazy", srcset: "" } });
-              return;
-            }
-          }
-
-          // CTA button links (styled as buttons)
-          if (children.length === 1 && children.first().is("a")) {
-            const link = children.first();
-            const style = link.attr("style") || "";
-            if (style.includes("inline-block") && (style.includes("background-color") || style.includes("border-radius"))) {
-              sections.push({ id: generateBlockId(), type: "button", props: { text: link.text().trim(), url: link.attr("href") || "#", alignment: "center", style: "primary", size: "lg" } });
-              return;
-            }
-          }
-
-          sections.push({ id: generateBlockId(), type: "text", props: { content: innerHtml, alignment: "left" } });
-          return;
-        }
-
-        // Lists → text blocks
-        if (tagName === "ul" || tagName === "ol") {
-          sections.push({ id: generateBlockId(), type: "text", props: { content: $.html(el), alignment: "left" } });
-          return;
-        }
-
-        // Blockquotes → text blocks
-        if (tagName === "blockquote") {
-          sections.push({ id: generateBlockId(), type: "text", props: { content: $.html(el), alignment: "left" } });
-          return;
-        }
-
-        // Tables → html blocks
-        if (tagName === "table") {
-          sections.push({ id: generateBlockId(), type: "html", props: { code: $.html(el) } });
-          return;
-        }
-
-        // Standalone CTA buttons
-        if (tagName === "a") {
-          const style = elem.attr("style") || "";
-          if (style.includes("inline-block") && (style.includes("background-color") || style.includes("border-radius"))) {
-            sections.push({ id: generateBlockId(), type: "button", props: { text: elem.text().trim(), url: elem.attr("href") || "#", alignment: "center", style: "primary", size: "lg" } });
-            return;
-          }
-        }
-
-        // HR → divider
-        if (tagName === "hr") {
-          sections.push({ id: generateBlockId(), type: "divider", props: { style: "solid", color: "#e5e7eb", width: "100%" } });
-          return;
-        }
-
-        // Divs/sections — recurse or preserve
-        if (["div", "section", "article", "main", "span", "figure"].includes(tagName)) {
-          const cls = elem.attr("class") || "";
-          const style = elem.attr("style") || "";
-
-          // Styled callout boxes
-          if (style.includes("border-left") && style.includes("background-color")) {
-            sections.push({ id: generateBlockId(), type: "html", props: { code: $.html(el) } });
-            return;
-          }
-
-          // CTA boxes
-          if (style.includes("background-color") && style.includes("text-align: center")) {
-            sections.push({ id: generateBlockId(), type: "html", props: { code: $.html(el) } });
-            return;
-          }
-
-          // Share/social buttons — skip
-          if (cls.includes("entry__buttons") || cls.includes("buttons") || cls.includes("share") || cls.includes("social")) return;
-
-          // Recurse into children
-          const ch = elem.children();
-          if (ch.length > 0) {
-            walkElements(ch);
-          } else {
-            const text = elem.text().trim();
-            if (text) {
-              sections.push({ id: generateBlockId(), type: "text", props: { content: elem.html() || text, alignment: "left" } });
-            }
-          }
-          return;
-        }
-      });
-    };
-
-    walkElements($("body").children());
-  }
-
-  // Add a CTA block at the bottom for core pages
-  sections.push({
-    id: generateBlockId(),
-    type: "button",
-    props: {
-      text: "Contact Us Today",
-      url: "https://www.spyglassrealty.com/contact",
-      alignment: "center",
-      style: "primary",
-      size: "lg",
-    },
-  });
-
-  // Fallback if no sections were extracted
-  if (sections.length <= 2) {
-    // Only hero + CTA — add a placeholder
-    sections.splice(1, 0, {
+  if (parsedSections.length === 0) {
+    // Fallback: add a placeholder block
+    allBlocks.push({
+      id: generateBlockId(),
+      type: "spacer",
+      props: { height: 40 },
+    });
+    allBlocks.push({
       id: generateBlockId(),
       type: "text",
       props: {
         content: "<p>Page content will go here. Edit this page to add your content.</p>",
-        alignment: "left",
+        alignment: "center",
       },
     });
+  } else {
+    // Add an anchor point after hero
+    allBlocks.push({
+      id: generateBlockId(),
+      type: "spacer",
+      props: { height: 40 },
+    });
+
+    for (let i = 0; i < parsedSections.length; i++) {
+      const section = parsedSections[i];
+
+      // Add spacer before each section (except the first intro section without heading)
+      if (i > 0 || section.heading) {
+        allBlocks.push({
+          id: generateBlockId(),
+          type: "spacer",
+          props: { height: 48 },
+        });
+      }
+
+      // If this is a section with a heading, add a subtle divider before it
+      if (section.heading && i > 0) {
+        allBlocks.push({
+          id: generateBlockId(),
+          type: "divider",
+          props: { style: "solid", color: "#e5e7eb", width: "60%" },
+        });
+        allBlocks.push({
+          id: generateBlockId(),
+          type: "spacer",
+          props: { height: 24 },
+        });
+      }
+
+      // Build blocks from this section
+      const sectionBlocks = buildBlocksFromSection(section);
+      allBlocks.push(...sectionBlocks);
+    }
   }
 
-  return sections;
+  // ─── 3. Bottom CTA Block ──────────────────────────────────────
+  allBlocks.push({
+    id: generateBlockId(),
+    type: "spacer",
+    props: { height: 60 },
+  });
+
+  allBlocks.push({
+    id: generateBlockId(),
+    type: "cta",
+    props: {
+      heading: "Ready to Get Started?",
+      text: "Contact the Spyglass Realty team today and let us help you with your real estate needs.",
+      buttonText: "Contact Us Today",
+      buttonUrl: "https://www.spyglassrealty.com/contact",
+      bgColor: "#1a365d",
+    },
+  });
+
+  allBlocks.push({
+    id: generateBlockId(),
+    type: "spacer",
+    props: { height: 40 },
+  });
+
+  return allBlocks;
 }
 
 // ── POST /api/admin/core/import-sheet ──────────────────────────────────
@@ -453,7 +838,6 @@ router.post("/admin/core/import-sheet", async (req, res) => {
       const imageCell = getCell(3);
       const ogImageCell = getCell(4);
       const pagePhotosCell = getCell(5);
-      // Column 6 = Date Crawled (not used for import)
 
       const title = titleCell?.v?.toString() || "";
       const rawSlug = slugCell?.v?.toString() || "";
@@ -638,7 +1022,7 @@ router.post("/admin/core/import-sheet", async (req, res) => {
         } catch (e) { /* keep original URL as fallback */ }
       }
 
-      // Build landing-page-style blocks
+      // Build landing-page-style blocks (template-driven)
       const sections = buildCorePageBlocks(h1Text, title, localHeroUrl, articleHtml, pagePhotoMap);
 
       // Upload all image block URLs to Vercel Blob
@@ -650,9 +1034,64 @@ router.post("/admin/core/import-sheet", async (req, res) => {
             if (imageUrl.startsWith("/")) {
               imageUrl = `${RENDER_BASE}${imageUrl}`;
             }
-            const blobUrl = await uploadImageToVercelBlob(imageUrl, "core-images");
-            if (blobUrl) section.props.url = blobUrl;
+            if (imageUrl.startsWith("http")) {
+              const blobUrl = await uploadImageToVercelBlob(imageUrl, "core-images");
+              if (blobUrl) section.props.url = blobUrl;
+            }
           } catch (e) { /* keep original URL */ }
+        }
+        // Also upload images inside columns blocks
+        if (section.type === "columns" && section.children) {
+          for (const column of section.children) {
+            for (const block of column) {
+              if (block.type === "image" && block.props?.url) {
+                try {
+                  let imageUrl = block.props.url;
+                  if (imageUrl.startsWith("/")) {
+                    imageUrl = `${RENDER_BASE}${imageUrl}`;
+                  }
+                  if (imageUrl.startsWith("http")) {
+                    const blobUrl = await uploadImageToVercelBlob(imageUrl, "core-images");
+                    if (blobUrl) block.props.url = blobUrl;
+                  }
+                } catch (e) { /* keep original URL */ }
+              }
+            }
+          }
+        }
+        // Upload images in image-gallery blocks
+        if (section.type === "image-gallery" && section.props?.images) {
+          for (const img of section.props.images) {
+            if (img.url) {
+              try {
+                let imageUrl = img.url;
+                if (imageUrl.startsWith("/")) {
+                  imageUrl = `${RENDER_BASE}${imageUrl}`;
+                }
+                if (imageUrl.startsWith("http")) {
+                  const blobUrl = await uploadImageToVercelBlob(imageUrl, "core-images");
+                  if (blobUrl) img.url = blobUrl;
+                }
+              } catch (e) { /* keep original URL */ }
+            }
+          }
+        }
+        // Upload images in cards blocks
+        if (section.type === "cards" && section.props?.cards) {
+          for (const card of section.props.cards) {
+            if (card.image) {
+              try {
+                let imageUrl = card.image;
+                if (imageUrl.startsWith("/")) {
+                  imageUrl = `${RENDER_BASE}${imageUrl}`;
+                }
+                if (imageUrl.startsWith("http")) {
+                  const blobUrl = await uploadImageToVercelBlob(imageUrl, "core-images");
+                  if (blobUrl) card.image = blobUrl;
+                }
+              } catch (e) { /* keep original URL */ }
+            }
+          }
         }
       }
 
