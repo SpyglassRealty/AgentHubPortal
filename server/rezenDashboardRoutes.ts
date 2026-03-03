@@ -500,28 +500,79 @@ export function registerRezenDashboardRoutes(app: Express): void {
           "Weekly deals data fetch"
         );
 
+        // Log sample transaction to discover available date fields
+        if (openTransactions.length > 0) {
+          const sample = openTransactions[0];
+          const dateFields: Record<string, any> = {};
+          for (const [key, val] of Object.entries(sample)) {
+            if (
+              key.toLowerCase().includes("date") ||
+              key.toLowerCase().includes("created") ||
+              key.toLowerCase().includes("updated") ||
+              key.toLowerCase().includes("firm") ||
+              key.toLowerCase().includes("contract") ||
+              key.toLowerCase().includes("acceptance") ||
+              key.toLowerCase().includes("time") ||
+              key.toLowerCase().includes("at")
+            ) {
+              dateFields[key] = val;
+            }
+          }
+          console.log(`[ReZen Weekly Deals] ${openTransactions.length} total OPEN transactions`);
+          console.log(`[ReZen Weekly Deals] SALE count: ${openTransactions.filter(t => t.transactionType === "SALE").length}`);
+          console.log(`[ReZen Weekly Deals] Sample date fields:`, JSON.stringify(dateFields));
+          console.log(`[ReZen Weekly Deals] Sample transaction keys:`, Object.keys(sample).join(", "));
+        } else {
+          console.log(`[ReZen Weekly Deals] No OPEN transactions found for yentaId ${yentaId}`);
+        }
+
         // Filter to SALE transactions from the past 7 days
         const now = Date.now();
         const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
 
+        // Helper: extract the best "contract date" from a transaction
+        function getContractDateMs(t: RezenTransaction): number {
+          // Try multiple date fields in priority order
+          const candidates: (string | number | undefined | null)[] = [
+            t.firmDate,
+            (t as any).contractAcceptanceDate,
+            (t as any).approvalDate,
+            (t as any).contractDate,
+            (t as any).executedDate,
+            (t as any).pendingDate,
+          ];
+
+          for (const c of candidates) {
+            if (!c) continue;
+            const ms = typeof c === "number" ? c : new Date(c).getTime();
+            if (!isNaN(ms) && ms > 0) return ms;
+          }
+
+          // Fall back to createdAt/updatedAt (epoch ms from ReZen)
+          if (t.createdAt && typeof t.createdAt === "number" && t.createdAt > 1_000_000_000) {
+            // ReZen sometimes uses epoch millis, sometimes seconds
+            return t.createdAt > 1_700_000_000_000 ? t.createdAt : t.createdAt * 1000;
+          }
+
+          return 0;
+        }
+
         const weeklyDeals = openTransactions.filter((t) => {
           if (t.transactionType !== "SALE") return false;
 
-          // Check firmDate first, then fall back to createdAt-like heuristics
-          if (t.firmDate) {
-            const firmMs = new Date(t.firmDate).getTime();
-            if (!isNaN(firmMs) && firmMs >= sevenDaysAgo) return true;
-          }
+          const contractMs = getContractDateMs(t);
+          if (contractMs > 0 && contractMs >= sevenDaysAgo) return true;
 
-          // If no firmDate, check if closingDateEstimated is recent (proxy for creation)
-          // This is a heuristic — Ryan can refine later
           return false;
         });
+
+        console.log(`[ReZen Weekly Deals] Filtered to ${weeklyDeals.length} deals in past 7 days`);
 
         // Build deal rows
         const deals = weeklyDeals.map((t) => {
           const leadSourceName = t.leadSource?.name || null;
           const isCompanyLead = !!leadSourceName && leadSourceName.trim().length > 0;
+          const contractMs = getContractDateMs(t);
 
           return {
             id: t.id,
@@ -532,7 +583,7 @@ export function registerRezenDashboardRoutes(app: Express): void {
             leadSource: leadSourceName || "None",
             isCompanyLead,
             price: t.price?.amount || 0,
-            date: t.firmDate || t.closingDateEstimated || null,
+            date: contractMs > 0 ? new Date(contractMs).toISOString() : (t.firmDate || t.closingDateEstimated || null),
             code: t.code || "",
           };
         });
@@ -585,6 +636,58 @@ export function registerRezenDashboardRoutes(app: Express): void {
         } else {
           res.status(500).json({ message: "Failed to fetch weekly deals", error: error.message });
         }
+      }
+    }
+  );
+
+  // ── Debug: inspect raw OPEN transaction fields ─────
+  app.get(
+    "/api/admin/rezen-dashboard/debug-open-transactions",
+    isAuthenticated,
+    requireSuperAdmin as any,
+    async (req: any, res) => {
+      try {
+        const user = req.dbUser as User;
+        const yentaId = user.rezenYentaId;
+        if (!yentaId) {
+          return res.status(400).json({ message: "ReZen account not linked." });
+        }
+
+        const client = getRezenClient();
+        if (!client) return res.status(500).json({ message: "ReZen client not configured" });
+
+        // Fetch just a few to inspect fields
+        const result = await client.getOpenTransactions(yentaId, 10);
+        const saleTransactions = (result.transactions || []).filter(t => t.transactionType === "SALE");
+
+        res.json({
+          totalOpen: result.totalCount,
+          saleCount: saleTransactions.length,
+          sampleKeys: saleTransactions[0] ? Object.keys(saleTransactions[0]) : [],
+          samples: saleTransactions.slice(0, 3).map(t => {
+            // Return all fields so we can see what date fields exist
+            const dateRelated: Record<string, any> = {};
+            for (const [k, v] of Object.entries(t)) {
+              if (typeof v !== "object" || v === null) {
+                dateRelated[k] = v;
+              }
+            }
+            return {
+              id: t.id,
+              code: t.code,
+              type: t.transactionType,
+              address: t.address?.oneLine,
+              price: t.price?.amount,
+              firmDate: t.firmDate,
+              closingDateEstimated: t.closingDateEstimated,
+              lifecycleState: t.lifecycleState?.state,
+              leadSource: t.leadSource,
+              allScalarFields: dateRelated,
+            };
+          }),
+        });
+      } catch (error: any) {
+        res.status(500).json({ message: "Debug error", error: error.message });
       }
     }
   );

@@ -36,6 +36,11 @@ export interface RezenTransaction {
   closingDateEstimated?: string;
   closedAt?: number;
   firmDate?: string;
+  contractAcceptanceDate?: string;
+  approvalDate?: string;
+  sketchyContractCreationDate?: number;
+  createdAt?: number;
+  updatedAt?: number;
   closed?: boolean;
   terminated?: boolean;
   listing?: boolean;
@@ -49,6 +54,8 @@ export interface RezenTransaction {
   };
   complianceStatus?: string;
   participants?: RezenParticipant[];
+  // Catch-all for fields we haven't typed yet
+  [key: string]: any;
 }
 
 export interface RezenTransactionsResponse {
