@@ -265,17 +265,15 @@ export async function registerRoutes(
       }
       
       // Auto-link FUB account on login if not already linked
-      let fubPictureUrl: string | undefined;
       if (!user.fubUserId && user.email) {
         try {
           const fubClient = getFubClient();
           if (fubClient) {
             const fubUser = await fubClient.getUserByEmail(user.email);
             if (fubUser) {
-              await storage.updateUserFubId(user.id, fubUser.id);
-              user = { ...user, fubUserId: fubUser.id };
-              fubPictureUrl = fubUser.pictureUrl;
-              console.log(`[Auth] Auto-linked FUB user ID ${fubUser.id} to user ${user.id} (${user.email}), pictureUrl: ${fubPictureUrl || 'none'}`);
+              const updated = await storage.updateUserFubId(user.id, fubUser.id, fubUser.pictureUrl);
+              if (updated) user = updated;
+              console.log(`[Auth] Auto-linked FUB user ID ${fubUser.id} to user ${user.id} (${user.email}), pictureUrl: ${fubUser.pictureUrl || 'none'}`);
             } else {
               console.log(`[Auth] No FUB match found for ${user.email}`);
             }
@@ -283,26 +281,6 @@ export async function registerRoutes(
         } catch (fubError) {
           console.error('[Auth] FUB auto-link failed:', fubError);
           // Don't block login if FUB linking fails
-        }
-      }
-
-      // Auto-populate agent profile headshot from FUB photo if empty
-      if (fubPictureUrl) {
-        try {
-          const agentProfile = await storage.getAgentProfile(user.id);
-          if (!agentProfile?.headshotUrl) {
-            await storage.upsertAgentProfile({
-              id: agentProfile?.id || crypto.randomUUID(),
-              userId: user.id,
-              headshotUrl: fubPictureUrl,
-            });
-            console.log(`[Auth] Auto-populated headshot from FUB photo for user ${user.id}`);
-          } else {
-            console.log(`[Auth] User ${user.id} already has a headshot — skipping FUB photo`);
-          }
-        } catch (photoError) {
-          console.error('[Auth] FUB photo auto-populate failed:', photoError);
-          // Don't block login if photo sync fails
         }
       }
       
@@ -5124,7 +5102,8 @@ Respond with valid JSON in this exact format:
           firstName: user.firstName || null,
           lastName: user.lastName || null,
           email: user.email || null,
-          profileImageUrl: user.profileImageUrl || null
+          profileImageUrl: user.profileImageUrl || null,
+          fubPictureUrl: user.fubPictureUrl || null
         }
       };
 
@@ -5138,7 +5117,8 @@ Respond with valid JSON in this exact format:
         user: {
           firstName: response.user.firstName,
           lastName: response.user.lastName,
-          email: response.user.email
+          email: response.user.email,
+          fubPictureUrl: response.user.fubPictureUrl
         }
       });
       
