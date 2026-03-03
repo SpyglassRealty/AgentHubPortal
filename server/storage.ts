@@ -62,7 +62,7 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   updateUser(id: string, data: Partial<{ isSuperAdmin: boolean }>): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
-  updateUserFubId(userId: string, fubUserId: number): Promise<User | undefined>;
+  updateUserFubId(userId: string, fubUserId: number, fubPictureUrl?: string): Promise<User | undefined>;
   updateUserRezenYentaId(userId: string, rezenYentaId: string | null): Promise<User | undefined>;
   
   getAgentProfile(userId: string): Promise<AgentProfile | undefined>;
@@ -239,10 +239,14 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateUserFubId(userId: string, fubUserId: number): Promise<User | undefined> {
+  async updateUserFubId(userId: string, fubUserId: number, fubPictureUrl?: string): Promise<User | undefined> {
+    const setData: Record<string, any> = { fubUserId, updatedAt: new Date() };
+    if (fubPictureUrl !== undefined) {
+      setData.fubPictureUrl = fubPictureUrl;
+    }
     const [user] = await db
       .update(users)
-      .set({ fubUserId, updatedAt: new Date() })
+      .set(setData)
       .where(eq(users.id, userId))
       .returning();
     return user;

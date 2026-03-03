@@ -43,7 +43,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     refetchInterval: 60000,
   });
 
-  const { data: agentProfileData } = useQuery<{ profile: { headshotUrl: string | null }; user: { profileImageUrl: string | null } }>({
+  const { data: agentProfileData } = useQuery<{ profile: { headshotUrl: string | null }; user: { profileImageUrl: string | null; fubPictureUrl: string | null } }>({
     queryKey: ["/api/agent-profile"],
     enabled: !!user,
   });
@@ -148,7 +148,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="p-4 border-t border-sidebar-border">
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9">
-            <AvatarImage src={agentProfileData?.profile?.headshotUrl || user?.profileImageUrl || undefined} />
+            <AvatarImage src={agentProfileData?.profile?.headshotUrl || agentProfileData?.user?.fubPictureUrl || user?.profileImageUrl || undefined} />
             <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-sm">
               {userInitials}
             </AvatarFallback>
