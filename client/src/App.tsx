@@ -49,6 +49,7 @@ import TestimonialEditorPage from "@/pages/admin/TestimonialEditor";
 import ReviewSourceManagerPage from "@/pages/admin/ReviewSourceManager";
 import DeveloperPage from "./pages/developer";
 import SavedSearchAgent from "@/pages/SavedSearchAgent";
+import WeeklyDealsStandalone from "@/pages/weekly-deals-standalone";
 
 // Backward compatibility redirect component
 function CmaPresentationRedirect() {
@@ -105,6 +106,7 @@ function Router() {
       {/* Backward compatibility redirect */}
       <Route path="/cma/:id/presentation" component={CmaPresentationRedirect} />
       <Route path="/cma/:id" component={CmaBuilderPage} />
+      <Route path="/weekly-deals" component={WeeklyDealsStandalone} />
       <Route path="/saved-searches" component={SavedSearchAgent} />
       <Route path="/call-duty" component={CallDutyPage} />
       <Route path="/marketing" component={MarketingPage} />
