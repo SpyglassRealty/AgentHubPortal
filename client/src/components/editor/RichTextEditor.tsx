@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
@@ -82,6 +82,13 @@ export function RichTextEditor({
       },
     },
   });
+
+  // Sync external value changes (e.g. AI bio generation) into the editor
+  useEffect(() => {
+    if (editor && value !== editor.getHTML()) {
+      editor.commands.setContent(value, false);
+    }
+  }, [value, editor]);
 
   const toggleLink = () => {
     if (!editor) return;
