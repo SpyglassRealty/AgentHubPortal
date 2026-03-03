@@ -742,6 +742,12 @@ async function createCallDutyTables() {
       try { await pool.query(idx); } catch (e) { /* index may already exist */ }
     }
 
+    // Phase 2: add google_calendar_event_id column if missing
+    try {
+      await pool.query(`ALTER TABLE call_duty_slots ADD COLUMN IF NOT EXISTS google_calendar_event_id varchar`);
+      console.log('[Database] google_calendar_event_id column ensured');
+    } catch (e) { /* column may already exist */ }
+
     console.log('[Database] ✅ call_duty tables created successfully');
   } catch (error) {
     console.error('[Database] ❌ Error creating call_duty tables:', error);
