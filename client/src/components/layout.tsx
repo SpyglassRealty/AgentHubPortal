@@ -44,7 +44,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   });
 
   const { data: agentProfileData } = useQuery<{ profile: { headshotUrl: string | null }; user: { profileImageUrl: string | null; fubPictureUrl: string | null } }>({
-    queryKey: ["/api/agent-profile"],
+    queryKey: ["/api/agent-profile", "layout"],
+    queryFn: async () => {
+      const res = await fetch("/api/agent-profile", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch agent profile");
+      return res.json();
+    },
     enabled: !!user,
   });
 
