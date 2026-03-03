@@ -1404,8 +1404,7 @@ export async function registerRoutes(
           params.append('standardStatus', status);
         }
       } else {
-        // For 'all', get active listings
-        params.append('standardStatus', 'Active');
+        // For 'all', omit status filter — Repliers returns all statuses
       }
 
       const fullUrl = `${baseUrl}?${params.toString()}`;
