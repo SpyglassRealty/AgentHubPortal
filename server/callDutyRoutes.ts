@@ -9,13 +9,18 @@ import {
   type CallDutySignup,
 } from "@shared/schema";
 import { isAuthenticated } from "./replitAuth";
+import {
+  createCallDutyCalendarEvent,
+  addCallDutyAttendee,
+  removeCallDutyAttendee,
+} from "./googleCalendarClient";
 
 const router = Router();
 
 // ── Constants (configurable placeholders) ────────────────────────────────
 
-/** Max shifts per agent per week — null = no limit (pending John's confirmation) */
-const MAX_SHIFTS_PER_WEEK: number | null = null;
+/** Max shifts per agent per week — confirmed: 5 */
+const MAX_SHIFTS_PER_WEEK: number | null = 5;
 
 /** Cancellation notice window in hours — default 24h */
 const CANCELLATION_NOTICE_HOURS = 24;
@@ -27,6 +32,36 @@ const CALL_DUTY_SLACK_CHANNEL = "#call-duty";
 
 function getUserId(req: any): string {
   return req.user.claims.sub;
+}
+
+function getUserEmail(req: any): string | null {
+  return req.user.claims.email || null;
+}
+
+/**
+ * Ensure a slot has a Google Calendar event. If it doesn't yet (pre-Phase 2 slots
+ * or if creation failed previously), create one now and store the event ID.
+ * Returns the event ID, or null if creation fails.
+ */
+async function ensureCalendarEvent(slot: CallDutySlot): Promise<string | null> {
+  if (slot.googleCalendarEventId) return slot.googleCalendarEventId;
+
+  const eventId = await createCallDutyCalendarEvent(
+    slot.date,
+    slot.shiftType,
+    slot.startTime,
+    slot.endTime,
+  );
+
+  if (eventId) {
+    // Persist the event ID back to the slot
+    await db
+      .update(callDutySlots)
+      .set({ googleCalendarEventId: eventId })
+      .where(eq(callDutySlots.id, slot.id));
+  }
+
+  return eventId;
 }
 
 // ── Routes ───────────────────────────────────────────────────────────────
@@ -215,6 +250,15 @@ router.post("/slots/:slotId/signup", isAuthenticated, async (req: any, res) => {
       .values({ slotId, userId })
       .returning();
 
+    // Google Calendar: ensure event exists, then add agent as attendee
+    const agentEmail = getUserEmail(req);
+    if (agentEmail) {
+      const eventId = await ensureCalendarEvent(slot);
+      if (eventId) {
+        await addCallDutyAttendee(eventId, agentEmail);
+      }
+    }
+
     res.status(201).json(signup);
   } catch (error: any) {
     console.error("[Call Duty] Error signing up:", error);
@@ -256,6 +300,17 @@ router.delete("/slots/:slotId/signup", isAuthenticated, async (req: any, res) =>
       })
       .where(eq(callDutySignups.id, signup.id))
       .returning();
+
+    // Google Calendar: remove agent from the event attendees
+    const agentEmail = getUserEmail(req);
+    const [slot] = await db
+      .select()
+      .from(callDutySlots)
+      .where(eq(callDutySlots.id, slotId));
+
+    if (agentEmail && slot?.googleCalendarEventId) {
+      await removeCallDutyAttendee(slot.googleCalendarEventId, agentEmail);
+    }
 
     res.json(cancelled);
   } catch (error: any) {
