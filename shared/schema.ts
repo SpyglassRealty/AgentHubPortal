@@ -1523,6 +1523,7 @@ export const callDutySlots = pgTable("call_duty_slots", {
   endTime: varchar("end_time").notNull(),     // '12:00' | '16:00' | '20:00'
   maxSignups: integer("max_signups").notNull().default(1),
   isActive: boolean("is_active").default(true),
+  googleCalendarEventId: varchar("google_calendar_event_id"),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
