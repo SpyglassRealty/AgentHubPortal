@@ -312,20 +312,13 @@ export function setupDeveloperRoutes(app: Express) {
     }
   });
 
-  // GET /api/developer/system-health - system stats and integration status
+  // GET /api/developer/system-health - system stats and live integration health checks
   app.get("/api/developer/system-health", async (req, res) => {
     try {
       // Get database stats
       const userCountResult = await db.execute(sql`SELECT COUNT(*) as count FROM users`);
       const cmaCountResult = await db.execute(sql`SELECT COUNT(*) as count FROM cmas`);
       const activityCountResult = await db.execute(sql`SELECT COUNT(*) as count FROM developer_activity_logs`);
-      
-      // Get integration status
-      const integrationsResult = await db.execute(sql`
-        SELECT name, display_name, is_active, last_tested_at, last_test_result, last_test_message
-        FROM integration_configs
-        ORDER BY display_name
-      `);
       
       // Get recent errors from activity logs
       const errorsResult = await db.execute(sql`
@@ -335,14 +328,69 @@ export function setupDeveloperRoutes(app: Express) {
         ORDER BY created_at DESC 
         LIMIT 10
       `);
-      
-      // Simulate deployment info (in production, this could come from environment or git)
-      const deploymentInfo = {
-        last_deployed: new Date().toISOString(),
-        commit_hash: process.env.COMMIT_HASH || 'unknown',
-        environment: process.env.NODE_ENV || 'development',
-        version: process.env.npm_package_version || '1.0.0'
+
+      // Live integration health checks with 5s timeout per check
+      const TIMEOUT_MS = 5000;
+
+      const pingWithTimeout = async (url: string, options: RequestInit): Promise<{ ok: boolean; responseTime: number; error?: string }> => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+        const start = Date.now();
+        try {
+          const resp = await fetch(url, { ...options, signal: controller.signal });
+          clearTimeout(timer);
+          return { ok: resp.ok, responseTime: Date.now() - start };
+        } catch (err: any) {
+          clearTimeout(timer);
+          return { ok: false, responseTime: Date.now() - start, error: err.name === 'AbortError' ? 'Timeout (5s)' : err.message };
+        }
       };
+
+      const checks = await Promise.allSettled([
+        // 1. Repliers (MLS)
+        (async () => {
+          const apiKey = process.env.REPLIERS_API_KEY;
+          if (!apiKey) return { name: 'repliers', display_name: 'Repliers (MLS)', is_active: false, last_test_result: 'failed', last_test_message: 'REPLIERS_API_KEY not configured', last_tested_at: new Date().toISOString() };
+          const result = await pingWithTimeout('https://api.repliers.io/listings?resultsPerPage=1', { headers: { 'REPLIERS-API-KEY': apiKey } });
+          return { name: 'repliers', display_name: 'Repliers (MLS)', is_active: true, last_test_result: result.ok ? 'success' : 'failed', last_test_message: result.ok ? `${result.responseTime}ms` : (result.error || 'Request failed'), last_tested_at: new Date().toISOString(), response_time: result.responseTime };
+        })(),
+        // 2. Follow Up Boss (CRM)
+        (async () => {
+          const apiKey = process.env.FUB_API_KEY;
+          let dbKey: string | null = null;
+          try {
+            const { storage } = await import("./storage");
+            const cfg = await storage.getIntegrationConfig('fub');
+            dbKey = cfg?.isActive ? cfg.apiKey : null;
+          } catch {}
+          const key = dbKey || apiKey;
+          if (!key) return { name: 'fub', display_name: 'Follow Up Boss (CRM)', is_active: false, last_test_result: 'failed', last_test_message: 'FUB_API_KEY not configured', last_tested_at: new Date().toISOString() };
+          const result = await pingWithTimeout('https://api.followupboss.com/v1/users?limit=1', { headers: { 'Authorization': `Basic ${Buffer.from(key + ':').toString('base64')}` } });
+          return { name: 'fub', display_name: 'Follow Up Boss (CRM)', is_active: true, last_test_result: result.ok ? 'success' : 'failed', last_test_message: result.ok ? `${result.responseTime}ms` : (result.error || 'Auth failed'), last_tested_at: new Date().toISOString(), response_time: result.responseTime };
+        })(),
+        // 3. OpenAI
+        (async () => {
+          const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+          if (!apiKey) return { name: 'openai', display_name: 'OpenAI', is_active: false, last_test_result: 'failed', last_test_message: 'OPENAI_API_KEY not configured', last_tested_at: new Date().toISOString() };
+          const result = await pingWithTimeout('https://api.openai.com/v1/models', { headers: { 'Authorization': `Bearer ${apiKey}` } });
+          return { name: 'openai', display_name: 'OpenAI', is_active: true, last_test_result: result.ok ? 'success' : 'failed', last_test_message: result.ok ? `${result.responseTime}ms` : (result.error || 'Auth failed'), last_tested_at: new Date().toISOString(), response_time: result.responseTime };
+        })(),
+        // 4. Google Services (env var check only)
+        (async () => {
+          const hasClientId = !!process.env.GOOGLE_CLIENT_ID;
+          const hasClientSecret = !!process.env.GOOGLE_CLIENT_SECRET;
+          const configured = hasClientId && hasClientSecret;
+          return { name: 'google', display_name: 'Google Services', is_active: configured, last_test_result: configured ? 'success' : 'failed', last_test_message: configured ? 'Configured' : `Missing: ${!hasClientId ? 'GOOGLE_CLIENT_ID ' : ''}${!hasClientSecret ? 'GOOGLE_CLIENT_SECRET' : ''}`.trim(), last_tested_at: new Date().toISOString() };
+        })(),
+      ]);
+
+      const integrations = checks.map(result =>
+        result.status === 'fulfilled' ? result.value : { name: 'unknown', display_name: 'Unknown', is_active: false, last_test_result: 'failed', last_test_message: 'Health check threw an exception', last_tested_at: new Date().toISOString() }
+      );
+
+      // Read version from package.json
+      let version = '1.0.0';
+      try { version = require('../package.json').version; } catch {}
       
       // Log this access
       await logActivity(
@@ -361,8 +409,13 @@ export function setupDeveloperRoutes(app: Express) {
           total_cmas: parseInt(cmaCountResult.rows[0]?.count || "0"),
           total_activity_logs: parseInt(activityCountResult.rows[0]?.count || "0")
         },
-        integrations: integrationsResult.rows,
-        deployment: deploymentInfo,
+        integrations,
+        deployment: {
+          last_deployed: new Date().toISOString(),
+          commit_hash: process.env.RENDER_GIT_COMMIT?.substring(0, 8) || 'unknown',
+          environment: process.env.NODE_ENV || 'development',
+          version,
+        },
         recent_errors: errorsResult.rows
       });
       
