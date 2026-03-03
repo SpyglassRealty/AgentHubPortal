@@ -1,67 +1,16 @@
 /**
  * Gmail Client - Uses domain-wide delegation to impersonate users
  * 
- * Uses the same service account credentials as Google Calendar.
- * For deployment, set one of these environment variables:
- *   - GOOGLE_CALENDAR_CREDENTIALS = the full JSON string of the service account key
- *   - GOOGLE_CALENDAR_CREDENTIALS_FILE = path to the JSON file on disk
- * 
- * The service account must have domain-wide delegation enabled in Google Admin
- * with scopes: https://www.googleapis.com/auth/gmail.readonly, https://www.googleapis.com/auth/gmail.send
+ * Credentials loaded via shared googleCredentials.ts helper.
  */
 
 import { google } from 'googleapis';
-import fs from 'fs';
-import path from 'path';
+import { getGoogleCredentials } from './googleCredentials';
 
 import type { GmailMessage } from '@shared/schema';
 
-interface ServiceAccountCredentials {
-  type: string;
-  project_id: string;
-  private_key_id: string;
-  private_key: string;
-  client_email: string;
-  client_id: string;
-  auth_uri: string;
-  token_uri: string;
-  auth_provider_x509_cert_url: string;
-  client_x509_cert_url: string;
-}
-
-let cachedCredentials: ServiceAccountCredentials | null = null;
-
-function getCredentials(): ServiceAccountCredentials {
-  if (cachedCredentials) return cachedCredentials;
-
-  // Try env var with JSON string first
-  const credentialsJson = process.env.GOOGLE_CALENDAR_CREDENTIALS;
-  if (credentialsJson) {
-    try {
-      cachedCredentials = JSON.parse(credentialsJson);
-      console.log('[Gmail] Loaded credentials from GOOGLE_CALENDAR_CREDENTIALS env var');
-      return cachedCredentials!;
-    } catch (e) {
-      console.error('[Gmail] Failed to parse GOOGLE_CALENDAR_CREDENTIALS:', e);
-    }
-  }
-
-  // Fall back to file path
-  const credentialsFile = process.env.GOOGLE_CALENDAR_CREDENTIALS_FILE
-    || path.resolve(process.env.HOME || '', 'clawd/.credentials/google-calendar.json');
-
-  if (fs.existsSync(credentialsFile)) {
-    const raw = fs.readFileSync(credentialsFile, 'utf-8');
-    cachedCredentials = JSON.parse(raw);
-    console.log(`[Gmail] Loaded credentials from file: ${credentialsFile}`);
-    return cachedCredentials!;
-  }
-
-  throw new Error('Gmail credentials not found. Set GOOGLE_CALENDAR_CREDENTIALS or GOOGLE_CALENDAR_CREDENTIALS_FILE.');
-}
-
 function getGmailClient(userEmail: string) {
-  const credentials = getCredentials();
+  const credentials = getGoogleCredentials();
 
   const auth = new google.auth.JWT({
     email: credentials.client_email,
