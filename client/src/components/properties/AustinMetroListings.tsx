@@ -192,7 +192,12 @@ export function AustinMetroListings({ initialStatus = 'Active', controlledStatus
   ];
 
   const propertyTypes = [
-    'Single Family', 'Condo', 'Townhouse', 'Multi-Family', 'Land', 'Commercial'
+    { label: 'Single Family', value: 'Single Family Residence' },
+    { label: 'Condo', value: 'Condominium' },
+    { label: 'Townhouse', value: 'Townhouse' },
+    { label: 'Multi-Family', value: 'Multi Family' },
+    { label: 'Land', value: 'Unimproved Land' },
+    // TODO: Add Commercial filter as separate code path using propertyType=Commercial Sale
   ];
 
   const formatPrice = (price: number) => {
@@ -440,7 +445,7 @@ export function AustinMetroListings({ initialStatus = 'Active', controlledStatus
               >
                 <option value="">All Types</option>
                 {propertyTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
+                  <option key={type.value} value={type.value}>{type.label}</option>
                 ))}
               </select>
             </div>
