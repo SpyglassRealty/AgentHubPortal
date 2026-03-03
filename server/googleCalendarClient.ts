@@ -18,8 +18,15 @@ const CALL_DUTY_CALENDAR_ID = 'c_efca76ba29cbe0b028fc4951141ce67d9abefc25ab5e1ab
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 /**
+ * Default impersonation account for Calendar write operations.
+ * The shared Call Duty calendar requires domain-wide delegation with a
+ * domain user context — the service account alone returns 404.
+ */
+const CALENDAR_IMPERSONATE_USER = 'ryan@spyglassrealty.com';
+
+/**
  * Get an authenticated Calendar API client with write scope.
- * Uses the service account directly (no user impersonation) for the shared calendar.
+ * Impersonates a domain user via domain-wide delegation to access the shared calendar.
  */
 function getCalendarWriteClient() {
   const credentials = getGoogleCredentials();
@@ -27,6 +34,7 @@ function getCalendarWriteClient() {
     email: credentials.client_email,
     key: credentials.private_key,
     scopes: ['https://www.googleapis.com/auth/calendar.events'],
+    subject: CALENDAR_IMPERSONATE_USER,
   });
   return google.calendar({ version: 'v3', auth });
 }
