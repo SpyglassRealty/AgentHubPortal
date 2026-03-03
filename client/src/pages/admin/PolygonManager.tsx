@@ -90,6 +90,7 @@ export default function PolygonManager() {
   const drawnItemsRef = useRef<L.FeatureGroup>(new L.FeatureGroup());
   const polygonLayersRef = useRef<L.FeatureGroup>(new L.FeatureGroup());
   const [mapReady, setMapReady] = useState(false);
+  const [showExistingPolygons, setShowExistingPolygons] = useState(true);
 
   const [editingCommunity, setEditingCommunity] = useState<CommunityPolygon | null>(null);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -257,6 +258,21 @@ export default function PolygonManager() {
       drawControlRef.current = null;
     };
   }, []);
+
+  // Toggle existing polygon layer visibility
+  useEffect(() => {
+    if (!mapRef.current || !mapReady) return;
+    const map = mapRef.current;
+    if (showExistingPolygons) {
+      if (!map.hasLayer(polygonLayersRef.current)) {
+        polygonLayersRef.current.addTo(map);
+      }
+    } else {
+      if (map.hasLayer(polygonLayersRef.current)) {
+        map.removeLayer(polygonLayersRef.current);
+      }
+    }
+  }, [showExistingPolygons, mapReady]);
 
   // Render existing polygons on map
   useEffect(() => {
@@ -482,14 +498,31 @@ export default function PolygonManager() {
       <div className="flex-1 rounded-xl overflow-hidden border relative">
         <div ref={mapContainerRef} className="h-full w-full" />
 
-        {/* Map instructions overlay */}
+        {/* Map controls overlay */}
         {mapReady && (
-          <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-md z-[1000]">
-            <p className="text-xs text-gray-600">
-              <strong>Draw:</strong> Click the polygon tool ▢ on the left to draw a community boundary.{" "}
-              <strong>Edit:</strong> Click a saved polygon in the sidebar.
-            </p>
-          </div>
+          <>
+            <div className="absolute top-4 right-4 z-[1000]">
+              <Button
+                variant={showExistingPolygons ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowExistingPolygons(!showExistingPolygons)}
+                className="shadow-md bg-white/90 backdrop-blur-sm hover:bg-white text-gray-700 border"
+              >
+                {showExistingPolygons ? (
+                  <Eye className="h-4 w-4 mr-2" />
+                ) : (
+                  <EyeOff className="h-4 w-4 mr-2" />
+                )}
+                {showExistingPolygons ? "Hide Polygons" : "Show Polygons"}
+              </Button>
+            </div>
+            <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-md z-[1000]">
+              <p className="text-xs text-gray-600">
+                <strong>Draw:</strong> Click the polygon tool ▢ on the left to draw a community boundary.{" "}
+                <strong>Edit:</strong> Click a saved polygon in the sidebar.
+              </p>
+            </div>
+          </>
         )}
       </div>
 
