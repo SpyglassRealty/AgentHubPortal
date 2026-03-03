@@ -5842,42 +5842,7 @@ Respond with valid JSON in this exact format:
     }
   });
 
-  // System health endpoint
-  app.get('/api/developer/system-health', isAuthenticated, isDeveloper, async (req: any, res) => {
-    try {
-      // Get integration status
-      const integrations = await storage.getAllIntegrations();
-      
-      // Get basic stats
-      const stats = await storage.getSystemStats();
-      
-      // Get recent errors (last 24 hours)
-      const errors = await storage.getRecentErrors();
-
-      const health = {
-        integrations: integrations.map(int => ({
-          name: int.displayName,
-          status: int.lastTestResult === 'success' ? 'connected' : 'error',
-          lastTested: int.lastTestedAt,
-          isActive: int.isActive
-        })),
-        stats,
-        errors,
-        deployment: {
-          lastDeployment: process.env.RENDER_GIT_COMMIT ? {
-            commit: process.env.RENDER_GIT_COMMIT.substring(0, 8),
-            timestamp: process.env.RENDER_DEPLOY_HOOK ? new Date().toISOString() : null
-          } : null
-        },
-        timestamp: new Date().toISOString()
-      };
-
-      res.json(health);
-    } catch (error) {
-      console.error('[Developer API] System health error:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
+  // NOTE: /api/developer/system-health is registered in developerRoutes.ts (not here)
 
   return httpServer;
 }
