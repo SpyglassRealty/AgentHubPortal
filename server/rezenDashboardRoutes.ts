@@ -533,8 +533,19 @@ export function registerRezenDashboardRoutes(app: Express): void {
         const weeklyDeals = allTransactions.filter((t) => {
           if (t.transactionType !== "SALE") return false;
 
+          // Check createdAt (new transaction entered this week)
           const entryMs = getContractEntryMs(t);
           if (entryMs > 0 && entryMs >= sevenDaysAgo) return true;
+
+          // Check updatedAt (existing transaction updated this week — e.g. contract signed)
+          const updated = normalizeEpochMs(t.updatedAt as number);
+          if (updated > 0 && updated >= sevenDaysAgo) return true;
+
+          // Check firmDate (contract date set to this week)
+          if (t.firmDate) {
+            const firmMs = new Date(t.firmDate).getTime();
+            if (!isNaN(firmMs) && firmMs >= sevenDaysAgo) return true;
+          }
 
           return false;
         });
