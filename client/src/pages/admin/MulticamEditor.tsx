@@ -314,6 +314,19 @@ function ImportStep({ jobId, onComplete }: { jobId: string; onComplete: () => vo
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Continue button — shows after files are uploaded */}
+        {uploadedFiles.length > 0 && !uploading && !importing && (
+          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-800 flex justify-end">
+            <Button
+              onClick={onComplete}
+              className="bg-[#EF4923] hover:bg-[#d9401f]"
+              size="lg"
+            >
+              Continue to Process <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -969,6 +982,7 @@ function JobEditor({ jobId, onBack }: { jobId: string; onBack: () => void }) {
   let currentStep = 0;
   if (hasFiles && !hasTimeline && !isProcessing) currentStep = 1;
   else if (isProcessing) currentStep = 1;
+  else if (job.status === "error" && hasFiles) currentStep = 1;
   else if (hasTimeline && !isExporting && job.status !== "complete") currentStep = 2;
   else if (isExporting || job.status === "complete") currentStep = 3;
 
