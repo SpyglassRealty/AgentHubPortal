@@ -637,7 +637,7 @@ export function registerRezenDashboardRoutes(app: Express): void {
     }
   );
 
-  // ── Debug: inspect raw OPEN transaction fields ─────
+  // ── Debug: inspect transaction fields + find most recent ─────
   app.get(
     "/api/admin/rezen-dashboard/debug-open-transactions",
     isAuthenticated,
@@ -653,35 +653,50 @@ export function registerRezenDashboardRoutes(app: Express): void {
         const client = getRezenClient();
         if (!client) return res.status(500).json({ message: "ReZen client not configured" });
 
-        // Fetch just a few to inspect fields
-        const result = await client.getOpenTransactions(yentaId, 10);
-        const saleTransactions = (result.transactions || []).filter(t => t.transactionType === "SALE");
+        // Fetch both OPEN and CLOSED
+        const [openResult, closedResult] = await Promise.all([
+          client.getOpenTransactions(yentaId, 50),
+          client.getClosedTransactions(yentaId, 50),
+        ]);
+
+        const allTxns = [...(openResult.transactions || []), ...(closedResult.transactions || [])];
+        const saleTxns = allTxns.filter(t => t.transactionType === "SALE");
+
+        // Sort by createdAt descending to find most recent
+        const sorted = saleTxns.sort((a, b) => {
+          const aCreated = (a as any).createdAt || 0;
+          const bCreated = (b as any).createdAt || 0;
+          return bCreated - aCreated;
+        });
+
+        // Show the 10 most recently created SALE transactions
+        const recentSamples = sorted.slice(0, 10).map(t => ({
+          id: t.id,
+          code: t.code,
+          type: t.transactionType,
+          status: t.closed ? "CLOSED" : t.terminated ? "TERMINATED" : "OPEN",
+          lifecycleState: t.lifecycleState?.state,
+          address: t.address?.oneLine,
+          agent: getAgentName(t),
+          price: t.price?.amount,
+          createdAt: (t as any).createdAt,
+          createdAtDate: (t as any).createdAt ? new Date((t as any).createdAt).toISOString() : null,
+          updatedAt: (t as any).updatedAt,
+          updatedAtDate: (t as any).updatedAt ? new Date((t as any).updatedAt).toISOString() : null,
+          firmDate: t.firmDate,
+          closedAt: t.closedAt,
+          closedAtDate: t.closedAt ? new Date(t.closedAt).toISOString() : null,
+          leadSource: t.leadSource,
+        }));
 
         res.json({
-          totalOpen: result.totalCount,
-          saleCount: saleTransactions.length,
-          sampleKeys: saleTransactions[0] ? Object.keys(saleTransactions[0]) : [],
-          samples: saleTransactions.slice(0, 3).map(t => {
-            // Return all fields so we can see what date fields exist
-            const dateRelated: Record<string, any> = {};
-            for (const [k, v] of Object.entries(t)) {
-              if (typeof v !== "object" || v === null) {
-                dateRelated[k] = v;
-              }
-            }
-            return {
-              id: t.id,
-              code: t.code,
-              type: t.transactionType,
-              address: t.address?.oneLine,
-              price: t.price?.amount,
-              firmDate: t.firmDate,
-              closingDateEstimated: t.closingDateEstimated,
-              lifecycleState: t.lifecycleState?.state,
-              leadSource: t.leadSource,
-              allScalarFields: dateRelated,
-            };
-          }),
+          yentaId,
+          totalOpen: openResult.totalCount,
+          totalClosed: closedResult.totalCount,
+          totalSale: saleTxns.length,
+          nowMs: Date.now(),
+          sevenDaysAgoMs: Date.now() - 7 * 24 * 60 * 60 * 1000,
+          mostRecentSaleTransactions: recentSamples,
         });
       } catch (error: any) {
         res.status(500).json({ message: "Debug error", error: error.message });
