@@ -1,63 +1,14 @@
 /**
  * Google Calendar Client - Uses domain-wide delegation to impersonate users
  * 
- * For deployment (Vercel), set one of these environment variables:
- *   - GOOGLE_CALENDAR_CREDENTIALS = the full JSON string of the service account key
- *   - GOOGLE_CALENDAR_CREDENTIALS_FILE = path to the JSON file on disk
- * 
- * The service account must have domain-wide delegation enabled in Google Admin
- * with scope: https://www.googleapis.com/auth/calendar.readonly
+ * Supports read (calendar.readonly) and write (calendar.events) operations.
+ * Credentials loaded via shared googleCredentials.ts helper.
  */
 
 import { google } from 'googleapis';
-import fs from 'fs';
-import path from 'path';
+import { getGoogleCredentials } from './googleCredentials';
 
 import type { GoogleCalendarEvent } from '@shared/schema';
-
-interface ServiceAccountCredentials {
-  type: string;
-  project_id: string;
-  private_key_id: string;
-  private_key: string;
-  client_email: string;
-  client_id: string;
-  auth_uri: string;
-  token_uri: string;
-  auth_provider_x509_cert_url: string;
-  client_x509_cert_url: string;
-}
-
-let cachedCredentials: ServiceAccountCredentials | null = null;
-
-function getCredentials(): ServiceAccountCredentials {
-  if (cachedCredentials) return cachedCredentials;
-
-  // Try env var with JSON string first
-  const credentialsJson = process.env.GOOGLE_CALENDAR_CREDENTIALS;
-  if (credentialsJson) {
-    try {
-      cachedCredentials = JSON.parse(credentialsJson);
-      console.log('[Google Calendar] Loaded credentials from GOOGLE_CALENDAR_CREDENTIALS env var');
-      return cachedCredentials!;
-    } catch (e) {
-      console.error('[Google Calendar] Failed to parse GOOGLE_CALENDAR_CREDENTIALS:', e);
-    }
-  }
-
-  // Fall back to file path
-  const credentialsFile = process.env.GOOGLE_CALENDAR_CREDENTIALS_FILE 
-    || path.resolve(process.env.HOME || '', 'clawd/.credentials/google-calendar.json');
-  
-  if (fs.existsSync(credentialsFile)) {
-    const raw = fs.readFileSync(credentialsFile, 'utf-8');
-    cachedCredentials = JSON.parse(raw);
-    console.log(`[Google Calendar] Loaded credentials from file: ${credentialsFile}`);
-    return cachedCredentials!;
-  }
-
-  throw new Error('Google Calendar credentials not found. Set GOOGLE_CALENDAR_CREDENTIALS or GOOGLE_CALENDAR_CREDENTIALS_FILE.');
-}
 
 // Color mapping for Google Calendar event colors
 const GOOGLE_CALENDAR_COLORS: Record<string, { name: string; bg: string; text: string }> = {
@@ -93,7 +44,7 @@ export async function getGoogleCalendarEvents(
   startDate: string,
   endDate: string
 ): Promise<GoogleCalendarEvent[]> {
-  const credentials = getCredentials();
+  const credentials = getGoogleCredentials();
 
   const auth = new google.auth.JWT({
     email: credentials.client_email,
