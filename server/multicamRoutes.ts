@@ -62,7 +62,7 @@ const JOBS_FILE = path.join(DATA_DIR, "multicam-jobs.json");
 const UPLOADS_DIR = path.join(DATA_DIR, "multicam-uploads");
 
 // Processing service URL (FastAPI on port 8100)
-const PROCESSING_SERVICE_URL = process.env.MULTICAM_PROCESSING_URL || "http://localhost:8100";
+const PROCESSING_SERVICE_URL = process.env.MULTICAM_PROCESSING_URL || "https://multicam.realtyhack.com";
 
 function ensureDirs() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
