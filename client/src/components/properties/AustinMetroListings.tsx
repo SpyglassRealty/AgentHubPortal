@@ -197,7 +197,7 @@ export function AustinMetroListings({ initialStatus = 'Active', controlledStatus
     { label: 'Townhouse', value: 'Townhouse' },
     { label: 'Multi-Family', value: 'Multi Family' },
     { label: 'Land', value: 'Unimproved Land' },
-    // TODO: Add Commercial filter as separate code path using propertyType=Commercial Sale
+    { label: 'Commercial', value: 'Commercial' },
   ];
 
   const formatPrice = (price: number) => {
