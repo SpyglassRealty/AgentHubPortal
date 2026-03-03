@@ -73,7 +73,7 @@ export function KpiCard({
             </Tooltip>
           )}
         </div>
-        <div className="text-3xl font-bold mt-1">{value}</div>
+        <div className="text-lg xl:text-3xl font-bold mt-1 whitespace-nowrap truncate max-w-full">{value}</div>
         {subtitle && (
           <div className="text-xs text-muted-foreground mt-1">{subtitle}</div>
         )}

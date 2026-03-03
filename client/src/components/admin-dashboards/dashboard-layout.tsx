@@ -24,6 +24,7 @@ import {
   UserCog,
   Swords,
   Rocket,
+  CalendarDays,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ const navItems: NavItem[] = [
   { label: "Analytics", href: "/admin/dashboards/insights", icon: Lightbulb, section: "DASHBOARD" },
   { label: "Leads", href: "/admin/dashboards/leads", icon: Target, section: "DASHBOARD" },
   { label: "Transactions", href: "/admin/dashboards/transactions", icon: FileText, section: "PRODUCTION" },
+  { label: "Weekly Deals", href: "/admin/dashboards/weekly-deals", icon: CalendarDays, section: "PRODUCTION" },
   { label: "Listings", href: "/admin/dashboards/listings", icon: Home, section: "PRODUCTION" },
   { label: "Revenue", href: "/admin/dashboards/revenue", icon: DollarSign, section: "PRODUCTION" },
   { label: "Network Overview", href: "/admin/dashboards/network", icon: Network, section: "NETWORK" },

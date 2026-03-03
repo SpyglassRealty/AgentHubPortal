@@ -20,6 +20,7 @@ import ReportsPage from "./reports";
 import RetentionRiskPage from "./retention-risk";
 import RecruitingBattlecardsPage from "./recruiting-battlecards";
 import BillionTrackerPage from "./billion-tracker";
+import WeeklyDealsPage from "./weekly-deals";
 
 export default function AdminDashboardsRouter() {
   return (
@@ -32,6 +33,7 @@ export default function AdminDashboardsRouter() {
         <Route path="/admin/dashboards/insights" component={InsightsPage} />
         <Route path="/admin/dashboards/leads" component={LeadsPage} />
         <Route path="/admin/dashboards/transactions" component={TransactionsPage} />
+        <Route path="/admin/dashboards/weekly-deals" component={WeeklyDealsPage} />
         <Route path="/admin/dashboards/listings" component={ListingsPage} />
         <Route path="/admin/dashboards/revenue" component={RevenuePage} />
         <Route path="/admin/dashboards/network" component={NetworkPage} />

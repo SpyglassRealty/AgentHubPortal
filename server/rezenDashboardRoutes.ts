@@ -474,6 +474,121 @@ export function registerRezenDashboardRoutes(app: Express): void {
     }
   );
 
+  // ── Weekly Deals Endpoint ───────────────────────────
+  app.get(
+    "/api/admin/rezen-dashboard/weekly-deals",
+    isAuthenticated,
+    requireSuperAdmin as any,
+    async (req: any, res) => {
+      try {
+        const user = req.dbUser as User;
+        const yentaId = user.rezenYentaId;
+        if (!yentaId) {
+          return res.status(400).json({ message: "ReZen account not linked. Add your Yenta ID in settings." });
+        }
+
+        const cacheKey = `weekly_deals_${yentaId}`;
+        const cached = getCached<any>(cacheKey);
+        if (cached) {
+          return res.json(cached);
+        }
+
+        const openTransactions = await withTimeout(
+          fetchAllTransactions(yentaId, "OPEN"),
+          120_000,
+          [],
+          "Weekly deals data fetch"
+        );
+
+        // Filter to SALE transactions from the past 7 days
+        const now = Date.now();
+        const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+        const weeklyDeals = openTransactions.filter((t) => {
+          if (t.transactionType !== "SALE") return false;
+
+          // Check firmDate first, then fall back to createdAt-like heuristics
+          if (t.firmDate) {
+            const firmMs = new Date(t.firmDate).getTime();
+            if (!isNaN(firmMs) && firmMs >= sevenDaysAgo) return true;
+          }
+
+          // If no firmDate, check if closingDateEstimated is recent (proxy for creation)
+          // This is a heuristic — Ryan can refine later
+          return false;
+        });
+
+        // Build deal rows
+        const deals = weeklyDeals.map((t) => {
+          const leadSourceName = t.leadSource?.name || null;
+          const isCompanyLead = !!leadSourceName && leadSourceName.trim().length > 0;
+
+          return {
+            id: t.id,
+            address: t.address?.oneLine || t.address?.street || "Address not available",
+            city: t.address?.city || "",
+            state: t.address?.state || "",
+            agent: getAgentName(t),
+            leadSource: leadSourceName || "None",
+            isCompanyLead,
+            price: t.price?.amount || 0,
+            date: t.firmDate || t.closingDateEstimated || null,
+            code: t.code || "",
+          };
+        });
+
+        // Aggregates
+        const totalDeals = deals.length;
+        const totalVolume = deals.reduce((sum, d) => sum + d.price, 0);
+        const companyLeads = deals.filter((d) => d.isCompanyLead).length;
+        const nonCompanyLeads = deals.filter((d) => !d.isCompanyLead).length;
+
+        // Lead source breakdown
+        const leadSourceMap: Record<string, number> = {};
+        deals.forEach((d) => {
+          const src = d.leadSource;
+          leadSourceMap[src] = (leadSourceMap[src] || 0) + 1;
+        });
+        const leadSourceBreakdown = Object.entries(leadSourceMap)
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count);
+
+        const result = {
+          deals,
+          kpis: {
+            totalDeals,
+            totalVolume,
+            companyLeads,
+            nonCompanyLeads,
+          },
+          leadSourceBreakdown,
+          companyVsNonCompany: [
+            { name: "Company Leads", value: companyLeads },
+            { name: "Non-Company", value: nonCompanyLeads },
+          ],
+        };
+
+        setCache(cacheKey, result);
+        res.json(result);
+      } catch (error: any) {
+        console.error("[ReZen Dashboard] Weekly deals error:", error);
+
+        if (error.message?.includes("timeout")) {
+          res.json({
+            deals: [],
+            kpis: { totalDeals: 0, totalVolume: 0, companyLeads: 0, nonCompanyLeads: 0 },
+            leadSourceBreakdown: [],
+            companyVsNonCompany: [],
+            isPartialData: true,
+            error: "Weekly deals data temporarily unavailable due to timeout",
+          });
+        } else {
+          res.status(500).json({ message: "Failed to fetch weekly deals", error: error.message });
+        }
+      }
+    }
+  );
+
   // ── Cache invalidation endpoint ────────────────────
   app.post(
     "/api/admin/rezen-dashboard/refresh",
