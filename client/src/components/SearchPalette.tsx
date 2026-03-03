@@ -1,7 +1,7 @@
 import React from "react";
 import { useLocation } from "wouter";
 import { navItems, apps } from "@/lib/apps";
-import { Search, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import {
   Command,
   CommandEmpty,
@@ -135,8 +135,6 @@ export default function SearchPalette({
   return (
     <div ref={containerRef} className={`relative ${className || ""}`}>
       <Command shouldFilter={true} className="bg-transparent">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
           <CommandInput
             placeholder={placeholder}
             value={query}
@@ -148,11 +146,10 @@ export default function SearchPalette({
             onFocus={() => {
               if (query.length > 0) onOpenChange(true);
             }}
-            className="pl-6 bg-secondary/50 border-transparent focus-visible:bg-background focus-visible:border-input transition-all"
+            className="bg-secondary/50 border-transparent focus-visible:bg-background focus-visible:border-input transition-all"
             data-testid={testId}
             autoFocus={autoFocus}
           />
-        </div>
 
         {open && query.length > 0 && (
           <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-lg border bg-popover shadow-lg overflow-hidden">
