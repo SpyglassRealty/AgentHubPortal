@@ -194,7 +194,8 @@ function ImportStep({ jobId, onComplete }: { jobId: string; onComplete: () => vo
         setUploadedFiles(prev => [...prev, file.name]);
       }
       toast({ title: "Files uploaded successfully" });
-      onComplete();
+      // Add delay to ensure server has processed the upload
+      setTimeout(() => onComplete(), 1000);
     } catch (err: any) {
       toast({ title: "Upload error", description: err.message, variant: "destructive" });
     } finally {
@@ -221,7 +222,8 @@ function ImportStep({ jobId, onComplete }: { jobId: string; onComplete: () => vo
         throw new Error(data.error || "Import failed");
       }
       toast({ title: "Files imported", description: `${links.length} file(s) added from Google Drive` });
-      onComplete();
+      // Add delay to ensure server has processed the import
+      setTimeout(() => onComplete(), 1000);
     } catch (err: any) {
       toast({ title: "Import error", description: err.message, variant: "destructive" });
     } finally {
@@ -1021,7 +1023,12 @@ function JobEditor({ jobId, onBack }: { jobId: string; onBack: () => void }) {
               <ArrowRight className="h-4 w-4 mr-2" /> Back to Process
             </Button>
           )}
-          <ImportStep jobId={job.id} onComplete={() => { setForceImportView(false); handleRefresh(); }} />
+          <ImportStep jobId={job.id} onComplete={async () => { 
+          setForceImportView(false); 
+          // Add small delay to ensure backend has updated before refetch
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await refetch();
+        }} />
         </div>
       ) : null}
 
