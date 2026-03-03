@@ -147,9 +147,25 @@ export const blockRegistry: WidgetDefinition[] = [
     category: 'Content',
     defaultProps: { headings: [] },
   },
+
+  // ── Real Estate ──────────────────────────────────
+  {
+    type: 'idx-feed',
+    label: 'IDX Listing Feed',
+    icon: '🏘',
+    category: 'Real Estate',
+    defaultProps: {
+      communityId: null,
+      searchType: 'Residential',
+      searchSubtype: '',
+      sortOrder: 'DESC',
+      sortField: 'ListingPrice',
+      pageLimit: 12,
+    },
+  },
 ];
 
-export const widgetCategories: WidgetCategory[] = ['Layout', 'Basic', 'Media', 'Content'];
+export const widgetCategories: WidgetCategory[] = ['Layout', 'Basic', 'Media', 'Content', 'Real Estate'];
 
 export function getWidgetsByCategory(category: WidgetCategory): WidgetDefinition[] {
   return blockRegistry.filter(w => w.category === category);

@@ -16,7 +16,8 @@ export type BlockType =
   | 'cta'
   | 'image-gallery'
   | 'faq'
-  | 'toc';
+  | 'toc'
+  | 'idx-feed';
 
 export interface BlockBase {
   id: string;
@@ -154,7 +155,7 @@ export type BlockData = BlockBase;
 
 // ── Widget Category ──────────────────────────────────────────
 
-export type WidgetCategory = 'Layout' | 'Basic' | 'Media' | 'Content';
+export type WidgetCategory = 'Layout' | 'Basic' | 'Media' | 'Content' | 'Real Estate';
 
 export interface WidgetDefinition {
   type: BlockType;

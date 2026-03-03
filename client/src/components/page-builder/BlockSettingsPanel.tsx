@@ -1,4 +1,5 @@
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { BlockData } from './types';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -545,6 +546,9 @@ export function BlockSettingsPanel({ block, onUpdate, onClose }: BlockSettingsPa
           </div>
         );
 
+      case 'idx-feed':
+        return <IdxFeedSettings props={props} update={update} />;
+
       default:
         return <p className="text-sm text-gray-400">No settings available for this block type.</p>;
     }
@@ -567,6 +571,105 @@ export function BlockSettingsPanel({ block, onUpdate, onClose }: BlockSettingsPa
         </div>
       </ScrollArea>
     </div>
+  );
+}
+
+// ── IDX Feed Settings ──────────────────────────────────
+
+function IdxFeedSettings({ props, update }: { props: Record<string, any>; update: (key: string, value: any) => void }) {
+  const { data: communities = [] } = useQuery<Array<{ id: number; name: string; slug: string }>>({
+    queryKey: ['/api/admin/communities/with-polygons'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/communities/with-polygons', { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+
+  return (
+    <>
+      <Field label="Community">
+        <Select
+          value={props.communityId ? String(props.communityId) : 'all'}
+          onValueChange={(v) => update('communityId', v === 'all' ? null : parseInt(v))}
+        >
+          <SelectTrigger><SelectValue placeholder="Select community" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Communities</SelectItem>
+            {communities.map((c) => (
+              <SelectItem key={c.id} value={String(c.id)}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field label="Search Type">
+        <Select
+          value={props.searchType || 'Residential'}
+          onValueChange={(v) => update('searchType', v)}
+        >
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Residential">Residential</SelectItem>
+            <SelectItem value="Commercial">Commercial</SelectItem>
+            <SelectItem value="Land">Land</SelectItem>
+            <SelectItem value="MultiFamily">Multi-Family</SelectItem>
+            <SelectItem value="Rental">Rental</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field label="Search Subtype">
+        <Input
+          value={props.searchSubtype || ''}
+          onChange={(e) => update('searchSubtype', e.target.value)}
+          placeholder="e.g., SingleFamily, Condo, Townhouse"
+        />
+      </Field>
+      <Field label="Sort Field">
+        <Select
+          value={props.sortField || 'ListingPrice'}
+          onValueChange={(v) => update('sortField', v)}
+        >
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ListingPrice">Listing Price</SelectItem>
+            <SelectItem value="ListDate">List Date</SelectItem>
+            <SelectItem value="ModificationTimestamp">Last Modified</SelectItem>
+            <SelectItem value="LivingArea">Square Footage</SelectItem>
+            <SelectItem value="BedroomsTotal">Bedrooms</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field label="Sort Order">
+        <Select
+          value={props.sortOrder || 'DESC'}
+          onValueChange={(v) => update('sortOrder', v)}
+        >
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="DESC">Descending (High to Low)</SelectItem>
+            <SelectItem value="ASC">Ascending (Low to High)</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field label="Results Per Page">
+        <Select
+          value={String(props.pageLimit || 12)}
+          onValueChange={(v) => update('pageLimit', parseInt(v))}
+        >
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="6">6</SelectItem>
+            <SelectItem value="9">9</SelectItem>
+            <SelectItem value="12">12</SelectItem>
+            <SelectItem value="18">18</SelectItem>
+            <SelectItem value="24">24</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+    </>
   );
 }
 
