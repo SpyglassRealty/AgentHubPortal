@@ -1315,7 +1315,7 @@ export async function registerRoutes(
 
       // Property class filter — exclude Commercial by default
       // Multi Family is the only residential-facing style that lives under Commercial class
-      if (propertyType === 'Multi Family') {
+      if (propertyType === 'Multi Family' || propertyType === 'Commercial') {
         params.append('class', 'Commercial');
       } else {
         params.append('class', 'Residential');
@@ -1363,7 +1363,8 @@ export async function registerRoutes(
       }
 
       // Property type filter (maps to Repliers 'style' field, not 'propertyType')
-      if (propertyType) {
+      // 'Commercial' is a class filter, not a style — skip style param for it
+      if (propertyType && propertyType !== 'Commercial') {
         params.append('style', propertyType);
       }
 
