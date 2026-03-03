@@ -171,6 +171,20 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     defaultContent: { title: 'Contact Us', fields: ['name', 'email', 'phone', 'message'] },
   },
   {
+    type: 'idx-feed',
+    label: 'IDX Listing Feed',
+    icon: '🏘',
+    category: 'realestate',
+    defaultContent: {
+      communityId: null,
+      searchType: 'Residential',
+      searchSubtype: '',
+      sortOrder: 'DESC',
+      sortField: 'ListingPrice',
+      pageLimit: 12,
+    },
+  },
+  {
     type: 'cta-banner',
     label: 'CTA Banner',
     icon: '📢',

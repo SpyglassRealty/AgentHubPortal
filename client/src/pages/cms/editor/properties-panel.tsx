@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { CmsBlock, BlockStyle, PageContent } from "../types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
@@ -594,6 +595,14 @@ function ContentEditor({
         </>
       );
 
+    case "idx-feed":
+      return (
+        <IdxFeedProperties
+          content={block.content}
+          updateContent={updateContent}
+        />
+      );
+
     case "html":
       return (
         <Field label="HTML Code">
@@ -626,6 +635,112 @@ function ContentEditor({
         </p>
       );
   }
+}
+
+// ============================================================
+// IDX Feed Properties
+// ============================================================
+function IdxFeedProperties({
+  content,
+  updateContent,
+}: {
+  content: Record<string, any>;
+  updateContent: (key: string, value: any) => void;
+}) {
+  const { data: communities = [] } = useQuery<Array<{ id: number; name: string; slug: string }>>({
+    queryKey: ["/api/admin/communities/with-polygons"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/communities/with-polygons", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+
+  return (
+    <>
+      <Field label="Community">
+        <Select
+          value={content.communityId ? String(content.communityId) : "all"}
+          onValueChange={(v) => updateContent("communityId", v === "all" ? null : parseInt(v))}
+        >
+          <SelectTrigger><SelectValue placeholder="Select community" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Communities</SelectItem>
+            {communities.map((c) => (
+              <SelectItem key={c.id} value={String(c.id)}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field label="Search Type">
+        <Select
+          value={content.searchType || "Residential"}
+          onValueChange={(v) => updateContent("searchType", v)}
+        >
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Residential">Residential</SelectItem>
+            <SelectItem value="Commercial">Commercial</SelectItem>
+            <SelectItem value="Land">Land</SelectItem>
+            <SelectItem value="MultiFamily">Multi-Family</SelectItem>
+            <SelectItem value="Rental">Rental</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field label="Search Subtype">
+        <Input
+          value={content.searchSubtype || ""}
+          onChange={(e) => updateContent("searchSubtype", e.target.value)}
+          placeholder="e.g., SingleFamily, Condo, Townhouse"
+        />
+      </Field>
+      <Field label="Sort Field">
+        <Select
+          value={content.sortField || "ListingPrice"}
+          onValueChange={(v) => updateContent("sortField", v)}
+        >
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ListingPrice">Listing Price</SelectItem>
+            <SelectItem value="ListDate">List Date</SelectItem>
+            <SelectItem value="ModificationTimestamp">Last Modified</SelectItem>
+            <SelectItem value="LivingArea">Square Footage</SelectItem>
+            <SelectItem value="BedroomsTotal">Bedrooms</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field label="Sort Order">
+        <Select
+          value={content.sortOrder || "DESC"}
+          onValueChange={(v) => updateContent("sortOrder", v)}
+        >
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="DESC">Descending (High to Low)</SelectItem>
+            <SelectItem value="ASC">Ascending (Low to High)</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field label="Results Per Page">
+        <Select
+          value={String(content.pageLimit || 12)}
+          onValueChange={(v) => updateContent("pageLimit", parseInt(v))}
+        >
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="6">6</SelectItem>
+            <SelectItem value="9">9</SelectItem>
+            <SelectItem value="12">12</SelectItem>
+            <SelectItem value="18">18</SelectItem>
+            <SelectItem value="24">24</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+    </>
+  );
 }
 
 // ============================================================
