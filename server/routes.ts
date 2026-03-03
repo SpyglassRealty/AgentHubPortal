@@ -1312,6 +1312,15 @@ export async function registerRoutes(
 
       // Add county filters for Austin Metro Area (same as Market Pulse)
       msaCounties.forEach(county => params.append('county', county));
+
+      // Property class filter — exclude Commercial by default
+      // Multi Family is the only residential-facing style that lives under Commercial class
+      if (propertyType === 'Multi Family') {
+        params.append('class', 'Commercial');
+      } else {
+        params.append('class', 'Residential');
+        params.append('class', 'Condo');
+      }
       
       // Add office filter if Spyglass selected
       if (officeConfig) {
