@@ -91,6 +91,9 @@ export default function PolygonManager() {
   const polygonLayersRef = useRef<L.FeatureGroup>(new L.FeatureGroup());
   const [mapReady, setMapReady] = useState(false);
   const [showExistingPolygons, setShowExistingPolygons] = useState(true);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [vertexCount, setVertexCount] = useState(0);
+  const activeDrawHandlerRef = useRef<any>(null);
 
   const [editingCommunity, setEditingCommunity] = useState<CommunityPolygon | null>(null);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -237,12 +240,32 @@ export default function PolygonManager() {
     map.addControl(drawControl);
     drawControlRef.current = drawControl;
 
-    // Disable double-click zoom while drawing to prevent accidental finishes
+    // Track drawing state and disable double-click zoom while drawing
     map.on(L.Draw.Event.DRAWSTART, () => {
       map.doubleClickZoom.disable();
+      setIsDrawing(true);
+      setVertexCount(0);
+      // Grab the active polygon handler from the draw control's internal handlers
+      const toolbar = (drawControl as any)._toolbars?.draw;
+      if (toolbar) {
+        const handlers = toolbar._modes || {};
+        for (const key of Object.keys(handlers)) {
+          const mode = handlers[key];
+          if (mode?.handler?._enabled) {
+            activeDrawHandlerRef.current = mode.handler;
+            break;
+          }
+        }
+      }
     });
     map.on(L.Draw.Event.DRAWSTOP, () => {
       map.doubleClickZoom.enable();
+      setIsDrawing(false);
+      setVertexCount(0);
+      activeDrawHandlerRef.current = null;
+    });
+    map.on(L.Draw.Event.DRAWVERTEX, () => {
+      setVertexCount((c) => c + 1);
     });
 
     // Handle draw:created event
@@ -342,6 +365,20 @@ export default function PolygonManager() {
     setDrawnPolygon(null);
     setEditingCommunity(null);
   };
+
+  const handleFinishDrawing = useCallback(() => {
+    const handler = activeDrawHandlerRef.current;
+    if (handler && typeof handler._finishShape === "function") {
+      try {
+        handler._finishShape();
+      } catch {
+        // If _finishShape fails, try completing via completeShape
+        if (typeof handler.completeShape === "function") {
+          handler.completeShape();
+        }
+      }
+    }
+  }, []);
 
   const handleSave = () => {
     if (!drawnPolygon || drawnPolygon.length < 3) {
@@ -541,10 +578,32 @@ export default function PolygonManager() {
                 {showExistingPolygons ? "Hide Polygons" : "Show Polygons"}
               </Button>
             </div>
+            {/* Finish Drawing button — shown while actively drawing with 3+ points */}
+            {isDrawing && vertexCount >= 3 && (
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000]">
+                <Button
+                  onClick={handleFinishDrawing}
+                  className="shadow-lg bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 text-sm animate-pulse"
+                  size="lg"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Finish Drawing ({vertexCount} points)
+                </Button>
+              </div>
+            )}
+            {isDrawing && vertexCount < 3 && (
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000]">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 shadow-md">
+                  <p className="text-sm text-amber-800 font-medium">
+                    Click to place points — need {3 - vertexCount} more to finish
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-md z-[1000]">
               <p className="text-xs text-gray-600">
                 <strong>Draw:</strong> Click the polygon tool ▢ on the left, then click to place points.{" "}
-                <strong>Finish:</strong> Click the first point or use the toolbar "Finish" button.{" "}
+                <strong>Finish:</strong> Click the green button, the first point, or use the toolbar "Finish" link.{" "}
                 <strong>Edit:</strong> Click a saved polygon in the sidebar.
               </p>
             </div>
