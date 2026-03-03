@@ -493,86 +493,71 @@ export function registerRezenDashboardRoutes(app: Express): void {
           return res.json(cached);
         }
 
-        const openTransactions = await withTimeout(
-          fetchAllTransactions(yentaId, "OPEN"),
-          120_000,
-          [],
-          "Weekly deals data fetch"
-        );
+        // Fetch BOTH open and closed transactions to catch new deals in any state
+        const [openTransactions, closedTransactions] = await Promise.all([
+          withTimeout(fetchAllTransactions(yentaId, "OPEN"), 120_000, [], "Weekly deals OPEN fetch"),
+          withTimeout(fetchAllTransactions(yentaId, "CLOSED"), 120_000, [], "Weekly deals CLOSED fetch"),
+        ]);
 
-        // Log sample transaction to discover available date fields
-        if (openTransactions.length > 0) {
-          const sample = openTransactions[0];
-          const dateFields: Record<string, any> = {};
-          for (const [key, val] of Object.entries(sample)) {
-            if (
-              key.toLowerCase().includes("date") ||
-              key.toLowerCase().includes("created") ||
-              key.toLowerCase().includes("updated") ||
-              key.toLowerCase().includes("firm") ||
-              key.toLowerCase().includes("contract") ||
-              key.toLowerCase().includes("acceptance") ||
-              key.toLowerCase().includes("time") ||
-              key.toLowerCase().includes("at")
-            ) {
-              dateFields[key] = val;
-            }
-          }
-          console.log(`[ReZen Weekly Deals] ${openTransactions.length} total OPEN transactions`);
-          console.log(`[ReZen Weekly Deals] SALE count: ${openTransactions.filter(t => t.transactionType === "SALE").length}`);
-          console.log(`[ReZen Weekly Deals] Sample date fields:`, JSON.stringify(dateFields));
-          console.log(`[ReZen Weekly Deals] Sample transaction keys:`, Object.keys(sample).join(", "));
-        } else {
-          console.log(`[ReZen Weekly Deals] No OPEN transactions found for yentaId ${yentaId}`);
-        }
+        const allTransactions = [...openTransactions, ...closedTransactions];
+        console.log(`[ReZen Weekly Deals] Total: ${allTransactions.length} (${openTransactions.length} open + ${closedTransactions.length} closed)`);
 
         // Filter to SALE transactions from the past 7 days
         const now = Date.now();
         const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
 
-        // Helper: extract the best "contract date" from a transaction
-        function getContractDateMs(t: RezenTransaction): number {
-          // Try multiple date fields in priority order
-          const candidates: (string | number | undefined | null)[] = [
-            t.firmDate,
-            (t as any).contractAcceptanceDate,
-            (t as any).approvalDate,
-            (t as any).contractDate,
-            (t as any).executedDate,
-            (t as any).pendingDate,
-          ];
+        // Helper: normalize epoch ms — ReZen uses milliseconds
+        function normalizeEpochMs(val: number | undefined | null): number {
+          if (!val || typeof val !== "number") return 0;
+          // If it looks like seconds (< year 2100 in seconds), convert to ms
+          if (val > 0 && val < 10_000_000_000) return val * 1000;
+          return val;
+        }
 
-          for (const c of candidates) {
-            if (!c) continue;
-            const ms = typeof c === "number" ? c : new Date(c).getTime();
+        // Helper: get the best "entered into contract" date for a transaction
+        // Priority: createdAt (when it was entered into ReZen) > firmDate > updatedAt
+        function getContractEntryMs(t: RezenTransaction): number {
+          // createdAt = when the transaction record was created in ReZen
+          const created = normalizeEpochMs(t.createdAt as number);
+          if (created > 0) return created;
+
+          // firmDate = contract acceptance date (string like "2025-09-04")
+          if (t.firmDate) {
+            const ms = new Date(t.firmDate).getTime();
             if (!isNaN(ms) && ms > 0) return ms;
-          }
-
-          // Fall back to createdAt/updatedAt (epoch ms from ReZen)
-          if (t.createdAt && typeof t.createdAt === "number" && t.createdAt > 1_000_000_000) {
-            // ReZen sometimes uses epoch millis, sometimes seconds
-            return t.createdAt > 1_700_000_000_000 ? t.createdAt : t.createdAt * 1000;
           }
 
           return 0;
         }
 
-        const weeklyDeals = openTransactions.filter((t) => {
+        const weeklyDeals = allTransactions.filter((t) => {
           if (t.transactionType !== "SALE") return false;
 
-          const contractMs = getContractDateMs(t);
-          if (contractMs > 0 && contractMs >= sevenDaysAgo) return true;
+          const entryMs = getContractEntryMs(t);
+          if (entryMs > 0 && entryMs >= sevenDaysAgo) return true;
 
           return false;
         });
 
+        // Log for debugging
+        if (allTransactions.length > 0) {
+          const saleTxns = allTransactions.filter(t => t.transactionType === "SALE");
+          console.log(`[ReZen Weekly Deals] ${saleTxns.length} SALE transactions total`);
+          // Log the 3 most recently created
+          const sorted = saleTxns
+            .map(t => ({ code: t.code, created: normalizeEpochMs(t.createdAt as number), firm: t.firmDate }))
+            .sort((a, b) => b.created - a.created)
+            .slice(0, 5);
+          console.log(`[ReZen Weekly Deals] Most recent SALE createdAt:`, JSON.stringify(sorted));
+          console.log(`[ReZen Weekly Deals] 7-day cutoff: ${new Date(sevenDaysAgo).toISOString()}`);
+        }
         console.log(`[ReZen Weekly Deals] Filtered to ${weeklyDeals.length} deals in past 7 days`);
 
         // Build deal rows
         const deals = weeklyDeals.map((t) => {
           const leadSourceName = t.leadSource?.name || null;
           const isCompanyLead = !!leadSourceName && leadSourceName.trim().length > 0;
-          const contractMs = getContractDateMs(t);
+          const entryMs = getContractEntryMs(t);
 
           return {
             id: t.id,
@@ -583,7 +568,8 @@ export function registerRezenDashboardRoutes(app: Express): void {
             leadSource: leadSourceName || "None",
             isCompanyLead,
             price: t.price?.amount || 0,
-            date: contractMs > 0 ? new Date(contractMs).toISOString() : (t.firmDate || t.closingDateEstimated || null),
+            date: entryMs > 0 ? new Date(entryMs).toISOString() : (t.firmDate || t.closingDateEstimated || null),
+            status: t.lifecycleState?.state || (t.closed ? "CLOSED" : "OPEN"),
             code: t.code || "",
           };
         });
