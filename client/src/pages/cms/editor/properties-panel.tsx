@@ -665,7 +665,7 @@ function IdxFeedProperties({
           onValueChange={(v) => updateContent("communityId", v === "all" ? null : parseInt(v))}
         >
           <SelectTrigger><SelectValue placeholder="Select community" /></SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-60 overflow-y-auto">
             <SelectItem value="all">All Communities</SelectItem>
             {communities.map((c) => (
               <SelectItem key={c.id} value={String(c.id)}>
