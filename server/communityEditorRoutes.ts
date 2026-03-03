@@ -386,16 +386,14 @@ export function registerCommunityEditorRoutes(app: Express) {
         return res.status(400).json({ message: "Community does not have a valid polygon" });
       }
 
-      // Convert DB format [lng, lat][] to Repliers format "lat,lng|lat,lng|..."
-      // Also close the polygon (first and last point must be the same)
-      const polygonCoords = community.polygon.map(([lng, lat]: [number, number]) => `${lat},${lng}`);
-      // Close the ring
-      const firstCoord = polygonCoords[0];
-      const lastCoord = polygonCoords[polygonCoords.length - 1];
-      if (firstCoord !== lastCoord) {
-        polygonCoords.push(firstCoord);
+      // Polygon is stored as [lng, lat][] — keep in that format for Repliers POST body
+      // Ensure polygon is closed (first point === last point)
+      const polyCoords = [...community.polygon];
+      const first = polyCoords[0];
+      const last = polyCoords[polyCoords.length - 1];
+      if (first[0] !== last[0] || first[1] !== last[1]) {
+        polyCoords.push(first);
       }
-      const polygonParam = polygonCoords.join("|");
 
       // Build query params
       const type = (req.query.type as string) || "Sale";
@@ -412,13 +410,13 @@ export function registerCommunityEditorRoutes(app: Express) {
       const status = (req.query.status as string) || "Active";
 
       const params = new URLSearchParams({
+        listings: "true",
         type,
         class: searchClass,
         status: status === "Active" ? "A" : status,
         sortBy: sort,
         resultsPerPage: limit.toString(),
         pageNum: page.toString(),
-        map: polygonParam,
       });
 
       if (minPrice) params.append("minPrice", minPrice);
@@ -427,13 +425,17 @@ export function registerCommunityEditorRoutes(app: Express) {
       if (minBaths) params.append("minBaths", minBaths);
 
       const url = `https://api.repliers.io/listings?${params.toString()}`;
-      console.log(`[Listings by Polygon] Fetching for community "${community.name}" (${community.polygon.length} pts)`);
+      console.log(`[Listings by Polygon] Fetching for community "${community.name}" (${polyCoords.length} pts) via POST`);
 
+      // Use POST with JSON body for polygon search (same format as CMA search)
       const response = await fetch(url, {
+        method: "POST",
         headers: {
           Accept: "application/json",
+          "Content-Type": "application/json",
           "REPLIERS-API-KEY": apiKey,
         },
+        body: JSON.stringify({ map: [polyCoords] }),
       });
 
       if (!response.ok) {
