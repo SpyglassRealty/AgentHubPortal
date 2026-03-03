@@ -86,6 +86,45 @@ export interface TransactionsTableData {
   totalCount: number;
 }
 
+// ── Weekly Deals Types ───────────────────────────────
+
+export interface WeeklyDeal {
+  id: string;
+  address: string;
+  city: string;
+  state: string;
+  agent: string;
+  leadSource: string;
+  isCompanyLead: boolean;
+  price: number;
+  date: string | null;
+  code: string;
+}
+
+export interface WeeklyDealsKPIs {
+  totalDeals: number;
+  totalVolume: number;
+  companyLeads: number;
+  nonCompanyLeads: number;
+}
+
+export interface LeadSourceCount {
+  name: string;
+  count: number;
+}
+
+export interface CompanyVsNonCompany {
+  name: string;
+  value: number;
+}
+
+export interface WeeklyDealsData {
+  deals: WeeklyDeal[];
+  kpis: WeeklyDealsKPIs;
+  leadSourceBreakdown: LeadSourceCount[];
+  companyVsNonCompany: CompanyVsNonCompany[];
+}
+
 // ── Fetch helpers ────────────────────────────────────
 
 async function fetchRezenDashboard<T>(endpoint: string): Promise<T> {
@@ -123,6 +162,15 @@ export function useTransactionsTable(status: string = "CLOSED") {
   return useQuery<TransactionsTableData>({
     queryKey: ["rezen-dashboard", "transactions", status],
     queryFn: () => fetchRezenDashboard(`transactions?status=${status}`),
+    staleTime: 10 * 60 * 1000,
+    retry: 1,
+  });
+}
+
+export function useWeeklyDeals() {
+  return useQuery<WeeklyDealsData>({
+    queryKey: ["rezen-dashboard", "weekly-deals"],
+    queryFn: () => fetchRezenDashboard("weekly-deals"),
     staleTime: 10 * 60 * 1000,
     retry: 1,
   });
