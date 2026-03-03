@@ -43,6 +43,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     refetchInterval: 60000,
   });
 
+  const { data: agentProfileData } = useQuery<{ profile: { headshotUrl: string | null }; user: { profileImageUrl: string | null } }>({
+    queryKey: ["/api/agent-profile"],
+    enabled: !!user,
+  });
+
   const markReadMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/notifications/${id}/read`, { method: "POST" });
@@ -143,7 +148,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="p-4 border-t border-sidebar-border">
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9">
-            <AvatarImage src={user?.profileImageUrl || undefined} />
+            <AvatarImage src={agentProfileData?.profile?.headshotUrl || user?.profileImageUrl || undefined} />
             <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-sm">
               {userInitials}
             </AvatarFallback>
