@@ -26,6 +26,7 @@ import RedirectsListPage from "./admin/RedirectsList";
 import GlobalScriptsListPage from "./admin/GlobalScriptsList";
 import SavedSearchDashboard from "./admin/SavedSearchDashboard";
 import PolygonManagerPage from "./admin/PolygonManager";
+import MulticamEditorPage from "./admin/MulticamEditor";
 import AdminBeaconPage from "./admin-beacon";
 import AdminSettingsPage from "./admin-settings";
 import AdminDashboardsRouter from "./admin-dashboards";
@@ -75,6 +76,7 @@ import {
   Globe,
   Search,
   MapPin,
+  Film,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -419,6 +421,7 @@ export default function AdminPage() {
         { name: "Dashboards", href: "/admin/dashboards", icon: BarChart3 },
         { name: "Beacon", href: "/admin/beacon", icon: Activity },
         { name: "Site Editor", href: "/admin/site-editor", icon: PenTool },
+        { name: "Multicam Editor", href: "/admin/multicam-editor", icon: Film },
       ]
     },
     {
@@ -601,6 +604,7 @@ export default function AdminPage() {
               <Route path="/admin/pages" component={PagesListPage} />
               <Route path="/admin/landing-pages/:id" component={LandingPageEditorPage} />
               <Route path="/admin/landing-pages" component={LandingPageListPage} />
+              <Route path="/admin/multicam-editor" component={MulticamEditorPage} />
               <Route path="/admin/saved-searches" component={SavedSearchDashboard} />
               <Route path="/admin/testimonials/sources" component={ReviewSourceManagerPage} />
               <Route path="/admin/testimonials/:id" component={TestimonialEditorPage} />

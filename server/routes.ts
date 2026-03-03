@@ -119,6 +119,7 @@ import testimonialRoutes from "./testimonialRoutes";
 import pageBuilderRoutes from "./pageBuilderRoutes";
 import uploadRoutes from "./uploadRoutes";
 import callDutyRoutes from "./callDutyRoutes";
+import multicamRoutes from "./multicamRoutes";
 
 
 // Helper function to get the actual database user from request
@@ -5493,6 +5494,9 @@ Respond with valid JSON in this exact format:
 
   // Register Phase 5 - Saved Search Dashboard (Repliers integration)
   app.use('/api', savedSearchRoutes);
+
+  // Register Multicam Podcast Editor routes
+  app.use('/api/admin/multicam', multicamRoutes);
 
   // ==========================================
   // DEBUG ENDPOINT FOR DATABASE DIAGNOSIS
