@@ -201,13 +201,17 @@ export default function PolygonManager() {
       position: "topleft",
       draw: {
         polygon: {
-          allowIntersection: false,
+          allowIntersection: true,
           showArea: true,
           shapeOptions: {
             color: "#3b82f6",
             weight: 2,
             fillOpacity: 0.2,
           },
+          icon: new L.DivIcon({
+            iconSize: new L.Point(10, 10),
+            className: "leaflet-div-icon leaflet-editing-icon",
+          }),
         },
         polyline: false,
         rectangle: false,
@@ -223,6 +227,14 @@ export default function PolygonManager() {
 
     map.addControl(drawControl);
     drawControlRef.current = drawControl;
+
+    // Disable double-click zoom while drawing to prevent accidental finishes
+    map.on(L.Draw.Event.DRAWSTART, () => {
+      map.doubleClickZoom.disable();
+    });
+    map.on(L.Draw.Event.DRAWSTOP, () => {
+      map.doubleClickZoom.enable();
+    });
 
     // Handle draw:created event
     map.on(L.Draw.Event.CREATED, (e: any) => {
