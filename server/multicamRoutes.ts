@@ -398,6 +398,53 @@ router.post("/jobs/:jobId/import-gdrive", isAuthenticated, async (req: Request, 
   }
 });
 
+// Clear error status
+
+// POST /api/admin/multicam/jobs/:jobId/clear-error — Clear error and reset to pending
+router.post("/jobs/:jobId/clear-error", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const job = findJob(req.params.jobId);
+    if (!job) return res.status(404).json({ error: "Job not found" });
+
+    const updated = updateJob(job.id, {
+      status: job.files.length > 0 ? "pending" : "pending",
+      error: undefined,
+      processingProgress: 0,
+    });
+
+    console.log(`[Multicam] Cleared error for job ${job.id}`);
+    res.json({ success: true, job: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/multicam/jobs/:jobId/files/:fileId — Remove a file from a job
+router.delete("/jobs/:jobId/files/:fileId", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const job = findJob(req.params.jobId);
+    if (!job) return res.status(404).json({ error: "Job not found" });
+
+    const fileIdx = job.files.findIndex(f => f.id === req.params.fileId);
+    if (fileIdx === -1) return res.status(404).json({ error: "File not found" });
+
+    const file = job.files[fileIdx];
+
+    // Remove from disk if it exists
+    if (file.path && fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
+
+    job.files.splice(fileIdx, 1);
+    updateJob(job.id, { files: job.files });
+
+    console.log(`[Multicam] Removed file ${file.filename} from job ${job.id}`);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Processing
 
 // POST /api/admin/multicam/jobs/:jobId/process — Start processing

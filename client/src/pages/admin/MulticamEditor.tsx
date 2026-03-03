@@ -321,12 +321,35 @@ function ImportStep({ jobId, onComplete }: { jobId: string; onComplete: () => vo
 
 // ── Processing Step ──────────────────────────────────────
 
-function ProcessingStep({ job, onRefresh }: { job: MulticamJob; onRefresh: () => void }) {
+function ProcessingStep({ job, onRefresh, onBackToImport }: { job: MulticamJob; onRefresh: () => void; onBackToImport?: () => void }) {
   const [starting, setStarting] = useState(false);
+  const [dismissedError, setDismissedError] = useState(false);
+  const [removingFile, setRemovingFile] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const handleRemoveFile = async (fileId: string) => {
+    setRemovingFile(fileId);
+    try {
+      const res = await fetch(`/api/admin/multicam/jobs/${job.id}/files/${fileId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to remove file");
+      }
+      toast({ title: "File removed" });
+      onRefresh();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setRemovingFile(null);
+    }
+  };
 
   const handleProcess = async (mode: string = "full") => {
     setStarting(true);
+    setDismissedError(false);
     try {
       const res = await fetch(`/api/admin/multicam/jobs/${job.id}/process`, {
         method: "POST",
@@ -347,7 +370,23 @@ function ProcessingStep({ job, onRefresh }: { job: MulticamJob; onRefresh: () =>
     }
   };
 
+  const handleClearError = async () => {
+    try {
+      // Try to clear the error status on the server
+      await fetch(`/api/admin/multicam/jobs/${job.id}/clear-error`, {
+        method: "POST",
+        credentials: "include",
+      }).catch(() => {
+        // If endpoint doesn't exist, just dismiss locally
+      });
+      setDismissedError(true);
+    } catch {
+      setDismissedError(true);
+    }
+  };
+
   const isProcessing = job.status === "processing" || job.status === "importing";
+  const showError = job.status === "error" && job.error && !dismissedError;
 
   return (
     <Card className="border-gray-800">
@@ -361,9 +400,33 @@ function ProcessingStep({ job, onRefresh }: { job: MulticamJob; onRefresh: () =>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Film className="h-4 w-4" />
-          <span><strong>{job.files.length}</strong> file(s) imported</span>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Film className="h-4 w-4" />
+            <span><strong>{job.files.length}</strong> file(s) imported</span>
+          </div>
+          {job.files.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {job.files.map((f) => (
+                <Badge key={f.id} variant="secondary" className="flex items-center gap-1.5 pr-1">
+                  {ROLE_ICONS[f.role] || <Film className="h-3 w-3" />}
+                  <span className="text-xs">{f.label || f.filename}</span>
+                  <button
+                    onClick={() => handleRemoveFile(f.id)}
+                    disabled={removingFile === f.id || isProcessing}
+                    className="ml-1 p-0.5 rounded hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                    title="Remove file"
+                  >
+                    {removingFile === f.id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <X className="h-3 w-3 text-muted-foreground hover:text-red-400" />
+                    )}
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
 
         {isProcessing && (
@@ -376,14 +439,21 @@ function ProcessingStep({ job, onRefresh }: { job: MulticamJob; onRefresh: () =>
           </div>
         )}
 
-        {job.status === "error" && job.error && (
-          <div className="text-sm text-red-400 bg-red-950/30 border border-red-800 rounded-lg p-3">
+        {showError && (
+          <div className="relative text-sm text-red-400 bg-red-950/30 border border-red-800 rounded-lg p-3 pr-10">
+            <button
+              onClick={handleClearError}
+              className="absolute top-2 right-2 p-1 rounded-md hover:bg-red-800/40 transition-colors"
+              title="Dismiss error"
+            >
+              <X className="h-4 w-4 text-red-400" />
+            </button>
             ❌ {job.error}
           </div>
         )}
 
         {!isProcessing && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               onClick={() => handleProcess("full")}
               disabled={starting || job.files.length === 0}
@@ -402,6 +472,15 @@ function ProcessingStep({ job, onRefresh }: { job: MulticamJob; onRefresh: () =>
             >
               Analyze Only
             </Button>
+            {onBackToImport && (
+              <Button
+                variant="outline"
+                onClick={onBackToImport}
+                disabled={starting}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" /> Back to Import
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
@@ -847,6 +926,7 @@ function ExportPanel({ job, onRefresh }: { job: MulticamJob; onRefresh: () => vo
 
 function JobEditor({ jobId, onBack }: { jobId: string; onBack: () => void }) {
   const [currentTime, setCurrentTime] = useState(0);
+  const [forceImportView, setForceImportView] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: job, isLoading, refetch } = useQuery<MulticamJob>({
@@ -915,17 +995,26 @@ function JobEditor({ jobId, onBack }: { jobId: string; onBack: () => void }) {
 
       <StepIndicator currentStep={currentStep} steps={["Import Files", "Process", "Review & Edit", "Export"]} />
 
-      {/* Step 0: Import */}
-      {currentStep === 0 && !hasFiles && (
-        <div className="max-w-2xl mx-auto">
-          <ImportStep jobId={job.id} onComplete={handleRefresh} />
+      {/* Step 0: Import (or forced back-to-import from error) */}
+      {(currentStep === 0 && !hasFiles) || forceImportView ? (
+        <div className="max-w-2xl mx-auto space-y-4">
+          {forceImportView && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setForceImportView(false)}
+            >
+              <ArrowRight className="h-4 w-4 mr-2" /> Back to Process
+            </Button>
+          )}
+          <ImportStep jobId={job.id} onComplete={() => { setForceImportView(false); handleRefresh(); }} />
         </div>
-      )}
+      ) : null}
 
       {/* Step 1: Process (has files, no timeline) */}
-      {currentStep === 1 && (
+      {currentStep === 1 && !forceImportView && (
         <div className="max-w-2xl mx-auto">
-          <ProcessingStep job={job} onRefresh={handleRefresh} />
+          <ProcessingStep job={job} onRefresh={handleRefresh} onBackToImport={() => setForceImportView(true)} />
         </div>
       )}
 
