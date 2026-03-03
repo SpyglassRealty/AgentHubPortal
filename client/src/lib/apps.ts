@@ -27,7 +27,8 @@ import {
   Shield,
   Code,
   Phone,
-  Search
+  Search,
+  Briefcase,
 } from "lucide-react";
 
 export type AppConnectionType = 
@@ -233,6 +234,7 @@ export const apps: AppDefinition[] = [
 export const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { label: "My Performance", icon: TrendingUp, href: "/my-performance" },
+  { label: "Weekly Deals", icon: Briefcase, href: "/admin/dashboards/weekly-deals" },
   { label: "Calendar", icon: Calendar, href: "/calendar" },
   { label: "Email", icon: Mail, href: "/email" },
   { label: "Reports", icon: BarChart3, href: "/reports" },
