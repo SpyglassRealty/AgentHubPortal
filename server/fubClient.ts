@@ -84,7 +84,7 @@ class FubClient {
     return response.json();
   }
 
-  async getUserByEmail(email: string): Promise<{ id: number; name: string } | null> {
+  async getUserByEmail(email: string): Promise<{ id: number; name: string; pictureUrl?: string } | null> {
     try {
       console.log('[FUB Debug] getUserByEmail called with:', email);
       
@@ -94,10 +94,11 @@ class FubClient {
       
       if (data.users && data.users.length > 0) {
         const user = data.users[0];
-        console.log('[FUB Debug] Found user by direct query:', { id: user.id, email: user.email, name: user.name });
+        console.log('[FUB Debug] Found user by direct query:', { id: user.id, email: user.email, name: user.name, pictureUrl: user.pictureUrl || user.picture || null });
         return {
           id: user.id,
           name: user.name || `${user.firstName} ${user.lastName}`,
+          pictureUrl: user.pictureUrl || user.picture || undefined,
         };
       }
       
@@ -107,10 +108,11 @@ class FubClient {
       const matchingUser = allUsers.find(u => u.email?.toLowerCase() === email.toLowerCase());
       
       if (matchingUser) {
-        console.log('[FUB Debug] Found user by scanning all agents:', { id: matchingUser.id, email: matchingUser.email, name: matchingUser.name });
+        console.log('[FUB Debug] Found user by scanning all agents:', { id: matchingUser.id, email: matchingUser.email, name: matchingUser.name, pictureUrl: matchingUser.pictureUrl || null });
         return {
           id: matchingUser.id,
           name: matchingUser.name,
+          pictureUrl: matchingUser.pictureUrl,
         };
       }
       
