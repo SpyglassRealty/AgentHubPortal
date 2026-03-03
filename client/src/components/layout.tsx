@@ -2,6 +2,7 @@ import React from "react";
 import { Link, useLocation } from "wouter";
 import { navItems } from "@/lib/apps";
 import { Bell, Search, Settings, LogOut, Menu, ChevronRight, X, Sun, Moon, Monitor, Check, User, Sliders } from "lucide-react";
+import SearchPalette from "@/components/SearchPalette";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -32,6 +33,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = React.useState(false);
+  const [desktopSearchOpen, setDesktopSearchOpen] = React.useState(false);
+  const [mobileSearchPaletteOpen, setMobileSearchPaletteOpen] = React.useState(false);
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -180,19 +183,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
           {mobileSearchOpen ? (
             <div className="absolute inset-x-0 top-0 h-16 bg-background z-30 flex items-center px-4 gap-2 md:hidden">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search apps, tools..." 
-                  className="pl-9 h-10 bg-secondary/50 border-transparent focus-visible:bg-background focus-visible:border-input transition-all"
-                  data-testid="input-mobile-search"
-                  autoFocus
-                />
-              </div>
+              <SearchPalette
+                open={mobileSearchPaletteOpen}
+                onOpenChange={setMobileSearchPaletteOpen}
+                placeholder="Search apps, tools..."
+                className="flex-1"
+                testId="input-mobile-search"
+                autoFocus
+              />
               <Button 
                 variant="ghost" 
                 size="icon" 
-                onClick={() => setMobileSearchOpen(false)}
+                onClick={() => {
+                  setMobileSearchOpen(false);
+                  setMobileSearchPaletteOpen(false);
+                }}
                 className="h-10 w-10 min-h-[44px] min-w-[44px]"
               >
                 <X className="h-5 w-5" />
@@ -201,14 +206,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           ) : null}
 
           <div className="hidden md:flex items-center max-w-md w-full">
-            <div className="relative w-full">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search apps, tools, resources..." 
-                className="pl-9 bg-secondary/50 border-transparent focus-visible:bg-background focus-visible:border-input transition-all"
-                data-testid="input-search"
-              />
-            </div>
+            <SearchPalette
+              open={desktopSearchOpen}
+              onOpenChange={setDesktopSearchOpen}
+              placeholder="Search apps, tools, resources..."
+              className="w-full"
+              testId="input-search"
+            />
           </div>
 
           <div className="flex items-center gap-1 sm:gap-3">
