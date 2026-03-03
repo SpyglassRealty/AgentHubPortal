@@ -271,7 +271,14 @@ export async function registerRoutes(
           if (fubClient) {
             const fubUser = await fubClient.getUserByEmail(user.email);
             if (fubUser) {
-              const updated = await storage.updateUserFubId(user.id, fubUser.id, fubUser.pictureUrl);
+              let updated: typeof user | undefined;
+              try {
+                updated = await storage.updateUserFubId(user.id, fubUser.id, fubUser.pictureUrl);
+              } catch (colErr) {
+                // fub_picture_url column may not exist yet — fall back to ID-only update
+                console.warn('[Auth] fub_picture_url write failed, falling back to ID-only:', (colErr as Error).message);
+                updated = await storage.updateUserFubId(user.id, fubUser.id);
+              }
               if (updated) user = updated;
               console.log(`[Auth] Auto-linked FUB user ID ${fubUser.id} to user ${user.id} (${user.email}), pictureUrl: ${fubUser.pictureUrl || 'none'}`);
             } else {
