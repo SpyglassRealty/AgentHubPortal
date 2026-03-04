@@ -386,6 +386,377 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
     case 'idx-feed':
       return <IdxFeedBlock props={props} />;
 
+    case 'idx-hero':
+      return (
+        <section className="relative min-h-[85vh] flex items-center justify-center rounded-xl overflow-hidden">
+          {/* Background Image with Overlay */}
+          <div className="absolute inset-0 z-0">
+            <div 
+              className="w-full h-full bg-cover bg-center bg-no-repeat"
+              style={{
+                backgroundImage: `url('${props.backgroundImage || ''}')`
+              }}
+            />
+            <div className="absolute inset-0 bg-black/50"></div>
+          </div>
+
+          {/* Content */}
+          <div className="relative z-10 max-w-4xl mx-auto px-4 text-center text-white">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-4">
+              {props.headline}
+            </h1>
+            <p className="text-lg md:text-xl text-white/80 mb-3">
+              {props.subtitleStats}
+            </p>
+            <p className="text-base text-white/60 mb-8">
+              {props.subtitleTagline}
+            </p>
+
+            {/* Dual CTA Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+              <a
+                href={props.primaryCtaLink || '#'}
+                className="px-8 py-3.5 bg-[#EF4923] hover:bg-[#d63d1c] text-white font-semibold rounded-lg transition-all text-lg shadow-lg hover:shadow-xl"
+              >
+                {props.primaryCtaText}
+              </a>
+              <a
+                href={props.secondaryCtaLink || '#'}
+                className="px-8 py-3.5 bg-white/10 backdrop-blur-sm border-2 border-white/40 text-white font-semibold rounded-lg hover:bg-white/20 transition-all text-lg"
+              >
+                {props.secondaryCtaText}
+              </a>
+            </div>
+
+            {/* Search Bar */}
+            <div className="max-w-3xl mx-auto mb-8">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 bg-white rounded-lg px-4 py-3 text-gray-800 text-left flex items-center gap-3">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <span className="text-gray-400">{props.searchPlaceholder}</span>
+                </div>
+                <button className="px-5 py-3 bg-[#EF4923] hover:bg-[#d63d1c] rounded-lg text-white transition-all flex items-center gap-2 font-medium">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                  </svg>
+                  <span className="hidden md:inline">Filters</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Trust Bar */}
+            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-white/70">
+              <div className="flex items-center gap-1">
+                <div className="flex text-yellow-400">
+                  {[...Array(5)].map((_, i) => (
+                    <svg key={i} className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                      <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                    </svg>
+                  ))}
+                </div>
+                <span className="ml-1">{props.trustBarItems[0]}</span>
+              </div>
+              {props.trustBarItems.slice(1).map((item: string, i: number) => (
+                <span key={i}>
+                  <span className="hidden sm:inline text-white/30 mr-6">|</span>
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+
+    case 'idx-stats':
+      return (
+        <section className="bg-white border-y border-gray-100">
+          <div className="grid grid-cols-2 md:grid-cols-4">
+            {props.items.map((stat: any, index: number) => (
+              <div 
+                key={index} 
+                className="flex flex-col items-center justify-center py-6 px-4 border-r border-gray-100 last:border-r-0 hover:bg-gray-50 transition-colors cursor-default"
+              >
+                <div className="w-6 h-6 text-[#EF4923] mb-2">
+                  {stat.iconName === 'HomeIcon' && '🏠'}
+                  {stat.iconName === 'UserGroupIcon' && '👥'}
+                  {stat.iconName === 'MapPinIcon' && '📍'}
+                  {stat.iconName === 'CurrencyDollarIcon' && '💵'}
+                  {stat.iconName === 'ChartBarIcon' && '📊'}
+                  {stat.iconName === 'StarIcon' && '⭐'}
+                </div>
+                <div className="text-xl font-bold text-gray-900">{stat.value}</div>
+                <div className="text-xs text-gray-500 uppercase tracking-wider">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      );
+
+    case 'idx-cards':
+      return (
+        <section className="py-20 bg-white">
+          <div className="max-w-6xl mx-auto px-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
+              {props.heading}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {props.cards.map((card: any, index: number) => (
+                <div key={index} className="group relative overflow-hidden rounded-2xl shadow-lg hover:shadow-xl transition-all">
+                  <img
+                    src={card.imageUrl}
+                    alt={card.imageAlt || card.title}
+                    className="w-full h-72 object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
+                    <h3 className="text-2xl font-bold mb-2">{card.title}</h3>
+                    <p className="text-white/80 text-sm mb-4">
+                      {card.description}
+                    </p>
+                    <a 
+                      href={card.linkHref} 
+                      className="inline-flex items-center text-[#EF4923] font-medium hover:text-white transition-colors"
+                    >
+                      {card.linkText}
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+
+    case 'idx-testimonials': {
+      const testimonials = props.items || [];
+      // Simple static display of first testimonial for preview
+      const currentTestimonial = testimonials[0] || { quote: 'Add testimonials in settings', agent: 'Customer', rating: 5 };
+      
+      return (
+        <section className="py-16 bg-[#1F2937] text-white">
+          <div className="max-w-4xl mx-auto px-4 text-center">
+            <div className="inline-block mb-4">
+              <span className="px-4 py-2 bg-[#EF4923]/20 border border-[#EF4923]/40 text-[#EF4923] text-sm font-semibold uppercase tracking-wider rounded-full">
+                {props.label}
+              </span>
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold mb-12">
+              {props.heading}
+            </h2>
+            <div className="relative min-h-[200px] flex items-center justify-center">
+              <div className="max-w-3xl mx-auto">
+                <div className="flex justify-center mb-6">
+                  <div className="flex text-yellow-400">
+                    {[...Array(currentTestimonial.rating)].map((_, i) => (
+                      <svg key={i} className="w-6 h-6 fill-current" viewBox="0 0 20 20">
+                        <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                      </svg>
+                    ))}
+                  </div>
+                </div>
+                <blockquote className="text-xl md:text-2xl leading-relaxed mb-8 font-light italic">
+                  &ldquo;{currentTestimonial.quote}&rdquo;
+                </blockquote>
+                <p className="text-[#EF4923] font-semibold">
+                  {currentTestimonial.agent}
+                </p>
+              </div>
+            </div>
+            {testimonials.length > 1 && (
+              <div className="flex justify-center gap-2 mt-8">
+                {testimonials.map((_: any, index: number) => (
+                  <div
+                    key={index}
+                    className={`w-3 h-3 rounded-full transition-colors ${
+                      index === 0 ? 'bg-[#EF4923]' : 'bg-white/30'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      );
+    }
+
+    case 'idx-reviews':
+      return (
+        <section className="py-20 bg-gradient-to-br from-[#EF4923] to-[#d63d1c] text-white">
+          <div className="max-w-4xl mx-auto px-4 text-center">
+            <div className="text-7xl md:text-8xl font-bold mb-4">
+              {props.count}
+            </div>
+            <div className="flex justify-center gap-1 mb-6">
+              {[...Array(5)].map((_, i) => (
+                <svg key={i} className="w-8 h-8 fill-current text-yellow-400" viewBox="0 0 20 20">
+                  <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                </svg>
+              ))}
+            </div>
+            <h3 className="text-3xl font-semibold mb-2">{props.label}</h3>
+            <p className="text-xl text-white/80">{props.subtext}</p>
+          </div>
+        </section>
+      );
+
+    case 'idx-neighborhoods': {
+      const neighborhoods = props.neighborhoods || [];
+      return (
+        <section className="py-20 bg-gray-50">
+          <div className="max-w-6xl mx-auto px-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-4">
+              {props.heading}
+            </h2>
+            <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
+              {props.subheading}
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {neighborhoods.map((neighborhood: any, index: number) => (
+                <a
+                  key={index}
+                  href={neighborhood.link}
+                  className="group relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-all"
+                >
+                  <img
+                    src={neighborhood.imageUrl}
+                    alt={neighborhood.name}
+                    className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <h3 className="text-white font-semibold text-lg">{neighborhood.name}</h3>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    case 'idx-cta-banner':
+      return (
+        <section 
+          className="py-20 text-white relative overflow-hidden"
+          style={{ 
+            backgroundColor: props.bgColor || '#1F2937',
+            backgroundImage: props.bgImage ? `url('${props.bgImage}')` : undefined,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
+          {props.bgImage && <div className="absolute inset-0 bg-black/60" />}
+          <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              {props.heading}
+            </h2>
+            <p className="text-2xl text-white/80 mb-6">
+              {props.subheading}
+            </p>
+            <p className="text-lg text-white/70 mb-10 max-w-2xl mx-auto">
+              {props.description}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <a
+                href={props.primaryCtaUrl || '#'}
+                className="px-8 py-3.5 bg-[#EF4923] hover:bg-[#d63d1c] text-white font-semibold rounded-lg transition-all text-lg shadow-lg hover:shadow-xl"
+              >
+                {props.primaryCtaText}
+              </a>
+              <a
+                href={props.secondaryCtaUrl || '#'}
+                className="px-8 py-3.5 bg-transparent border-2 border-white text-white font-semibold rounded-lg hover:bg-white/10 transition-all text-lg"
+              >
+                {props.secondaryCtaText}
+              </a>
+            </div>
+          </div>
+        </section>
+      );
+
+    case 'idx-two-column': {
+      const isImageLeft = props.imagePosition === 'left';
+      return (
+        <section className="py-20 bg-white">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-12 items-center ${isImageLeft ? '' : 'md:flex-row-reverse'}`}>
+              <div className={isImageLeft ? 'order-2 md:order-1' : 'order-2'}>
+                <img
+                  src={props.imageUrl}
+                  alt={props.imageAlt}
+                  className="w-full rounded-2xl shadow-lg"
+                />
+              </div>
+              <div className={isImageLeft ? 'order-1 md:order-2' : 'order-1'}>
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                  {props.heading}
+                </h2>
+                <p className="text-xl text-gray-700 mb-6">
+                  {props.subheading}
+                </p>
+                <p className="text-gray-600 mb-8 leading-relaxed">
+                  {props.description}
+                </p>
+                {props.ctaText && (
+                  <a
+                    href={props.ctaUrl || '#'}
+                    className="inline-flex items-center px-6 py-3 bg-[#EF4923] hover:bg-[#d63d1c] text-white font-semibold rounded-lg transition-all"
+                  >
+                    {props.ctaText}
+                    <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    case 'idx-features': {
+      const features = props.features || [];
+      return (
+        <section className="py-20 bg-gray-50">
+          <div className="max-w-6xl mx-auto px-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-4">
+              {props.heading}
+            </h2>
+            <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
+              {props.subheading}
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+              <div>
+                <img
+                  src={props.imageUrl}
+                  alt={props.imageAlt}
+                  className="w-full rounded-2xl shadow-lg"
+                />
+              </div>
+              <div className="space-y-8">
+                {features.map((feature: any, index: number) => (
+                  <div key={index} className="flex gap-4">
+                    <div className="text-3xl flex-shrink-0">{feature.icon}</div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                        {feature.title}
+                      </h3>
+                      <p className="text-gray-600">
+                        {feature.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
     default:
       return (
         <div className="p-4 border border-dashed border-red-300 rounded-lg text-red-500 text-sm">

@@ -17,7 +17,16 @@ export type BlockType =
   | 'image-gallery'
   | 'faq'
   | 'toc'
-  | 'idx-feed';
+  | 'idx-feed'
+  | 'idx-hero'
+  | 'idx-stats'
+  | 'idx-cards'
+  | 'idx-testimonials'
+  | 'idx-reviews'
+  | 'idx-neighborhoods'
+  | 'idx-cta-banner'
+  | 'idx-two-column'
+  | 'idx-features';
 
 export interface BlockBase {
   id: string;
@@ -147,6 +156,112 @@ export interface TocHeading {
 
 export interface TocProps {
   headings: TocHeading[];
+}
+
+// ── IDX Block Props ──────────────────────────────────────────
+
+export interface IdxHeroProps {
+  headline: string;
+  subtitleStats: string;
+  subtitleTagline: string;
+  backgroundImage: string;
+  primaryCtaText: string;
+  primaryCtaLink: string;
+  secondaryCtaText: string;
+  secondaryCtaLink: string;
+  searchPlaceholder: string;
+  trustBarItems: string[];
+}
+
+export interface IdxStatsItem {
+  iconName: string;
+  value: string;
+  label: string;
+}
+
+export interface IdxStatsProps {
+  items: IdxStatsItem[];
+}
+
+export interface IdxCard {
+  title: string;
+  description: string;
+  imageUrl: string;
+  imageAlt: string;
+  linkText: string;
+  linkHref: string;
+}
+
+export interface IdxCardsProps {
+  heading: string;
+  cards: IdxCard[];
+}
+
+export interface IdxTestimonial {
+  quote: string;
+  agent: string;
+  rating: number;
+}
+
+export interface IdxTestimonialsProps {
+  label: string;
+  heading: string;
+  items: IdxTestimonial[];
+}
+
+export interface IdxReviewsProps {
+  count: string;
+  label: string;
+  subtext: string;
+}
+
+export interface IdxNeighborhood {
+  name: string;
+  imageUrl: string;
+  link: string;
+}
+
+export interface IdxNeighborhoodsProps {
+  heading: string;
+  subheading: string;
+  neighborhoods: IdxNeighborhood[];
+}
+
+export interface IdxCtaBannerProps {
+  heading: string;
+  subheading: string;
+  description: string;
+  primaryCtaText: string;
+  primaryCtaUrl: string;
+  secondaryCtaText: string;
+  secondaryCtaUrl: string;
+  bgImage?: string;
+  bgColor?: string;
+}
+
+export interface IdxTwoColumnProps {
+  heading: string;
+  subheading: string;
+  description: string;
+  imageUrl: string;
+  imageAlt: string;
+  imagePosition: 'left' | 'right';
+  ctaText?: string;
+  ctaUrl?: string;
+}
+
+export interface IdxFeature {
+  icon: string;
+  title: string;
+  description: string;
+}
+
+export interface IdxFeaturesProps {
+  heading: string;
+  subheading: string;
+  features: IdxFeature[];
+  imageUrl: string;
+  imageAlt: string;
 }
 
 // ── Union type ──────────────────────────────────────────────
