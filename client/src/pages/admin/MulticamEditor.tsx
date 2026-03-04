@@ -186,6 +186,12 @@ function ImportStep({ jobId, onComplete }: { jobId: string; onComplete: () => vo
         const res = await fetch(`/api/admin/multicam/jobs/${jobId}/files`, {
           method: "POST",
           credentials: "include",
+          headers: {
+            // Don't set Content-Type - let the browser set it with boundary for multipart/form-data
+            ...(localStorage.getItem("authToken") ? {
+              "Authorization": `Bearer ${localStorage.getItem("authToken")}`
+            } : {})
+          },
           body: formData,
         });
 
