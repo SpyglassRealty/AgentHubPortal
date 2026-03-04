@@ -691,10 +691,10 @@ function buildCorePageBlocks(
       subtext: heroSubtext,
       bgImage: heroImageUrl,
       overlay: true,
-      ctaText: "Learn More",
-      ctaUrl: "#content-start",
-      ctaText2: "Contact Us",
-      ctaUrl2: "https://www.spyglassrealty.com/contact",
+      ctaText: "Get Started",
+      ctaUrl: "#main-content",
+      ctaText2: "Contact Our Team",
+      ctaUrl2: "/contact",
     },
   });
 
@@ -789,6 +789,7 @@ function buildCorePageBlocks(
 // and creates draft core pages in the page builder (landingPages table).
 router.post("/admin/core/import-sheet", async (req, res) => {
   try {
+    console.log("Core page import v2 - smart templates active");
     const { sheetUrl } = req.body;
     if (!sheetUrl) {
       return res.status(400).json({ error: "sheetUrl is required" });
