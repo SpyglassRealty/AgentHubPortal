@@ -1063,6 +1063,11 @@ export const agentDirectoryProfiles = pgTable("agent_directory_profiles", {
   isVisible: boolean("is_visible").default(true),
   sortOrder: integer("sort_order").default(0),
   
+  // Experience and expertise
+  yearsOfExperience: integer("years_of_experience"),
+  languages: jsonb("languages").$type<string[]>().default([]),
+  specialties: jsonb("specialties").$type<string[]>().default([]),
+  
   // SEO fields (reusing SeoPanel pattern)
   metaTitle: varchar("meta_title", { length: 255 }),
   metaDescription: text("meta_description"),
