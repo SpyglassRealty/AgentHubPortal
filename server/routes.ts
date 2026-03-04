@@ -146,6 +146,33 @@ export async function registerRoutes(
 ): Promise<Server> {
   await setupAuth(app);
 
+  // TEMPORARY ADMIN FIX - REMOVE AFTER USE
+  app.get('/api/admin-fix/grant-clawd-admin', async (req, res) => {
+    try {
+      const result = await db.query(
+        `UPDATE users SET role = 'admin' WHERE email = 'clawd@spyglassrealty.com' RETURNING id, email, role`
+      );
+      
+      if (result.rows.length > 0) {
+        res.json({ 
+          success: true, 
+          message: "Admin access granted to clawd@spyglassrealty.com",
+          user: result.rows[0] 
+        });
+      } else {
+        res.json({ 
+          success: false, 
+          message: "User clawd@spyglassrealty.com not found" 
+        });
+      }
+    } catch (err: any) {
+      res.status(500).json({ 
+        success: false, 
+        error: err.message 
+      });
+    }
+  });
+
   // One-time coordinate backfill migration
   (async () => {
     try {
