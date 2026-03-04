@@ -128,12 +128,45 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 * 1024 }, // 5GB limit
   fileFilter: (req, file, cb) => {
     console.log(`[Multicam] File upload attempt: ${file.originalname}, mimetype: ${file.mimetype}, size: ${file.size}`);
-    const allowed = /^(video|audio)\//;
-    if (allowed.test(file.mimetype)) {
+    
+    // Common video/audio mime types including edge cases
+    const allowedMimeTypes = [
+      'video/mp4',
+      'video/mpeg',
+      'video/quicktime',
+      'video/x-msvideo',
+      'video/x-ms-wmv',
+      'video/webm',
+      'video/ogg',
+      'video/3gpp',
+      'video/3gpp2',
+      'audio/mpeg',
+      'audio/wav',
+      'audio/wave',
+      'audio/x-wav',
+      'audio/mp3',
+      'audio/ogg',
+      'audio/webm',
+      'audio/aac',
+      'audio/x-m4a',
+      'application/octet-stream', // Sometimes videos come through as this
+    ];
+    
+    // Check exact mime type match or regex pattern
+    const isAllowed = allowedMimeTypes.includes(file.mimetype) || 
+                      /^(video|audio)\//.test(file.mimetype);
+    
+    // Also check file extension as backup
+    const ext = file.originalname.toLowerCase().split('.').pop();
+    const allowedExtensions = ['mp4', 'mov', 'avi', 'wmv', 'webm', 'ogv', 'mp3', 'wav', 'm4a', 'aac', 'ogg'];
+    const hasAllowedExtension = ext && allowedExtensions.includes(ext);
+    
+    if (isAllowed || hasAllowedExtension) {
+      console.log(`[Multicam] Accepted file: ${file.originalname}`);
       cb(null, true);
     } else {
       console.error(`[Multicam] Rejected file type: ${file.mimetype} for file: ${file.originalname}`);
-      cb(new Error(`Unsupported file type: ${file.mimetype}. Only video and audio files are allowed.`));
+      cb(new Error(`Unsupported file type: ${file.mimetype}. Only video and audio files are allowed. Supported extensions: ${allowedExtensions.join(', ')}`));
     }
   },
 });
@@ -324,34 +357,60 @@ router.delete("/jobs/:jobId", isAuthenticated, async (req: Request, res: Respons
 // File Upload
 
 // POST /api/admin/multicam/jobs/:jobId/files — Upload video files (multipart)
-router.post("/jobs/:jobId/files", isAuthenticated, upload.single("file"), async (req: Request, res: Response) => {
-  try {
-    const job = findJob(req.params.jobId);
-    if (!job) return res.status(404).json({ error: "Job not found" });
+router.post("/jobs/:jobId/files", isAuthenticated, (req: Request, res: Response) => {
+  console.log(`[Multicam] File upload request received for job ${req.params.jobId}`);
+  console.log(`[Multicam] Headers:`, req.headers);
+  console.log(`[Multicam] Content-Type:`, req.headers['content-type']);
+  console.log(`[Multicam] Content-Length:`, req.headers['content-length']);
+  
+  upload.single("file")(req, res, async (err) => {
+    if (err) {
+      console.error("[Multicam] Multer error:", err);
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({ 
+            error: `File too large. Maximum size is 5GB. Your file size: ${req.headers['content-length'] ? 
+              (parseInt(req.headers['content-length']) / 1024 / 1024).toFixed(2) + 'MB' : 'unknown'}` 
+          });
+        }
+        return res.status(400).json({ error: `Upload error: ${err.message}` });
+      }
+      return res.status(400).json({ error: err.message });
+    }
+    
+    try {
+      const job = findJob(req.params.jobId);
+      if (!job) return res.status(404).json({ error: "Job not found" });
 
-    const file = req.file;
-    if (!file) return res.status(400).json({ error: "No file uploaded" });
+      const file = req.file;
+      if (!file) {
+        console.error("[Multicam] No file in request after multer processing");
+        return res.status(400).json({ error: "No file uploaded" });
+      }
 
-    const role = (req.body.role || "camera") as MulticamFile["role"];
-    const label = req.body.label || `Camera ${job.files.length + 1}`;
+      console.log(`[Multicam] File processed:`, file);
 
-    const multicamFile: MulticamFile = {
-      id: randomUUID(),
-      filename: file.filename,
-      role,
-      label,
-      path: file.path,
-    };
+      const role = (req.body.role || "camera") as MulticamFile["role"];
+      const label = req.body.label || `Camera ${job.files.length + 1}`;
 
-    job.files.push(multicamFile);
-    updateJob(job.id, { files: job.files, status: job.files.length > 0 ? "pending" : job.status });
+      const multicamFile: MulticamFile = {
+        id: randomUUID(),
+        filename: file.filename,
+        role,
+        label,
+        path: file.path,
+      };
 
-    console.log(`[Multicam] Uploaded file ${file.originalname} to job ${job.id} as ${role} (${label})`);
-    res.json({ file: multicamFile });
-  } catch (err: any) {
-    console.error("[Multicam] Upload error:", err);
-    res.status(500).json({ error: err.message });
-  }
+      job.files.push(multicamFile);
+      updateJob(job.id, { files: job.files, status: job.files.length > 0 ? "pending" : job.status });
+
+      console.log(`[Multicam] Successfully uploaded file ${file.originalname} to job ${job.id} as ${role} (${label})`);
+      res.json({ file: multicamFile });
+    } catch (err: any) {
+      console.error("[Multicam] Processing error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
 });
 
 // Google Drive Import
