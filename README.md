@@ -1,5 +1,5 @@
 # Austin Neighborhoods Map
-<!-- Deploy: 2026-03-04 11:25 CST -->
+<!-- Deploy: 2026-03-04 12:42 CST with IDX blocks -->
 
 A web application that displays Austin, TX neighborhood boundaries using official City of Austin data.
 
