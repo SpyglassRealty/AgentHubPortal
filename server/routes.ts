@@ -114,6 +114,7 @@ import { registerDeveloperRoutes } from "./developerRoutes";
 import blogRoutes from "./blogRoutes";
 import agentRoutes from "./agentRoutes";
 import populateAgentsEndpoint from "./populateAgentsEndpoint";
+import migrationEndpoint from "./migrationEndpoint";
 import landingPageRoutes from "./landingPageRoutes";
 import savedSearchRoutes from "./savedSearchRoutes";
 import testimonialRoutes from "./testimonialRoutes";
@@ -5530,6 +5531,7 @@ Respond with valid JSON in this exact format:
   // Register CMS Enhancement Phase 3 - Agent Pages + Landing Pages
   app.use('/api', agentRoutes);
   app.use('/api', populateAgentsEndpoint);
+  app.use('/api', migrationEndpoint);
   app.use('/api', landingPageRoutes);
   
   // Register CMS Enhancement Phase 4 - Testimonials & Reviews System
