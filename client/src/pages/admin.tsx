@@ -434,6 +434,7 @@ export default function AdminPage() {
         { name: "Blog Categories", href: "/admin/blog/categories", icon: FileBarChart },
         { name: "Landing Pages", href: "/admin/landing-pages", icon: Globe },
         { name: "Page Builder", href: "/admin/pages", icon: FileText },
+        { name: "Agent Pages", href: "https://appfactory-liart.vercel.app/content", icon: Users },
       ]
     },
     {
@@ -498,18 +499,41 @@ export default function AdminPage() {
                 </h3>
               )}
               <nav className="space-y-1">
-                {section.items.map((item) => (
-                  <Link key={item.href} href={item.href}>
-                    <div className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors cursor-pointer ${
-                      item.active || location.startsWith(item.href + '/') 
-                        ? 'bg-[#EF4923] text-white border-l-4 border-[#EF4923]' 
-                        : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                    }`}>
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {sidebarExpanded && <span className="text-sm font-medium">{item.name}</span>}
-                    </div>
-                  </Link>
-                ))}
+                {section.items.map((item) => {
+                  const isExternal = item.href.startsWith('http://') || item.href.startsWith('https://');
+                  const isActive = item.active || (!isExternal && location.startsWith(item.href + '/'));
+                  
+                  if (isExternal) {
+                    return (
+                      <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer">
+                        <div className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors cursor-pointer ${
+                          'text-gray-300 hover:bg-gray-700 hover:text-white'
+                        }`}>
+                          <item.icon className="h-5 w-5 flex-shrink-0" />
+                          {sidebarExpanded && (
+                            <>
+                              <span className="text-sm font-medium flex-1">{item.name}</span>
+                              <ExternalLink className="h-3 w-3 opacity-50" />
+                            </>
+                          )}
+                        </div>
+                      </a>
+                    );
+                  }
+                  
+                  return (
+                    <Link key={item.href} href={item.href}>
+                      <div className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors cursor-pointer ${
+                        isActive
+                          ? 'bg-[#EF4923] text-white border-l-4 border-[#EF4923]' 
+                          : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                      }`}>
+                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                        {sidebarExpanded && <span className="text-sm font-medium">{item.name}</span>}
+                      </div>
+                    </Link>
+                  );
+                })}
               </nav>
             </div>
           ))}
