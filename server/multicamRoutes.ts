@@ -127,11 +127,13 @@ const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 * 1024 }, // 5GB limit
   fileFilter: (req, file, cb) => {
+    console.log(`[Multicam] File upload attempt: ${file.originalname}, mimetype: ${file.mimetype}, size: ${file.size}`);
     const allowed = /^(video|audio)\//;
     if (allowed.test(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error(`Unsupported file type: ${file.mimetype}`));
+      console.error(`[Multicam] Rejected file type: ${file.mimetype} for file: ${file.originalname}`);
+      cb(new Error(`Unsupported file type: ${file.mimetype}. Only video and audio files are allowed.`));
     }
   },
 });
@@ -753,6 +755,23 @@ router.get("/files/:filename", async (req: Request, res: Response) => {
     console.error("[Multicam] File streaming error:", err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// Error handling middleware for multer errors
+router.use((err: any, req: Request, res: Response, next: any) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ error: `File too large. Maximum size is 5GB. Your file size: ${req.headers['content-length'] ? (parseInt(req.headers['content-length']) / 1024 / 1024).toFixed(2) + 'MB' : 'unknown'}` });
+    }
+    return res.status(400).json({ error: `Upload error: ${err.message}` });
+  }
+  
+  if (err) {
+    console.error('[Multicam] Request error:', err);
+    return res.status(400).json({ error: err.message || 'Upload failed' });
+  }
+  
+  next();
 });
 
 export default router;

@@ -176,6 +176,8 @@ function ImportStep({ jobId, onComplete }: { jobId: string; onComplete: () => vo
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        console.log(`[Multicam] Uploading file: ${file.name}, type: ${file.type}, size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+        
         const formData = new FormData();
         formData.append("file", file);
         formData.append("role", i === 0 && uploadedFiles.length === 0 ? "main" : "camera");
@@ -188,8 +190,16 @@ function ImportStep({ jobId, onComplete }: { jobId: string; onComplete: () => vo
         });
 
         if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Upload failed");
+          const responseText = await res.text();
+          console.error(`[Multicam] Upload failed for ${file.name}:`, responseText);
+          let errorMessage = "Upload failed";
+          try {
+            const data = JSON.parse(responseText);
+            errorMessage = data.error || errorMessage;
+          } catch (e) {
+            errorMessage = responseText || `HTTP ${res.status} error`;
+          }
+          throw new Error(`Failed to upload ${file.name}: ${errorMessage}`);
         }
         setUploadedFiles(prev => [...prev, file.name]);
       }
@@ -197,7 +207,16 @@ function ImportStep({ jobId, onComplete }: { jobId: string; onComplete: () => vo
       // Add delay to ensure server has processed the upload
       setTimeout(() => onComplete(), 1000);
     } catch (err: any) {
-      toast({ title: "Upload error", description: err.message, variant: "destructive" });
+      console.error("[Multicam] Upload error:", err);
+      // Make the error message stay visible longer
+      const errorMessage = err.message || "Unknown error occurred";
+      toast({ 
+        title: "Upload error", 
+        description: errorMessage,
+        variant: "destructive",
+      });
+      // Also show a browser alert for persistent visibility
+      alert(`Upload Error: ${errorMessage}`);
     } finally {
       setUploading(false);
     }
