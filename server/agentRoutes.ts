@@ -403,4 +403,52 @@ router.get("/agents/:subdomain", async (req, res) => {
   }
 });
 
+// ── Database Migration Route ────────────────────────────────────────────
+
+// POST /api/admin/run-agent-migration - Run the agent fields migration
+router.post("/admin/run-agent-migration", async (req, res) => {
+  try {
+    console.log("Running agent fields migration...");
+    
+    // Add new columns if they don't exist
+    await db.execute(sql`
+      ALTER TABLE agent_directory_profiles
+      ADD COLUMN IF NOT EXISTS years_of_experience INTEGER,
+      ADD COLUMN IF NOT EXISTS languages JSONB DEFAULT '[]'::jsonb,
+      ADD COLUMN IF NOT EXISTS specialties JSONB DEFAULT '[]'::jsonb
+    `);
+    
+    // Verify the migration worked
+    const result = await db.execute(sql`
+      SELECT column_name, data_type, column_default 
+      FROM information_schema.columns 
+      WHERE table_name = 'agent_directory_profiles' 
+      AND column_name IN ('years_of_experience', 'languages', 'specialties')
+      ORDER BY ordinal_position
+    `);
+    
+    res.json({
+      success: true,
+      message: "Agent fields migration completed successfully",
+      addedColumns: result.rows
+    });
+  } catch (error) {
+    console.error("Migration error:", error);
+    
+    // Check if columns already exist
+    if (error instanceof Error && error.message.includes('already exists')) {
+      res.json({
+        success: true,
+        message: "Migration already applied - columns exist",
+        alreadyExists: true
+      });
+    } else {
+      res.status(500).json({ 
+        error: "Migration failed", 
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  }
+});
+
 export default router;
