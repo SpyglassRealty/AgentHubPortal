@@ -403,6 +403,73 @@ router.get("/agents/:subdomain", async (req, res) => {
   }
 });
 
+// ── Photo Migration Route ────────────────────────────────────────────
+
+// POST /api/admin/migrate-agent-photos - Migrate agent photos from REW to Mission Control
+router.post("/admin/migrate-agent-photos", async (req, res) => {
+  try {
+    console.log("Starting agent photo URL migration...");
+    
+    // Get all agents with REW photo URLs
+    const agentsWithREWPhotos = await db
+      .select()
+      .from(agentDirectoryProfiles)
+      .where(
+        or(
+          ilike(agentDirectoryProfiles.headshotUrl, '%rew.spyglassrealty.com%'),
+          ilike(agentDirectoryProfiles.headshotUrl, '%realestatewebmasters%')
+        )
+      );
+    
+    console.log(`Found ${agentsWithREWPhotos.length} agents with REW photo URLs`);
+    
+    let updated = 0;
+    const updates = [];
+    
+    for (const agent of agentsWithREWPhotos) {
+      if (!agent.headshotUrl) continue;
+      
+      // Extract filename from REW URL
+      const urlParts = agent.headshotUrl.split('/');
+      const filename = urlParts[urlParts.length - 1];
+      
+      // New Mission Control URL
+      const newUrl = `https://missioncontrol-tjfm.onrender.com/agent-photos/${filename}`;
+      
+      // Update the agent
+      await db
+        .update(agentDirectoryProfiles)
+        .set({ 
+          headshotUrl: newUrl,
+          updatedAt: new Date()
+        })
+        .where(eq(agentDirectoryProfiles.id, agent.id));
+      
+      updated++;
+      updates.push({
+        agent: `${agent.firstName} ${agent.lastName}`,
+        oldUrl: agent.headshotUrl,
+        newUrl: newUrl
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: `Successfully migrated ${updated} agent photo URLs`,
+      totalAgents: agentsWithREWPhotos.length,
+      updated: updated,
+      updates: updates.slice(0, 10), // Show first 10 as examples
+      moreUpdates: updates.length > 10 ? `...and ${updates.length - 10} more` : null
+    });
+  } catch (error) {
+    console.error("Photo migration error:", error);
+    res.status(500).json({ 
+      error: "Photo migration failed", 
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
 // ── Database Migration Route ────────────────────────────────────────────
 
 // POST /api/admin/run-agent-migration - Run the agent fields migration
