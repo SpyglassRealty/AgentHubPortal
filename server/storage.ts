@@ -48,13 +48,16 @@ import {
   type IntegrationConfig,
   type InsertIntegrationConfig,
   type AppVisibility,
+  idxLeads,
+  type IdxLead,
+  type InsertIdxLead,
   type DevChangelog,
   type InsertDevChangelog,
   type DeveloperActivityLog,
   type InsertDeveloperActivityLog,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, ne, desc, sql, gt, lt } from "drizzle-orm";
+import { eq, and, ne, desc, sql, gt, lt, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -1166,6 +1169,148 @@ export class DatabaseStorage implements IStorage {
 
   async getAllIntegrations(): Promise<IntegrationConfig[]> {
     return await db.select().from(integrationConfigs);
+  }
+  
+  // =====================================================
+  // IDX Lead Management
+  // =====================================================
+  
+  async createIdxLead(data: InsertIdxLead): Promise<IdxLead> {
+    const [lead] = await db.insert(idxLeads).values(data).returning();
+    return lead;
+  }
+  
+  async getIdxLeadById(id: string): Promise<IdxLead | null> {
+    const [lead] = await db.select().from(idxLeads).where(eq(idxLeads.id, id)).limit(1);
+    return lead || null;
+  }
+  
+  async getIdxLeads(filters: {
+    status?: string;
+    formType?: string;
+    assignedTo?: string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ leads: IdxLead[]; total: number }> {
+    const conditions = [];
+    
+    if (filters.status) {
+      conditions.push(eq(idxLeads.status, filters.status));
+    }
+    
+    if (filters.formType) {
+      conditions.push(eq(idxLeads.formType, filters.formType));
+    }
+    
+    if (filters.assignedTo) {
+      conditions.push(eq(idxLeads.assignedTo, filters.assignedTo));
+    }
+    
+    if (filters.search) {
+      conditions.push(
+        sql`(
+          ${idxLeads.name} ILIKE ${`%${filters.search}%`} OR
+          ${idxLeads.email} ILIKE ${`%${filters.search}%`} OR
+          ${idxLeads.phone} ILIKE ${`%${filters.search}%`} OR
+          ${idxLeads.listingAddress} ILIKE ${`%${filters.search}%`} OR
+          ${idxLeads.mlsNumber} ILIKE ${`%${filters.search}%`}
+        )`
+      );
+    }
+    
+    if (filters.startDate) {
+      conditions.push(gte(idxLeads.submittedAt, new Date(filters.startDate)));
+    }
+    
+    if (filters.endDate) {
+      conditions.push(lte(idxLeads.submittedAt, new Date(filters.endDate)));
+    }
+    
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    // Get total count
+    const [{ count }] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(idxLeads)
+      .where(whereClause);
+    
+    // Get paginated results
+    const leads = await db
+      .select()
+      .from(idxLeads)
+      .where(whereClause)
+      .orderBy(desc(idxLeads.submittedAt))
+      .limit(filters.limit || 50)
+      .offset(filters.offset || 0);
+    
+    return { leads, total: count };
+  }
+  
+  async updateIdxLead(id: string, updates: Partial<InsertIdxLead>): Promise<IdxLead> {
+    const [lead] = await db
+      .update(idxLeads)
+      .set(updates)
+      .where(eq(idxLeads.id, id))
+      .returning();
+    return lead;
+  }
+  
+  async getIdxLeadStats(): Promise<{
+    total: number;
+    byStatus: Record<string, number>;
+    byFormType: Record<string, number>;
+    todayCount: number;
+    weekCount: number;
+  }> {
+    // Get total count
+    const [{ total }] = await db
+      .select({ total: sql<number>`cast(count(*) as int)` })
+      .from(idxLeads);
+    
+    // Get by status
+    const statusCounts = await db
+      .select({
+        status: idxLeads.status,
+        count: sql<number>`cast(count(*) as int)`
+      })
+      .from(idxLeads)
+      .groupBy(idxLeads.status);
+    
+    // Get by form type
+    const formTypeCounts = await db
+      .select({
+        formType: idxLeads.formType,
+        count: sql<number>`cast(count(*) as int)`
+      })
+      .from(idxLeads)
+      .groupBy(idxLeads.formType);
+    
+    // Get today's count
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [{ todayCount }] = await db
+      .select({ todayCount: sql<number>`cast(count(*) as int)` })
+      .from(idxLeads)
+      .where(gte(idxLeads.submittedAt, today));
+    
+    // Get this week's count
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const [{ weekCount }] = await db
+      .select({ weekCount: sql<number>`cast(count(*) as int)` })
+      .from(idxLeads)
+      .where(gte(idxLeads.submittedAt, weekAgo));
+    
+    return {
+      total,
+      byStatus: Object.fromEntries(statusCounts.map(s => [s.status, s.count])),
+      byFormType: Object.fromEntries(formTypeCounts.map(f => [f.formType, f.count])),
+      todayCount,
+      weekCount
+    };
   }
 }
 

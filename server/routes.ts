@@ -5879,5 +5879,180 @@ Respond with valid JSON in this exact format:
 
   // NOTE: /api/developer/system-health is registered in developerRoutes.ts (not here)
 
+  // =====================================================
+  // IDX Lead Capture (Backup) Endpoints
+  // =====================================================
+  
+  // Webhook endpoint to receive leads from IDX site
+  app.post('/api/idx/leads/webhook', async (req: any, res) => {
+    try {
+      const leadData = req.body;
+      
+      // Validate webhook secret if configured
+      const webhookSecret = process.env.IDX_WEBHOOK_SECRET;
+      if (webhookSecret) {
+        const providedSecret = req.headers['x-webhook-secret'];
+        if (providedSecret !== webhookSecret) {
+          console.warn('[IDX Webhook] Invalid webhook secret provided');
+          return res.status(401).json({ error: 'Unauthorized' });
+        }
+      }
+      
+      // Store the lead
+      const lead = await storage.createIdxLead(leadData);
+      
+      console.log('[IDX Webhook] Lead received and stored:', {
+        id: lead.id,
+        email: lead.email,
+        formType: lead.formType
+      });
+      
+      res.json({ success: true, leadId: lead.id });
+    } catch (error) {
+      console.error('[IDX Webhook] Error storing lead:', error);
+      // Still return success to prevent IDX site from retrying
+      res.json({ success: true, error: 'Lead queued for processing' });
+    }
+  });
+  
+  // Admin endpoint to view leads
+  app.get('/api/admin/idx-leads', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { 
+        status, 
+        formType, 
+        assignedTo, 
+        search,
+        startDate,
+        endDate,
+        limit = 50, 
+        offset = 0 
+      } = req.query;
+      
+      const leads = await storage.getIdxLeads({
+        status,
+        formType,
+        assignedTo,
+        search,
+        startDate,
+        endDate,
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+      
+      res.json(leads);
+    } catch (error) {
+      console.error('[Admin API] Get IDX leads error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Admin endpoint to update lead status
+  app.put('/api/admin/idx-leads/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      // If status is being changed to 'contacted', set contactedAt
+      if (updates.status === 'contacted' && !updates.contactedAt) {
+        updates.contactedAt = new Date().toISOString();
+      }
+      
+      // If status is being changed to 'archived', set archivedAt
+      if (updates.status === 'archived' && !updates.archivedAt) {
+        updates.archivedAt = new Date().toISOString();
+      }
+      
+      const lead = await storage.updateIdxLead(id, updates);
+      
+      // Log the action
+      await storage.logActivity(
+        req.user.id,
+        'update_idx_lead',
+        { leadId: id, updates },
+        req.user.email
+      );
+      
+      res.json(lead);
+    } catch (error) {
+      console.error('[Admin API] Update IDX lead error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Admin endpoint to assign lead
+  app.post('/api/admin/idx-leads/:id/assign', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { userId } = req.body;
+      
+      const lead = await storage.updateIdxLead(id, { assignedTo: userId });
+      
+      // Log the action
+      await storage.logActivity(
+        req.user.id,
+        'assign_idx_lead',
+        { leadId: id, assignedTo: userId },
+        req.user.email
+      );
+      
+      res.json(lead);
+    } catch (error) {
+      console.error('[Admin API] Assign IDX lead error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Admin endpoint to retry FUB sync
+  app.post('/api/admin/idx-leads/:id/sync-fub', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get the lead
+      const lead = await storage.getIdxLeadById(id);
+      if (!lead) {
+        return res.status(404).json({ error: 'Lead not found' });
+      }
+      
+      // Try to sync with FUB
+      const fubClient = await getFubClientAsync();
+      if (!fubClient) {
+        return res.status(503).json({ error: 'FUB integration not available' });
+      }
+      
+      try {
+        // Create person in FUB
+        const fubPerson = await fubClient.createPerson({
+          firstName: lead.name.split(' ')[0],
+          lastName: lead.name.split(' ').slice(1).join(' '),
+          emails: [{ value: lead.email, isPrimary: true }],
+          phones: lead.phone ? [{ value: lead.phone, isPrimary: true }] : [],
+          source: 'Spyglass IDX Website (Mission Control Backup)',
+          tags: ['IDX Lead', `Form: ${lead.formType}`]
+        });
+        
+        // Update lead with FUB person ID
+        await storage.updateIdxLead(id, {
+          fubPersonId: fubPerson.id,
+          fubSyncError: null,
+          fubSyncAttempts: lead.fubSyncAttempts + 1
+        });
+        
+        res.json({ success: true, fubPersonId: fubPerson.id });
+      } catch (fubError) {
+        // Update sync error
+        await storage.updateIdxLead(id, {
+          fubSyncError: String(fubError),
+          fubSyncAttempts: lead.fubSyncAttempts + 1
+        });
+        
+        res.status(500).json({ error: 'FUB sync failed', details: String(fubError) });
+      }
+    } catch (error) {
+      console.error('[Admin API] Sync IDX lead to FUB error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }

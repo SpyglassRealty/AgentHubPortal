@@ -8,6 +8,7 @@ import NetworkPage from "./network";
 import LeaderboardPage from "./leaderboard";
 import InsightsPage from "./insights";
 import LeadsPage from "./leads";
+import IdxLeadsPage from "./idx-leads";
 import NetworkFrontlinePage from "./network-frontline";
 import NetworkTrendsPage from "./network-trends";
 import NetworkRevSharePage from "./network-revshare";
@@ -32,6 +33,7 @@ export default function AdminDashboardsRouter() {
         <Route path="/admin/dashboards/recruiting-battlecards" component={RecruitingBattlecardsPage} />
         <Route path="/admin/dashboards/insights" component={InsightsPage} />
         <Route path="/admin/dashboards/leads" component={LeadsPage} />
+        <Route path="/admin/dashboards/idx-leads" component={IdxLeadsPage} />
         <Route path="/admin/dashboards/transactions" component={TransactionsPage} />
         <Route path="/admin/dashboards/weekly-deals" component={WeeklyDealsPage} />
         <Route path="/admin/dashboards/listings" component={ListingsPage} />

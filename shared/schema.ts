@@ -1559,3 +1559,67 @@ export const callDutySignups = pgTable("call_duty_signups", {
 export type CallDutySignup = typeof callDutySignups.$inferSelect;
 export type InsertCallDutySignup = typeof callDutySignups.$inferInsert;
 
+// =====================================================
+// IDX Site Lead Capture (Backup when FUB fails)
+// =====================================================
+
+export const idxLeads = pgTable("idx_leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  // Contact info
+  name: varchar("name").notNull(),
+  email: varchar("email").notNull(),
+  phone: varchar("phone"),
+  message: text("message"),
+  
+  // Form metadata
+  formType: varchar("form_type").notNull(), // 'contact' | 'showing' | 'info'
+  source: varchar("source").default("spyglass-idx"), // source site
+  
+  // Property info (for showing requests)
+  listingAddress: varchar("listing_address"),
+  mlsNumber: varchar("mls_number"),
+  communityName: varchar("community_name"),
+  preferredDate: varchar("preferred_date"),
+  preferredTime: varchar("preferred_time"),
+  
+  // Status tracking
+  status: varchar("status").default("new"), // 'new' | 'contacted' | 'qualified' | 'archived'
+  notes: text("notes"), // internal notes
+  assignedTo: varchar("assigned_to").references(() => users.id),
+  
+  // FUB sync status
+  fubPersonId: integer("fub_person_id"), // if successfully synced to FUB
+  fubSyncError: text("fub_sync_error"), // error if FUB sync failed
+  fubSyncAttempts: integer("fub_sync_attempts").default(0),
+  
+  // Timestamps
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  contactedAt: timestamp("contacted_at"),
+  archivedAt: timestamp("archived_at"),
+}, (table) => [
+  index("idx_idx_leads_email").on(table.email),
+  index("idx_idx_leads_status").on(table.status),
+  index("idx_idx_leads_submitted").on(table.submittedAt),
+  index("idx_idx_leads_assigned").on(table.assignedTo),
+  index("idx_idx_leads_mls").on(table.mlsNumber),
+]);
+
+export type IdxLead = typeof idxLeads.$inferSelect;
+export type InsertIdxLead = typeof idxLeads.$inferInsert;
+
+// Zod schema for lead submission validation
+export const submitIdxLeadSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().optional(),
+  message: z.string().optional(),
+  formType: z.enum(["contact", "showing", "info"]),
+  listingAddress: z.string().optional(),
+  mlsNumber: z.string().optional(),
+  communityName: z.string().optional(),
+  preferredDate: z.string().optional(),
+  preferredTime: z.string().optional(),
+});
+
+export type SubmitIdxLeadInput = z.infer<typeof submitIdxLeadSchema>;
+
