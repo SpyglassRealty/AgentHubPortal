@@ -859,6 +859,12 @@ router.post("/admin/core/import-sheet", async (req, res) => {
         heroImageUrl = imageCell.l.Target;
       } else if (imageCell?.v && typeof imageCell.v === "string" && imageCell.v.startsWith("http")) {
         heroImageUrl = imageCell.v;
+      } else if (imageCell?.v && typeof imageCell.v === "string") {
+        // Check if it's "No image" or similar
+        const cellValue = imageCell.v.toLowerCase().trim();
+        if (cellValue !== "no image" && cellValue !== "none" && cellValue !== "") {
+          heroImageUrl = imageCell.v;
+        }
       }
 
       let ogImageUrl = "";
@@ -868,6 +874,14 @@ router.post("/admin/core/import-sheet", async (req, res) => {
         ogImageUrl = ogImageCell.l.Target;
       } else if (ogImageCell?.v && typeof ogImageCell.v === "string" && ogImageCell.v.startsWith("http")) {
         ogImageUrl = ogImageCell.v;
+      } else if (ogImageCell?.v && typeof ogImageCell.v === "string") {
+        // Check if it's "Same as hero" or similar
+        const cellValue = ogImageCell.v.toLowerCase().trim();
+        if (cellValue === "same as hero") {
+          ogImageUrl = heroImageUrl; // Use the hero image URL
+        } else if (cellValue !== "no image" && cellValue !== "none" && cellValue !== "") {
+          ogImageUrl = ogImageCell.v;
+        }
       }
 
       let pagePhotosUrl = "";
@@ -918,26 +932,34 @@ router.post("/admin/core/import-sheet", async (req, res) => {
       }
 
       // Resolve hero image URL from Google Drive
-      let heroImageDirectUrl = rawHeroUrl;
-      const heroDriveFileId = extractDriveFileId(rawHeroUrl);
-      if (heroDriveFileId) {
-        const heroLocalPath = await downloadDriveImage(heroDriveFileId, `hero-${slug}.jpg`);
-        if (heroLocalPath) {
-          heroImageDirectUrl = heroLocalPath;
-        } else {
-          heroImageDirectUrl = `https://drive.google.com/uc?export=view&id=${heroDriveFileId}`;
+      let heroImageDirectUrl = "";
+      if (rawHeroUrl && rawHeroUrl.toLowerCase() !== "no image" && rawHeroUrl !== "") {
+        const heroDriveFileId = extractDriveFileId(rawHeroUrl);
+        if (heroDriveFileId) {
+          const heroLocalPath = await downloadDriveImage(heroDriveFileId, `hero-${slug}.jpg`);
+          if (heroLocalPath) {
+            heroImageDirectUrl = heroLocalPath;
+          } else {
+            heroImageDirectUrl = `https://drive.google.com/uc?export=view&id=${heroDriveFileId}`;
+          }
+        } else if (rawHeroUrl.startsWith("http")) {
+          heroImageDirectUrl = rawHeroUrl;
         }
       }
 
       // Resolve and download OG image
-      let ogImageDirectUrl = rawOgUrl;
-      const ogDriveFileId = extractDriveFileId(rawOgUrl);
-      if (ogDriveFileId) {
-        const ogLocalPath = await downloadDriveImage(ogDriveFileId, `og-${slug}.jpg`);
-        if (ogLocalPath) {
-          ogImageDirectUrl = ogLocalPath;
-        } else {
-          ogImageDirectUrl = `https://drive.google.com/uc?export=view&id=${ogDriveFileId}`;
+      let ogImageDirectUrl = "";
+      if (rawOgUrl && rawOgUrl.toLowerCase() !== "same as hero" && rawOgUrl.toLowerCase() !== "no image" && rawOgUrl !== "") {
+        const ogDriveFileId = extractDriveFileId(rawOgUrl);
+        if (ogDriveFileId) {
+          const ogLocalPath = await downloadDriveImage(ogDriveFileId, `og-${slug}.jpg`);
+          if (ogLocalPath) {
+            ogImageDirectUrl = ogLocalPath;
+          } else {
+            ogImageDirectUrl = `https://drive.google.com/uc?export=view&id=${ogDriveFileId}`;
+          }
+        } else if (rawOgUrl.startsWith("http")) {
+          ogImageDirectUrl = rawOgUrl;
         }
       }
 
@@ -1010,7 +1032,7 @@ router.post("/admin/core/import-sheet", async (req, res) => {
 
       // Upload hero image to Vercel Blob
       let localHeroUrl = heroImageDirectUrl;
-      if (heroImageDirectUrl) {
+      if (heroImageDirectUrl && heroImageDirectUrl !== "no-image") {
         try {
           let heroUploadUrl = heroImageDirectUrl;
           if (heroUploadUrl.startsWith("/")) {
@@ -1020,6 +1042,11 @@ router.post("/admin/core/import-sheet", async (req, res) => {
           const blobUrl = await uploadImageToVercelBlob(heroUploadUrl, "core-images");
           if (blobUrl) localHeroUrl = blobUrl;
         } catch (e) { /* keep original URL as fallback */ }
+      }
+      
+      // Use a default hero image if none provided
+      if (!localHeroUrl || localHeroUrl === "no-image") {
+        localHeroUrl = "https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2000&q=80";
       }
 
       // Build landing-page-style blocks (template-driven)
