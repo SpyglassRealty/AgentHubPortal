@@ -7,6 +7,15 @@ import XLSX from "xlsx";
 
 const router = Router();
 
+// Deployment verification endpoint
+router.get("/core-import/version", (req, res) => {
+  res.json({ 
+    version: "v2-smart-templates",
+    features: ["hero-backgrounds", "cta-buttons", "columns", "cards", "faq", "smart-sections"],
+    deployed: new Date().toISOString()
+  });
+});
+
 // ── Utility Functions (shared patterns from blogRoutes) ──────────────────
 
 function slugifyForCore(text: string): string {
