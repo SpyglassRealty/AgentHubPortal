@@ -16,6 +16,10 @@ interface Agent {
   bio: string;
   headshotUrl: string;
   professionalTitle: string;
+  licenseNumber?: string;
+  yearsOfExperience?: number;
+  languages?: string[];
+  specialties?: string[];
   socialLinks: {
     facebook?: string;
     instagram?: string;
@@ -228,6 +232,58 @@ export default function AgentEditor() {
                   rows={6}
                   placeholder="Agent biography..."
                 />
+              </div>
+
+              {/* Professional Details */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">License Number</label>
+                  <Input
+                    value={editingAgent.licenseNumber || ""}
+                    onChange={(e) => setEditingAgent({ ...editingAgent, licenseNumber: e.target.value })}
+                    placeholder="e.g., 123456"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Years of Experience</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editingAgent.yearsOfExperience || ""}
+                    onChange={(e) => setEditingAgent({ ...editingAgent, yearsOfExperience: parseInt(e.target.value) || undefined })}
+                    placeholder="e.g., 15"
+                  />
+                </div>
+              </div>
+
+              {/* Languages */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Languages Spoken</label>
+                <Input
+                  value={(editingAgent.languages || []).join(', ')}
+                  onChange={(e) => {
+                    const languages = e.target.value.split(',').map(lang => lang.trim()).filter(lang => lang);
+                    setEditingAgent({ ...editingAgent, languages });
+                  }}
+                  placeholder="e.g., English, Spanish, Mandarin (comma-separated)"
+                />
+                <p className="text-xs text-gray-500 mt-1">Separate multiple languages with commas</p>
+              </div>
+
+              {/* Specialties */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Areas of Expertise</label>
+                <Textarea
+                  value={(editingAgent.specialties || []).join('\n')}
+                  onChange={(e) => {
+                    const specialties = e.target.value.split('\n').map(s => s.trim()).filter(s => s);
+                    setEditingAgent({ ...editingAgent, specialties });
+                  }}
+                  rows={4}
+                  placeholder="Enter specialties (one per line):&#10;Luxury Homes&#10;First-Time Buyers&#10;Investment Properties&#10;Downtown Austin Condos"
+                />
+                <p className="text-xs text-gray-500 mt-1">Enter each specialty on a new line</p>
               </div>
 
               {/* Social Links */}
