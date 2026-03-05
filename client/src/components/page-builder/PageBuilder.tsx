@@ -17,9 +17,10 @@ import { BlockCanvas } from './BlockCanvas';
 import { BlockSettingsPanel } from './BlockSettingsPanel';
 import { BlockRenderer } from './BlockRenderer';
 import { getWidgetDefinition } from './BlockRegistry';
+import { HTMLImportDialog } from '@/components/html-import/HTMLImportDialog';
 import type { BlockData } from './types';
 import { Button } from '@/components/ui/button';
-import { PanelLeft, Eye, EyeOff, Undo2, Redo2 } from 'lucide-react';
+import { PanelLeft, Eye, EyeOff, Undo2, Redo2, Upload } from 'lucide-react';
 
 interface PageBuilderProps {
   blocks: BlockData[];
@@ -64,6 +65,7 @@ function useHistory(initial: BlockData[]) {
 export function PageBuilder({ blocks: initialBlocks, onChange }: PageBuilderProps) {
   const { current: blocks, push, reset, undo, redo, canUndo, canRedo } = useHistory(initialBlocks);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   // Sync when parent passes new blocks (e.g., URL import or API data load)
   const prevBlocksRef = React.useRef(initialBlocks);
@@ -244,6 +246,13 @@ export function PageBuilder({ blocks: initialBlocks, onChange }: PageBuilderProp
 
   const selectedBlock = blocks.find(b => b.id === selectedBlockId) || null;
 
+  // Handle HTML import
+  const handleHTMLImport = useCallback((importedBlocks: BlockData[]) => {
+    // Replace all blocks with imported ones
+    updateBlocks(importedBlocks);
+    setSelectedBlockId(null);
+  }, [updateBlocks]);
+
   return (
     <DndContext
       sensors={sensors}
@@ -269,6 +278,15 @@ export function PageBuilder({ blocks: initialBlocks, onChange }: PageBuilderProp
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={redo} disabled={!canRedo}>
               <Redo2 className="h-4 w-4" />
+            </Button>
+            <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsImportDialogOpen(true)}
+            >
+              <Upload className="h-4 w-4 mr-1" />
+              Import HTML
             </Button>
           </div>
           <div className="flex items-center gap-2">
@@ -322,6 +340,13 @@ export function PageBuilder({ blocks: initialBlocks, onChange }: PageBuilderProp
           </div>
         ) : null}
       </DragOverlay>
+
+      {/* HTML Import Dialog */}
+      <HTMLImportDialog
+        isOpen={isImportDialogOpen}
+        onClose={() => setIsImportDialogOpen(false)}
+        onImport={handleHTMLImport}
+      />
     </DndContext>
   );
 }
