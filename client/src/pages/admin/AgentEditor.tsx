@@ -15,6 +15,7 @@ interface Agent {
   lastName: string;
   email: string;
   phone: string;
+  fubEmail?: string;
   bio: string;
   headshotUrl: string;
   professionalTitle: string;
@@ -69,6 +70,7 @@ export default function AgentEditor() {
       lastName: '',
       email: '',
       phone: '',
+      fubEmail: '',
       bio: '',
       headshotUrl: '',
       professionalTitle: '',
@@ -169,13 +171,29 @@ export default function AgentEditor() {
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Failed to upload photo");
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to upload photo");
+      }
       
       const { url } = await res.json();
       setEditingAgent({ ...editingAgent, headshotUrl: url });
-      toast({ title: "Success", description: "Photo uploaded!" });
+      
+      if (editingAgent.id === 'new') {
+        toast({ 
+          title: "Photo Ready", 
+          description: "Photo uploaded. It will be saved when you create the agent." 
+        });
+      } else {
+        toast({ title: "Success", description: "Photo uploaded!" });
+      }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to upload photo", variant: "destructive" });
+      console.error("Upload error:", error);
+      toast({ 
+        title: "Error", 
+        description: error instanceof Error ? error.message : "Failed to upload photo", 
+        variant: "destructive" 
+      });
     }
   };
 
@@ -309,6 +327,19 @@ export default function AgentEditor() {
                     onChange={(e) => setEditingAgent({ ...editingAgent, phone: e.target.value })}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Follow Up Boss Email</label>
+                <Input
+                  type="email"
+                  value={editingAgent.fubEmail || ''}
+                  onChange={(e) => setEditingAgent({ ...editingAgent, fubEmail: e.target.value })}
+                  placeholder="agent@yourteam.followupboss.com"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Optional: FUB email for routing leads. If empty, leads will go to agent's main email.
+                </p>
               </div>
 
               {/* Office Locations */}
