@@ -154,6 +154,153 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
         />
       );
 
+    case 'core-hero':
+      return (
+        <section 
+          className="relative overflow-hidden"
+          style={{
+            height: props.height || '300px',
+            background: props.backgroundImage ? `url(${props.backgroundImage}) center/cover no-repeat` : '#fa4616'
+          }}
+        >
+          <div 
+            className="absolute inset-0 bg-black" 
+            style={{ opacity: props.overlayOpacity || 0.4 }}
+          />
+          <div className="relative z-10 h-full flex items-center justify-center">
+            <div className="max-w-[1100px] mx-auto px-4 text-center">
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                {props.title || 'Hero Title'}
+              </h1>
+              {props.subtitle && (
+                <p className="text-xl text-white/90">{props.subtitle}</p>
+              )}
+            </div>
+          </div>
+        </section>
+      );
+
+    case 'core-split':
+      return (
+        <section className={`py-16 ${props.background === 'light' ? 'bg-gray-50' : props.background === 'dark' ? 'bg-gray-900 text-white' : 'bg-white'}`}>
+          <div className="max-w-[1100px] mx-auto px-4">
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-12 items-center`}>
+              <div className={props.reverse ? 'md:order-2' : ''}>
+                <img 
+                  src={props.imageUrl || 'https://via.placeholder.com/600x400'} 
+                  alt={props.imageAlt || ''}
+                  className="w-full rounded-lg shadow-sm"
+                />
+              </div>
+              <div className={props.reverse ? 'md:order-1' : ''}>
+                <h2 className="text-3xl font-bold mb-4">{props.heading || 'Section Heading'}</h2>
+                <div 
+                  className="prose prose-lg mb-6"
+                  dangerouslySetInnerHTML={{ __html: props.content || '<p>Content goes here...</p>' }}
+                />
+                {(props.primaryButtonText || props.secondaryButtonText) && (
+                  <div className="flex flex-wrap gap-3">
+                    {props.primaryButtonText && (
+                      <a 
+                        href={props.primaryButtonUrl || '#'}
+                        className="inline-flex px-6 py-3 bg-[#fa4616] text-white font-medium rounded hover:opacity-85 transition-opacity"
+                      >
+                        {props.primaryButtonText}
+                      </a>
+                    )}
+                    {props.secondaryButtonText && (
+                      <a 
+                        href={props.secondaryButtonUrl || '#'}
+                        className="inline-flex px-6 py-3 border-2 border-[#fa4616] text-[#fa4616] font-medium rounded hover:bg-[#fa4616] hover:text-white transition-colors"
+                      >
+                        {props.secondaryButtonText}
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+
+    case 'core-cards':
+      return (
+        <section className={`py-16 ${props.background === 'light' ? 'bg-gray-50' : props.background === 'dark' ? 'bg-gray-900 text-white' : 'bg-white'}`}>
+          <div className="max-w-[1100px] mx-auto px-4">
+            {props.heading && (
+              <h2 className="text-3xl font-bold text-center mb-12">{props.heading}</h2>
+            )}
+            <div className={`grid grid-cols-1 ${props.columns === 2 ? 'md:grid-cols-2' : props.columns === 4 ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-6`}>
+              {(props.cards || []).map((card: any, index: number) => (
+                <div key={index} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                  {card.imageUrl && (
+                    <div className="aspect-[4/3] overflow-hidden">
+                      <img src={card.imageUrl} alt={card.title} className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <div className="p-6">
+                    <h3 className="text-xl font-semibold mb-3">{card.title}</h3>
+                    <p className="text-gray-600 mb-4">{card.description}</p>
+                    {card.linkText && (
+                      <a href={card.linkUrl || '#'} className="text-[#fa4616] hover:underline font-medium">
+                        {card.linkText} →
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+
+    case 'core-testimonial':
+      return (
+        <section className={`py-16 ${props.background === 'light' ? 'bg-gray-50' : props.background === 'dark' ? 'bg-gray-900 text-white' : 'bg-white'}`}>
+          <div className="max-w-[1100px] mx-auto px-4">
+            {props.heading && (
+              <h2 className="text-3xl font-bold text-center mb-12">{props.heading}</h2>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {(props.testimonials || []).map((testimonial: any, index: number) => (
+                <div key={index} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
+                  <div className="text-[#fa4616] text-xl mb-3">
+                    {'★'.repeat(testimonial.rating || 5)}{'☆'.repeat(5 - (testimonial.rating || 5))}
+                  </div>
+                  <blockquote className="text-gray-700 mb-4 italic">
+                    "{testimonial.quote}"
+                  </blockquote>
+                  <cite className="text-sm font-medium text-gray-900 not-italic">
+                    — {testimonial.author}
+                  </cite>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+
+    case 'core-text':
+      return (
+        <section className={`py-16 ${props.background === 'light' ? 'bg-gray-50' : props.background === 'dark' ? 'bg-gray-900 text-white' : 'bg-white'}`}>
+          <div className="max-w-[1100px] mx-auto px-4">
+            <div 
+              className={`${props.textAlign === 'left' ? 'text-left' : props.textAlign === 'right' ? 'text-right' : 'text-center'} mx-auto`} 
+              style={{ maxWidth: props.maxWidth || '800px' }}
+            >
+              {props.heading && (
+                <h2 className="text-3xl font-bold mb-6">{props.heading}</h2>
+              )}
+              <div 
+                className="prose prose-lg mx-auto"
+                dangerouslySetInnerHTML={{ __html: props.content || '' }}
+              />
+            </div>
+          </div>
+        </section>
+      );
+
     case 'video': {
       const embedUrl = getVideoEmbedUrl(props.url || '');
       if (!embedUrl) {
