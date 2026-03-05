@@ -13,8 +13,6 @@ import {
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Loader2, Upload, FileText, Check, AlertCircle, X } from 'lucide-react';
 import type { BlockData } from '@/components/page-builder/types';
 
@@ -284,18 +282,23 @@ export function HTMLImportDialog({ isOpen, onClose, onImport }: HTMLImportDialog
               )}
 
               {/* Import Options */}
-              <div className="flex items-center space-x-2 p-4 bg-gray-50 dark:bg-muted rounded mb-4">
-                <Switch
-                  id="preserve-html"
-                  checked={preserveOriginal}
-                  onCheckedChange={setPreserveOriginal}
-                />
-                <Label htmlFor="preserve-html" className="text-sm font-medium cursor-pointer">
-                  Preserve original HTML and styling
-                  <span className="block text-xs text-gray-500 font-normal">
-                    Keep custom CSS and structure intact (recommended for complex layouts)
-                  </span>
-                </Label>
+              <div className="p-4 bg-gray-50 dark:bg-muted rounded mb-4">
+                <label className="flex items-start space-x-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={preserveOriginal}
+                    onChange={(e) => setPreserveOriginal(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-[#EF4923] focus:ring-[#EF4923]"
+                  />
+                  <div>
+                    <span className="text-sm font-medium">
+                      Preserve original HTML and styling
+                    </span>
+                    <span className="block text-xs text-gray-500">
+                      Keep custom CSS and structure intact (recommended for complex layouts)
+                    </span>
+                  </div>
+                </label>
               </div>
 
               {/* Blocks Preview */}
