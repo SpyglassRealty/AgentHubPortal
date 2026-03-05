@@ -66,14 +66,18 @@ const createAgentProfileSchema = z.object({
   firstName: z.string().min(1, "First name is required").max(255),
   lastName: z.string().min(1, "Last name is required").max(255),
   email: z.string().email("Valid email is required"),
-  phone: z.string().optional(),
-  fubEmail: z.string().email().optional().or(z.literal('')),
+  phone: z.string().optional().nullable(),
+  fubEmail: z.string().optional().nullable().refine((val) => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
+    message: "Must be a valid email address"
+  }),
   officeLocation: z.string().min(1, "At least one office location is required"),
-  bio: z.string().optional(),
-  professionalTitle: z.string().optional(),
-  licenseNumber: z.string().optional(),
-  websiteUrl: z.string().url().optional().or(z.literal('')),
-  headshotUrl: z.string().optional().or(z.literal('')),
+  bio: z.string().optional().nullable(),
+  professionalTitle: z.string().optional().nullable(),
+  licenseNumber: z.string().optional().nullable(),
+  websiteUrl: z.string().optional().nullable().refine((val) => !val || /^https?:\/\/.+/.test(val), {
+    message: "Must be a valid URL"
+  }),
+  headshotUrl: z.string().optional().nullable(),
   socialLinks: z.object({
     facebook: z.string().optional(),
     instagram: z.string().optional(),
@@ -81,19 +85,23 @@ const createAgentProfileSchema = z.object({
     twitter: z.string().optional(),
     youtube: z.string().optional(),
     tiktok: z.string().optional(),
-  }).optional(),
-  subdomain: z.string().regex(/^[a-z0-9-]+$/, "Subdomain must be lowercase with dashes").optional().or(z.literal('')),
+  }).optional().nullable(),
+  subdomain: z.string().optional().nullable().refine((val) => !val || /^[a-z0-9-]+$/.test(val), {
+    message: "Subdomain must be lowercase with dashes"
+  }),
   isVisible: z.boolean().default(true),
   sortOrder: z.number().int().default(0),
-  yearsOfExperience: z.number().int().min(0).max(100).optional(),
+  yearsOfExperience: z.number().int().min(0).max(100).optional().nullable(),
   languages: z.array(z.string()).default([]),
   specialties: z.array(z.string()).default([]),
-  metaTitle: z.string().max(255).optional(),
-  metaDescription: z.string().optional(),
+  metaTitle: z.string().max(255).optional().nullable(),
+  metaDescription: z.string().optional().nullable(),
   indexingDirective: z.string().default('index,follow'),
-  customSchema: z.record(z.any()).optional(),
-  videoUrl: z.string().url().optional().or(z.literal('')),
-  repliersAgentId: z.string().max(50).optional().or(z.literal('')),
+  customSchema: z.record(z.any()).optional().nullable(),
+  videoUrl: z.string().optional().nullable().refine((val) => !val || /^https?:\/\/.+/.test(val), {
+    message: "Must be a valid URL"
+  }),
+  repliersAgentId: z.string().max(50).optional().nullable(),
 });
 
 const updateAgentProfileSchema = createAgentProfileSchema.partial().extend({
@@ -225,7 +233,24 @@ router.get("/admin/agents/:id", async (req, res) => {
 // POST /api/admin/agents - Create new agent profile
 router.post("/admin/agents", async (req, res) => {
   try {
-    const validatedData = createAgentProfileSchema.parse(req.body);
+    // Preprocess data to convert empty strings to null/undefined
+    const preprocessedData = {
+      ...req.body,
+      fubEmail: req.body.fubEmail || null,
+      websiteUrl: req.body.websiteUrl || null,
+      videoUrl: req.body.videoUrl || null,
+      licenseNumber: req.body.licenseNumber || null,
+      subdomain: req.body.subdomain || null,
+      bio: req.body.bio || null,
+      professionalTitle: req.body.professionalTitle || null,
+      metaTitle: req.body.metaTitle || null,
+      metaDescription: req.body.metaDescription || null,
+      repliersAgentId: req.body.repliersAgentId || null,
+      phone: req.body.phone || null,
+      yearsOfExperience: req.body.yearsOfExperience || null,
+    };
+    
+    const validatedData = createAgentProfileSchema.parse(preprocessedData);
     
     // Auto-generate subdomain if not provided
     if (!validatedData.subdomain) {
@@ -258,7 +283,26 @@ router.post("/admin/agents", async (req, res) => {
 router.put("/admin/agents/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const validatedData = updateAgentProfileSchema.parse({ ...req.body, id });
+    
+    // Preprocess data to convert empty strings to null/undefined
+    const preprocessedData = {
+      ...req.body,
+      id,
+      fubEmail: req.body.fubEmail || null,
+      websiteUrl: req.body.websiteUrl || null,
+      videoUrl: req.body.videoUrl || null,
+      licenseNumber: req.body.licenseNumber || null,
+      subdomain: req.body.subdomain || null,
+      bio: req.body.bio || null,
+      professionalTitle: req.body.professionalTitle || null,
+      metaTitle: req.body.metaTitle || null,
+      metaDescription: req.body.metaDescription || null,
+      repliersAgentId: req.body.repliersAgentId || null,
+      phone: req.body.phone || null,
+      yearsOfExperience: req.body.yearsOfExperience || null,
+    };
+    
+    const validatedData = updateAgentProfileSchema.parse(preprocessedData);
     
     // Check if agent exists
     const [existingAgent] = await db

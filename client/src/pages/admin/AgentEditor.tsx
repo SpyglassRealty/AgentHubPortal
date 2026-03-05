@@ -99,10 +99,30 @@ export default function AgentEditor() {
       const url = isNew ? '/api/admin/agents' : `/api/admin/agents/${editingAgent.id}`;
       const method = isNew ? 'POST' : 'PUT';
       
+      // Clean up data before sending
+      const cleanData = {
+        ...editingAgent,
+        // Convert empty strings to undefined for optional fields
+        fubEmail: editingAgent.fubEmail || undefined,
+        websiteUrl: editingAgent.websiteUrl || undefined,
+        videoUrl: editingAgent.videoUrl || undefined,
+        licenseNumber: editingAgent.licenseNumber || undefined,
+        subdomain: editingAgent.subdomain || undefined,
+        // Ensure these fields have defaults
+        languages: editingAgent.languages || [],
+        specialties: editingAgent.specialties || [],
+        socialLinks: editingAgent.socialLinks || {},
+        isVisible: editingAgent.isVisible ?? true,
+        sortOrder: editingAgent.sortOrder || 0
+      };
+      
       // Don't send the 'new' id for creation
       const agentData = isNew 
-        ? { ...editingAgent, id: undefined }
-        : editingAgent;
+        ? { ...cleanData, id: undefined }
+        : cleanData;
+      
+      // Log the data being sent for debugging
+      console.log('Saving agent data:', agentData);
       
       const res = await fetch(url, {
         method,
@@ -110,7 +130,20 @@ export default function AgentEditor() {
         body: JSON.stringify(agentData),
       });
 
-      if (!res.ok) throw new Error(isNew ? "Failed to create agent" : "Failed to save agent");
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error('Agent save error:', errorData);
+        
+        // Extract validation error messages
+        if (errorData.details && Array.isArray(errorData.details)) {
+          const errorMessages = errorData.details.map((err: any) => 
+            `${err.path.join('.')}: ${err.message}`
+          ).join(', ');
+          throw new Error(errorMessages);
+        }
+        
+        throw new Error(errorData.error || (isNew ? "Failed to create agent" : "Failed to save agent"));
+      }
       
       toast({ 
         title: "Success", 
