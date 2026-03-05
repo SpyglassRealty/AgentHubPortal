@@ -549,6 +549,257 @@ export function BlockSettingsPanel({ block, onUpdate, onClose }: BlockSettingsPa
       case 'idx-feed':
         return <IdxFeedSettings props={props} update={update} />;
 
+      // Core Pages blocks
+      case 'core-hero':
+        return (
+          <>
+            <Field label="Title">
+              <Input value={props.title || ''} onChange={e => update('title', e.target.value)} />
+            </Field>
+            <Field label="Subtitle">
+              <Input value={props.subtitle || ''} onChange={e => update('subtitle', e.target.value)} />
+            </Field>
+            <Field label="Background Image URL">
+              <Input value={props.backgroundImage || ''} onChange={e => update('backgroundImage', e.target.value)} placeholder="https://..." />
+            </Field>
+            <Field label="Overlay Opacity">
+              <Input type="number" min="0" max="1" step="0.1" value={props.overlayOpacity || 0.4} onChange={e => update('overlayOpacity', e.target.value)} />
+            </Field>
+            <Field label="Height">
+              <Input value={props.height || '300px'} onChange={e => update('height', e.target.value)} placeholder="300px, 50vh, etc." />
+            </Field>
+          </>
+        );
+
+      case 'core-split':
+        return (
+          <>
+            <Field label="Image URL">
+              <Input value={props.imageUrl || ''} onChange={e => update('imageUrl', e.target.value)} placeholder="https://..." />
+            </Field>
+            <Field label="Image Alt Text">
+              <Input value={props.imageAlt || ''} onChange={e => update('imageAlt', e.target.value)} />
+            </Field>
+            <Field label="Heading">
+              <Input value={props.heading || ''} onChange={e => update('heading', e.target.value)} />
+            </Field>
+            <Field label="Content">
+              <Textarea value={props.content || ''} onChange={e => update('content', e.target.value)} rows={4} />
+            </Field>
+            <Field label="Primary Button Text">
+              <Input value={props.primaryButtonText || ''} onChange={e => update('primaryButtonText', e.target.value)} />
+            </Field>
+            <Field label="Primary Button URL">
+              <Input value={props.primaryButtonUrl || '#'} onChange={e => update('primaryButtonUrl', e.target.value)} />
+            </Field>
+            <Field label="Secondary Button Text">
+              <Input value={props.secondaryButtonText || ''} onChange={e => update('secondaryButtonText', e.target.value)} />
+            </Field>
+            <Field label="Secondary Button URL">
+              <Input value={props.secondaryButtonUrl || '#'} onChange={e => update('secondaryButtonUrl', e.target.value)} />
+            </Field>
+            <Field label="Reverse Layout">
+              <Select value={props.reverse ? 'true' : 'false'} onValueChange={v => update('reverse', v === 'true')}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="false">Image Left</SelectItem>
+                  <SelectItem value="true">Image Right</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Background">
+              <Select value={props.background || 'white'} onValueChange={v => update('background', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="white">White</SelectItem>
+                  <SelectItem value="light">Light Gray</SelectItem>
+                  <SelectItem value="dark">Dark</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </>
+        );
+
+      case 'core-cards':
+        return (
+          <>
+            <Field label="Section Heading">
+              <Input value={props.heading || ''} onChange={e => update('heading', e.target.value)} />
+            </Field>
+            <Field label="Columns">
+              <Select value={String(props.columns || 3)} onValueChange={v => update('columns', Number(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2">2 Columns</SelectItem>
+                  <SelectItem value="3">3 Columns</SelectItem>
+                  <SelectItem value="4">4 Columns</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Background">
+              <Select value={props.background || 'white'} onValueChange={v => update('background', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="white">White</SelectItem>
+                  <SelectItem value="light">Light Gray</SelectItem>
+                  <SelectItem value="dark">Dark</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Cards">
+              <div className="space-y-3">
+                {(props.cards || []).map((card: any, i: number) => (
+                  <div key={i} className="p-3 border rounded space-y-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">Card {i + 1}</span>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => {
+                        const newCards = [...(props.cards || [])];
+                        newCards.splice(i, 1);
+                        update('cards', newCards);
+                      }}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <Input placeholder="Title" value={card.title || ''} onChange={e => {
+                      const newCards = [...(props.cards || [])];
+                      newCards[i] = { ...newCards[i], title: e.target.value };
+                      update('cards', newCards);
+                    }} />
+                    <Textarea placeholder="Description" rows={2} value={card.description || ''} onChange={e => {
+                      const newCards = [...(props.cards || [])];
+                      newCards[i] = { ...newCards[i], description: e.target.value };
+                      update('cards', newCards);
+                    }} />
+                    <Input placeholder="Image URL" value={card.imageUrl || ''} onChange={e => {
+                      const newCards = [...(props.cards || [])];
+                      newCards[i] = { ...newCards[i], imageUrl: e.target.value };
+                      update('cards', newCards);
+                    }} />
+                    <Input placeholder="Link Text" value={card.linkText || ''} onChange={e => {
+                      const newCards = [...(props.cards || [])];
+                      newCards[i] = { ...newCards[i], linkText: e.target.value };
+                      update('cards', newCards);
+                    }} />
+                    <Input placeholder="Link URL" value={card.linkUrl || '#'} onChange={e => {
+                      const newCards = [...(props.cards || [])];
+                      newCards[i] = { ...newCards[i], linkUrl: e.target.value };
+                      update('cards', newCards);
+                    }} />
+                  </div>
+                ))}
+                <Button size="sm" variant="outline" className="w-full" onClick={() => {
+                  const newCards = [...(props.cards || []), { title: 'New Card', description: 'Description', linkText: 'Learn More', linkUrl: '#' }];
+                  update('cards', newCards);
+                }}>
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add Card
+                </Button>
+              </div>
+            </Field>
+          </>
+        );
+
+      case 'core-testimonial':
+        return (
+          <>
+            <Field label="Section Heading">
+              <Input value={props.heading || ''} onChange={e => update('heading', e.target.value)} />
+            </Field>
+            <Field label="Background">
+              <Select value={props.background || 'light'} onValueChange={v => update('background', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="white">White</SelectItem>
+                  <SelectItem value="light">Light Gray</SelectItem>
+                  <SelectItem value="dark">Dark</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Testimonials">
+              <div className="space-y-3">
+                {(props.testimonials || []).map((item: any, i: number) => (
+                  <div key={i} className="p-3 border rounded space-y-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">Testimonial {i + 1}</span>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => {
+                        const newItems = [...(props.testimonials || [])];
+                        newItems.splice(i, 1);
+                        update('testimonials', newItems);
+                      }}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <Textarea placeholder="Quote" rows={3} value={item.quote || ''} onChange={e => {
+                      const newItems = [...(props.testimonials || [])];
+                      newItems[i] = { ...newItems[i], quote: e.target.value };
+                      update('testimonials', newItems);
+                    }} />
+                    <Input placeholder="Author Name" value={item.author || ''} onChange={e => {
+                      const newItems = [...(props.testimonials || [])];
+                      newItems[i] = { ...newItems[i], author: e.target.value };
+                      update('testimonials', newItems);
+                    }} />
+                    <Select value={String(item.rating || 5)} onValueChange={v => {
+                      const newItems = [...(props.testimonials || [])];
+                      newItems[i] = { ...newItems[i], rating: Number(v) };
+                      update('testimonials', newItems);
+                    }}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {[1,2,3,4,5].map(r => (
+                          <SelectItem key={r} value={String(r)}>{'★'.repeat(r)}{'☆'.repeat(5-r)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+                <Button size="sm" variant="outline" className="w-full" onClick={() => {
+                  const newItems = [...(props.testimonials || []), { quote: 'Great experience!', author: 'New Client', rating: 5 }];
+                  update('testimonials', newItems);
+                }}>
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add Testimonial
+                </Button>
+              </div>
+            </Field>
+          </>
+        );
+
+      case 'core-text':
+        return (
+          <>
+            <Field label="Heading">
+              <Input value={props.heading || ''} onChange={e => update('heading', e.target.value)} />
+            </Field>
+            <Field label="Content">
+              <Textarea value={props.content || ''} onChange={e => update('content', e.target.value)} rows={6} />
+            </Field>
+            <Field label="Text Align">
+              <Select value={props.textAlign || 'center'} onValueChange={v => update('textAlign', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="left">Left</SelectItem>
+                  <SelectItem value="center">Center</SelectItem>
+                  <SelectItem value="right">Right</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Max Width">
+              <Input value={props.maxWidth || '800px'} onChange={e => update('maxWidth', e.target.value)} placeholder="800px, 100%, etc." />
+            </Field>
+            <Field label="Background">
+              <Select value={props.background || 'white'} onValueChange={v => update('background', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="white">White</SelectItem>
+                  <SelectItem value="light">Light Gray</SelectItem>
+                  <SelectItem value="dark">Dark</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </>
+        );
+
       default:
         return <p className="text-sm text-gray-400">No settings available for this block type.</p>;
     }
