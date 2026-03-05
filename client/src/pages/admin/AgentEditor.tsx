@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Edit, Save, X, Image, Link, Youtube, Facebook, Instagram, Twitter, Linkedin } from "lucide-react";
+import { Search, Edit, Save, X, Image, Link, Youtube, Facebook, Instagram, Twitter, Linkedin, Plus, MapPin } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import RichTextEditor from "@/components/RichTextEditor";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Agent {
-  id: number;
+  id: number | string;
   firstName: string;
   lastName: string;
   email: string;
@@ -31,12 +33,17 @@ interface Agent {
   sortOrder: number;
   metaDescription: string;
   subdomain: string;
+  officeLocation: string;
+  videoUrl?: string;
 }
 
 export default function AgentEditor() {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+
+  const availableOffices = ["Austin", "Houston", "Corpus Christi"];
 
   const { data: agents = [], refetch } = useQuery<Agent[]>({
     queryKey: ["agents"],
@@ -55,27 +62,98 @@ export default function AgentEditor() {
       agent.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleCreateNew = () => {
+    const newAgent: Agent = {
+      id: 'new',
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      bio: '',
+      headshotUrl: '',
+      professionalTitle: '',
+      licenseNumber: '',
+      yearsOfExperience: undefined,
+      languages: [],
+      specialties: [],
+      socialLinks: {},
+      isVisible: true,
+      sortOrder: 0,
+      metaDescription: '',
+      subdomain: '',
+      officeLocation: '',
+      videoUrl: ''
+    };
+    setEditingAgent(newAgent);
+    setIsCreatingNew(true);
+  };
+
   const handleSave = async () => {
     if (!editingAgent) return;
     
     setIsSaving(true);
     try {
-      const res = await fetch(`/api/admin/agents/${editingAgent.id}`, {
-        method: "PUT",
+      const isNew = editingAgent.id === 'new';
+      const url = isNew ? '/api/admin/agents' : `/api/admin/agents/${editingAgent.id}`;
+      const method = isNew ? 'POST' : 'PUT';
+      
+      // Don't send the 'new' id for creation
+      const agentData = isNew 
+        ? { ...editingAgent, id: undefined }
+        : editingAgent;
+      
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editingAgent),
+        body: JSON.stringify(agentData),
       });
 
-      if (!res.ok) throw new Error("Failed to save agent");
+      if (!res.ok) throw new Error(isNew ? "Failed to create agent" : "Failed to save agent");
       
-      toast({ title: "Success", description: "Agent updated successfully!" });
+      toast({ 
+        title: "Success", 
+        description: isNew ? "Agent created successfully!" : "Agent updated successfully!" 
+      });
       setEditingAgent(null);
+      setIsCreatingNew(false);
       refetch();
     } catch (error) {
-      toast({ title: "Error", description: "Failed to save agent", variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: isCreatingNew ? "Failed to create agent" : "Failed to save agent", 
+        variant: "destructive" 
+      });
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Helper function to parse office locations
+  const getSelectedOffices = (officeLocation: string) => {
+    return officeLocation ? officeLocation.split(',').map(o => o.trim()) : [];
+  };
+
+  // Helper function to update office locations
+  const toggleOfficeLocation = (office: string) => {
+    if (!editingAgent) return;
+    
+    const currentOffices = getSelectedOffices(editingAgent.officeLocation);
+    const newOffices = currentOffices.includes(office)
+      ? currentOffices.filter(o => o !== office)
+      : [...currentOffices, office];
+    
+    setEditingAgent({ 
+      ...editingAgent, 
+      officeLocation: newOffices.join(', ') 
+    });
+  };
+
+  // Validate video URL
+  const isValidVideoUrl = (url: string) => {
+    if (!url) return true;
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
+    const vimeoRegex = /^(https?:\/\/)?(www\.)?vimeo\.com\/.+$/;
+    return youtubeRegex.test(url) || vimeoRegex.test(url);
   };
 
   const handleUploadPhoto = async (file: File) => {
