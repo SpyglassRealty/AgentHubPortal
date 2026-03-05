@@ -120,12 +120,24 @@ export function HTMLImportDialog({ isOpen, onClose, onImport }: HTMLImportDialog
     if (!preview) return;
     
     if (preserveOriginal) {
-      // Create a single HTML widget with the original content
+      // Extract body content and styles from the HTML
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlContent, 'text/html');
+      const bodyContent = doc.body.innerHTML;
+      
+      // Extract all style tags and inline styles
+      const styles = Array.from(doc.querySelectorAll('style')).map(style => style.outerHTML).join('\n');
+      const linkStyles = Array.from(doc.querySelectorAll('link[rel="stylesheet"]')).map(link => link.outerHTML).join('\n');
+      
+      // Combine styles and content
+      const fullContent = `${styles}\n${linkStyles}\n${bodyContent}`;
+      
+      // Create a single HTML widget with the body content and styles
       const htmlBlock: BlockData = {
         id: nanoid(),
         type: 'html',
         props: {
-          content: htmlContent || ''
+          content: fullContent || htmlContent || ''
         }
       };
       onImport([htmlBlock]);
