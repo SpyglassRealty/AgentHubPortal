@@ -5742,6 +5742,20 @@ Respond with valid JSON in this exact format:
     }
   };
 
+  // Admin-only middleware
+  const isAdmin = async (req: any, res: any, next: any) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user || (user.role !== 'admin' && user.role !== 'developer')) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      next();
+    } catch (error) {
+      console.error('[Admin Auth] Error:', error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  };
+
   // ==========================================
   // Developer Dashboard API Endpoints
   // ==========================================
