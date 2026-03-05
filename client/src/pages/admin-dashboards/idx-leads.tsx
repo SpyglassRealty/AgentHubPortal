@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, RefreshCw, Search, Download, User, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
-import DashboardLayout from '@/components/admin-dashboards/dashboard-layout';
+import { DashboardLayout } from '@/components/admin-dashboards/dashboard-layout';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 
