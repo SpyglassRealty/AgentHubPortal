@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, Edit, Save, X, Image, Link, Youtube, Facebook, Instagram, Twitter, Linkedin, Plus, MapPin } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import RichTextEditor from "@/components/editor/RichTextEditor";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface Agent {
