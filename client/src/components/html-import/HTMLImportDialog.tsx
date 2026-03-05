@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { nanoid } from 'nanoid';
 import { HTMLImportParser } from '@/utils/html-import-parser';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -12,6 +13,8 @@ import {
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Loader2, Upload, FileText, Check, AlertCircle, X } from 'lucide-react';
 import type { BlockData } from '@/components/page-builder/types';
 
@@ -38,6 +41,8 @@ export function HTMLImportDialog({ isOpen, onClose, onImport }: HTMLImportDialog
   const [parsing, setParsing] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [preserveOriginal, setPreserveOriginal] = useState(true);
+  const [htmlContent, setHtmlContent] = useState<string>('');
   const [importProgress, setImportProgress] = useState({
     status: 'idle',
     message: '',
@@ -60,6 +65,7 @@ export function HTMLImportDialog({ isOpen, onClose, onImport }: HTMLImportDialog
     try {
       // Read file content
       const content = await file.text();
+      setHtmlContent(content); // Store original HTML
       setImportProgress({ status: 'parsing', message: 'Parsing HTML structure...', progress: 30 });
 
       // Parse HTML to blocks
@@ -112,7 +118,22 @@ export function HTMLImportDialog({ isOpen, onClose, onImport }: HTMLImportDialog
    */
   const handleImportBlocks = () => {
     if (!preview) return;
-    onImport(preview.blocks);
+    
+    if (preserveOriginal) {
+      // Create a single HTML widget with the original content
+      const htmlBlock: BlockData = {
+        id: nanoid(),
+        type: 'html',
+        props: {
+          content: htmlContent || ''
+        }
+      };
+      onImport([htmlBlock]);
+    } else {
+      // Use the parsed blocks
+      onImport(preview.blocks);
+    }
+    
     handleReset();
     onClose();
   };
@@ -123,6 +144,7 @@ export function HTMLImportDialog({ isOpen, onClose, onImport }: HTMLImportDialog
   const handleReset = () => {
     setPreview(null);
     setError(null);
+    setHtmlContent('');
     setImportProgress({ status: 'idle', message: '', progress: 0 });
   };
 
@@ -249,13 +271,30 @@ export function HTMLImportDialog({ isOpen, onClose, onImport }: HTMLImportDialog
                 </div>
               )}
 
-              {/* Blocks Preview */}
-              <div>
-                <h4 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-3">Page Structure</h4>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {preview.blocks.map((block, index) => renderBlockPreview(block, index))}
-                </div>
+              {/* Import Options */}
+              <div className="flex items-center space-x-2 p-4 bg-gray-50 dark:bg-muted rounded mb-4">
+                <Switch
+                  id="preserve-html"
+                  checked={preserveOriginal}
+                  onCheckedChange={setPreserveOriginal}
+                />
+                <Label htmlFor="preserve-html" className="text-sm font-medium cursor-pointer">
+                  Preserve original HTML and styling
+                  <span className="block text-xs text-gray-500 font-normal">
+                    Keep custom CSS and structure intact (recommended for complex layouts)
+                  </span>
+                </Label>
               </div>
+
+              {/* Blocks Preview */}
+              {!preserveOriginal && (
+                <div>
+                  <h4 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-3">Page Structure</h4>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {preview.blocks.map((block, index) => renderBlockPreview(block, index))}
+                  </div>
+                </div>
+              )}
             </Card>
 
             {/* Actions */}
@@ -265,10 +304,10 @@ export function HTMLImportDialog({ isOpen, onClose, onImport }: HTMLImportDialog
               </Button>
               <Button 
                 onClick={handleImportBlocks}
-                disabled={preview.blocks.length === 0}
+                disabled={!preserveOriginal && preview.blocks.length === 0}
               >
                 <Check className="w-4 h-4 mr-2" />
-                Import {preview.blocks.length} Blocks
+                {preserveOriginal ? 'Import as HTML' : `Import ${preview.blocks.length} Blocks`}
               </Button>
             </div>
           </div>
