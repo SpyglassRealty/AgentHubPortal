@@ -139,20 +139,18 @@ export class HTMLImportParser {
    */
   private parseHero(section: HTMLElement): BlockData & { assets?: string[] } {
     const h1 = section.querySelector('h1');
+    const h2 = section.querySelector('h2, .subtitle');
     const backgroundImage = this.extractBackgroundImage(section);
     
     return {
       id: nanoid(),
-      type: 'idx-hero',
+      type: 'core-hero',
       props: {
-        headline: h1?.textContent || '',
-        backgroundImage: backgroundImage,
-        overlay: true,
-        overlayOpacity: 0.5,
-        height: 'medium',
-        alignment: 'left',
-        // Hero typically has search bar in IDX
-        showSearch: true
+        title: h1?.textContent || 'Welcome',
+        subtitle: h2?.textContent || '',
+        backgroundImage: backgroundImage || 'https://images.unsplash.com/photo-1629538480890-17a87addd019',
+        overlayOpacity: 0.4,
+        height: '300px'
       },
       assets: backgroundImage ? [backgroundImage] : []
     };
@@ -164,15 +162,17 @@ export class HTMLImportParser {
   private parseTextSection(section: HTMLElement): BlockData {
     const container = section.querySelector('.intro-text') || section.querySelector('.container');
     const h2 = section.querySelector('h2');
+    const isLight = section.classList.contains('section--light');
+    const isDark = section.classList.contains('section--dark');
     
     return {
       id: nanoid(),
-      type: 'text',
+      type: 'core-text',
       props: {
         heading: h2?.textContent || '',
         content: this.extractParagraphs(container as HTMLElement),
-        alignment: section.classList.contains('text-center') ? 'center' : 'left',
-        backgroundColor: this.getBackgroundColor(section),
+        textAlign: section.classList.contains('text-center') ? 'center' : 'left',
+        background: isDark ? 'dark' : isLight ? 'light' : 'white',
         maxWidth: '800px'
       }
     };
@@ -189,34 +189,39 @@ export class HTMLImportParser {
     const imgDiv = split.querySelector('.split__img');
     const textDiv = split.querySelector('.split__text');
     
-    // Check if it's video or image
-    const iframe = imgDiv?.querySelector('iframe');
-    const img = imgDiv?.querySelector('img');
+    // Extract image
+    const img = imgDiv?.querySelector('img') as HTMLImageElement;
+    const imageUrl = img?.src || '';
     
-    const leftContent = {
-      type: iframe ? 'video' : 'image',
-      url: iframe ? (iframe as HTMLIFrameElement).src : (img as HTMLImageElement)?.src,
-      alt: (img as HTMLImageElement)?.alt
-    };
+    // Extract text content
+    const h2 = textDiv?.querySelector('h2');
+    const content = this.extractTextContent(textDiv as HTMLElement);
     
-    const rightContent = {
-      type: 'content',
-      heading: textDiv?.querySelector('h2')?.textContent || '',
-      content: this.extractTextContent(textDiv as HTMLElement),
-      buttons: this.extractButtons(textDiv as HTMLElement)
-    };
+    // Extract buttons
+    const buttons = this.extractButtons(textDiv as HTMLElement);
+    const primaryBtn = buttons[0];
+    const secondaryBtn = buttons[1];
+    
+    // Determine background
+    const isLight = section.classList.contains('section--light');
+    const isDark = section.classList.contains('section--dark');
 
     return {
       id: nanoid(),
-      type: 'idx-two-column',
+      type: 'core-split',
       props: {
-        leftColumn: isReverse ? rightContent : leftContent,
-        rightColumn: isReverse ? leftContent : rightContent,
-        gap: 'large',
-        verticalAlignment: 'center',
-        backgroundColor: this.getBackgroundColor(section)
+        imageUrl: imageUrl || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa',
+        imageAlt: img?.alt || '',
+        heading: h2?.textContent || 'Section Heading',
+        content: content,
+        primaryButtonText: primaryBtn?.text || '',
+        primaryButtonUrl: primaryBtn?.url || '#',
+        secondaryButtonText: secondaryBtn?.text || '',
+        secondaryButtonUrl: secondaryBtn?.url || '#',
+        reverse: isReverse,
+        background: isDark ? 'dark' : isLight ? 'light' : 'white'
       },
-      assets: img?.src ? [(img as HTMLImageElement).src] : []
+      assets: imageUrl ? [imageUrl] : []
     };
   }
 
@@ -233,25 +238,28 @@ export class HTMLImportParser {
       const text = card.querySelector('.card__body p');
       
       cards.push({
-        image: img?.src || '',
-        imageAlt: img?.alt || '',
-        title: img?.alt || '', // Using alt as title since no h3 in these cards
+        title: img?.alt || 'Card Title',
         description: text?.textContent || '',
-        link: link?.href || '',
+        imageUrl: img?.src || '',
+        linkUrl: link?.href || '#',
         linkText: 'Learn More'
       });
       
       if (img?.src) assets.push(img.src);
     });
+    
+    // Determine background
+    const isLight = section.classList.contains('section--light');
+    const isDark = section.classList.contains('section--dark');
 
     return {
       id: nanoid(),
-      type: 'idx-cards',
+      type: 'core-cards',
       props: {
         heading: section.querySelector('h2')?.textContent || '',
         cards: cards,
         columns: 3,
-        backgroundColor: this.getBackgroundColor(section)
+        background: isDark ? 'dark' : isLight ? 'light' : 'white'
       },
       assets: assets
     };
@@ -323,23 +331,27 @@ export class HTMLImportParser {
     const testimonials: any[] = [];
     
     section.querySelectorAll('.testimonial-card').forEach(card => {
+      const quoteText = card.querySelector('blockquote')?.textContent?.replace(/['"]/g, '') || '';
+      const authorText = card.querySelector('cite')?.textContent?.replace('—', '').trim() || '';
+      
       testimonials.push({
-        quote: card.querySelector('blockquote')?.textContent || '',
-        author: card.querySelector('cite')?.textContent || '',
-        rating: 5, // All show 5 stars
-        stars: true
+        quote: quoteText,
+        author: authorText,
+        rating: 5
       });
     });
+    
+    // Determine background
+    const isLight = section.classList.contains('section--light');
+    const isDark = section.classList.contains('section--dark');
 
     return {
       id: nanoid(),
-      type: 'idx-testimonials',
+      type: 'core-testimonial',
       props: {
-        heading: section.querySelector('h2')?.textContent || '',
-        items: testimonials,
-        columns: 2,
-        backgroundColor: this.getBackgroundColor(section),
-        theme: section.classList.contains('section--dark') ? 'dark' : 'light'
+        heading: section.querySelector('h2')?.textContent || 'What Our Clients Say',
+        testimonials: testimonials,
+        background: isDark ? 'dark' : isLight ? 'light' : 'white'
       }
     };
   }

@@ -270,7 +270,7 @@ export type BlockData = BlockBase;
 
 // ── Widget Category ──────────────────────────────────────────
 
-export type WidgetCategory = 'Layout' | 'Basic' | 'Media' | 'Content' | 'Real Estate';
+export type WidgetCategory = 'Layout' | 'Basic' | 'Media' | 'Content' | 'Real Estate' | 'Core Pages';
 
 export interface WidgetDefinition {
   type: BlockType;

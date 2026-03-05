@@ -328,7 +328,84 @@ export const blockRegistry: WidgetDefinition[] = [
   },
 ];
 
-export const widgetCategories: WidgetCategory[] = ['Layout', 'Basic', 'Media', 'Content', 'Real Estate'];
+  // ── Core Pages ──────────────────────────────────
+  {
+    type: 'core-hero',
+    label: 'Core Hero',
+    icon: '🎯',
+    category: 'Core Pages',
+    defaultProps: {
+      title: 'Welcome to Our Site',
+      subtitle: 'Your success starts here',
+      backgroundImage: 'https://images.unsplash.com/photo-1629538480890-17a87addd019',
+      overlayOpacity: 0.4,
+      height: '300px',
+    },
+  },
+  {
+    type: 'core-split',
+    label: 'Core Split Section',
+    icon: '📐',
+    category: 'Core Pages',
+    defaultProps: {
+      imageUrl: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa',
+      heading: 'Section Heading',
+      content: '<p>Your content goes here. Describe your services, features, or tell your story.</p>',
+      primaryButtonText: 'Get Started',
+      primaryButtonUrl: '#',
+      secondaryButtonText: 'Learn More',
+      secondaryButtonUrl: '#',
+      reverse: false,
+      background: 'white',
+    },
+  },
+  {
+    type: 'core-cards',
+    label: 'Core Cards Grid',
+    icon: '🎴',
+    category: 'Core Pages',
+    defaultProps: {
+      heading: 'Our Services',
+      cards: [
+        { title: 'Service One', description: 'Description of your first service or feature.', linkText: 'Learn More', linkUrl: '#' },
+        { title: 'Service Two', description: 'Description of your second service or feature.', linkText: 'Learn More', linkUrl: '#' },
+        { title: 'Service Three', description: 'Description of your third service or feature.', linkText: 'Learn More', linkUrl: '#' },
+      ],
+      columns: 3,
+      background: 'white',
+    },
+  },
+  {
+    type: 'core-testimonial',
+    label: 'Core Testimonials',
+    icon: '⭐',
+    category: 'Core Pages',
+    defaultProps: {
+      heading: 'What Our Clients Say',
+      testimonials: [
+        { quote: 'Excellent service! Highly recommend.', author: 'Jane Doe', rating: 5 },
+        { quote: 'Professional and responsive team.', author: 'John Smith', rating: 5 },
+        { quote: 'Made the process easy and stress-free.', author: 'Sarah Johnson', rating: 5 },
+      ],
+      background: 'light',
+    },
+  },
+  {
+    type: 'core-text',
+    label: 'Core Text Section',
+    icon: '📄',
+    category: 'Core Pages',
+    defaultProps: {
+      heading: 'About Us',
+      content: '<p>Add your content here. This section is perfect for introductory text, descriptions, or any content that needs emphasis.</p>',
+      textAlign: 'center',
+      maxWidth: '800px',
+      background: 'white',
+    },
+  },
+];
+
+export const widgetCategories: WidgetCategory[] = ['Layout', 'Basic', 'Media', 'Content', 'Real Estate', 'Core Pages'];
 
 export function getWidgetsByCategory(category: WidgetCategory): WidgetDefinition[] {
   return blockRegistry.filter(w => w.category === category);
