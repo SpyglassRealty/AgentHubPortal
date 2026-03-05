@@ -326,7 +326,6 @@ export const blockRegistry: WidgetDefinition[] = [
       imageAlt: "Modern home interior showcasing Spyglass listings",
     },
   },
-];
 
   // ── Core Pages ──────────────────────────────────
   {
