@@ -595,6 +595,75 @@ function ContentEditor({
         </>
       );
 
+    case "idx-hero":
+      return (
+        <>
+          <Field label="Headline (H1)">
+            <Input
+              value={block.content.headline || ""}
+              onChange={(e) => updateContent("headline", e.target.value)}
+              placeholder="The Best Austin Real Estate Agents"
+            />
+          </Field>
+          <Field label="Background Image URL">
+            <Input
+              value={block.content.backgroundImage || ""}
+              onChange={(e) => updateContent("backgroundImage", e.target.value)}
+              placeholder="https://..."
+            />
+          </Field>
+          {block.content.backgroundImage && (
+            <img
+              src={block.content.backgroundImage}
+              alt="Background preview"
+              className="rounded-md max-h-24 object-cover w-full"
+            />
+          )}
+          <Field label="Subtitle Stats">
+            <Input
+              value={block.content.subtitleStats || ""}
+              onChange={(e) => updateContent("subtitleStats", e.target.value)}
+              placeholder="700+ 5-Star Reviews | 3,000+ Families Helped"
+            />
+          </Field>
+          <Field label="Subtitle Tagline">
+            <Input
+              value={block.content.subtitleTagline || ""}
+              onChange={(e) => updateContent("subtitleTagline", e.target.value)}
+              placeholder="Helping You Unlock the Power of Homeownership"
+            />
+          </Field>
+          <Field label="Primary CTA Text">
+            <Input
+              value={block.content.primaryCtaText || ""}
+              onChange={(e) => updateContent("primaryCtaText", e.target.value)}
+              placeholder="Search Homes"
+            />
+          </Field>
+          <Field label="Primary CTA Link">
+            <Input
+              value={block.content.primaryCtaLink || ""}
+              onChange={(e) => updateContent("primaryCtaLink", e.target.value)}
+              placeholder="/search"
+            />
+          </Field>
+          <Field label="Secondary CTA Text">
+            <Input
+              value={block.content.secondaryCtaText || ""}
+              onChange={(e) => updateContent("secondaryCtaText", e.target.value)}
+              placeholder="What's My Home Worth?"
+            />
+          </Field>
+          <Field label="Secondary CTA Link">
+            <Input
+              value={block.content.secondaryCtaLink || ""}
+              onChange={(e) => updateContent("secondaryCtaLink", e.target.value)}
+              placeholder="/sell"
+            />
+          </Field>
+        </>
+      );
+
     case "idx-feed":
       return (
         <IdxFeedProperties
