@@ -80,7 +80,7 @@ export interface IStorage {
   getLatestMarketPulseSnapshot(): Promise<MarketPulseSnapshot | undefined>;
   saveMarketPulseSnapshot(snapshot: InsertMarketPulseSnapshot): Promise<MarketPulseSnapshot>;
   
-  trackAppUsage(userId: string, appId: string, page: string): Promise<AppUsage>;
+  trackAppUsage(userId: string, appId: string, page: string): Promise<AppUsage | null>;
   getAppUsageByPage(userId: string, page: string): Promise<AppUsage[]>;
   
   getNotifications(userId: string, limit?: number): Promise<Notification[]>;
@@ -105,7 +105,7 @@ export interface IStorage {
   upsertSyncStatus(userId: string, section: string, manualRefreshTime: Date): Promise<SyncStatus>;
   
   getSavedContentIdeas(userId: string): Promise<SavedContentIdea[]>;
-  saveContentIdea(idea: InsertSavedContentIdea): Promise<SavedContentIdea>;
+  saveContentIdea(idea: InsertSavedContentIdea): Promise<SavedContentIdea | null>;
   deleteContentIdea(id: number, userId: string): Promise<boolean>;
   updateContentIdeaStatus(id: number, userId: string, status: string): Promise<SavedContentIdea | undefined>;
   
@@ -143,7 +143,7 @@ export interface IStorage {
   // Integration config methods
   getIntegrationConfigs(): Promise<IntegrationConfig[]>;
   getIntegrationConfig(name: string): Promise<IntegrationConfig | undefined>;
-  upsertIntegrationConfig(config: InsertIntegrationConfig): Promise<IntegrationConfig>;
+  upsertIntegrationConfig(config: InsertIntegrationConfig): Promise<IntegrationConfig | null>;
   updateIntegrationTestResult(name: string, result: string, message?: string): Promise<IntegrationConfig | undefined>;
   deleteIntegrationConfig(name: string): Promise<boolean>;
   getIntegrationApiKey(name: string): Promise<string | null>;
@@ -155,6 +155,54 @@ export interface IStorage {
   // Admin stats & activity
   getAdminStats(): Promise<{ totalUsers: number; activeLastWeek: number; totalCmas: number; loginsToday: number }>;
   getActivityLogs(limit?: number): Promise<any[]>;
+  
+  // Developer Dashboard Methods
+  createChangelogEntry(data: InsertDevChangelog): Promise<DevChangelog>;
+  getChangelogEntries(filters: {
+    category?: string;
+    status?: string;
+    developer?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<DevChangelog[]>;
+  updateChangelogEntry(id: number, data: Partial<InsertDevChangelog>): Promise<DevChangelog>;
+  deleteChangelogEntry(id: number): Promise<void>;
+  logActivity(data: InsertDeveloperActivityLog): Promise<void>;
+  getDeveloperActivityLogs(filters: {
+    userEmail?: string;
+    actionType?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<DeveloperActivityLog[]>;
+  updateUserRole(userId: string, role: string): Promise<User>;
+  inviteDeveloper(email: string): Promise<User>;
+  getSystemStats(): Promise<any>;
+  getRecentErrors(): Promise<any[]>;
+  getAllIntegrations(): Promise<IntegrationConfig[]>;
+  
+  // IDX Lead Management
+  createIdxLead(data: InsertIdxLead): Promise<IdxLead>;
+  getIdxLeadById(id: string): Promise<IdxLead | null>;
+  getIdxLeads(filters: {
+    status?: string;
+    formType?: string;
+    assignedTo?: string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ leads: IdxLead[]; total: number }>;
+  updateIdxLead(id: string, updates: Partial<InsertIdxLead>): Promise<IdxLead>;
+  getIdxLeadStats(): Promise<{
+    total: number;
+    byStatus: Record<string, number>;
+    byFormType: Record<string, number>;
+    todayCount: number;
+    weekCount: number;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -169,7 +217,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<User[]> {
-    return db.select().from(users).orderBy(desc(users.createdAt));
+    return await db.select().from(users).orderBy(users.firstName, users.lastName);
   }
 
   async updateUser(id: string, data: Partial<{ isSuperAdmin: boolean }>): Promise<User | undefined> {
@@ -803,7 +851,11 @@ export class DatabaseStorage implements IStorage {
       // Create new profile with CMA fields
       const [created] = await db
         .insert(agentProfiles)
-        .values({ userId, ...filteredData })
+        .values({ 
+          id: `${userId}-profile`, // Generate a predictable ID based on userId
+          userId, 
+          ...filteredData 
+        })
         .returning();
       return created;
     }
@@ -1097,7 +1149,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getActivityLogs(filters: {
+  async getDeveloperActivityLogs(filters: {
     userEmail?: string;
     actionType?: string;
     dateFrom?: string;
@@ -1110,10 +1162,6 @@ export class DatabaseStorage implements IStorage {
     // Apply filters (simplified for now)
     const logs = await query.orderBy(desc(developerActivityLogs.createdAt)).limit(filters.limit || 100);
     return logs;
-  }
-
-  async getAllUsers(): Promise<User[]> {
-    return await db.select().from(users).orderBy(users.firstName, users.lastName);
   }
 
   async updateUserRole(userId: string, role: string): Promise<User> {
