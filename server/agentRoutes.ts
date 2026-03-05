@@ -360,7 +360,8 @@ router.post("/admin/agents/upload-photo", uploadPhoto.single("file"), async (req
     // For new agents (agentId === 'new'), just return the URL
     // The actual agent creation will happen separately
     if (agentId === 'new') {
-      const url = `/agent-photos/${req.file.filename}`;
+      const baseUrl = process.env.MISSION_CONTROL_URL || `https://${req.get('host')}`;
+      const url = `${baseUrl}/agent-photos/${req.file.filename}`;
       return res.json({ 
         url,
         filename: req.file.filename,
@@ -390,8 +391,9 @@ router.post("/admin/agents/upload-photo", uploadPhoto.single("file"), async (req
         }
       }
 
-      // Update agent with new photo URL
-      const url = `/agent-photos/${req.file.filename}`;
+      // Update agent with new photo URL (use full URL for production)
+      const baseUrl = process.env.MISSION_CONTROL_URL || `https://${req.get('host')}`;
+      const url = `${baseUrl}/agent-photos/${req.file.filename}`;
       await db
         .update(agentDirectoryProfiles)
         .set({ 
@@ -401,7 +403,9 @@ router.post("/admin/agents/upload-photo", uploadPhoto.single("file"), async (req
         .where(eq(agentDirectoryProfiles.id, agentId));
     }
 
-    const url = `/agent-photos/${req.file.filename}`;
+    // Return full URL for production
+    const baseUrl = process.env.MISSION_CONTROL_URL || `https://${req.get('host')}`;
+    const url = `${baseUrl}/agent-photos/${req.file.filename}`;
     res.json({ url, filename: req.file.filename });
   } catch (error) {
     console.error("Photo upload error:", error);
