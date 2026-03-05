@@ -7,8 +7,58 @@ import {
   type InsertAgentDirectoryProfile
 } from "@shared/schema";
 import { z } from "zod";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { nanoid } from "nanoid";
 
 const router = Router();
+
+// ── File Upload Configuration ────────────────────────────────────────────
+
+// Ensure agent-photos directory exists
+const agentPhotosDir = path.join(process.cwd(), "public", "agent-photos");
+if (!fs.existsSync(agentPhotosDir)) {
+  fs.mkdirSync(agentPhotosDir, { recursive: true });
+}
+
+// Configure multer for agent photo uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, agentPhotosDir);
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename: agentId_timestamp_random.ext
+    const ext = path.extname(file.originalname).toLowerCase();
+    const agentId = req.body.agentId || 'temp';
+    const filename = `${agentId}_${Date.now()}_${nanoid(6)}${ext}`;
+    cb(null, filename);
+  }
+});
+
+const fileFilter = (req: any, file: any, cb: any) => {
+  const allowedMimes = [
+    'image/jpeg',
+    'image/jpg', 
+    'image/png',
+    'image/gif',
+    'image/webp'
+  ];
+  
+  if (allowedMimes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.'), false);
+  }
+};
+
+const uploadPhoto = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+});
 
 // ── Validation Schemas ──────────────────────────────────────────────────
 
@@ -295,6 +345,76 @@ router.patch("/admin/agents/bulk-visibility", async (req, res) => {
   } catch (error) {
     console.error("Error updating agent visibility:", error);
     res.status(500).json({ error: "Failed to update agent visibility" });
+  }
+});
+
+// POST /api/admin/agents/upload-photo - Upload agent photo
+router.post("/admin/agents/upload-photo", uploadPhoto.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const { agentId } = req.body;
+    
+    // For new agents (agentId === 'new'), just return the URL
+    // The actual agent creation will happen separately
+    if (agentId === 'new') {
+      const url = `/agent-photos/${req.file.filename}`;
+      return res.json({ 
+        url,
+        filename: req.file.filename,
+        message: "Photo uploaded. It will be associated with the agent when you save."
+      });
+    }
+
+    // For existing agents, update their profile
+    if (agentId && agentId !== 'new') {
+      const [existingAgent] = await db
+        .select()
+        .from(agentDirectoryProfiles)
+        .where(eq(agentDirectoryProfiles.id, agentId));
+
+      if (!existingAgent) {
+        // Clean up uploaded file
+        fs.unlinkSync(req.file.path);
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      // Delete old photo if it exists and is in our directory
+      if (existingAgent.headshotUrl && existingAgent.headshotUrl.includes('/agent-photos/')) {
+        const oldFilename = existingAgent.headshotUrl.split('/').pop();
+        const oldPath = path.join(agentPhotosDir, oldFilename!);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+
+      // Update agent with new photo URL
+      const url = `/agent-photos/${req.file.filename}`;
+      await db
+        .update(agentDirectoryProfiles)
+        .set({ 
+          headshotUrl: url,
+          updatedAt: new Date()
+        })
+        .where(eq(agentDirectoryProfiles.id, agentId));
+    }
+
+    const url = `/agent-photos/${req.file.filename}`;
+    res.json({ url, filename: req.file.filename });
+  } catch (error) {
+    console.error("Photo upload error:", error);
+    
+    // Clean up file if there was an error
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    res.status(500).json({ 
+      error: "Failed to upload photo",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
   }
 });
 
