@@ -220,7 +220,7 @@ export default function IdxLeadsPage() {
   };
 
   return (
-    <DashboardLayout>
+    <DashboardLayout title="IDX Lead Capture" subtitle="Website lead management" icon={Home}>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">IDX Lead Capture</h1>
