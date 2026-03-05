@@ -181,7 +181,13 @@ export default function AgentEditor() {
 
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Agent Directory Editor</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Agent Directory Editor</h1>
+        <Button onClick={handleCreateNew} className="bg-[#EF4923] hover:bg-[#D43F1F]">
+          <Plus className="mr-2" size={16} />
+          Add New Agent
+        </Button>
+      </div>
 
       {/* Search Bar */}
       <div className="relative mb-6">
@@ -206,7 +212,10 @@ export default function AgentEditor() {
                 className={`p-4 cursor-pointer hover:shadow-md transition-shadow ${
                   editingAgent?.id === agent.id ? "ring-2 ring-[#EF4923]" : ""
                 }`}
-                onClick={() => setEditingAgent(agent)}
+                onClick={() => {
+                  setEditingAgent(agent);
+                  setIsCreatingNew(false);
+                }}
               >
                 <div className="flex items-center gap-4">
                   <img
@@ -302,12 +311,39 @@ export default function AgentEditor() {
                 </div>
               </div>
 
+              {/* Office Locations */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  <MapPin className="inline mr-1" size={16} />
+                  Office Locations
+                </label>
+                <div className="space-y-2 p-3 bg-gray-50 rounded">
+                  {availableOffices.map((office) => {
+                    const isSelected = getSelectedOffices(editingAgent.officeLocation).includes(office);
+                    return (
+                      <div key={office} className="flex items-center">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleOfficeLocation(office)}
+                          className="mr-2"
+                        />
+                        <label className="text-sm cursor-pointer" onClick={() => toggleOfficeLocation(office)}>
+                          {office}
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+                {!editingAgent.officeLocation && (
+                  <p className="text-xs text-red-500 mt-1">Please select at least one office location</p>
+                )}
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-1">Bio</label>
-                <Textarea
+                <RichTextEditor
                   value={editingAgent.bio}
-                  onChange={(e) => setEditingAgent({ ...editingAgent, bio: e.target.value })}
-                  rows={6}
+                  onChange={(value) => setEditingAgent({ ...editingAgent, bio: value })}
                   placeholder="Agent biography..."
                 />
               </div>
@@ -423,12 +459,41 @@ export default function AgentEditor() {
                 </div>
               </div>
 
+              {/* Video URL */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  <Youtube className="inline mr-1" size={16} />
+                  Agent Video URL
+                </label>
+                <Input
+                  value={editingAgent.videoUrl || ""}
+                  onChange={(e) => setEditingAgent({ ...editingAgent, videoUrl: e.target.value })}
+                  placeholder="https://www.youtube.com/watch?v=... or https://vimeo.com/..."
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Add a YouTube or Vimeo video link for your agent profile
+                </p>
+                {editingAgent.videoUrl && !isValidVideoUrl(editingAgent.videoUrl) && (
+                  <p className="text-xs text-red-500 mt-1">Please enter a valid YouTube or Vimeo URL</p>
+                )}
+              </div>
+
               <div className="flex gap-2 pt-4">
-                <Button onClick={handleSave} disabled={isSaving} className="flex-1">
+                <Button 
+                  onClick={handleSave} 
+                  disabled={isSaving || !editingAgent.officeLocation || (editingAgent.videoUrl && !isValidVideoUrl(editingAgent.videoUrl))} 
+                  className="flex-1"
+                >
                   <Save className="mr-2" size={16} />
-                  {isSaving ? "Saving..." : "Save Changes"}
+                  {isSaving ? "Saving..." : isCreatingNew ? "Create Agent" : "Save Changes"}
                 </Button>
-                <Button variant="outline" onClick={() => setEditingAgent(null)}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setEditingAgent(null);
+                    setIsCreatingNew(false);
+                  }}
+                >
                   Cancel
                 </Button>
               </div>
