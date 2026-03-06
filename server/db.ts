@@ -80,6 +80,9 @@ async function runDirectMigrations() {
     // Call Duty tables (migration 0010)
     await createCallDutyTables();
     
+    // Agent Directory Profiles - ensure fub_email column exists
+    await ensureAgentDirectoryFubEmail();
+    
   } catch (error) {
     console.error("[Database] Direct migration error:", error);
     throw error;
@@ -912,5 +915,39 @@ export async function migrateMarketPulseSnapshots() {
     console.error('[Migration] Full error details:', JSON.stringify(error, null, 2));
     // Re-throw to see the error in startup logs
     throw error;
+  }
+}
+
+async function ensureAgentDirectoryFubEmail() {
+  try {
+    console.log("[Database] Ensuring agent_directory_profiles has fub_email column...");
+    
+    // Check if the column exists
+    const existingColumns = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'agent_directory_profiles' AND column_name = 'fub_email'
+    `);
+    
+    if (existingColumns.rows.length === 0) {
+      console.log("[Database] Adding fub_email column to agent_directory_profiles...");
+      await pool.query(`
+        ALTER TABLE agent_directory_profiles 
+        ADD COLUMN IF NOT EXISTS fub_email VARCHAR(255)
+      `);
+      console.log("[Database] ✅ Successfully added fub_email column");
+      
+      // Add comment for documentation
+      await pool.query(`
+        COMMENT ON COLUMN agent_directory_profiles.fub_email IS 
+        'Follow Up Boss routing email for agent-specific lead assignment'
+      `);
+    } else {
+      console.log("[Database] fub_email column already exists in agent_directory_profiles");
+    }
+    
+  } catch (error) {
+    console.error("[Database] Error adding fub_email column:", error);
+    // Don't throw - this is not critical for startup
   }
 }
