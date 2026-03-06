@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { X, Plus, Trash2, Upload } from 'lucide-react';
 import { getWidgetDefinition } from './BlockRegistry';
+import { ImageUpload } from '@/components/editor/ImageUpload';
 
 interface BlockSettingsPanelProps {
   block: BlockData | null;
@@ -794,9 +795,12 @@ export function BlockSettingsPanel({ block, onUpdate, onClose }: BlockSettingsPa
       case 'core-split':
         return (
           <>
-            <Field label="Image URL">
-              <Input value={props.imageUrl || ''} onChange={e => update('imageUrl', e.target.value)} placeholder="https://..." />
-            </Field>
+            <ImageUpload 
+              value={props.imageUrl || ''} 
+              onChange={(url) => update('imageUrl', url)} 
+              label="Image"
+              className="mb-4"
+            />
             <Field label="Image Alt Text">
               <Input value={props.imageAlt || ''} onChange={e => update('imageAlt', e.target.value)} />
             </Field>
@@ -890,11 +894,16 @@ export function BlockSettingsPanel({ block, onUpdate, onClose }: BlockSettingsPa
                       newCards[i] = { ...newCards[i], description: e.target.value };
                       update('cards', newCards);
                     }} />
-                    <Input placeholder="Image URL" value={card.imageUrl || ''} onChange={e => {
-                      const newCards = [...(props.cards || [])];
-                      newCards[i] = { ...newCards[i], imageUrl: e.target.value };
-                      update('cards', newCards);
-                    }} />
+                    <ImageUpload 
+                      value={card.imageUrl || ''} 
+                      onChange={(url) => {
+                        const newCards = [...(props.cards || [])];
+                        newCards[i] = { ...newCards[i], imageUrl: url };
+                        update('cards', newCards);
+                      }} 
+                      label="Card Image"
+                      className="mt-2"
+                    />
                     <Input placeholder="Link Text" value={card.linkText || ''} onChange={e => {
                       const newCards = [...(props.cards || [])];
                       newCards[i] = { ...newCards[i], linkText: e.target.value };
