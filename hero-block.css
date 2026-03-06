@@ -1,0 +1,352 @@
+/* Hero Block Editor Styles */
+.hero-editor {
+  padding: 20px;
+  max-width: 800px;
+}
+
+.editor-section {
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.editor-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-header h3 {
+  margin: 0;
+}
+
+/* Image Dropzone */
+.image-dropzone {
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  padding: 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.image-dropzone.active {
+  border-color: #FA4616;
+  background: #fff5f2;
+}
+
+.image-dropzone:hover {
+  border-color: #ccc;
+}
+
+.dropzone-empty {
+  color: #666;
+}
+
+.upload-icon {
+  fill: #999;
+  margin-bottom: 12px;
+}
+
+.file-hint {
+  font-size: 12px;
+  color: #999;
+  margin-top: 8px;
+}
+
+.image-preview {
+  position: relative;
+}
+
+.image-preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.change-image-btn {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.change-image-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+/* Overlay Controls */
+.overlay-controls {
+  margin-top: 16px;
+  padding: 16px;
+  background: white;
+  border-radius: 4px;
+}
+
+.overlay-controls label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #333;
+}
+
+.opacity-sliders {
+  margin-top: 12px;
+}
+
+.slider-group {
+  margin-bottom: 12px;
+}
+
+.slider-group label {
+  display: block;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.slider-group input[type="range"] {
+  width: 100%;
+}
+
+/* Form Elements */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 6px;
+}
+
+.form-group input[type="text"],
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.form-group textarea {
+  resize: vertical;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #FA4616;
+}
+
+.field-hint {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+/* Button Configuration */
+.add-button-btn {
+  background: #FA4616;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.add-button-btn:hover {
+  background: #e03f12;
+}
+
+.button-config {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.button-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.button-header h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.remove-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.remove-btn:hover {
+  background: #fee;
+  color: #c00;
+}
+
+.button-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Hero Renderer Styles (matches provided CSS) */
+.hero {
+  position: relative;
+  min-height: 540px;
+  display: flex;
+  align-items: center;
+  color: #fff;
+  width: 100%;
+  overflow: hidden;
+}
+
+.hero__inner {
+  padding: 80px 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.hero h1 {
+  font-size: clamp(1.8rem, 4vw, 2.9rem);
+  font-weight: 900;
+  line-height: 1.15;
+  max-width: 760px;
+  margin-bottom: 20px;
+  color: #fff;
+}
+
+.hero__sub {
+  font-size: 1.05rem;
+  color: rgba(255,255,255,.88);
+  max-width: 640px;
+  line-height: 1.8;
+  margin-bottom: 32px;
+}
+
+.hero__sub a {
+  color: rgba(255,255,255,.8);
+  text-decoration: underline;
+}
+
+.hero__sub a:hover {
+  color: #fff;
+}
+
+.hero__btns {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* Button Styles */
+.btn {
+  display: inline-block;
+  padding: 14px 32px;
+  border: 2px solid #FA4616;
+  color: #FA4616;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-size: .85rem;
+  transition: all .2s;
+  background: transparent;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: #FA4616;
+  color: #fff;
+  text-decoration: none;
+}
+
+.btn--filled {
+  background: #FA4616;
+  color: #fff;
+}
+
+.btn--filled:hover {
+  background: #C93A10;
+  border-color: #C93A10;
+}
+
+.btn--white {
+  border-color: #fff;
+  color: #fff;
+}
+
+.btn--white:hover {
+  background: #fff;
+  color: #222;
+}
+
+.btn--gold {
+  border-color: #C9A84C;
+  color: #C9A84C;
+}
+
+.btn--gold:hover {
+  background: #C9A84C;
+  color: #fff;
+}
+
+/* Responsive */
+@media (max-width: 580px) {
+  .hero__btns {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .btn {
+    width: 100%;
+    text-align: center;
+  }
+}
