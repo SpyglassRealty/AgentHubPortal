@@ -8,6 +8,7 @@ import { generateSuggestionsForUser } from "./contextEngine";
 import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema, agentProfiles } from "@shared/schema";
 import { getGoogleCalendarEvents } from "./googleCalendarClient";
 import { extractPhotosFromRepliersList, debugPhotoFields } from "./lib/repliers-photo-utils";
+import { renderBlocks } from "./renderBlockRoutes";
 
 // Enhanced address parsing for CMA search
 function parseAddress(fullAddress: string): { streetNumber?: string; streetName?: string; streetSuffix?: string; city?: string; state?: string; zip?: string } {
@@ -6067,6 +6068,9 @@ Respond with valid JSON in this exact format:
       res.status(500).json({ error: error.message });
     }
   });
+
+  // Server-side block rendering endpoint
+  app.post('/api/render-blocks', renderBlocks);
 
   return httpServer;
 }
