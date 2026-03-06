@@ -296,6 +296,7 @@ function DeveloperPage() {
     },
     retry: false,
     refetchOnWindowFocus: false,
+    keepPreviousData: true,
   });
 
   const { data: usersData, isLoading: usersLoading, error: usersError } = useQuery<{ users: User[] }>({
