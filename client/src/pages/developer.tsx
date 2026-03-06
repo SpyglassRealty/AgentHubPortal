@@ -187,6 +187,11 @@ const categoryColors: Record<string, string> = {
   database: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   api: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
   deployment: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
+  documentation: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+  maintenance: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
+  performance: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  testing: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
+  update: "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400",
 };
 
 const statusColors: Record<string, string> = {
@@ -194,6 +199,9 @@ const statusColors: Record<string, string> = {
   in_progress: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
   reverted: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   pending: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  deploying: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  failed: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  committed: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
 };
 
 function DeveloperPage() {
@@ -738,6 +746,11 @@ function DeveloperPage() {
                             <SelectItem value="database">Database</SelectItem>
                             <SelectItem value="api">API</SelectItem>
                             <SelectItem value="deployment">Deployment</SelectItem>
+                            <SelectItem value="documentation">Documentation</SelectItem>
+                            <SelectItem value="maintenance">Maintenance</SelectItem>
+                            <SelectItem value="performance">Performance</SelectItem>
+                            <SelectItem value="testing">Testing</SelectItem>
+                            <SelectItem value="update">General Update</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -752,8 +765,11 @@ function DeveloperPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="deployed">Deployed</SelectItem>
+                            <SelectItem value="deploying">Deploying</SelectItem>
                             <SelectItem value="in_progress">In Progress</SelectItem>
                             <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="committed">Committed</SelectItem>
+                            <SelectItem value="failed">Failed</SelectItem>
                             <SelectItem value="reverted">Reverted</SelectItem>
                           </SelectContent>
                         </Select>
@@ -814,6 +830,11 @@ function DeveloperPage() {
                   <SelectItem value="database">Database</SelectItem>
                   <SelectItem value="api">API</SelectItem>
                   <SelectItem value="deployment">Deployment</SelectItem>
+                  <SelectItem value="documentation">Documentation</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  <SelectItem value="performance">Performance</SelectItem>
+                  <SelectItem value="testing">Testing</SelectItem>
+                  <SelectItem value="update">General Update</SelectItem>
                 </SelectContent>
               </Select>
               <Select
@@ -826,8 +847,11 @@ function DeveloperPage() {
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="deployed">Deployed</SelectItem>
+                  <SelectItem value="deploying">Deploying</SelectItem>
                   <SelectItem value="in_progress">In Progress</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="committed">Committed</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
                   <SelectItem value="reverted">Reverted</SelectItem>
                 </SelectContent>
               </Select>
