@@ -7,6 +7,110 @@ import { devChangelog, developerActivityLogs } from "@shared/developerSchema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count } from "drizzle-orm";
 
+// Cache for Render deploy history (5 minute TTL)
+let renderDeployCache: { data: any[]; timestamp: number } | null = null;
+const RENDER_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const RENDER_SERVICE_ID = "srv-d5vc5od6ubrc73cbslag"; // Mission Control service ID
+
+// Parse commit message to determine category
+function detectCategory(commitMessage: string): string {
+  const message = commitMessage.toLowerCase();
+  const firstLine = message.split('\n')[0];
+  
+  // Conventional commit patterns
+  if (firstLine.match(/^fix:|^bugfix:|^hotfix:|fix\s/)) return 'bug_fix';
+  if (firstLine.match(/^feat:|^feature:|^add:|^implement:/)) return 'feature';
+  if (firstLine.match(/^docs:|^documentation:/)) return 'documentation';
+  if (firstLine.match(/^style:|^ui:|^ux:/)) return 'ui';
+  if (firstLine.match(/^refactor:|^chore:|^update:|^upgrade:/)) return 'maintenance';
+  if (firstLine.match(/^perf:|^optimize:/)) return 'performance';
+  if (firstLine.match(/^test:|^tests:/)) return 'testing';
+  
+  // Content-based detection
+  if (message.includes('deploy') || message.includes('deployment')) return 'deployment';
+  if (message.includes('database') || message.includes('migration')) return 'database';
+  if (message.includes('api') || message.includes('endpoint')) return 'api';
+  if (message.includes('fix') || message.includes('bug') || message.includes('issue')) return 'bug_fix';
+  if (message.includes('add') || message.includes('feature') || message.includes('implement')) return 'feature';
+  if (message.includes('ui') || message.includes('style') || message.includes('css')) return 'ui';
+  
+  return 'update'; // default fallback
+}
+
+// Fetch Render deploy history with caching
+async function fetchRenderDeploys(): Promise<any[]> {
+  // Check cache first
+  if (renderDeployCache && Date.now() - renderDeployCache.timestamp < RENDER_CACHE_TTL) {
+    return renderDeployCache.data;
+  }
+
+  // Check if API key exists
+  const apiKey = process.env.RENDER_API_KEY;
+  if (!apiKey) {
+    console.warn('[Changelog] RENDER_API_KEY not configured - deploy status will be unavailable');
+    return [];
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys?limit=100`,
+      {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        }
+      }
+    );
+
+    if (!response.ok) {
+      console.error(`[Changelog] Render API error: ${response.status} ${response.statusText}`);
+      return [];
+    }
+
+    const data = await response.json();
+    const deploys = data.deploys || [];
+    
+    // Update cache
+    renderDeployCache = { data: deploys, timestamp: Date.now() };
+    return deploys;
+  } catch (e) {
+    console.error('[Changelog] Render API fetch error:', e);
+    return [];
+  }
+}
+
+// Determine deploy status based on commit SHA and Render deploy history
+function determineStatus(commitSha: string, renderDeploys: any[]): string {
+  if (!renderDeploys || renderDeploys.length === 0) {
+    return 'committed'; // Default when no deploy data
+  }
+
+  // Find deploys matching this commit
+  const matchingDeploys = renderDeploys.filter(d => 
+    d.commit?.id?.startsWith(commitSha) || commitSha.startsWith(d.commit?.id?.substring(0, 7))
+  );
+
+  if (matchingDeploys.length === 0) {
+    // Check if commit is newer than latest deploy
+    const latestDeploy = renderDeploys.find(d => d.deploy?.status === 'live');
+    if (latestDeploy && latestDeploy.commit?.id) {
+      // Without commit date comparison, we can't determine if it's pending
+      // So we'll just mark as committed
+      return 'committed';
+    }
+    return 'committed';
+  }
+
+  // Check status of matching deploys
+  for (const deploy of matchingDeploys) {
+    if (deploy.deploy?.status === 'live') return 'deployed';
+    if (deploy.deploy?.status === 'build_in_progress' || deploy.deploy?.status === 'update_in_progress') return 'deploying';
+    if (deploy.deploy?.status === 'failed' || deploy.deploy?.status === 'canceled') return 'failed';
+  }
+
+  return 'committed';
+}
+
 // Fetch recent commits from GitHub API
 async function fetchGitHubCommits() {
   try {
@@ -32,14 +136,17 @@ async function fetchGitHubCommits() {
     
     const commits = await response.json();
     
+    // Fetch Render deploy history for status determination
+    const renderDeploys = await fetchRenderDeploys();
+    
     return commits.map((c: any) => ({
       id: c.sha,
       description: c.commit.message,
       developerName: c.commit.author?.name || 'Unknown',
       developerEmail: c.commit.author?.email || '',
       commitHash: c.sha.substring(0, 7),
-      category: 'deployment',
-      status: 'deployed',
+      category: detectCategory(c.commit.message),
+      status: determineStatus(c.sha.substring(0, 7), renderDeploys),
       createdAt: c.commit.author?.date || c.commit.committer?.date || new Date().toISOString(),
       source: 'github'
     }));
@@ -441,8 +548,8 @@ export function setupDeveloperRoutes(app: Express) {
       }
       
       // Validate category and status
-      const validCategories = ['bug_fix', 'feature', 'ui', 'database', 'api', 'deployment'];
-      const validStatuses = ['deployed', 'in_progress', 'reverted', 'pending'];
+      const validCategories = ['bug_fix', 'feature', 'ui', 'database', 'api', 'deployment', 'documentation', 'maintenance', 'performance', 'testing', 'update'];
+      const validStatuses = ['deployed', 'in_progress', 'reverted', 'pending', 'deploying', 'failed', 'committed'];
       
       if (!validCategories.includes(category)) {
         return res.status(400).json({ message: "Invalid category" });
@@ -612,7 +719,7 @@ export function setupDeveloperRoutes(app: Express) {
       }
       
       if (category !== undefined) {
-        const validCategories = ['bug_fix', 'feature', 'ui', 'database', 'api', 'deployment'];
+        const validCategories = ['bug_fix', 'feature', 'ui', 'database', 'api', 'deployment', 'documentation', 'maintenance', 'performance', 'testing', 'update'];
         if (!validCategories.includes(category)) {
           return res.status(400).json({ message: "Invalid category" });
         }
@@ -621,7 +728,7 @@ export function setupDeveloperRoutes(app: Express) {
       }
       
       if (status !== undefined) {
-        const validStatuses = ['deployed', 'in_progress', 'reverted', 'pending'];
+        const validStatuses = ['deployed', 'in_progress', 'reverted', 'pending', 'deploying', 'failed', 'committed'];
         if (!validStatuses.includes(status)) {
           return res.status(400).json({ message: "Invalid status" });
         }
