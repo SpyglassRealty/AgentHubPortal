@@ -10,6 +10,17 @@ export function serveStatic(app: Express) {
     );
   }
 
+  // Serve agent photos from the root public directory
+  const agentPhotosPath = path.resolve(process.cwd(), "public", "agent-photos");
+  if (fs.existsSync(agentPhotosPath)) {
+    app.use('/agent-photos', express.static(agentPhotosPath, {
+      maxAge: '1y',
+      setHeaders: (res) => {
+        res.set('Cache-Control', 'public, max-age=31536000');
+      }
+    }));
+  }
+
   app.use(express.static(distPath));
 
   // Only serve index.html for non-API routes

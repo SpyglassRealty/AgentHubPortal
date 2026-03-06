@@ -404,7 +404,7 @@ router.post("/admin/agents/upload-photo", uploadPhoto.single("file"), async (req
     // For new agents (agentId === 'new'), just return the URL
     // The actual agent creation will happen separately
     if (agentId === 'new') {
-      const baseUrl = process.env.MISSION_CONTROL_URL || `https://${req.get('host')}`;
+      const baseUrl = process.env.MISSION_CONTROL_URL || 'https://missioncontrol-tjfm.onrender.com';
       const url = `${baseUrl}/agent-photos/${req.file.filename}`;
       return res.json({ 
         url,
@@ -436,7 +436,7 @@ router.post("/admin/agents/upload-photo", uploadPhoto.single("file"), async (req
       }
 
       // Update agent with new photo URL (use full URL for production)
-      const baseUrl = process.env.MISSION_CONTROL_URL || `https://${req.get('host')}`;
+      const baseUrl = process.env.MISSION_CONTROL_URL || 'https://missioncontrol-tjfm.onrender.com';
       const url = `${baseUrl}/agent-photos/${req.file.filename}`;
       await db
         .update(agentDirectoryProfiles)
@@ -448,7 +448,7 @@ router.post("/admin/agents/upload-photo", uploadPhoto.single("file"), async (req
     }
 
     // Return full URL for production
-    const baseUrl = process.env.MISSION_CONTROL_URL || `https://${req.get('host')}`;
+    const baseUrl = process.env.MISSION_CONTROL_URL || 'https://missioncontrol-tjfm.onrender.com';
     const url = `${baseUrl}/agent-photos/${req.file.filename}`;
     res.json({ url, filename: req.file.filename });
   } catch (error) {

@@ -27,8 +27,15 @@ app.use(
 
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
-// Serve static files from public directory
-app.use(express.static(path.join(process.cwd(), 'public')));
+// Serve static files from public directory with proper options
+app.use(express.static(path.join(process.cwd(), 'public'), {
+  maxAge: '1d',
+  setHeaders: (res, path) => {
+    if (path.includes('/agent-photos/')) {
+      res.set('Cache-Control', 'public, max-age=31536000'); // 1 year for agent photos
+    }
+  }
+}));
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
