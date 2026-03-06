@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { BlockData } from './types';
+import { CommunityHeroBlock } from './blocks/CommunityHeroBlock';
 
 interface BlockRendererProps {
   block: BlockData;
@@ -391,6 +392,9 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
           </div>
         </div>
       );
+
+    case 'community_hero':
+      return <CommunityHeroBlock props={props} />;
 
     case 'cards': {
       const cards = props.cards || [];

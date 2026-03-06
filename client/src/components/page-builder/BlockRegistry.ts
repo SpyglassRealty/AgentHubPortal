@@ -95,6 +95,38 @@ export const blockRegistry: WidgetDefinition[] = [
     },
   },
   {
+    type: 'community_hero',
+    label: 'Community Hero',
+    icon: '🏙️',
+    category: 'Content',
+    defaultProps: {
+      image: '',
+      heading: 'Welcome to [Community Name]',
+      subheading: 'Discover the perfect place to call home',
+      buttonText: 'Explore Available Homes',
+      buttonUrl: '#listings',
+      // Typography defaults
+      headingFont: 'Inter',
+      headingSize: 48,
+      headingWeight: 'bold',
+      subheadingFont: 'Inter',
+      subheadingSize: 20,
+      subheadingWeight: 'normal',
+      buttonFont: 'Inter',
+      buttonFontSize: 16,
+      buttonFontWeight: 'medium',
+      // Button style defaults
+      buttonTextColor: '#ffffff',
+      buttonBgColor: '#EF4923',
+      buttonHoverTextColor: '#ffffff',
+      buttonHoverBgColor: '#d63d1c',
+      buttonRounded: true,
+      // Overlay defaults
+      gradientTopOpacity: 20,
+      gradientBottomOpacity: 80,
+    },
+  },
+  {
     type: 'cards',
     label: 'Cards',
     icon: '🃏',

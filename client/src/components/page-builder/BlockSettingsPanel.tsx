@@ -321,6 +321,226 @@ export function BlockSettingsPanel({ block, onUpdate, onClose }: BlockSettingsPa
           </>
         );
 
+      case 'community_hero':
+        return (
+          <>
+            {/* Image Upload */}
+            <Field label="Background Image">
+              <div className="space-y-2">
+                {props.image && (
+                  <img src={props.image} alt="Hero preview" className="w-full h-32 object-cover rounded-lg" />
+                )}
+                <Input
+                  value={props.image || ''}
+                  onChange={e => update('image', e.target.value)}
+                  placeholder="Image URL..."
+                />
+                <label className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm">
+                  <Upload className="h-4 w-4" />
+                  <span>Upload Image</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append('image', file);
+                      try {
+                        const res = await fetch('/api/admin/uploads', { method: 'POST', credentials: 'include', body: formData });
+                        const data = await res.json();
+                        if (data.success && data.url) {
+                          update('image', data.url);
+                        }
+                      } catch (err) {
+                        console.error('Upload failed:', err);
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+            </Field>
+
+            {/* Text Content */}
+            <Field label="Heading">
+              <Input value={props.heading || ''} onChange={e => update('heading', e.target.value)} />
+            </Field>
+            <Field label="Subheading">
+              <Textarea value={props.subheading || ''} onChange={e => update('subheading', e.target.value)} rows={2} />
+            </Field>
+            <Field label="Button Text">
+              <Input value={props.buttonText || ''} onChange={e => update('buttonText', e.target.value)} />
+            </Field>
+            <Field label="Button URL">
+              <Input value={props.buttonUrl || ''} onChange={e => update('buttonUrl', e.target.value)} />
+            </Field>
+
+            {/* Typography Settings */}
+            <div className="pt-4 border-t">
+              <h4 className="font-medium text-sm mb-3">Typography</h4>
+              
+              <Field label="Heading Font">
+                <Select value={props.headingFont || 'Inter'} onValueChange={v => update('headingFont', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Inter">Inter</SelectItem>
+                    <SelectItem value="Arial">Arial</SelectItem>
+                    <SelectItem value="Georgia">Georgia</SelectItem>
+                    <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                    <SelectItem value="system-ui">System UI</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Heading Size">
+                  <Input type="number" value={props.headingSize || 48} onChange={e => update('headingSize', Number(e.target.value))} />
+                </Field>
+                <Field label="Weight">
+                  <Select value={props.headingWeight || 'bold'} onValueChange={v => update('headingWeight', v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="light">Light</SelectItem>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="semibold">Semibold</SelectItem>
+                      <SelectItem value="bold">Bold</SelectItem>
+                      <SelectItem value="extrabold">Extra Bold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+
+              <Field label="Subheading Font">
+                <Select value={props.subheadingFont || 'Inter'} onValueChange={v => update('subheadingFont', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Inter">Inter</SelectItem>
+                    <SelectItem value="Arial">Arial</SelectItem>
+                    <SelectItem value="Georgia">Georgia</SelectItem>
+                    <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                    <SelectItem value="system-ui">System UI</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Subheading Size">
+                  <Input type="number" value={props.subheadingSize || 20} onChange={e => update('subheadingSize', Number(e.target.value))} />
+                </Field>
+                <Field label="Weight">
+                  <Select value={props.subheadingWeight || 'normal'} onValueChange={v => update('subheadingWeight', v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="light">Light</SelectItem>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="semibold">Semibold</SelectItem>
+                      <SelectItem value="bold">Bold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+            </div>
+
+            {/* Button Styling */}
+            <div className="pt-4 border-t">
+              <h4 className="font-medium text-sm mb-3">Button Style</h4>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Text Color">
+                  <div className="flex gap-1">
+                    <input 
+                      type="color" 
+                      value={props.buttonTextColor || '#ffffff'} 
+                      onChange={e => update('buttonTextColor', e.target.value)} 
+                      className="h-9 w-9 rounded cursor-pointer"
+                    />
+                    <Input value={props.buttonTextColor || '#ffffff'} onChange={e => update('buttonTextColor', e.target.value)} />
+                  </div>
+                </Field>
+                <Field label="Background">
+                  <div className="flex gap-1">
+                    <input 
+                      type="color" 
+                      value={props.buttonBgColor || '#EF4923'} 
+                      onChange={e => update('buttonBgColor', e.target.value)} 
+                      className="h-9 w-9 rounded cursor-pointer"
+                    />
+                    <Input value={props.buttonBgColor || '#EF4923'} onChange={e => update('buttonBgColor', e.target.value)} />
+                  </div>
+                </Field>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Hover Text">
+                  <div className="flex gap-1">
+                    <input 
+                      type="color" 
+                      value={props.buttonHoverTextColor || '#ffffff'} 
+                      onChange={e => update('buttonHoverTextColor', e.target.value)} 
+                      className="h-9 w-9 rounded cursor-pointer"
+                    />
+                    <Input value={props.buttonHoverTextColor || '#ffffff'} onChange={e => update('buttonHoverTextColor', e.target.value)} />
+                  </div>
+                </Field>
+                <Field label="Hover BG">
+                  <div className="flex gap-1">
+                    <input 
+                      type="color" 
+                      value={props.buttonHoverBgColor || '#d63d1c'} 
+                      onChange={e => update('buttonHoverBgColor', e.target.value)} 
+                      className="h-9 w-9 rounded cursor-pointer"
+                    />
+                    <Input value={props.buttonHoverBgColor || '#d63d1c'} onChange={e => update('buttonHoverBgColor', e.target.value)} />
+                  </div>
+                </Field>
+              </div>
+              
+              <Field label="Rounded Corners">
+                <div className="flex items-center gap-2">
+                  <Switch checked={props.buttonRounded ?? true} onCheckedChange={v => update('buttonRounded', v)} />
+                  <span className="text-sm text-gray-500">{props.buttonRounded ? 'Rounded' : 'Square'}</span>
+                </div>
+              </Field>
+            </div>
+
+            {/* Gradient Overlay */}
+            <div className="pt-4 border-t">
+              <h4 className="font-medium text-sm mb-3">Gradient Overlay</h4>
+              
+              <Field label="Top Opacity (0-100%)">
+                <div className="flex gap-2">
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    value={props.gradientTopOpacity || 20}
+                    onChange={e => update('gradientTopOpacity', Number(e.target.value))}
+                    className="flex-1"
+                  />
+                  <span className="text-sm w-12 text-right">{props.gradientTopOpacity || 20}%</span>
+                </div>
+              </Field>
+              
+              <Field label="Bottom Opacity (0-100%)">
+                <div className="flex gap-2">
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    value={props.gradientBottomOpacity || 80}
+                    onChange={e => update('gradientBottomOpacity', Number(e.target.value))}
+                    className="flex-1"
+                  />
+                  <span className="text-sm w-12 text-right">{props.gradientBottomOpacity || 80}%</span>
+                </div>
+              </Field>
+            </div>
+          </>
+        );
+
       case 'cards':
         return (
           <>

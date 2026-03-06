@@ -26,7 +26,8 @@ export type BlockType =
   | 'idx-neighborhoods'
   | 'idx-cta-banner'
   | 'idx-two-column'
-  | 'idx-features';
+  | 'idx-features'
+  | 'community_hero';
 
 export interface BlockBase {
   id: string;
@@ -262,6 +263,35 @@ export interface IdxFeaturesProps {
   features: IdxFeature[];
   imageUrl: string;
   imageAlt: string;
+}
+
+// ── Community Hero Block Props ──────────────────────────────────────────
+
+export interface CommunityHeroProps {
+  image: string;
+  heading: string;
+  subheading: string;
+  buttonText: string;
+  buttonUrl: string;
+  // Typography
+  headingFont: string;
+  headingSize: number;
+  headingWeight: string;
+  subheadingFont: string;
+  subheadingSize: number;
+  subheadingWeight: string;
+  buttonFont: string;
+  buttonFontSize: number;
+  buttonFontWeight: string;
+  // Button style
+  buttonTextColor: string;
+  buttonBgColor: string;
+  buttonHoverTextColor: string;
+  buttonHoverBgColor: string;
+  buttonRounded: boolean;
+  // Overlay
+  gradientTopOpacity: number;
+  gradientBottomOpacity: number;
 }
 
 // ── Union type ──────────────────────────────────────────────
