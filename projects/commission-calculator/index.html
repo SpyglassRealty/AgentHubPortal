@@ -276,7 +276,9 @@
             </div>
             <div class="card rounded-2xl p-6">
                 <h4 class="text-sm font-semibold text-slate-300 mb-4">Annual Net Income by Brokerage</h4>
-                <canvas id="compareChart" height="300"></canvas>
+                <div style="position: relative; height: 350px; width: 100%;">
+                    <canvas id="compareChart"></canvas>
+                </div>
             </div>
         </div>
 
@@ -285,7 +287,9 @@
             <div class="card rounded-2xl p-6 mb-6">
                 <h3 class="text-lg font-semibold text-white mb-2">📊 Growth Scenarios at Spyglass</h3>
                 <p class="text-sm text-slate-400 mb-6">See how increasing your production impacts earnings at Spyglass vs. your current brokerage.</p>
-                <canvas id="scenarioChart" height="350"></canvas>
+                <div style="position: relative; height: 350px; width: 100%;">
+                    <canvas id="scenarioChart"></canvas>
+                </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="scenarioCards">
             </div>
@@ -638,6 +642,7 @@
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
                     tooltip: {
@@ -713,6 +718,7 @@
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: { labels: { color: '#94a3b8' } },
                     tooltip: {
@@ -764,6 +770,10 @@
             document.getElementById('panel-' + t).classList.toggle('hidden', t !== tab);
             document.getElementById('tab-' + t).className = t === tab ? 'pb-3 text-sm font-medium tab-active transition' : 'pb-3 text-sm font-medium tab-inactive transition';
         });
+        // Re-render charts when their tab becomes visible
+        if (tab === 'compare' || tab === 'scenarios') {
+            setTimeout(() => updateCalc(), 50);
+        }
     }
 
     // ========== SHARE ==========

@@ -1,0 +1,59 @@
+{
+  "neighborhoods": [
+    {
+      "id": 1,
+      "name": "East Austin",
+      "source": "mapsofaustin.com",
+      "boundaries": "IH-35, Lady Bird Lake, Manor Road and Springdale Road",
+      "mlsAreas": ["3", "3E", "5", "5E"],
+      "zipCodes": ["78702", "78722", "78723", "78724"],
+      "description": "Located just 2 miles from downtown Austin, East Austin is an energetic, diverse mix of housing and culture.",
+      "polygon": null,
+      "points": []
+    },
+    {
+      "id": 2,
+      "name": "Central Austin",
+      "source": "mapsofaustin.com",
+      "boundaries": "literally located in the middle of everything - downtown, Lady Bird Lake, UT campus",
+      "mlsAreas": ["1A", "1B", "2", "4", "6", "7"],
+      "zipCodes": ["78701", "78702", "78703", "78704", "78705", "78712", "78722", "78731", "78741", "78746", "78751", "78752", "78756", "78757"],
+      "description": "Homes located in Central Austin give residents the convenience of the city and the comfort of a smaller community.",
+      "polygon": null,
+      "points": []
+    },
+    {
+      "id": 3,
+      "name": "Downtown Austin",
+      "source": "mapsofaustin.com",
+      "boundaries": "Central downtown area with walkable access to work, dining, and entertainment",
+      "mlsAreas": ["1B", "DT", "UT"],
+      "zipCodes": ["78701", "78702", "78703"],
+      "description": "Downtown Austin is by far one of the most sought after residential markets in the region.",
+      "polygon": null,
+      "points": []
+    },
+    {
+      "id": 4,
+      "name": "Southwest Austin",
+      "source": "mapsofaustin.com",
+      "boundaries": "Close proximity to downtown but includes areas like Circle C and Oak Hill",
+      "mlsAreas": ["10", "W"],
+      "zipCodes": ["78735", "78736", "78739", "78745", "78748", "78749", "78752"],
+      "description": "Ideal location for those looking to live within a close proximity to downtown, but want the affordability and convenience of South Austin.",
+      "polygon": null,
+      "points": []
+    },
+    {
+      "id": 5,
+      "name": "Westlake Hills",
+      "source": "mapsofaustin.com",
+      "boundaries": "Close proximity to downtown, Lake Austin - west of central Austin",
+      "mlsAreas": ["8E", "8W", "LS", "SW", "W"],
+      "zipCodes": ["78746"],
+      "description": "Its close proximity to downtown, Lake Austin and exemplary schools make Westlake Hills one of the most desirable areas in Austin to live.",
+      "polygon": null,
+      "points": []
+    }
+  ]
+}

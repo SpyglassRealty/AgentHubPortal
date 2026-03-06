@@ -1,0 +1,1 @@
+self.__REACT_LOADABLE_MANIFEST='{"pages/index.js -> ../components/NeighborhoodMap":{"id":1387,"files":["static/chunks/0b7b90cd.abad55a865e4a8c0.js","static/chunks/387.b2f627a5b8d49db7.js"]}}';

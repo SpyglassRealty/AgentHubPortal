@@ -1,0 +1,22 @@
+{
+  "name": "austin-neighborhood-polygons",
+  "version": "1.0.0",
+  "description": "Community-recognized Austin neighborhood boundaries based on visual analysis",
+  "main": "src/app.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "create-polygons": "node scripts/create-polygons.js"
+  },
+  "dependencies": {
+    "next": "^14.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "leaflet": "^1.9.4",
+    "react-leaflet": "^4.2.1"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.8"
+  }
+}

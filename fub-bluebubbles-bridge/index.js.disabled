@@ -1,0 +1,379 @@
+/**
+ * FUB ↔ BlueBubbles Bridge
+ * 
+ * Connects Follow Up Boss CRM to iMessage via BlueBubbles
+ * 
+ * Flows:
+ * - Inbound: iMessage → BlueBubbles webhook → Bridge → FUB (log message)
+ * - Outbound: FUB action → Bridge webhook → BlueBubbles → iMessage
+ */
+
+require('dotenv').config();
+const express = require('express');
+const axios = require('axios');
+
+const app = express();
+app.use(express.json());
+
+// ===== Configuration =====
+const config = {
+  bluebubbles: {
+    url: process.env.BLUEBUBBLES_URL || 'http://localhost:1234',
+    password: process.env.BLUEBUBBLES_PASSWORD,
+  },
+  fub: {
+    apiKey: process.env.FUB_API_KEY,
+    systemKey: process.env.FUB_SYSTEM_KEY,
+    baseUrl: 'https://api.followupboss.com/v1',
+  },
+  port: process.env.PORT || 3456,
+  webhookSecret: process.env.WEBHOOK_SECRET,
+};
+
+// ===== Utility Functions =====
+
+/**
+ * Normalize phone number to E.164 format
+ */
+function normalizePhone(phone) {
+  if (!phone) return null;
+  // Remove all non-digits
+  let digits = phone.replace(/\D/g, '');
+  // Handle US numbers
+  if (digits.length === 10) {
+    digits = '1' + digits;
+  }
+  // Remove leading 1 for comparison but keep for storage
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return '+' + digits;
+  }
+  return '+' + digits;
+}
+
+/**
+ * Check if a phone number is an iMessage (blue bubble) vs SMS (green)
+ */
+async function isIMessage(phone) {
+  // BlueBubbles can tell us if a number supports iMessage
+  // For now, assume all are iMessage - can enhance later
+  return true;
+}
+
+// ===== BlueBubbles API =====
+
+const bluebubbles = {
+  /**
+   * Send a message via BlueBubbles
+   */
+  async sendMessage(to, message) {
+    const url = `${config.bluebubbles.url}/api/v1/message/text`;
+    console.log(`[BlueBubbles] Sending to ${to}: "${message.substring(0, 50)}..."`);
+    
+    try {
+      const response = await axios.post(url, {
+        chatGuid: `iMessage;-;${to}`,
+        message: message,
+        method: 'private-api', // Use private API for better reliability
+      }, {
+        params: { password: config.bluebubbles.password },
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      console.log(`[BlueBubbles] Message sent successfully`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error(`[BlueBubbles] Send failed:`, error.response?.data || error.message);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get server info to verify connection
+   */
+  async getServerInfo() {
+    try {
+      const response = await axios.get(`${config.bluebubbles.url}/api/v1/server/info`, {
+        params: { password: config.bluebubbles.password },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('[BlueBubbles] Connection failed:', error.message);
+      return null;
+    }
+  },
+};
+
+// ===== Follow Up Boss API =====
+
+const fub = {
+  /**
+   * Get authorization header for FUB API
+   */
+  getAuthHeader() {
+    // FUB uses Basic auth with API key as username, blank password
+    const auth = Buffer.from(`${config.fub.apiKey}:`).toString('base64');
+    return `Basic ${auth}`;
+  },
+
+  /**
+   * Find a person by phone number
+   */
+  async findPersonByPhone(phone) {
+    const normalized = normalizePhone(phone);
+    console.log(`[FUB] Looking up person by phone: ${normalized}`);
+    
+    try {
+      const response = await axios.get(`${config.fub.baseUrl}/people`, {
+        params: { phone: normalized },
+        headers: { 
+          'Authorization': this.getAuthHeader(),
+          'X-System': config.fub.systemKey || 'BlueBubbles-Bridge',
+          'X-System-Key': config.fub.systemKey || 'bluebubbles-bridge',
+        },
+      });
+      
+      const people = response.data?.people || [];
+      if (people.length > 0) {
+        console.log(`[FUB] Found person: ${people[0].name} (ID: ${people[0].id})`);
+        return people[0];
+      }
+      console.log(`[FUB] No person found for ${normalized}`);
+      return null;
+    } catch (error) {
+      console.error(`[FUB] Lookup failed:`, error.response?.data || error.message);
+      return null;
+    }
+  },
+
+  /**
+   * Log an incoming text message to FUB
+   */
+  async logIncomingText(personId, phone, message, timestamp) {
+    console.log(`[FUB] Logging incoming text from ${phone} to person ${personId}`);
+    
+    try {
+      const response = await axios.post(`${config.fub.baseUrl}/textMessages`, {
+        personId: personId,
+        message: message,
+        to: phone, // The number that received it (your number)
+        from: phone, // The sender
+        isIncoming: true,
+        dateCreated: timestamp || new Date().toISOString(),
+      }, {
+        headers: {
+          'Authorization': this.getAuthHeader(),
+          'Content-Type': 'application/json',
+          'X-System': config.fub.systemKey || 'BlueBubbles-Bridge',
+          'X-System-Key': config.fub.systemKey || 'bluebubbles-bridge',
+        },
+      });
+      
+      console.log(`[FUB] Text logged successfully`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error(`[FUB] Log failed:`, error.response?.data || error.message);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Log an outgoing text message to FUB
+   */
+  async logOutgoingText(personId, phone, message, timestamp) {
+    console.log(`[FUB] Logging outgoing text to ${phone} for person ${personId}`);
+    
+    try {
+      const response = await axios.post(`${config.fub.baseUrl}/textMessages`, {
+        personId: personId,
+        message: message,
+        to: phone,
+        isIncoming: false,
+        dateCreated: timestamp || new Date().toISOString(),
+      }, {
+        headers: {
+          'Authorization': this.getAuthHeader(),
+          'Content-Type': 'application/json',
+          'X-System': config.fub.systemKey || 'BlueBubbles-Bridge',
+          'X-System-Key': config.fub.systemKey || 'bluebubbles-bridge',
+        },
+      });
+      
+      console.log(`[FUB] Text logged successfully`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error(`[FUB] Log failed:`, error.response?.data || error.message);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Create a note on a person's record (fallback if text logging fails)
+   */
+  async createNote(personId, note) {
+    try {
+      const response = await axios.post(`${config.fub.baseUrl}/notes`, {
+        personId: personId,
+        body: note,
+      }, {
+        headers: {
+          'Authorization': this.getAuthHeader(),
+          'Content-Type': 'application/json',
+          'X-System': config.fub.systemKey || 'BlueBubbles-Bridge',
+          'X-System-Key': config.fub.systemKey || 'bluebubbles-bridge',
+        },
+      });
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error(`[FUB] Note creation failed:`, error.response?.data || error.message);
+      return { success: false, error: error.message };
+    }
+  },
+};
+
+// ===== Webhook Handlers =====
+
+/**
+ * Handle incoming message from BlueBubbles
+ * POST /webhook/bluebubbles
+ */
+app.post('/webhook/bluebubbles', async (req, res) => {
+  console.log('[Webhook] Received BlueBubbles event:', req.body.type);
+  
+  const { type, data } = req.body;
+  
+  // Only process new incoming messages
+  if (type !== 'new-message' || !data) {
+    return res.json({ status: 'ignored', reason: 'not a new message' });
+  }
+  
+  const message = data;
+  
+  // Skip messages from self
+  if (message.isFromMe) {
+    return res.json({ status: 'ignored', reason: 'from self' });
+  }
+  
+  // Extract sender info
+  const senderHandle = message.handle?.address || message.chats?.[0]?.participants?.[0]?.address;
+  if (!senderHandle) {
+    console.log('[Webhook] Could not determine sender');
+    return res.json({ status: 'error', reason: 'no sender' });
+  }
+  
+  const normalizedPhone = normalizePhone(senderHandle);
+  const messageText = message.text || '[Attachment]';
+  const timestamp = message.dateCreated ? new Date(message.dateCreated).toISOString() : new Date().toISOString();
+  
+  console.log(`[Webhook] Incoming iMessage from ${normalizedPhone}: "${messageText.substring(0, 50)}..."`);
+  
+  // Look up person in FUB
+  const person = await fub.findPersonByPhone(normalizedPhone);
+  
+  if (person) {
+    // Log the text to their record
+    const result = await fub.logIncomingText(person.id, normalizedPhone, messageText, timestamp);
+    
+    if (!result.success) {
+      // Fallback: create a note
+      await fub.createNote(person.id, `📱 iMessage received: ${messageText}`);
+    }
+    
+    return res.json({ status: 'logged', personId: person.id });
+  } else {
+    console.log(`[Webhook] No FUB contact found for ${normalizedPhone} - message not logged`);
+    return res.json({ status: 'no_contact', phone: normalizedPhone });
+  }
+});
+
+/**
+ * Handle outbound text request from FUB
+ * POST /webhook/fub/send
+ * 
+ * Body: { phone: "+15551234567", message: "Hello!", personId: 123 }
+ */
+app.post('/webhook/fub/send', async (req, res) => {
+  console.log('[Webhook] Received FUB send request');
+  
+  const { phone, message, personId } = req.body;
+  
+  if (!phone || !message) {
+    return res.status(400).json({ error: 'phone and message required' });
+  }
+  
+  const normalizedPhone = normalizePhone(phone);
+  
+  // Send via BlueBubbles
+  const sendResult = await bluebubbles.sendMessage(normalizedPhone, message);
+  
+  if (sendResult.success) {
+    // Log to FUB if we have a personId
+    if (personId) {
+      await fub.logOutgoingText(personId, normalizedPhone, message);
+    }
+    return res.json({ status: 'sent', phone: normalizedPhone });
+  } else {
+    return res.status(500).json({ status: 'failed', error: sendResult.error });
+  }
+});
+
+/**
+ * FUB webhook for when a text message is created (for logging outbound)
+ * POST /webhook/fub/textmessage
+ */
+app.post('/webhook/fub/textmessage', async (req, res) => {
+  console.log('[Webhook] Received FUB textMessage event');
+  // This is for future use - FUB can notify us when texts are logged
+  // Could be used to track which messages came from other sources
+  res.json({ status: 'received' });
+});
+
+/**
+ * Health check endpoint
+ */
+app.get('/health', async (req, res) => {
+  const bbInfo = await bluebubbles.getServerInfo();
+  res.json({
+    status: 'ok',
+    bluebubbles: bbInfo ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+/**
+ * Test endpoint - send a message
+ * POST /test/send
+ */
+app.post('/test/send', async (req, res) => {
+  const { phone, message } = req.body;
+  if (!phone || !message) {
+    return res.status(400).json({ error: 'phone and message required' });
+  }
+  
+  const result = await bluebubbles.sendMessage(normalizePhone(phone), message);
+  res.json(result);
+});
+
+// ===== Start Server =====
+
+app.listen(config.port, () => {
+  console.log(`
+╔══════════════════════════════════════════════════════╗
+║     FUB ↔ BlueBubbles Bridge                         ║
+║     Running on port ${config.port}                            ║
+╠══════════════════════════════════════════════════════╣
+║  Webhooks:                                           ║
+║  • BlueBubbles → POST /webhook/bluebubbles           ║
+║  • FUB Send    → POST /webhook/fub/send              ║
+║  • Health      → GET  /health                        ║
+╚══════════════════════════════════════════════════════╝
+  `);
+  
+  // Verify BlueBubbles connection
+  bluebubbles.getServerInfo().then(info => {
+    if (info) {
+      console.log(`[Startup] BlueBubbles connected: ${info.data?.os_version || 'OK'}`);
+    } else {
+      console.log('[Startup] ⚠️  BlueBubbles not connected - check URL and password');
+    }
+  });
+});

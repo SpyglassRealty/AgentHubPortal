@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    @apply bg-spyglass-dark text-white;
+  }
+}
+
+@layer components {
+  .sidebar-nav {
+    @apply bg-spyglass-charcoal min-h-screen w-64 fixed left-0 top-0 z-40;
+  }
+  
+  .main-content {
+    @apply ml-64 min-h-screen bg-spyglass-dark;
+  }
+  
+  .card {
+    @apply bg-spyglass-charcoal rounded-lg p-6 shadow-lg;
+  }
+  
+  .stat-card {
+    @apply bg-spyglass-charcoal rounded-lg p-6 shadow-lg hover:shadow-xl transition-shadow;
+  }
+  
+  .btn-primary {
+    @apply bg-spyglass-orange hover:bg-spyglass-orange-light text-white font-medium px-4 py-2 rounded-md transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-spyglass-charcoal hover:bg-gray-700 text-white font-medium px-4 py-2 rounded-md border border-gray-600 transition-colors;
+  }
+  
+  .form-input {
+    @apply bg-spyglass-charcoal border border-gray-600 rounded-md px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-spyglass-orange focus:border-transparent;
+  }
+  
+  .form-select {
+    @apply bg-spyglass-charcoal border border-gray-600 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-spyglass-orange focus:border-transparent;
+  }
+  
+  .property-card {
+    @apply bg-spyglass-charcoal rounded-lg p-6 shadow-lg hover:shadow-xl transition-all duration-200 border border-gray-700 hover:border-gray-600;
+  }
+  
+  .quick-info-panel {
+    @apply bg-spyglass-charcoal rounded-lg p-6 shadow-lg sticky top-6;
+  }
+  
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .status-active {
+    @apply bg-green-900 text-green-300;
+  }
+  
+  .status-pending {
+    @apply bg-yellow-900 text-yellow-300;
+  }
+  
+  .status-occupied {
+    @apply bg-red-900 text-red-300;
+  }
+  
+  .status-mls {
+    @apply bg-blue-900 text-blue-300;
+  }
+  
+  .nav-link {
+    @apply flex items-center px-4 py-3 text-gray-300 hover:text-white hover:bg-spyglass-orange/10 transition-colors;
+  }
+  
+  .nav-link.active {
+    @apply text-white bg-spyglass-orange/20 border-r-2 border-spyglass-orange;
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "East Austin Sample",
+  "description": "Sample polygon for East Austin based on visual analysis",
+  "source": "manual tracing from Google Maps and mapsofaustin.com",
+  "boundaries": "IH-35 (west), Lady Bird Lake (south), Manor Road (north), Springdale Road (east)",
+  "points": [
+    [30.2679, -97.7431],
+    [30.2701, -97.7345],
+    [30.2756, -97.7298],
+    [30.2823, -97.7267],
+    [30.2871, -97.7245],
+    [30.2890, -97.7312],
+    [30.2845, -97.7378],
+    [30.2798, -97.7435],
+    [30.2743, -97.7461],
+    [30.2698, -97.7445],
+    [30.2679, -97.7431]
+  ],
+  "methodology": "Traced using Google Maps satellite view, cross-referenced with mapsofaustin.com boundary description and Zillow neighborhood boundaries"
+}

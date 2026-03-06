@@ -15,14 +15,20 @@
 
 ### Mission Control
 - Internal admin dashboards for Spyglass Realty
-- Repo: ~/clawd/projects/mission-control → github.com/SpyglassRealty/AgentHubPortal → Render (missioncontrol-tjfm.onrender.com)
+- Repo: ~/clawd/AgentHubPortal (primary) + ~/clawd/projects/AgentHubPortal + ~/clawd/projects/mission-control (copies)
+- GitHub: github.com/SpyglassRealty/AgentHubPortal
+- **Deployment: GitHub → Render auto-deploy (direct, NOT through Replit)**
+- Render service: "MissionControl" under Ryan's personal Render workspace
+- Live URL: missioncontrol-tjfm.onrender.com
+- **Render deploys take 3-5+ min** — always verify bundle hash before telling Ryan something is live
+- Replit project exists but is NOT the deploy path (stale, 19 days behind as of Mar 3)
 - Growth Intelligence Dashboard built Feb 16 (feature/revenue-intelligence branch)
   - 4-tab: Pace, Agents, Economics, Leaderboard
   - Answers: "Are we on pace for $1B?"
 - Agent Hub Portal with CMA tools (multiple Slack channels for different agents)
 - Onboarding questionnaire drives personalized dashboard suggestions
 - **Pulse page** (Feb 27): Search bar for zip/city/county filtering with auto-zoom map, averaged chart data per filtered area, filter banner. 50+ data layers, Mapbox map with zip bubbles.
-- **Render deploys take 3-5+ min** — always verify bundle hash before telling Ryan something is live
+- **Weekly Deals page** (Mar 3): `/weekly-deals` standalone + `/admin/dashboards/weekly-deals`. Sale transactions put into contract past 7 days. KPIs, lead source chart, company vs non-company donut, deals table. Data issue: ReZen API returns team data through Ryan's yentaId but filter needs tuning — investigating which date field captures "put into contract this week"
 
 ### Recruiting Pipeline
 - GHL (GoHighLevel) sync for contacts
@@ -50,6 +56,36 @@
 - **CMS gotcha:** CMS pages with raw HTML sections override styled React components. Unpublished all CMS pages (Mar 2). CMSContentRenderer now has proper section CSS for when they're re-enabled.
 - **Site NOT live yet** — robots.txt blocks crawlers, noindex set, Vercel deployment protection on. 8-item pre-launch checklist in AUDIT-REPORT.md.
 - **Vercel env vars (production):** REPLIERS_API_KEY, DATABASE_URL, NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_MAPBOX_TOKEN, MAPBOX_ACCESS_TOKEN, MISSION_CONTROL_URL, NEXT_PUBLIC_MISSION_CONTROL_URL, PULSE_API_KEY, FUB_API_KEY
+
+### Multicam Podcast Editor (Mar 3)
+- Web-based multicam video editor in MC admin section at `/admin/multicam-editor`
+- Architecture: MC UI (Render) → FastAPI processing service (Mac Mini, port 8100)
+- Cloudflare tunnel: multicam.realtyhack.com → localhost:8100 (named tunnel `multicam-processor`)
+- Features: Google Drive import, auto-multicam cuts (loudness-based), AI prompt editing, timeline preview, export
+- Engine: Python (ffmpeg, scipy, numpy) — faster-whisper for transcription (later)
+- Project dirs: MC page in mission-control, engine in `~/clawd/projects/multicam-editor/service/`
+- GDrive download needs cookie-based two-step for large files (virus scan bypass)
+- Status: Core pipeline working, first real test with Amanda Williams Podcast files
+- **Bug:** Upload doesn't advance from Step 1 to Step 2 (Process) — needs debug
+
+### Agent Pages Migration (NEW - Mar 3)
+- Migrating all agent pages from spyglassrealty.com (REW) to spyglass-idx.vercel.app/agents/
+- 170 agents scraped, raw HTML in ~/clawd/projects/agent-migration/raw-pages/
+- Parser needs fix (CSS pollution in bio fields)
+- Agent page template already exists at spyglass-idx /agents/[slug] — fetches from MC API
+- Need: active listings per agent, CMS editor in MC for Trish (social, content, YouTube)
+- URL mapping: /agent/{slug}/ → /agents/{slug}
+
+### Clawdbot Browser Issue (Mar 3)
+- Port 18792 conflict: gateway holds it, browser snapshot tool tries to bind → EADDRINUSE
+- Version 2026.1.24-3 — needs update to fix
+- clawd@spyglassrealty.com password: set by Ryan (in daily notes)
+
+### Spyglass CRM Compliance
+- Buyer Rep checklist (14 items) and Listing Rep checklist (10 items) seeded
+- REAL Brokerage / Texas-specific documents (Consumer Choice Disclosure, IABS, Wire Fraud Warning, etc.)
+- Auto-assigns default checklist when creating transactions
+- CRM at spyglass-crm.vercel.app
 
 ### Austin Neighborhood Map (NEW - Feb 24)
 - Separate project from IDX site
@@ -96,6 +132,8 @@
 - Slack integration across multiple Spyglass channels
 - Sub-agents spawned for heavy tasks (neighborhood data, etc.)
 - Mission Control DB: Render PostgreSQL (external access needs ?sslmode=require)
+- **Render access**: clawd@spyglassrealty.com has Admin role on Ryan's personal workspace. Can't log in yet (Google OAuth only, no password set). TODO: set password for clawd@ Google account.
+- **Replit access**: clawd@spyglassrealty.com on Spyglass Realty workspace. Same Google OAuth login issue.
 - Gmail: clawd@spyglassrealty.com (Google Workspace, "Clawd Assistant")
   - Password: Spygla$$realty123! (browser login works)
   - App password: uxry pdao hknh rjke (SMTP rejected — may need Workspace admin to enable SMTP or regenerate for "Mail")
@@ -103,6 +141,8 @@
 
 ## Lessons Learned
 - **2026-02-24: MEMORY LOSS INCIDENT** — Session context got truncated with "Summary unavailable due to context limits." Lost all conversation history because MEMORY.md didn't exist yet. Daily memory files were too sparse. MUST maintain MEMORY.md and write detailed daily notes going forward. This is the safety net.
+- **2026-03-03: DEPLOYMENT CONFUSION** — Wasted Ryan's time assuming MC deployed through Replit (because of "tjfm" suffix in URL). It actually auto-deploys from GitHub → Render directly. Always check Render dashboard first. Don't assume deployment paths.
+- **2026-03-03: BUILD FAILURE** — PolygonManager.tsx leaflet import broke Vite production build. Fixed with React.lazy(). Always run `npx vite build` locally before assuming Render will build successfully.
 - Plaid webhook exec has been failing (SIGKILL) — needs investigation
 - Smart alerts engine gets SIGKILL around 80-84% through 50-agent runs — possible timeout issue
 - Slack CMA channel sessions can hit context limits (170k+ tokens exceeding 200k)

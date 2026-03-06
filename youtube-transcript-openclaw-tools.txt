@@ -1,0 +1,478 @@
+YouTube Video Transcript: "3 Tools That Make OpenClaw Actually Useful"
+By: Sean Matthew
+URL: https://www.youtube.com/watch?v=QvfqAMUJTT4
+Views: 37K (as of extraction)
+Duration: 13:57
+
+FULL TRANSCRIPT WITH TIMESTAMPS:
+
+00:00:00.080 - If you've just installed OpenClaw and it
+00:00:02.240 - feels kind of limited or if you've been
+00:00:04.560 - experimenting with it for a while and
+00:00:06.160 - you've just hit a wall, let me tell you
+00:00:07.759 - something. Out of the box, OpenClaw
+00:00:09.599 - actually doesn't have its own email. It
+00:00:11.519 - can't remember what you did last week
+00:00:13.040 - and it can't reliably browse the web.
+00:00:15.599 - Today I'm going to show you three tools
+00:00:17.279 - that completely change that. And I
+00:00:19.199 - promise you by the end of this video you
+00:00:21.199 - will have a completely different
+00:00:22.640 - OpenClaw working for you. So let's dive
+00:00:24.800 - in. So, if you caught my last video, I
+00:00:27.039 - set up a Mac Mini M4 running OpenClaw as
+00:00:29.920 - my 247 AI personal agent. It's got
+00:00:33.040 - access to Telegram, my calendar, Task
+00:00:35.520 - Manager, my Obsidian Vault. But one
+00:00:37.360 - thing I didn't get into was that even
+00:00:39.280 - after hooking up all those really cool
+00:00:41.200 - skills, there were three big pieces
+00:00:43.200 - missing from that setup. Today, I'm
+00:00:44.960 - going to show you how to fill in those
+00:00:46.160 - gaps. So, here's what we're hooking up.
+00:00:48.079 - Number one, we're going to give our
+00:00:49.680 - agent its own dedicated email. Number
+00:00:52.399 - two, we're going to give the agent a
+00:00:54.160 - reliable memory backbone so that it
+00:00:56.320 - actually remembers the things that you
+00:00:58.000 - do and the things that you work on. And
+00:00:59.760 - number three, we're going to give the
+00:01:01.280 - agent its own browser, a better browser
+00:01:04.080 - that's built specifically for agents so
+00:01:06.479 - that it can browse the web faster and
+00:01:08.640 - smarter through the command line. Each
+00:01:10.479 - one of these only takes a few minutes to
+00:01:12.320 - set up. It's really pretty easy, but the
+00:01:14.240 - payoff, I promise you, from putting all
+00:01:16.159 - these together is huge. Number one is
+00:01:18.640 - Agent Mail. This is a really cool
+00:01:20.560 - startup that's backed by Y Combinator
+00:01:22.640 - and they've done something really
+00:01:24.000 - interesting. They've created an email
+00:01:26.000 - client that's built specifically for AI
+00:01:28.479 - agents. So, you don't have to worry
+00:01:30.159 - about setting up a Gmail account and
+00:01:31.920 - then having Google ban you because
+00:01:33.680 - you're using an agent to actually
+00:01:35.600 - control that inbox. This is designed
+00:01:38.000 - specifically for use with AI agents.
+00:01:40.479 - It's a way for agents to send and
+00:01:42.240 - receive emails programmatically through
+00:01:44.320 - code. Setting this up is really
+00:01:46.399 - straightforward. Just go to agentmail.to
+00:01:48.640 - to and click on get started and it will
+00:01:51.600 - navigate here where you can just create
+00:01:53.119 - an account. You can sign up with Google
+00:01:54.880 - and it's really easy. It's free. There
+00:01:56.880 - are paid plans but there's a very
+00:01:58.320 - generous free tier. Now once you do that
+00:02:00.000 - you'll follow a really simple onboarding
+00:02:01.840 - process to create your first inbox. You
+00:02:04.079 - get three inboxes free with the free
+00:02:06.000 - plan. You can name it whatever you want.
+00:02:07.840 - It will be whatever your name is at
+00:02:09.679 - agentmail.to and that's where OpenClaw
+00:02:12.319 - will access emails that you send and
+00:02:14.480 - receive to agentmail. Once you've got
+00:02:16.480 - your email inbox configured, you're
+00:02:18.480 - going to want to write down the name of
+00:02:19.680 - that inbox. And you're going to want to
+00:02:21.040 - grab an API key from this part of the
+00:02:23.200 - agent mail dashboard. Go ahead and copy
+00:02:25.280 - that API key. And then we're going to go
+00:02:27.200 - into cloud code and give some commands
+00:02:29.680 - to set all of this up. Okay. Now, once
+00:02:32.000 - you have that, we're going to open up a
+00:02:33.440 - terminal window and we're going to paste
+00:02:35.040 - this command right here. And I'll put
+00:02:36.640 - this in the show notes. So, whatever
+00:02:38.239 - computer you have Claw Code running,
+00:02:40.080 - this command will navigate to the folder
+00:02:41.920 - where OpenClaw is installed. And as I
+00:02:44.000 - mentioned before, we're going to be
+00:02:45.360 - using clawed code to implement all of
+00:02:47.360 - these skills and tools. And you might be
+00:02:49.200 - wondering, why not just use OpenClaw to
+00:02:51.599 - do this? OpenClaw can improve itself. It
+00:02:53.680 - can install its own skills. As you may
+00:02:55.280 - know, Anthropic has actually cracked
+00:02:56.959 - down on people using their claw
+00:02:58.959 - subscriptions with OpenClaw, basically
+00:03:01.120 - forcing people to use API keys. So, in
+00:03:03.680 - almost all cases, you're not going to be
+00:03:05.680 - using your monthly subscription to run
+00:03:08.000 - OpenClaw. You're going to be using API
+00:03:10.319 - keys, which costs money. Whether you're
+00:03:12.159 - using OpenAI, Anthropic, Open Router,
+00:03:14.480 - whatever to run OpenClaw, that's why I
+00:03:17.040 - like to use Cloud Code in the background
+00:03:18.959 - as the engineer to build all the systems
+00:03:21.120 - and tools that ultimately power
+00:03:22.800 - OpenClaw. So when OpenClaw is running,
+00:03:24.879 - it's not burning through a bunch of
+00:03:26.319 - tokens to build things. It's executing
+00:03:28.400 - systems that have been built precisely
+00:03:30.080 - with Claude Code, Codeex, and other
+00:03:31.920 - agents. So with that note aside about
+00:03:33.840 - why we're using Claude code in the
+00:03:35.519 - background for all of this, let's talk
+00:03:37.120 - about how we add skills to OpenClaw. You
+00:03:39.599 - can do it in two ways. So you can do it
+00:03:41.200 - manually. Basically teach OpenClaw how
+00:03:43.599 - to use a certain skill. And every skill
+00:03:45.760 - is built into a skill.md file. And you
+00:03:48.400 - can use clawed code to build that out.
+00:03:50.640 - Put all the required language in there
+00:03:52.319 - to show openclaw how to use a skill. And
+00:03:54.480 - then there's option number two which is
+00:03:56.159 - clawub. Now clawub is basically a
+00:03:58.159 - repository of skills that you can hook
+00:04:00.159 - up to openclaw. Some of these come from
+00:04:01.920 - the actual creator of openclaw himself.
+00:04:03.920 - Some of these are official skills from
+00:04:05.519 - the people that actually write the tools
+00:04:07.280 - that it's connecting to like slack and
+00:04:09.120 - things like that. And then some of them
+00:04:10.319 - are just open source tools created by
+00:04:12.239 - users. Now, a word of warning here.
+00:04:14.080 - There have been reports of malware being
+00:04:16.320 - deployed on this site. So, exercise
+00:04:18.320 - caution whenever you download a skill
+00:04:20.479 - from Clawub, but we're going to be
+00:04:22.000 - installing the agent mail skill from
+00:04:24.639 - Claw Hub. And this one comes from the
+00:04:26.639 - actual creator of agent mail himself.
+00:04:28.960 - And what this skill does is it basically
+00:04:30.639 - sets up some scripts that your OpenClaw
+00:04:32.560 - can use to interact with agent mail to
+00:04:34.880 - send email, check your inbox, and set up
+00:04:37.040 - web hooks. Now, in order to use Claw
+00:04:38.800 - Hub, you have to install Claw Hub on
+00:04:41.120 - your OpenClaw machine. And that is done
+00:04:43.199 - through a simple npm command. I'll put
+00:04:45.199 - this in the show notes, but it's right
+00:04:46.639 - here. You just copy and paste that,
+00:04:48.160 - press enter in your terminal, and then
+00:04:49.759 - you can use and download any skill from
+00:04:51.759 - Claw Hub. But the good news is we don't
+00:04:53.360 - have to run any more commands. We're
+00:04:54.960 - simply going to feed a prompt to our
+00:04:57.040 - Claude code. So, this is the exact
+00:04:58.880 - prompt that I'm going to put in the show
+00:05:00.479 - notes that you can run to install the
+00:05:02.320 - agent mail skill. It basically tells
+00:05:04.160 - Claude code to look at the agent mail
+00:05:06.320 - documentation in Claw Hub, install and
+00:05:08.560 - download the Claw Hub skill and it will
+00:05:10.400 - prompt you to give it the API key and
+00:05:12.479 - the agent inbox name that we saved
+00:05:14.400 - earlier. Once you do that, your OpenClaw
+00:05:16.560 - is officially hooked up to agent mail
+00:05:18.240 - and we can test it out. So, what I've
+00:05:20.000 - done here is I've actually forwarded a
+00:05:22.240 - email that I got in my personal email to
+00:05:25.039 - my agent mail inbox and this is just a
+00:05:27.120 - newsletter about actually how to set up
+00:05:29.360 - your first AI agent in OpenClaw. And so,
+00:05:32.080 - OpenC Claw is going to see that in agent
+00:05:34.320 - mail and it's going to prompt me in
+00:05:35.759 - Telegram. And now, as you can see, it's
+00:05:37.759 - showing up in my Telegram, alerting me
+00:05:40.000 - that this just got dropped in my agent
+00:05:41.840 - mail inbox. And now, I'm going to ask it
+00:05:43.520 - just basically, give me the main
+00:05:44.720 - takeaways from this email. And you can
+00:05:46.320 - see it comes back with a really nice
+00:05:48.000 - summary of all the key takeaways from
+00:05:49.680 - that email. So, there are a ton of
+00:05:51.199 - possibilities you can build with agent
+00:05:52.880 - mail. Obviously, this is a really simple
+00:05:54.800 - personal use case. I'm forwarding
+00:05:56.720 - invoices and newsletters and other
+00:05:58.639 - things that I get in my day-to-day life
+00:06:00.400 - to Jarvis to my openclaw and it's coming
+00:06:02.960 - back and giving me actions, summaries,
+00:06:04.800 - other things based on those. But you
+00:06:06.400 - could build this into your business. You
+00:06:07.919 - could have a support inbox where agent
+00:06:10.240 - mail is acting as a first line of
+00:06:12.000 - defense to field any user inquiries, any
+00:06:14.560 - user bugs, things like that, people
+00:06:16.240 - reporting about your products. The
+00:06:17.680 - possibilities are really endless. Okay,
+00:06:19.680 - tool number two, and honestly, this
+00:06:21.600 - might be the biggest single upgrade that
+00:06:23.360 - you could make to your open claw. So let
+00:06:25.039 - me explain the problem first. So right
+00:06:26.800 - out of the box, OpenClaw has a memory
+00:06:28.960 - system. When you interact with it, it
+00:06:30.800 - creates markdown files that it stores in
+00:06:32.960 - a local SQLite database. And anytime you
+00:06:35.520 - want to ask about previous work,
+00:06:37.199 - previous sessions you've run with
+00:06:38.400 - OpenClaw, it uses a keyword-based search
+00:06:40.720 - to search through those memories. Now
+00:06:42.240 - the problem with that is if you're
+00:06:43.919 - asking about, hey, what did we do with
+00:06:45.600 - XYZ last week? In the actual
+00:06:47.759 - conversation didn't use the words XYZ,
+00:06:50.479 - the keyword search is going to fail. So
+00:06:52.479 - it can easily forget things that you've
+00:06:54.240 - worked on. And it gets worse the more
+00:06:55.919 - context your agent accumulates. So the
+00:06:58.000 - more you interact with OpenClaw and the
+00:06:59.840 - more memories you store, the more
+00:07:01.520 - bloated your queries get when you're
+00:07:03.280 - asking about the history, the more
+00:07:04.880 - tokens you burn and it costs a lot of
+00:07:06.400 - money. But luckily there is a solution.
+00:07:08.560 - This is where QMD comes in. So QMD is an
+00:07:11.520 - open- source tool built by Toby Ludkkey,
+00:07:13.840 - who is the CEO of Shopify. It's a local
+00:07:16.319 - hybrid search engine for markdown files.
+00:07:18.639 - It combines three different search
+00:07:20.560 - strategies. So, it is using a keyword
+00:07:22.560 - search, but it's also layering on top of
+00:07:24.479 - that a vector search as well as an LLM
+00:07:27.360 - powered re-ranker to give you the best
+00:07:29.360 - possible results. Now, you don't need to
+00:07:30.880 - worry about the technical details. All
+00:07:32.479 - you need to know is that this is a much
+00:07:34.479 - better way to interact with and search
+00:07:36.639 - your memories in OpenCloud. And the best
+00:07:38.639 - part about all this is because it's
+00:07:40.240 - open- source, you don't have to pay for
+00:07:41.919 - this. There are no API keys. It's all
+00:07:44.000 - running locally on your machine. Even
+00:07:45.919 - the actual AI part of it, the LLM I
+00:07:48.000 - mentioned, these are local models and
+00:07:49.919 - they're really small. all. They don't
+00:07:51.039 - take up a lot of space on your computer,
+00:07:52.560 - so it's super efficient. So, how do you
+00:07:54.400 - set this up with OpenCloud? So, there's
+00:07:56.319 - a very detailed guide actually in the
+00:07:58.319 - OpenCloud docs. But the best part is you
+00:08:00.400 - don't have to read any of this. You can
+00:08:01.919 - just prompt Claude Code to build it for
+00:08:03.759 - you. So, go ahead, open a terminal
+00:08:05.440 - window, open Claude Code, and paste this
+00:08:07.840 - prompt in. I'll put this in the show
+00:08:09.199 - notes, so no need to read it right here.
+00:08:11.280 - But basically, we're just asking Claude
+00:08:13.039 - Code to read the documentation we just
+00:08:15.280 - showed and to set up the QMD skill so
+00:08:17.919 - that you can use it going forward. And
+00:08:19.680 - once you do that, that's it. You'll have
+00:08:21.120 - QMD installed and you can start seeing
+00:08:22.960 - the benefits right away. I'd say this is
+00:08:24.879 - one upgrade that is absolutely
+00:08:26.319 - non-negotiable. All right, the third and
+00:08:28.639 - final tool is agent browser. Now, agent
+00:08:31.280 - browser is a command line tool built by
+00:08:34.000 - Verscell that allows your agent to
+00:08:36.080 - browse the web. Now, this is not just
+00:08:37.760 - simply pulling HTML and scraping HTML.
+00:08:40.880 - This is actually interacting with a
+00:08:42.560 - browser like a user would, i.e. clicking
+00:08:45.120 - on stuff, taking screenshots, filling
+00:08:47.279 - out forms. Now, you might be thinking,
+00:08:49.200 - why not just use Playright or whatever
+00:08:51.600 - browser that OpenClaw has built in. Now,
+00:08:54.160 - Playright is just fine, but if you've
+00:08:56.000 - ever used it before, you probably have
+00:08:57.760 - seen how it is so token inefficient.
+00:09:00.240 - Now, what that means is every time
+00:09:01.839 - Playright is interacting with a website,
+00:09:03.920 - it is generating a ton of information.
+00:09:06.880 - And if your AI agent is hooked up to
+00:09:08.640 - Playright, it has to process all that
+00:09:10.880 - information, which fills up your
+00:09:12.320 - contacts window and gives you ultimately
+00:09:14.640 - a worse outcome. Agent browser takes a
+00:09:17.120 - completely different approach. Now, we
+00:09:19.040 - don't have to get into the technical
+00:09:20.480 - details of the how and why, but
+00:09:22.160 - basically what you need to know is
+00:09:23.920 - everything that Playright can do, Agent
+00:09:25.920 - Browser can do it with 93% less tokens
+00:09:29.600 - used. That means that your agent can do
+00:09:31.920 - a lot more for a lot less. So, in order
+00:09:34.800 - to get access to agent browser and to
+00:09:37.200 - use it, you need to install agent
+00:09:39.440 - browser locally. So, on your OpenClaw
+00:09:41.760 - machine, just run this command. And I'll
+00:09:43.839 - put this in the show notes. Uh, and once
+00:09:45.920 - you do that, you will have agent browser
+00:09:47.519 - ready. But there's one more thing we
+00:09:48.800 - need to do. The next thing you're going
+00:09:49.920 - to want to do is open up Cloud Code and
+00:09:51.680 - paste in this prompt. Again, this is
+00:09:53.600 - going to be in the show notes for you to
+00:09:54.880 - copy and paste into your own openclaw
+00:09:56.880 - instance. But what this is basically
+00:09:58.560 - doing is it's taking the skills that
+00:10:01.200 - Verscell has published for Asian
+00:10:02.880 - browser. It's pulling them from GitHub
+00:10:04.959 - onto your OpenClaw machine and it's
+00:10:06.800 - telling your openclaw how to use them
+00:10:08.399 - and how to run a browser. And it's also
+00:10:10.640 - telling it that anytime that OpenClaw
+00:10:12.720 - needs to interact with the internet or
+00:10:14.640 - browse a web page, it should use agent
+00:10:16.720 - browser. Once you do that, you will have
+00:10:18.320 - the agent browser skills on your local
+00:10:20.240 - machine, which you can use with OpenClaw
+00:10:22.240 - or any AI agent that you have on there,
+00:10:24.320 - including codeex and cloud code. I'm
+00:10:26.320 - going to show you a simple command that
+00:10:27.760 - we can use in cloud code through agent
+00:10:29.760 - browser. You can do the same thing
+00:10:31.279 - through your openclaw instance. Because
+00:10:33.040 - mine is running on a different machine,
+00:10:34.800 - my Mac Mini, I just can't showcase
+00:10:36.640 - what's happening locally on that machine
+00:10:38.399 - here. All that stuff is happening in the
+00:10:40.320 - background. I'll just show you right now
+00:10:41.760 - how agent browser works. Okay. So, I'm
+00:10:44.079 - going to ask cloud code to use the agent
+00:10:46.160 - browser skill. Navigate to hacker news
+00:10:48.160 - and tell me what's trending today. Okay.
+00:10:50.160 - And you can see it's actually opened
+00:10:51.600 - hackernews news.whitecominator.com
+00:10:54.000 - through the command line. It's taking a
+00:10:56.399 - snapshot or screenshot of that web page.
+00:10:58.800 - And then it's closing the browser. And
+00:11:00.800 - here you go. It gives me all of the
+00:11:02.720 - trending topics for today in a nice
+00:11:05.200 - little chart here. So, it's distilled
+00:11:07.120 - all that information from just searching
+00:11:09.040 - the website through the command line,
+00:11:10.640 - taking a screenshot, and it only took 42
+00:11:13.360 - seconds to do all of that. All right.
+00:11:14.959 - And you see if I run the exact same
+00:11:17.040 - query through my Jarvis AI assistant
+00:11:19.680 - through OpenClaw, it gives me a nice
+00:11:21.519 - neat markdown formatted response of that
+00:11:24.000 - chart we just saw in the command line.
+00:11:25.760 - Okay, browsing Hacker News is certainly
+00:11:27.519 - cool, but that's a very simple demo of
+00:11:29.360 - what agent browser can do. There are
+00:11:31.120 - some really advanced use cases of where
+00:11:33.279 - you can take this thing. I'll just go
+00:11:34.640 - over a couple of them briefly here. So
+00:11:36.560 - number one, a no API workflow. Basically
+00:11:39.360 - any site or service that doesn't have an
+00:11:41.920 - API where you actually have to go to a
+00:11:43.839 - web console or some dashboard to
+00:11:45.680 - interact with. You can use agent browser
+00:11:47.519 - to programmatically pull that
+00:11:49.200 - information or interact with that
+00:11:50.640 - dashboard. So you don't have to open a
+00:11:52.399 - browser and do that yourself. Number two
+00:11:54.240 - is self-verifying code. So, anytime
+00:11:56.560 - you're using Playright to sort of
+00:11:58.240 - automate and check front end or changes
+00:12:00.480 - that your agent is making to code, your
+00:12:02.560 - agent can just use agent browser
+00:12:04.079 - instead, take a screenshot, send that to
+00:12:06.160 - you, or just validate it itself to make
+00:12:08.079 - sure that the changes it made are
+00:12:09.519 - actually good. Number three, website
+00:12:11.279 - monitoring. Any website where things
+00:12:13.360 - change like prices, product listings,
+00:12:16.079 - things like that, you can basically use
+00:12:17.839 - agent browser to monitor that page.
+00:12:19.920 - Number four is not really a use case,
+00:12:21.839 - but it's just something to point out for
+00:12:23.279 - agent browser. Agent browser does have
+00:12:25.200 - some built-in security guard rails,
+00:12:27.200 - specifically against prompt injection,
+00:12:29.279 - which is huge when you're using an
+00:12:31.200 - agentic browser to navigate the web. You
+00:12:33.920 - don't want your AI agent getting
+00:12:35.440 - poisoned with any prompt injections on
+00:12:37.600 - those sites. It's not perfect, but it's
+00:12:39.519 - good to know that it's there and it's
+00:12:40.959 - providing an extra line of defense. And
+00:12:42.800 - number five is a new skill that is
+00:12:44.399 - actually available with agent browser,
+00:12:45.839 - and that's the electron skill. So, in
+00:12:48.079 - addition to being able to control and
+00:12:50.320 - interact with a browser, you can
+00:12:52.079 - actually use agent browser to control
+00:12:53.760 - any electron app on your computer,
+00:12:56.000 - whether that be Slack or Notion, VS
+00:12:58.480 - Code, Discord. I haven't tested this out
+00:13:00.320 - yet, but it sounds really cool. All
+00:13:02.079 - right, so there you have it. That's
+00:13:03.519 - three tools, three simple but highly
+00:13:05.920 - effective upgrades for your OpenClaw.
+00:13:07.920 - Agent Mail gives your agent its own
+00:13:10.000 - dedicated inbox. QMD gives your agent
+00:13:12.639 - real memory and agent browser gives your
+00:13:15.040 - agent a better and faster way to browse
+00:13:17.519 - the web. Each one took only a few
+00:13:19.680 - minutes to set up, but together they
+00:13:21.680 - turn a really basic open claw setup into
+00:13:24.079 - something that feels like an actually
+00:13:25.680 - useful assistant. If I had to pick just
+00:13:27.680 - one to start with, I'd start with QMD.
+00:13:29.839 - The memory upgrade is the single biggest
+00:13:31.920 - quality of life improvement for
+00:13:33.279 - OpenClaw. But honestly, hook up all
+00:13:35.120 - three. It's totally worth it. If you
+00:13:36.800 - found this helpful, drop a comment below
+00:13:38.560 - to let me know what tool you're most
+00:13:40.240 - excited about for using with OpenC
+00:13:41.920 - cloth. And if there's any tools I should
+00:13:43.440 - check out, also let me know. I'm always
+00:13:45.360 - trying out new stuff and I like to see
+00:13:46.959 - what you guys are using. And if you
+00:13:48.560 - haven't already, make sure you subscribe
+00:13:50.320 - because I've got a lot more content in
+00:13:52.000 - the pipeline in the coming weeks for
+00:13:53.440 - OpenCloth. Thanks for watching and I'll
+00:13:55.120 - see you next
+
+===== END OF TRANSCRIPT =====
+
+THE 3 TOOLS MENTIONED:
+
+1. **AgentMail** - Gives your agent its own dedicated email
+   - Y Combinator-backed startup
+   - Email client built specifically for AI agents
+   - Free tier with 3 inboxes
+   - API-based, programmatic email access
+   - No risk of Google banning for automated use
+
+2. **QMD** - Upgrades the agent's memory system
+   - Created by Tobi Lutke (CEO of Shopify)
+   - Open-source, local hybrid search engine for markdown files
+   - Combines keyword search + vector search + LLM re-ranker
+   - Free, no API keys required
+   - Uses small local AI models
+   - Described as "the single biggest quality of life improvement for OpenClaw"
+
+3. **Agent Browser** - A better browser for agents
+   - Built by Vercel
+   - Command-line browser tool
+   - Uses 93% fewer tokens than Playwright
+   - Can click, take screenshots, fill forms
+   - Includes security guardrails against prompt injection
+   - Also supports controlling Electron apps
+
+SUMMARY OF TIPS #2 AND #3 (AS REQUESTED BY RYAN):
+
+**Tip #2 - QMD Memory System:**
+This solves OpenClaw's major memory limitation. Out of the box, OpenClaw uses basic keyword search which fails when you ask about past work using different terminology. QMD replaces this with a sophisticated hybrid search that combines keywords, vector embeddings, and AI re-ranking. It's completely free, runs locally, and dramatically improves how OpenClaw remembers and retrieves past conversations and work. The presenter calls it "absolutely non-negotiable" and the biggest single upgrade you can make.
+
+**Tip #3 - Agent Browser:**
+This is a token-efficient alternative to Playwright for web automation. Key benefits include:
+- 93% reduction in token usage compared to Playwright
+- Perfect for no-API workflows (automating sites without APIs)
+- Can be used for self-verifying code changes
+- Website monitoring capabilities
+- Built-in security against prompt injection
+- Bonus: Can control Electron desktop apps (Slack, VS Code, Discord, etc.)
+
+Both tools can be installed in minutes using Claude Code to handle the setup, making them immediately actionable for implementation.

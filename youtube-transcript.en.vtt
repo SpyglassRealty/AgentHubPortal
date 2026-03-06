@@ -1,0 +1,3416 @@
+WEBVTT
+Kind: captions
+Language: en
+
+00:00:00.080 --> 00:00:02.230 align:start position:0%
+ 
+If<00:00:00.320><c> you've</c><00:00:00.560><c> just</c><00:00:00.800><c> installed</c><00:00:01.280><c> OpenClaw</c><00:00:01.920><c> and</c><00:00:02.080><c> it</c>
+
+00:00:02.230 --> 00:00:02.240 align:start position:0%
+If you've just installed OpenClaw and it
+ 
+
+00:00:02.240 --> 00:00:04.550 align:start position:0%
+If you've just installed OpenClaw and it
+feels<00:00:02.560><c> kind</c><00:00:02.800><c> of</c><00:00:03.200><c> limited</c><00:00:03.840><c> or</c><00:00:04.080><c> if</c><00:00:04.240><c> you've</c><00:00:04.400><c> been</c>
+
+00:00:04.550 --> 00:00:04.560 align:start position:0%
+feels kind of limited or if you've been
+ 
+
+00:00:04.560 --> 00:00:06.150 align:start position:0%
+feels kind of limited or if you've been
+experimenting<00:00:05.040><c> with</c><00:00:05.279><c> it</c><00:00:05.440><c> for</c><00:00:05.600><c> a</c><00:00:05.759><c> while</c><00:00:05.920><c> and</c>
+
+00:00:06.150 --> 00:00:06.160 align:start position:0%
+experimenting with it for a while and
+ 
+
+00:00:06.160 --> 00:00:07.749 align:start position:0%
+experimenting with it for a while and
+you've<00:00:06.319><c> just</c><00:00:06.480><c> hit</c><00:00:06.640><c> a</c><00:00:06.799><c> wall,</c><00:00:07.120><c> let</c><00:00:07.359><c> me</c><00:00:07.440><c> tell</c><00:00:07.600><c> you</c>
+
+00:00:07.749 --> 00:00:07.759 align:start position:0%
+you've just hit a wall, let me tell you
+ 
+
+00:00:07.759 --> 00:00:09.589 align:start position:0%
+you've just hit a wall, let me tell you
+something.<00:00:08.160><c> Out</c><00:00:08.400><c> of</c><00:00:08.480><c> the</c><00:00:08.639><c> box,</c><00:00:08.960><c> OpenClaw</c>
+
+00:00:09.589 --> 00:00:09.599 align:start position:0%
+something. Out of the box, OpenClaw
+ 
+
+00:00:09.599 --> 00:00:11.509 align:start position:0%
+something. Out of the box, OpenClaw
+actually<00:00:09.920><c> doesn't</c><00:00:10.240><c> have</c><00:00:10.320><c> its</c><00:00:10.639><c> own</c><00:00:10.800><c> email.</c><00:00:11.280><c> It</c>
+
+00:00:11.509 --> 00:00:11.519 align:start position:0%
+actually doesn't have its own email. It
+ 
+
+00:00:11.519 --> 00:00:13.030 align:start position:0%
+actually doesn't have its own email. It
+can't<00:00:11.679><c> remember</c><00:00:11.920><c> what</c><00:00:12.160><c> you</c><00:00:12.320><c> did</c><00:00:12.559><c> last</c><00:00:12.800><c> week</c>
+
+00:00:13.030 --> 00:00:13.040 align:start position:0%
+can't remember what you did last week
+ 
+
+00:00:13.040 --> 00:00:15.589 align:start position:0%
+can't remember what you did last week
+and<00:00:13.280><c> it</c><00:00:13.519><c> can't</c><00:00:13.759><c> reliably</c><00:00:14.559><c> browse</c><00:00:14.880><c> the</c><00:00:15.120><c> web.</c>
+
+00:00:15.589 --> 00:00:15.599 align:start position:0%
+and it can't reliably browse the web.
+ 
+
+00:00:15.599 --> 00:00:17.269 align:start position:0%
+and it can't reliably browse the web.
+Today<00:00:15.839><c> I'm</c><00:00:16.080><c> going</c><00:00:16.160><c> to</c><00:00:16.240><c> show</c><00:00:16.400><c> you</c><00:00:16.640><c> three</c><00:00:16.960><c> tools</c>
+
+00:00:17.269 --> 00:00:17.279 align:start position:0%
+Today I'm going to show you three tools
+ 
+
+00:00:17.279 --> 00:00:19.189 align:start position:0%
+Today I'm going to show you three tools
+that<00:00:17.600><c> completely</c><00:00:18.160><c> change</c><00:00:18.480><c> that.</c><00:00:18.800><c> And</c><00:00:18.960><c> I</c>
+
+00:00:19.189 --> 00:00:19.199 align:start position:0%
+that completely change that. And I
+ 
+
+00:00:19.199 --> 00:00:21.189 align:start position:0%
+that completely change that. And I
+promise<00:00:19.439><c> you</c><00:00:19.680><c> by</c><00:00:19.920><c> the</c><00:00:20.000><c> end</c><00:00:20.160><c> of</c><00:00:20.240><c> this</c><00:00:20.400><c> video</c><00:00:21.039><c> you</c>
+
+00:00:21.189 --> 00:00:21.199 align:start position:0%
+promise you by the end of this video you
+ 
+
+00:00:21.199 --> 00:00:22.630 align:start position:0%
+promise you by the end of this video you
+will<00:00:21.359><c> have</c><00:00:21.439><c> a</c><00:00:21.680><c> completely</c><00:00:22.320><c> different</c>
+
+00:00:22.630 --> 00:00:22.640 align:start position:0%
+will have a completely different
+ 
+
+00:00:22.640 --> 00:00:24.790 align:start position:0%
+will have a completely different
+OpenClaw<00:00:23.359><c> working</c><00:00:23.600><c> for</c><00:00:23.840><c> you.</c><00:00:24.160><c> So</c><00:00:24.320><c> let's</c><00:00:24.560><c> dive</c>
+
+00:00:24.790 --> 00:00:24.800 align:start position:0%
+OpenClaw working for you. So let's dive
+ 
+
+00:00:24.800 --> 00:00:27.029 align:start position:0%
+OpenClaw working for you. So let's dive
+in.<00:00:25.039><c> So,</c><00:00:25.279><c> if</c><00:00:25.439><c> you</c><00:00:25.519><c> caught</c><00:00:25.760><c> my</c><00:00:26.000><c> last</c><00:00:26.240><c> video,</c><00:00:26.720><c> I</c>
+
+00:00:27.029 --> 00:00:27.039 align:start position:0%
+in. So, if you caught my last video, I
+ 
+
+00:00:27.039 --> 00:00:29.910 align:start position:0%
+in. So, if you caught my last video, I
+set<00:00:27.279><c> up</c><00:00:27.439><c> a</c><00:00:27.680><c> Mac</c><00:00:27.920><c> Mini</c><00:00:28.240><c> M4</c><00:00:28.800><c> running</c><00:00:29.119><c> OpenClaw</c><00:00:29.760><c> as</c>
+
+00:00:29.910 --> 00:00:29.920 align:start position:0%
+set up a Mac Mini M4 running OpenClaw as
+ 
+
+00:00:29.920 --> 00:00:33.030 align:start position:0%
+set up a Mac Mini M4 running OpenClaw as
+my<00:00:30.160><c> 247</c><00:00:31.119><c> AI</c><00:00:31.679><c> personal</c><00:00:32.079><c> agent.</c><00:00:32.559><c> It's</c><00:00:32.800><c> got</c>
+
+00:00:33.030 --> 00:00:33.040 align:start position:0%
+my 247 AI personal agent. It's got
+ 
+
+00:00:33.040 --> 00:00:35.510 align:start position:0%
+my 247 AI personal agent. It's got
+access<00:00:33.280><c> to</c><00:00:33.520><c> Telegram,</c><00:00:34.160><c> my</c><00:00:34.399><c> calendar,</c><00:00:35.120><c> Task</c>
+
+00:00:35.510 --> 00:00:35.520 align:start position:0%
+access to Telegram, my calendar, Task
+ 
+
+00:00:35.520 --> 00:00:37.350 align:start position:0%
+access to Telegram, my calendar, Task
+Manager,<00:00:36.000><c> my</c><00:00:36.160><c> Obsidian</c><00:00:36.719><c> Vault.</c><00:00:37.120><c> But</c><00:00:37.200><c> one</c>
+
+00:00:37.350 --> 00:00:37.360 align:start position:0%
+Manager, my Obsidian Vault. But one
+ 
+
+00:00:37.360 --> 00:00:39.270 align:start position:0%
+Manager, my Obsidian Vault. But one
+thing<00:00:37.520><c> I</c><00:00:37.760><c> didn't</c><00:00:37.920><c> get</c><00:00:38.079><c> into</c><00:00:38.480><c> was</c><00:00:38.719><c> that</c><00:00:39.040><c> even</c>
+
+00:00:39.270 --> 00:00:39.280 align:start position:0%
+thing I didn't get into was that even
+ 
+
+00:00:39.280 --> 00:00:41.190 align:start position:0%
+thing I didn't get into was that even
+after<00:00:39.520><c> hooking</c><00:00:39.840><c> up</c><00:00:40.079><c> all</c><00:00:40.320><c> those</c><00:00:40.559><c> really</c><00:00:40.879><c> cool</c>
+
+00:00:41.190 --> 00:00:41.200 align:start position:0%
+after hooking up all those really cool
+ 
+
+00:00:41.200 --> 00:00:43.190 align:start position:0%
+after hooking up all those really cool
+skills,<00:00:41.680><c> there</c><00:00:41.840><c> were</c><00:00:42.079><c> three</c><00:00:42.480><c> big</c><00:00:42.800><c> pieces</c>
+
+00:00:43.190 --> 00:00:43.200 align:start position:0%
+skills, there were three big pieces
+ 
+
+00:00:43.200 --> 00:00:44.950 align:start position:0%
+skills, there were three big pieces
+missing<00:00:43.520><c> from</c><00:00:43.680><c> that</c><00:00:43.920><c> setup.</c><00:00:44.399><c> Today,</c><00:00:44.719><c> I'm</c>
+
+00:00:44.950 --> 00:00:44.960 align:start position:0%
+missing from that setup. Today, I'm
+ 
+
+00:00:44.960 --> 00:00:46.150 align:start position:0%
+missing from that setup. Today, I'm
+going<00:00:45.040><c> to</c><00:00:45.120><c> show</c><00:00:45.200><c> you</c><00:00:45.360><c> how</c><00:00:45.520><c> to</c><00:00:45.600><c> fill</c><00:00:45.760><c> in</c><00:00:46.000><c> those</c>
+
+00:00:46.150 --> 00:00:46.160 align:start position:0%
+going to show you how to fill in those
+ 
+
+00:00:46.160 --> 00:00:48.069 align:start position:0%
+going to show you how to fill in those
+gaps.<00:00:46.640><c> So,</c><00:00:46.879><c> here's</c><00:00:47.120><c> what</c><00:00:47.280><c> we're</c><00:00:47.440><c> hooking</c><00:00:47.680><c> up.</c>
+
+00:00:48.069 --> 00:00:48.079 align:start position:0%
+gaps. So, here's what we're hooking up.
+ 
+
+00:00:48.079 --> 00:00:49.670 align:start position:0%
+gaps. So, here's what we're hooking up.
+Number<00:00:48.399><c> one,</c><00:00:48.800><c> we're</c><00:00:49.039><c> going</c><00:00:49.120><c> to</c><00:00:49.200><c> give</c><00:00:49.440><c> our</c>
+
+00:00:49.670 --> 00:00:49.680 align:start position:0%
+Number one, we're going to give our
+ 
+
+00:00:49.680 --> 00:00:52.389 align:start position:0%
+Number one, we're going to give our
+agent<00:00:50.079><c> its</c><00:00:50.399><c> own</c><00:00:50.719><c> dedicated</c><00:00:51.440><c> email.</c><00:00:52.079><c> Number</c>
+
+00:00:52.389 --> 00:00:52.399 align:start position:0%
+agent its own dedicated email. Number
+ 
+
+00:00:52.399 --> 00:00:54.150 align:start position:0%
+agent its own dedicated email. Number
+two,<00:00:52.719><c> we're</c><00:00:52.960><c> going</c><00:00:53.039><c> to</c><00:00:53.120><c> give</c><00:00:53.280><c> the</c><00:00:53.520><c> agent</c><00:00:53.840><c> a</c>
+
+00:00:54.150 --> 00:00:54.160 align:start position:0%
+two, we're going to give the agent a
+ 
+
+00:00:54.160 --> 00:00:56.310 align:start position:0%
+two, we're going to give the agent a
+reliable<00:00:54.719><c> memory</c><00:00:55.199><c> backbone</c><00:00:55.760><c> so</c><00:00:55.920><c> that</c><00:00:56.079><c> it</c>
+
+00:00:56.310 --> 00:00:56.320 align:start position:0%
+reliable memory backbone so that it
+ 
+
+00:00:56.320 --> 00:00:57.990 align:start position:0%
+reliable memory backbone so that it
+actually<00:00:56.719><c> remembers</c><00:00:57.120><c> the</c><00:00:57.440><c> things</c><00:00:57.600><c> that</c><00:00:57.760><c> you</c>
+
+00:00:57.990 --> 00:00:58.000 align:start position:0%
+actually remembers the things that you
+ 
+
+00:00:58.000 --> 00:00:59.750 align:start position:0%
+actually remembers the things that you
+do<00:00:58.160><c> and</c><00:00:58.320><c> the</c><00:00:58.559><c> things</c><00:00:58.640><c> that</c><00:00:58.800><c> you</c><00:00:58.960><c> work</c><00:00:59.120><c> on.</c><00:00:59.520><c> And</c>
+
+00:00:59.750 --> 00:00:59.760 align:start position:0%
+do and the things that you work on. And
+ 
+
+00:00:59.760 --> 00:01:01.270 align:start position:0%
+do and the things that you work on. And
+number<00:01:00.000><c> three,</c><00:01:00.480><c> we're</c><00:01:00.640><c> going</c><00:01:00.719><c> to</c><00:01:00.879><c> give</c><00:01:01.039><c> the</c>
+
+00:01:01.270 --> 00:01:01.280 align:start position:0%
+number three, we're going to give the
+ 
+
+00:01:01.280 --> 00:01:04.070 align:start position:0%
+number three, we're going to give the
+agent<00:01:01.680><c> its</c><00:01:02.000><c> own</c><00:01:02.399><c> browser,</c><00:01:03.039><c> a</c><00:01:03.359><c> better</c><00:01:03.680><c> browser</c>
+
+00:01:04.070 --> 00:01:04.080 align:start position:0%
+agent its own browser, a better browser
+ 
+
+00:01:04.080 --> 00:01:06.469 align:start position:0%
+agent its own browser, a better browser
+that's<00:01:04.400><c> built</c><00:01:04.799><c> specifically</c><00:01:05.519><c> for</c><00:01:05.840><c> agents</c><00:01:06.320><c> so</c>
+
+00:01:06.469 --> 00:01:06.479 align:start position:0%
+that's built specifically for agents so
+ 
+
+00:01:06.479 --> 00:01:08.630 align:start position:0%
+that's built specifically for agents so
+that<00:01:06.640><c> it</c><00:01:06.880><c> can</c><00:01:07.040><c> browse</c><00:01:07.360><c> the</c><00:01:07.600><c> web</c><00:01:07.920><c> faster</c><00:01:08.320><c> and</c>
+
+00:01:08.630 --> 00:01:08.640 align:start position:0%
+that it can browse the web faster and
+ 
+
+00:01:08.640 --> 00:01:10.469 align:start position:0%
+that it can browse the web faster and
+smarter<00:01:09.119><c> through</c><00:01:09.360><c> the</c><00:01:09.600><c> command</c><00:01:09.920><c> line.</c><00:01:10.240><c> Each</c>
+
+00:01:10.469 --> 00:01:10.479 align:start position:0%
+smarter through the command line. Each
+ 
+
+00:01:10.479 --> 00:01:12.310 align:start position:0%
+smarter through the command line. Each
+one<00:01:10.640><c> of</c><00:01:10.720><c> these</c><00:01:10.960><c> only</c><00:01:11.280><c> takes</c><00:01:11.520><c> a</c><00:01:11.680><c> few</c><00:01:11.840><c> minutes</c><00:01:12.080><c> to</c>
+
+00:01:12.310 --> 00:01:12.320 align:start position:0%
+one of these only takes a few minutes to
+ 
+
+00:01:12.320 --> 00:01:14.230 align:start position:0%
+one of these only takes a few minutes to
+set<00:01:12.479><c> up.</c><00:01:12.799><c> It's</c><00:01:12.960><c> really</c><00:01:13.200><c> pretty</c><00:01:13.439><c> easy,</c><00:01:13.920><c> but</c><00:01:14.080><c> the</c>
+
+00:01:14.230 --> 00:01:14.240 align:start position:0%
+set up. It's really pretty easy, but the
+ 
+
+00:01:14.240 --> 00:01:16.149 align:start position:0%
+set up. It's really pretty easy, but the
+payoff,<00:01:14.799><c> I</c><00:01:15.040><c> promise</c><00:01:15.280><c> you,</c><00:01:15.600><c> from</c><00:01:15.760><c> putting</c><00:01:16.000><c> all</c>
+
+00:01:16.149 --> 00:01:16.159 align:start position:0%
+payoff, I promise you, from putting all
+ 
+
+00:01:16.159 --> 00:01:18.630 align:start position:0%
+payoff, I promise you, from putting all
+these<00:01:16.400><c> together</c><00:01:16.799><c> is</c><00:01:17.119><c> huge.</c><00:01:17.759><c> Number</c><00:01:18.080><c> one</c><00:01:18.320><c> is</c>
+
+00:01:18.630 --> 00:01:18.640 align:start position:0%
+these together is huge. Number one is
+ 
+
+00:01:18.640 --> 00:01:20.550 align:start position:0%
+these together is huge. Number one is
+Agent<00:01:19.040><c> Mail.</c><00:01:19.520><c> This</c><00:01:19.759><c> is</c><00:01:19.840><c> a</c><00:01:20.080><c> really</c><00:01:20.320><c> cool</c>
+
+00:01:20.550 --> 00:01:20.560 align:start position:0%
+Agent Mail. This is a really cool
+ 
+
+00:01:20.560 --> 00:01:22.630 align:start position:0%
+Agent Mail. This is a really cool
+startup<00:01:20.960><c> that's</c><00:01:21.280><c> backed</c><00:01:21.520><c> by</c><00:01:21.759><c> Y</c><00:01:22.000><c> Combinator</c>
+
+00:01:22.630 --> 00:01:22.640 align:start position:0%
+startup that's backed by Y Combinator
+ 
+
+00:01:22.640 --> 00:01:23.990 align:start position:0%
+startup that's backed by Y Combinator
+and<00:01:22.880><c> they've</c><00:01:23.119><c> done</c><00:01:23.280><c> something</c><00:01:23.600><c> really</c>
+
+00:01:23.990 --> 00:01:24.000 align:start position:0%
+and they've done something really
+ 
+
+00:01:24.000 --> 00:01:25.990 align:start position:0%
+and they've done something really
+interesting.<00:01:24.640><c> They've</c><00:01:25.040><c> created</c><00:01:25.360><c> an</c><00:01:25.680><c> email</c>
+
+00:01:25.990 --> 00:01:26.000 align:start position:0%
+interesting. They've created an email
+ 
+
+00:01:26.000 --> 00:01:28.469 align:start position:0%
+interesting. They've created an email
+client<00:01:26.320><c> that's</c><00:01:26.560><c> built</c><00:01:26.880><c> specifically</c><00:01:27.600><c> for</c><00:01:28.080><c> AI</c>
+
+00:01:28.469 --> 00:01:28.479 align:start position:0%
+client that's built specifically for AI
+ 
+
+00:01:28.479 --> 00:01:30.149 align:start position:0%
+client that's built specifically for AI
+agents.<00:01:29.119><c> So,</c><00:01:29.280><c> you</c><00:01:29.520><c> don't</c><00:01:29.680><c> have</c><00:01:29.759><c> to</c><00:01:29.920><c> worry</c>
+
+00:01:30.149 --> 00:01:30.159 align:start position:0%
+agents. So, you don't have to worry
+ 
+
+00:01:30.159 --> 00:01:31.910 align:start position:0%
+agents. So, you don't have to worry
+about<00:01:30.400><c> setting</c><00:01:30.640><c> up</c><00:01:30.799><c> a</c><00:01:30.960><c> Gmail</c><00:01:31.439><c> account</c><00:01:31.680><c> and</c>
+
+00:01:31.910 --> 00:01:31.920 align:start position:0%
+about setting up a Gmail account and
+ 
+
+00:01:31.920 --> 00:01:33.670 align:start position:0%
+about setting up a Gmail account and
+then<00:01:32.159><c> having</c><00:01:32.479><c> Google</c><00:01:32.880><c> ban</c><00:01:33.119><c> you</c><00:01:33.439><c> because</c>
+
+00:01:33.670 --> 00:01:33.680 align:start position:0%
+then having Google ban you because
+ 
+
+00:01:33.680 --> 00:01:35.590 align:start position:0%
+then having Google ban you because
+you're<00:01:34.000><c> using</c><00:01:34.320><c> an</c><00:01:34.640><c> agent</c><00:01:35.040><c> to</c><00:01:35.280><c> actually</c>
+
+00:01:35.590 --> 00:01:35.600 align:start position:0%
+you're using an agent to actually
+ 
+
+00:01:35.600 --> 00:01:37.990 align:start position:0%
+you're using an agent to actually
+control<00:01:35.920><c> that</c><00:01:36.159><c> inbox.</c><00:01:36.880><c> This</c><00:01:37.280><c> is</c><00:01:37.520><c> designed</c>
+
+00:01:37.990 --> 00:01:38.000 align:start position:0%
+control that inbox. This is designed
+ 
+
+00:01:38.000 --> 00:01:40.469 align:start position:0%
+control that inbox. This is designed
+specifically<00:01:38.880><c> for</c><00:01:39.119><c> use</c><00:01:39.360><c> with</c><00:01:39.600><c> AI</c><00:01:40.000><c> agents.</c>
+
+00:01:40.469 --> 00:01:40.479 align:start position:0%
+specifically for use with AI agents.
+ 
+
+00:01:40.479 --> 00:01:42.230 align:start position:0%
+specifically for use with AI agents.
+It's<00:01:40.640><c> a</c><00:01:40.799><c> way</c><00:01:40.960><c> for</c><00:01:41.119><c> agents</c><00:01:41.520><c> to</c><00:01:41.759><c> send</c><00:01:42.000><c> and</c>
+
+00:01:42.230 --> 00:01:42.240 align:start position:0%
+It's a way for agents to send and
+ 
+
+00:01:42.240 --> 00:01:44.310 align:start position:0%
+It's a way for agents to send and
+receive<00:01:42.640><c> emails</c><00:01:43.119><c> programmatically</c><00:01:44.000><c> through</c>
+
+00:01:44.310 --> 00:01:44.320 align:start position:0%
+receive emails programmatically through
+ 
+
+00:01:44.320 --> 00:01:46.389 align:start position:0%
+receive emails programmatically through
+code.<00:01:44.960><c> Setting</c><00:01:45.280><c> this</c><00:01:45.439><c> up</c><00:01:45.680><c> is</c><00:01:46.000><c> really</c>
+
+00:01:46.389 --> 00:01:46.399 align:start position:0%
+code. Setting this up is really
+ 
+
+00:01:46.399 --> 00:01:48.630 align:start position:0%
+code. Setting this up is really
+straightforward.<00:01:47.119><c> Just</c><00:01:47.280><c> go</c><00:01:47.439><c> to</c><00:01:47.600><c> agentmail.to</c>
+
+00:01:48.630 --> 00:01:48.640 align:start position:0%
+straightforward. Just go to agentmail.to
+ 
+
+00:01:48.640 --> 00:01:51.590 align:start position:0%
+straightforward. Just go to agentmail.to
+to<00:01:49.280><c> and</c><00:01:49.600><c> click</c><00:01:49.759><c> on</c><00:01:50.079><c> get</c><00:01:50.320><c> started</c><00:01:51.040><c> and</c><00:01:51.280><c> it</c><00:01:51.439><c> will</c>
+
+00:01:51.590 --> 00:01:51.600 align:start position:0%
+to and click on get started and it will
+ 
+
+00:01:51.600 --> 00:01:53.109 align:start position:0%
+to and click on get started and it will
+navigate<00:01:52.000><c> here</c><00:01:52.240><c> where</c><00:01:52.479><c> you</c><00:01:52.640><c> can</c><00:01:52.799><c> just</c><00:01:52.960><c> create</c>
+
+00:01:53.109 --> 00:01:53.119 align:start position:0%
+navigate here where you can just create
+ 
+
+00:01:53.119 --> 00:01:54.870 align:start position:0%
+navigate here where you can just create
+an<00:01:53.360><c> account.</c><00:01:53.680><c> You</c><00:01:53.840><c> can</c><00:01:53.920><c> sign</c><00:01:54.079><c> up</c><00:01:54.240><c> with</c><00:01:54.399><c> Google</c>
+
+00:01:54.870 --> 00:01:54.880 align:start position:0%
+an account. You can sign up with Google
+ 
+
+00:01:54.880 --> 00:01:56.870 align:start position:0%
+an account. You can sign up with Google
+and<00:01:55.200><c> it's</c><00:01:55.439><c> really</c><00:01:55.680><c> easy.</c><00:01:56.000><c> It's</c><00:01:56.240><c> free.</c><00:01:56.720><c> There</c>
+
+00:01:56.870 --> 00:01:56.880 align:start position:0%
+and it's really easy. It's free. There
+ 
+
+00:01:56.880 --> 00:01:58.310 align:start position:0%
+and it's really easy. It's free. There
+are<00:01:57.040><c> paid</c><00:01:57.280><c> plans</c><00:01:57.600><c> but</c><00:01:57.759><c> there's</c><00:01:57.920><c> a</c><00:01:58.079><c> very</c>
+
+00:01:58.310 --> 00:01:58.320 align:start position:0%
+are paid plans but there's a very
+ 
+
+00:01:58.320 --> 00:01:59.990 align:start position:0%
+are paid plans but there's a very
+generous<00:01:58.719><c> free</c><00:01:58.880><c> tier.</c><00:01:59.280><c> Now</c><00:01:59.439><c> once</c><00:01:59.600><c> you</c><00:01:59.759><c> do</c><00:01:59.840><c> that</c>
+
+00:01:59.990 --> 00:02:00.000 align:start position:0%
+generous free tier. Now once you do that
+ 
+
+00:02:00.000 --> 00:02:01.830 align:start position:0%
+generous free tier. Now once you do that
+you'll<00:02:00.320><c> follow</c><00:02:00.479><c> a</c><00:02:00.799><c> really</c><00:02:00.960><c> simple</c><00:02:01.280><c> onboarding</c>
+
+00:02:01.830 --> 00:02:01.840 align:start position:0%
+you'll follow a really simple onboarding
+ 
+
+00:02:01.840 --> 00:02:04.069 align:start position:0%
+you'll follow a really simple onboarding
+process<00:02:02.240><c> to</c><00:02:02.560><c> create</c><00:02:02.799><c> your</c><00:02:03.040><c> first</c><00:02:03.280><c> inbox.</c><00:02:03.920><c> You</c>
+
+00:02:04.069 --> 00:02:04.079 align:start position:0%
+process to create your first inbox. You
+ 
+
+00:02:04.079 --> 00:02:05.990 align:start position:0%
+process to create your first inbox. You
+get<00:02:04.240><c> three</c><00:02:04.560><c> inboxes</c><00:02:05.200><c> free</c><00:02:05.439><c> with</c><00:02:05.680><c> the</c><00:02:05.840><c> free</c>
+
+00:02:05.990 --> 00:02:06.000 align:start position:0%
+get three inboxes free with the free
+ 
+
+00:02:06.000 --> 00:02:07.830 align:start position:0%
+get three inboxes free with the free
+plan.<00:02:06.479><c> You</c><00:02:06.640><c> can</c><00:02:06.719><c> name</c><00:02:06.880><c> it</c><00:02:07.040><c> whatever</c><00:02:07.360><c> you</c><00:02:07.520><c> want.</c>
+
+00:02:07.830 --> 00:02:07.840 align:start position:0%
+plan. You can name it whatever you want.
+ 
+
+00:02:07.840 --> 00:02:09.669 align:start position:0%
+plan. You can name it whatever you want.
+It<00:02:08.000><c> will</c><00:02:08.160><c> be</c><00:02:08.479><c> whatever</c><00:02:08.800><c> your</c><00:02:08.959><c> name</c><00:02:09.119><c> is</c><00:02:09.440><c> at</c>
+
+00:02:09.669 --> 00:02:09.679 align:start position:0%
+It will be whatever your name is at
+ 
+
+00:02:09.679 --> 00:02:12.309 align:start position:0%
+It will be whatever your name is at
+agentmail.to<00:02:11.039><c> and</c><00:02:11.200><c> that's</c><00:02:11.360><c> where</c><00:02:11.599><c> OpenClaw</c>
+
+00:02:12.309 --> 00:02:12.319 align:start position:0%
+agentmail.to and that's where OpenClaw
+ 
+
+00:02:12.319 --> 00:02:14.470 align:start position:0%
+agentmail.to and that's where OpenClaw
+will<00:02:12.560><c> access</c><00:02:13.040><c> emails</c><00:02:13.520><c> that</c><00:02:13.760><c> you</c><00:02:14.000><c> send</c><00:02:14.239><c> and</c>
+
+00:02:14.470 --> 00:02:14.480 align:start position:0%
+will access emails that you send and
+ 
+
+00:02:14.480 --> 00:02:16.470 align:start position:0%
+will access emails that you send and
+receive<00:02:14.879><c> to</c><00:02:15.120><c> agentmail.</c><00:02:15.760><c> Once</c><00:02:16.000><c> you've</c><00:02:16.239><c> got</c>
+
+00:02:16.470 --> 00:02:16.480 align:start position:0%
+receive to agentmail. Once you've got
+ 
+
+00:02:16.480 --> 00:02:18.470 align:start position:0%
+receive to agentmail. Once you've got
+your<00:02:16.640><c> email</c><00:02:17.040><c> inbox</c><00:02:17.520><c> configured,</c><00:02:18.319><c> you're</c>
+
+00:02:18.470 --> 00:02:18.480 align:start position:0%
+your email inbox configured, you're
+ 
+
+00:02:18.480 --> 00:02:19.670 align:start position:0%
+your email inbox configured, you're
+going<00:02:18.560><c> to</c><00:02:18.640><c> want</c><00:02:18.800><c> to</c><00:02:18.879><c> write</c><00:02:19.120><c> down</c><00:02:19.280><c> the</c><00:02:19.440><c> name</c><00:02:19.599><c> of</c>
+
+00:02:19.670 --> 00:02:19.680 align:start position:0%
+going to want to write down the name of
+ 
+
+00:02:19.680 --> 00:02:21.030 align:start position:0%
+going to want to write down the name of
+that<00:02:19.840><c> inbox.</c><00:02:20.319><c> And</c><00:02:20.480><c> you're</c><00:02:20.640><c> going</c><00:02:20.640><c> to</c><00:02:20.800><c> want</c><00:02:20.879><c> to</c>
+
+00:02:21.030 --> 00:02:21.040 align:start position:0%
+that inbox. And you're going to want to
+ 
+
+00:02:21.040 --> 00:02:23.190 align:start position:0%
+that inbox. And you're going to want to
+grab<00:02:21.200><c> an</c><00:02:21.440><c> API</c><00:02:21.920><c> key</c><00:02:22.160><c> from</c><00:02:22.480><c> this</c><00:02:22.720><c> part</c><00:02:22.879><c> of</c><00:02:23.040><c> the</c>
+
+00:02:23.190 --> 00:02:23.200 align:start position:0%
+grab an API key from this part of the
+ 
+
+00:02:23.200 --> 00:02:25.270 align:start position:0%
+grab an API key from this part of the
+agent<00:02:23.520><c> mail</c><00:02:23.840><c> dashboard.</c><00:02:24.480><c> Go</c><00:02:24.640><c> ahead</c><00:02:24.800><c> and</c><00:02:24.959><c> copy</c>
+
+00:02:25.270 --> 00:02:25.280 align:start position:0%
+agent mail dashboard. Go ahead and copy
+ 
+
+00:02:25.280 --> 00:02:27.190 align:start position:0%
+agent mail dashboard. Go ahead and copy
+that<00:02:25.440><c> API</c><00:02:26.000><c> key.</c><00:02:26.239><c> And</c><00:02:26.400><c> then</c><00:02:26.560><c> we're</c><00:02:26.800><c> going</c><00:02:26.879><c> to</c><00:02:26.959><c> go</c>
+
+00:02:27.190 --> 00:02:27.200 align:start position:0%
+that API key. And then we're going to go
+ 
+
+00:02:27.200 --> 00:02:29.670 align:start position:0%
+that API key. And then we're going to go
+into<00:02:27.840><c> cloud</c><00:02:28.239><c> code</c><00:02:28.560><c> and</c><00:02:28.800><c> give</c><00:02:29.040><c> some</c><00:02:29.280><c> commands</c>
+
+00:02:29.670 --> 00:02:29.680 align:start position:0%
+into cloud code and give some commands
+ 
+
+00:02:29.680 --> 00:02:31.990 align:start position:0%
+into cloud code and give some commands
+to<00:02:30.000><c> set</c><00:02:30.239><c> all</c><00:02:30.400><c> of</c><00:02:30.560><c> this</c><00:02:30.720><c> up.</c><00:02:31.200><c> Okay.</c><00:02:31.520><c> Now,</c><00:02:31.760><c> once</c>
+
+00:02:31.990 --> 00:02:32.000 align:start position:0%
+to set all of this up. Okay. Now, once
+ 
+
+00:02:32.000 --> 00:02:33.430 align:start position:0%
+to set all of this up. Okay. Now, once
+you<00:02:32.160><c> have</c><00:02:32.319><c> that,</c><00:02:32.560><c> we're</c><00:02:32.800><c> going</c><00:02:32.800><c> to</c><00:02:32.959><c> open</c><00:02:33.120><c> up</c><00:02:33.280><c> a</c>
+
+00:02:33.430 --> 00:02:33.440 align:start position:0%
+you have that, we're going to open up a
+ 
+
+00:02:33.440 --> 00:02:35.030 align:start position:0%
+you have that, we're going to open up a
+terminal<00:02:33.920><c> window</c><00:02:34.160><c> and</c><00:02:34.400><c> we're</c><00:02:34.560><c> going</c><00:02:34.640><c> to</c><00:02:34.720><c> paste</c>
+
+00:02:35.030 --> 00:02:35.040 align:start position:0%
+terminal window and we're going to paste
+ 
+
+00:02:35.040 --> 00:02:36.630 align:start position:0%
+terminal window and we're going to paste
+this<00:02:35.280><c> command</c><00:02:35.680><c> right</c><00:02:35.920><c> here.</c><00:02:36.160><c> And</c><00:02:36.319><c> I'll</c><00:02:36.480><c> put</c>
+
+00:02:36.630 --> 00:02:36.640 align:start position:0%
+this command right here. And I'll put
+ 
+
+00:02:36.640 --> 00:02:38.229 align:start position:0%
+this command right here. And I'll put
+this<00:02:36.800><c> in</c><00:02:36.959><c> the</c><00:02:37.120><c> show</c><00:02:37.280><c> notes.</c><00:02:37.599><c> So,</c><00:02:37.840><c> whatever</c>
+
+00:02:38.229 --> 00:02:38.239 align:start position:0%
+this in the show notes. So, whatever
+ 
+
+00:02:38.239 --> 00:02:40.070 align:start position:0%
+this in the show notes. So, whatever
+computer<00:02:38.640><c> you</c><00:02:38.800><c> have</c><00:02:38.959><c> Claw</c><00:02:39.360><c> Code</c><00:02:39.599><c> running,</c>
+
+00:02:40.070 --> 00:02:40.080 align:start position:0%
+computer you have Claw Code running,
+ 
+
+00:02:40.080 --> 00:02:41.910 align:start position:0%
+computer you have Claw Code running,
+this<00:02:40.239><c> command</c><00:02:40.560><c> will</c><00:02:40.879><c> navigate</c><00:02:41.280><c> to</c><00:02:41.440><c> the</c><00:02:41.599><c> folder</c>
+
+00:02:41.910 --> 00:02:41.920 align:start position:0%
+this command will navigate to the folder
+ 
+
+00:02:41.920 --> 00:02:43.990 align:start position:0%
+this command will navigate to the folder
+where<00:02:42.239><c> OpenClaw</c><00:02:42.800><c> is</c><00:02:42.959><c> installed.</c><00:02:43.519><c> And</c><00:02:43.680><c> as</c><00:02:43.840><c> I</c>
+
+00:02:43.990 --> 00:02:44.000 align:start position:0%
+where OpenClaw is installed. And as I
+ 
+
+00:02:44.000 --> 00:02:45.350 align:start position:0%
+where OpenClaw is installed. And as I
+mentioned<00:02:44.319><c> before,</c><00:02:44.720><c> we're</c><00:02:44.959><c> going</c><00:02:45.040><c> to</c><00:02:45.200><c> be</c>
+
+00:02:45.350 --> 00:02:45.360 align:start position:0%
+mentioned before, we're going to be
+ 
+
+00:02:45.360 --> 00:02:47.350 align:start position:0%
+mentioned before, we're going to be
+using<00:02:45.680><c> clawed</c><00:02:46.160><c> code</c><00:02:46.400><c> to</c><00:02:46.640><c> implement</c><00:02:47.040><c> all</c><00:02:47.280><c> of</c>
+
+00:02:47.350 --> 00:02:47.360 align:start position:0%
+using clawed code to implement all of
+ 
+
+00:02:47.360 --> 00:02:49.190 align:start position:0%
+using clawed code to implement all of
+these<00:02:47.599><c> skills</c><00:02:47.920><c> and</c><00:02:48.160><c> tools.</c><00:02:48.640><c> And</c><00:02:48.800><c> you</c><00:02:48.959><c> might</c><00:02:49.040><c> be</c>
+
+00:02:49.190 --> 00:02:49.200 align:start position:0%
+these skills and tools. And you might be
+ 
+
+00:02:49.200 --> 00:02:51.589 align:start position:0%
+these skills and tools. And you might be
+wondering,<00:02:49.680><c> why</c><00:02:49.840><c> not</c><00:02:50.080><c> just</c><00:02:50.239><c> use</c><00:02:50.560><c> OpenClaw</c><00:02:51.360><c> to</c>
+
+00:02:51.589 --> 00:02:51.599 align:start position:0%
+wondering, why not just use OpenClaw to
+ 
+
+00:02:51.599 --> 00:02:53.670 align:start position:0%
+wondering, why not just use OpenClaw to
+do<00:02:51.680><c> this?</c><00:02:52.000><c> OpenClaw</c><00:02:52.560><c> can</c><00:02:52.720><c> improve</c><00:02:53.040><c> itself.</c><00:02:53.440><c> It</c>
+
+00:02:53.670 --> 00:02:53.680 align:start position:0%
+do this? OpenClaw can improve itself. It
+ 
+
+00:02:53.680 --> 00:02:55.270 align:start position:0%
+do this? OpenClaw can improve itself. It
+can<00:02:53.760><c> install</c><00:02:54.000><c> its</c><00:02:54.239><c> own</c><00:02:54.400><c> skills.</c><00:02:54.879><c> As</c><00:02:55.040><c> you</c><00:02:55.120><c> may</c>
+
+00:02:55.270 --> 00:02:55.280 align:start position:0%
+can install its own skills. As you may
+ 
+
+00:02:55.280 --> 00:02:56.949 align:start position:0%
+can install its own skills. As you may
+know,<00:02:55.440><c> Anthropic</c><00:02:56.080><c> has</c><00:02:56.319><c> actually</c><00:02:56.560><c> cracked</c>
+
+00:02:56.949 --> 00:02:56.959 align:start position:0%
+know, Anthropic has actually cracked
+ 
+
+00:02:56.959 --> 00:02:58.949 align:start position:0%
+know, Anthropic has actually cracked
+down<00:02:57.200><c> on</c><00:02:57.519><c> people</c><00:02:57.840><c> using</c><00:02:58.319><c> their</c><00:02:58.560><c> claw</c>
+
+00:02:58.949 --> 00:02:58.959 align:start position:0%
+down on people using their claw
+ 
+
+00:02:58.959 --> 00:03:01.110 align:start position:0%
+down on people using their claw
+subscriptions<00:02:59.599><c> with</c><00:02:59.840><c> OpenClaw,</c><00:03:00.640><c> basically</c>
+
+00:03:01.110 --> 00:03:01.120 align:start position:0%
+subscriptions with OpenClaw, basically
+ 
+
+00:03:01.120 --> 00:03:03.670 align:start position:0%
+subscriptions with OpenClaw, basically
+forcing<00:03:01.599><c> people</c><00:03:01.840><c> to</c><00:03:02.080><c> use</c><00:03:02.400><c> API</c><00:03:02.879><c> keys.</c><00:03:03.280><c> So,</c><00:03:03.440><c> in</c>
+
+00:03:03.670 --> 00:03:03.680 align:start position:0%
+forcing people to use API keys. So, in
+ 
+
+00:03:03.680 --> 00:03:05.670 align:start position:0%
+forcing people to use API keys. So, in
+almost<00:03:04.000><c> all</c><00:03:04.319><c> cases,</c><00:03:04.879><c> you're</c><00:03:05.120><c> not</c><00:03:05.280><c> going</c><00:03:05.360><c> to</c><00:03:05.519><c> be</c>
+
+00:03:05.670 --> 00:03:05.680 align:start position:0%
+almost all cases, you're not going to be
+ 
+
+00:03:05.680 --> 00:03:07.990 align:start position:0%
+almost all cases, you're not going to be
+using<00:03:06.000><c> your</c><00:03:06.319><c> monthly</c><00:03:06.720><c> subscription</c><00:03:07.440><c> to</c><00:03:07.680><c> run</c>
+
+00:03:07.990 --> 00:03:08.000 align:start position:0%
+using your monthly subscription to run
+ 
+
+00:03:08.000 --> 00:03:10.309 align:start position:0%
+using your monthly subscription to run
+OpenClaw.<00:03:08.800><c> You're</c><00:03:08.959><c> going</c><00:03:09.120><c> to</c><00:03:09.280><c> be</c><00:03:09.440><c> using</c><00:03:09.760><c> API</c>
+
+00:03:10.309 --> 00:03:10.319 align:start position:0%
+OpenClaw. You're going to be using API
+ 
+
+00:03:10.319 --> 00:03:12.149 align:start position:0%
+OpenClaw. You're going to be using API
+keys,<00:03:10.640><c> which</c><00:03:10.879><c> costs</c><00:03:11.200><c> money.</c><00:03:11.599><c> Whether</c><00:03:11.920><c> you're</c>
+
+00:03:12.149 --> 00:03:12.159 align:start position:0%
+keys, which costs money. Whether you're
+ 
+
+00:03:12.159 --> 00:03:14.470 align:start position:0%
+keys, which costs money. Whether you're
+using<00:03:12.480><c> OpenAI,</c><00:03:13.120><c> Anthropic,</c><00:03:13.760><c> Open</c><00:03:14.080><c> Router,</c>
+
+00:03:14.470 --> 00:03:14.480 align:start position:0%
+using OpenAI, Anthropic, Open Router,
+ 
+
+00:03:14.480 --> 00:03:17.030 align:start position:0%
+using OpenAI, Anthropic, Open Router,
+whatever<00:03:14.879><c> to</c><00:03:15.120><c> run</c><00:03:15.519><c> OpenClaw,</c><00:03:16.319><c> that's</c><00:03:16.560><c> why</c><00:03:16.800><c> I</c>
+
+00:03:17.030 --> 00:03:17.040 align:start position:0%
+whatever to run OpenClaw, that's why I
+ 
+
+00:03:17.040 --> 00:03:18.949 align:start position:0%
+whatever to run OpenClaw, that's why I
+like<00:03:17.200><c> to</c><00:03:17.440><c> use</c><00:03:17.599><c> Cloud</c><00:03:18.000><c> Code</c><00:03:18.239><c> in</c><00:03:18.400><c> the</c><00:03:18.560><c> background</c>
+
+00:03:18.949 --> 00:03:18.959 align:start position:0%
+like to use Cloud Code in the background
+ 
+
+00:03:18.959 --> 00:03:21.110 align:start position:0%
+like to use Cloud Code in the background
+as<00:03:19.200><c> the</c><00:03:19.360><c> engineer</c><00:03:19.840><c> to</c><00:03:20.159><c> build</c><00:03:20.400><c> all</c><00:03:20.560><c> the</c><00:03:20.800><c> systems</c>
+
+00:03:21.110 --> 00:03:21.120 align:start position:0%
+as the engineer to build all the systems
+ 
+
+00:03:21.120 --> 00:03:22.790 align:start position:0%
+as the engineer to build all the systems
+and<00:03:21.280><c> tools</c><00:03:21.680><c> that</c><00:03:22.000><c> ultimately</c><00:03:22.480><c> power</c>
+
+00:03:22.790 --> 00:03:22.800 align:start position:0%
+and tools that ultimately power
+ 
+
+00:03:22.800 --> 00:03:24.869 align:start position:0%
+and tools that ultimately power
+OpenClaw.<00:03:23.440><c> So</c><00:03:23.599><c> when</c><00:03:23.760><c> OpenClaw</c><00:03:24.319><c> is</c><00:03:24.480><c> running,</c>
+
+00:03:24.869 --> 00:03:24.879 align:start position:0%
+OpenClaw. So when OpenClaw is running,
+ 
+
+00:03:24.879 --> 00:03:26.309 align:start position:0%
+OpenClaw. So when OpenClaw is running,
+it's<00:03:25.120><c> not</c><00:03:25.360><c> burning</c><00:03:25.680><c> through</c><00:03:25.920><c> a</c><00:03:26.080><c> bunch</c><00:03:26.159><c> of</c>
+
+00:03:26.309 --> 00:03:26.319 align:start position:0%
+it's not burning through a bunch of
+ 
+
+00:03:26.319 --> 00:03:28.390 align:start position:0%
+it's not burning through a bunch of
+tokens<00:03:26.640><c> to</c><00:03:26.879><c> build</c><00:03:27.120><c> things.</c><00:03:27.519><c> It's</c><00:03:27.840><c> executing</c>
+
+00:03:28.390 --> 00:03:28.400 align:start position:0%
+tokens to build things. It's executing
+ 
+
+00:03:28.400 --> 00:03:30.070 align:start position:0%
+tokens to build things. It's executing
+systems<00:03:28.720><c> that</c><00:03:28.959><c> have</c><00:03:29.120><c> been</c><00:03:29.280><c> built</c><00:03:29.519><c> precisely</c>
+
+00:03:30.070 --> 00:03:30.080 align:start position:0%
+systems that have been built precisely
+ 
+
+00:03:30.080 --> 00:03:31.910 align:start position:0%
+systems that have been built precisely
+with<00:03:30.319><c> Claude</c><00:03:30.720><c> Code,</c><00:03:30.959><c> Codeex,</c><00:03:31.519><c> and</c><00:03:31.680><c> other</c>
+
+00:03:31.910 --> 00:03:31.920 align:start position:0%
+with Claude Code, Codeex, and other
+ 
+
+00:03:31.920 --> 00:03:33.830 align:start position:0%
+with Claude Code, Codeex, and other
+agents.<00:03:32.480><c> So</c><00:03:32.640><c> with</c><00:03:32.799><c> that</c><00:03:32.959><c> note</c><00:03:33.200><c> aside</c><00:03:33.519><c> about</c>
+
+00:03:33.830 --> 00:03:33.840 align:start position:0%
+agents. So with that note aside about
+ 
+
+00:03:33.840 --> 00:03:35.509 align:start position:0%
+agents. So with that note aside about
+why<00:03:34.080><c> we're</c><00:03:34.319><c> using</c><00:03:34.560><c> Claude</c><00:03:34.959><c> code</c><00:03:35.200><c> in</c><00:03:35.360><c> the</c>
+
+00:03:35.509 --> 00:03:35.519 align:start position:0%
+why we're using Claude code in the
+ 
+
+00:03:35.519 --> 00:03:37.110 align:start position:0%
+why we're using Claude code in the
+background<00:03:35.840><c> for</c><00:03:36.080><c> all</c><00:03:36.239><c> of</c><00:03:36.319><c> this,</c><00:03:36.640><c> let's</c><00:03:36.879><c> talk</c>
+
+00:03:37.110 --> 00:03:37.120 align:start position:0%
+background for all of this, let's talk
+ 
+
+00:03:37.120 --> 00:03:39.589 align:start position:0%
+background for all of this, let's talk
+about<00:03:37.280><c> how</c><00:03:37.519><c> we</c><00:03:37.760><c> add</c><00:03:38.080><c> skills</c><00:03:38.480><c> to</c><00:03:38.799><c> OpenClaw.</c><00:03:39.440><c> You</c>
+
+00:03:39.589 --> 00:03:39.599 align:start position:0%
+about how we add skills to OpenClaw. You
+ 
+
+00:03:39.599 --> 00:03:41.190 align:start position:0%
+about how we add skills to OpenClaw. You
+can<00:03:39.680><c> do</c><00:03:39.840><c> it</c><00:03:39.920><c> in</c><00:03:40.080><c> two</c><00:03:40.319><c> ways.</c><00:03:40.560><c> So</c><00:03:40.720><c> you</c><00:03:40.879><c> can</c><00:03:40.959><c> do</c><00:03:41.040><c> it</c>
+
+00:03:41.190 --> 00:03:41.200 align:start position:0%
+can do it in two ways. So you can do it
+ 
+
+00:03:41.200 --> 00:03:43.589 align:start position:0%
+can do it in two ways. So you can do it
+manually.<00:03:41.760><c> Basically</c><00:03:42.239><c> teach</c><00:03:42.720><c> OpenClaw</c><00:03:43.360><c> how</c>
+
+00:03:43.589 --> 00:03:43.599 align:start position:0%
+manually. Basically teach OpenClaw how
+ 
+
+00:03:43.599 --> 00:03:45.750 align:start position:0%
+manually. Basically teach OpenClaw how
+to<00:03:43.680><c> use</c><00:03:43.840><c> a</c><00:03:44.000><c> certain</c><00:03:44.319><c> skill.</c><00:03:44.879><c> And</c><00:03:45.120><c> every</c><00:03:45.440><c> skill</c>
+
+00:03:45.750 --> 00:03:45.760 align:start position:0%
+to use a certain skill. And every skill
+ 
+
+00:03:45.760 --> 00:03:48.390 align:start position:0%
+to use a certain skill. And every skill
+is<00:03:46.000><c> built</c><00:03:46.239><c> into</c><00:03:46.480><c> a</c><00:03:46.799><c> skill.md</c><00:03:47.680><c> file.</c><00:03:48.080><c> And</c><00:03:48.239><c> you</c>
+
+00:03:48.390 --> 00:03:48.400 align:start position:0%
+is built into a skill.md file. And you
+ 
+
+00:03:48.400 --> 00:03:50.630 align:start position:0%
+is built into a skill.md file. And you
+can<00:03:48.480><c> use</c><00:03:48.720><c> clawed</c><00:03:49.200><c> code</c><00:03:49.440><c> to</c><00:03:49.840><c> build</c><00:03:50.080><c> that</c><00:03:50.239><c> out.</c>
+
+00:03:50.630 --> 00:03:50.640 align:start position:0%
+can use clawed code to build that out.
+ 
+
+00:03:50.640 --> 00:03:52.309 align:start position:0%
+can use clawed code to build that out.
+Put<00:03:50.799><c> all</c><00:03:51.040><c> the</c><00:03:51.200><c> required</c><00:03:51.599><c> language</c><00:03:51.920><c> in</c><00:03:52.159><c> there</c>
+
+00:03:52.309 --> 00:03:52.319 align:start position:0%
+Put all the required language in there
+ 
+
+00:03:52.319 --> 00:03:54.470 align:start position:0%
+Put all the required language in there
+to<00:03:52.560><c> show</c><00:03:52.799><c> openclaw</c><00:03:53.360><c> how</c><00:03:53.519><c> to</c><00:03:53.599><c> use</c><00:03:53.760><c> a</c><00:03:53.920><c> skill.</c><00:03:54.319><c> And</c>
+
+00:03:54.470 --> 00:03:54.480 align:start position:0%
+to show openclaw how to use a skill. And
+ 
+
+00:03:54.480 --> 00:03:56.149 align:start position:0%
+to show openclaw how to use a skill. And
+then<00:03:54.640><c> there's</c><00:03:54.879><c> option</c><00:03:55.200><c> number</c><00:03:55.360><c> two</c><00:03:55.760><c> which</c><00:03:55.920><c> is</c>
+
+00:03:56.149 --> 00:03:56.159 align:start position:0%
+then there's option number two which is
+ 
+
+00:03:56.159 --> 00:03:58.149 align:start position:0%
+then there's option number two which is
+clawub.<00:03:56.720><c> Now</c><00:03:56.799><c> clawub</c><00:03:57.360><c> is</c><00:03:57.519><c> basically</c><00:03:57.840><c> a</c>
+
+00:03:58.149 --> 00:03:58.159 align:start position:0%
+clawub. Now clawub is basically a
+ 
+
+00:03:58.159 --> 00:04:00.149 align:start position:0%
+clawub. Now clawub is basically a
+repository<00:03:58.959><c> of</c><00:03:59.200><c> skills</c><00:03:59.519><c> that</c><00:03:59.760><c> you</c><00:03:59.920><c> can</c><00:04:00.000><c> hook</c>
+
+00:04:00.149 --> 00:04:00.159 align:start position:0%
+repository of skills that you can hook
+ 
+
+00:04:00.159 --> 00:04:01.910 align:start position:0%
+repository of skills that you can hook
+up<00:04:00.319><c> to</c><00:04:00.480><c> openclaw.</c><00:04:01.120><c> Some</c><00:04:01.200><c> of</c><00:04:01.280><c> these</c><00:04:01.599><c> come</c><00:04:01.760><c> from</c>
+
+00:04:01.910 --> 00:04:01.920 align:start position:0%
+up to openclaw. Some of these come from
+ 
+
+00:04:01.920 --> 00:04:03.910 align:start position:0%
+up to openclaw. Some of these come from
+the<00:04:02.159><c> actual</c><00:04:02.480><c> creator</c><00:04:02.799><c> of</c><00:04:02.959><c> openclaw</c><00:04:03.439><c> himself.</c>
+
+00:04:03.910 --> 00:04:03.920 align:start position:0%
+the actual creator of openclaw himself.
+ 
+
+00:04:03.920 --> 00:04:05.509 align:start position:0%
+the actual creator of openclaw himself.
+Some<00:04:04.000><c> of</c><00:04:04.080><c> these</c><00:04:04.319><c> are</c><00:04:04.480><c> official</c><00:04:04.879><c> skills</c><00:04:05.280><c> from</c>
+
+00:04:05.509 --> 00:04:05.519 align:start position:0%
+Some of these are official skills from
+ 
+
+00:04:05.519 --> 00:04:07.270 align:start position:0%
+Some of these are official skills from
+the<00:04:05.680><c> people</c><00:04:05.920><c> that</c><00:04:06.239><c> actually</c><00:04:06.560><c> write</c><00:04:06.799><c> the</c><00:04:06.959><c> tools</c>
+
+00:04:07.270 --> 00:04:07.280 align:start position:0%
+the people that actually write the tools
+ 
+
+00:04:07.280 --> 00:04:09.110 align:start position:0%
+the people that actually write the tools
+that<00:04:07.519><c> it's</c><00:04:07.760><c> connecting</c><00:04:08.000><c> to</c><00:04:08.319><c> like</c><00:04:08.560><c> slack</c><00:04:08.879><c> and</c>
+
+00:04:09.110 --> 00:04:09.120 align:start position:0%
+that it's connecting to like slack and
+ 
+
+00:04:09.120 --> 00:04:10.309 align:start position:0%
+that it's connecting to like slack and
+things<00:04:09.280><c> like</c><00:04:09.360><c> that.</c><00:04:09.680><c> And</c><00:04:09.840><c> then</c><00:04:10.000><c> some</c><00:04:10.080><c> of</c><00:04:10.239><c> them</c>
+
+00:04:10.309 --> 00:04:10.319 align:start position:0%
+things like that. And then some of them
+ 
+
+00:04:10.319 --> 00:04:12.229 align:start position:0%
+things like that. And then some of them
+are<00:04:10.480><c> just</c><00:04:10.640><c> open</c><00:04:10.959><c> source</c><00:04:11.200><c> tools</c><00:04:11.599><c> created</c><00:04:12.000><c> by</c>
+
+00:04:12.229 --> 00:04:12.239 align:start position:0%
+are just open source tools created by
+ 
+
+00:04:12.239 --> 00:04:14.070 align:start position:0%
+are just open source tools created by
+users.<00:04:12.799><c> Now,</c><00:04:13.040><c> a</c><00:04:13.200><c> word</c><00:04:13.360><c> of</c><00:04:13.439><c> warning</c><00:04:13.760><c> here.</c>
+
+00:04:14.070 --> 00:04:14.080 align:start position:0%
+users. Now, a word of warning here.
+ 
+
+00:04:14.080 --> 00:04:16.310 align:start position:0%
+users. Now, a word of warning here.
+There<00:04:14.239><c> have</c><00:04:14.480><c> been</c><00:04:14.799><c> reports</c><00:04:15.200><c> of</c><00:04:15.439><c> malware</c><00:04:16.079><c> being</c>
+
+00:04:16.310 --> 00:04:16.320 align:start position:0%
+There have been reports of malware being
+ 
+
+00:04:16.320 --> 00:04:18.310 align:start position:0%
+There have been reports of malware being
+deployed<00:04:16.720><c> on</c><00:04:16.959><c> this</c><00:04:17.120><c> site.</c><00:04:17.519><c> So,</c><00:04:17.840><c> exercise</c>
+
+00:04:18.310 --> 00:04:18.320 align:start position:0%
+deployed on this site. So, exercise
+ 
+
+00:04:18.320 --> 00:04:20.469 align:start position:0%
+deployed on this site. So, exercise
+caution<00:04:18.720><c> whenever</c><00:04:19.199><c> you</c><00:04:19.440><c> download</c><00:04:19.840><c> a</c><00:04:20.160><c> skill</c>
+
+00:04:20.469 --> 00:04:20.479 align:start position:0%
+caution whenever you download a skill
+ 
+
+00:04:20.479 --> 00:04:21.990 align:start position:0%
+caution whenever you download a skill
+from<00:04:20.799><c> Clawub,</c><00:04:21.359><c> but</c><00:04:21.519><c> we're</c><00:04:21.680><c> going</c><00:04:21.759><c> to</c><00:04:21.919><c> be</c>
+
+00:04:21.990 --> 00:04:22.000 align:start position:0%
+from Clawub, but we're going to be
+ 
+
+00:04:22.000 --> 00:04:24.629 align:start position:0%
+from Clawub, but we're going to be
+installing<00:04:22.479><c> the</c><00:04:22.880><c> agent</c><00:04:23.280><c> mail</c><00:04:23.600><c> skill</c><00:04:24.080><c> from</c>
+
+00:04:24.629 --> 00:04:24.639 align:start position:0%
+installing the agent mail skill from
+ 
+
+00:04:24.639 --> 00:04:26.629 align:start position:0%
+installing the agent mail skill from
+Claw<00:04:25.040><c> Hub.</c><00:04:25.360><c> And</c><00:04:25.520><c> this</c><00:04:25.680><c> one</c><00:04:25.919><c> comes</c><00:04:26.160><c> from</c><00:04:26.400><c> the</c>
+
+00:04:26.629 --> 00:04:26.639 align:start position:0%
+Claw Hub. And this one comes from the
+ 
+
+00:04:26.639 --> 00:04:28.950 align:start position:0%
+Claw Hub. And this one comes from the
+actual<00:04:27.120><c> creator</c><00:04:27.520><c> of</c><00:04:27.759><c> agent</c><00:04:28.080><c> mail</c><00:04:28.320><c> himself.</c>
+
+00:04:28.950 --> 00:04:28.960 align:start position:0%
+actual creator of agent mail himself.
+ 
+
+00:04:28.960 --> 00:04:30.629 align:start position:0%
+actual creator of agent mail himself.
+And<00:04:29.120><c> what</c><00:04:29.280><c> this</c><00:04:29.440><c> skill</c><00:04:29.680><c> does</c><00:04:29.919><c> is</c><00:04:30.080><c> it</c><00:04:30.240><c> basically</c>
+
+00:04:30.629 --> 00:04:30.639 align:start position:0%
+And what this skill does is it basically
+ 
+
+00:04:30.639 --> 00:04:32.550 align:start position:0%
+And what this skill does is it basically
+sets<00:04:30.960><c> up</c><00:04:31.120><c> some</c><00:04:31.280><c> scripts</c><00:04:31.600><c> that</c><00:04:31.759><c> your</c><00:04:31.919><c> OpenClaw</c>
+
+00:04:32.550 --> 00:04:32.560 align:start position:0%
+sets up some scripts that your OpenClaw
+ 
+
+00:04:32.560 --> 00:04:34.870 align:start position:0%
+sets up some scripts that your OpenClaw
+can<00:04:32.720><c> use</c><00:04:33.040><c> to</c><00:04:33.280><c> interact</c><00:04:33.600><c> with</c><00:04:33.840><c> agent</c><00:04:34.160><c> mail</c><00:04:34.479><c> to</c>
+
+00:04:34.870 --> 00:04:34.880 align:start position:0%
+can use to interact with agent mail to
+ 
+
+00:04:34.880 --> 00:04:37.030 align:start position:0%
+can use to interact with agent mail to
+send<00:04:35.280><c> email,</c><00:04:35.759><c> check</c><00:04:35.919><c> your</c><00:04:36.080><c> inbox,</c><00:04:36.560><c> and</c><00:04:36.800><c> set</c><00:04:36.880><c> up</c>
+
+00:04:37.030 --> 00:04:37.040 align:start position:0%
+send email, check your inbox, and set up
+ 
+
+00:04:37.040 --> 00:04:38.790 align:start position:0%
+send email, check your inbox, and set up
+web<00:04:37.280><c> hooks.</c><00:04:37.600><c> Now,</c><00:04:37.759><c> in</c><00:04:38.000><c> order</c><00:04:38.080><c> to</c><00:04:38.240><c> use</c><00:04:38.479><c> Claw</c>
+
+00:04:38.790 --> 00:04:38.800 align:start position:0%
+web hooks. Now, in order to use Claw
+ 
+
+00:04:38.800 --> 00:04:41.110 align:start position:0%
+web hooks. Now, in order to use Claw
+Hub,<00:04:39.120><c> you</c><00:04:39.280><c> have</c><00:04:39.360><c> to</c><00:04:39.600><c> install</c><00:04:40.080><c> Claw</c><00:04:40.479><c> Hub</c><00:04:40.800><c> on</c>
+
+00:04:41.110 --> 00:04:41.120 align:start position:0%
+Hub, you have to install Claw Hub on
+ 
+
+00:04:41.120 --> 00:04:43.189 align:start position:0%
+Hub, you have to install Claw Hub on
+your<00:04:41.360><c> OpenClaw</c><00:04:42.000><c> machine.</c><00:04:42.479><c> And</c><00:04:42.639><c> that</c><00:04:42.800><c> is</c><00:04:42.960><c> done</c>
+
+00:04:43.189 --> 00:04:43.199 align:start position:0%
+your OpenClaw machine. And that is done
+ 
+
+00:04:43.199 --> 00:04:45.189 align:start position:0%
+your OpenClaw machine. And that is done
+through<00:04:43.520><c> a</c><00:04:43.680><c> simple</c><00:04:43.919><c> npm</c><00:04:44.479><c> command.</c><00:04:44.880><c> I'll</c><00:04:45.120><c> put</c>
+
+00:04:45.189 --> 00:04:45.199 align:start position:0%
+through a simple npm command. I'll put
+ 
+
+00:04:45.199 --> 00:04:46.629 align:start position:0%
+through a simple npm command. I'll put
+this<00:04:45.360><c> in</c><00:04:45.520><c> the</c><00:04:45.600><c> show</c><00:04:45.759><c> notes,</c><00:04:46.080><c> but</c><00:04:46.320><c> it's</c><00:04:46.479><c> right</c>
+
+00:04:46.629 --> 00:04:46.639 align:start position:0%
+this in the show notes, but it's right
+ 
+
+00:04:46.639 --> 00:04:48.150 align:start position:0%
+this in the show notes, but it's right
+here.<00:04:46.960><c> You</c><00:04:47.120><c> just</c><00:04:47.280><c> copy</c><00:04:47.520><c> and</c><00:04:47.680><c> paste</c><00:04:47.840><c> that,</c>
+
+00:04:48.150 --> 00:04:48.160 align:start position:0%
+here. You just copy and paste that,
+ 
+
+00:04:48.160 --> 00:04:49.749 align:start position:0%
+here. You just copy and paste that,
+press<00:04:48.400><c> enter</c><00:04:48.639><c> in</c><00:04:48.800><c> your</c><00:04:48.960><c> terminal,</c><00:04:49.360><c> and</c><00:04:49.600><c> then</c>
+
+00:04:49.749 --> 00:04:49.759 align:start position:0%
+press enter in your terminal, and then
+ 
+
+00:04:49.759 --> 00:04:51.749 align:start position:0%
+press enter in your terminal, and then
+you<00:04:50.000><c> can</c><00:04:50.080><c> use</c><00:04:50.320><c> and</c><00:04:50.639><c> download</c><00:04:51.040><c> any</c><00:04:51.280><c> skill</c><00:04:51.600><c> from</c>
+
+00:04:51.749 --> 00:04:51.759 align:start position:0%
+you can use and download any skill from
+ 
+
+00:04:51.759 --> 00:04:53.350 align:start position:0%
+you can use and download any skill from
+Claw<00:04:52.080><c> Hub.</c><00:04:52.320><c> But</c><00:04:52.400><c> the</c><00:04:52.560><c> good</c><00:04:52.639><c> news</c><00:04:52.800><c> is</c><00:04:53.040><c> we</c><00:04:53.280><c> don't</c>
+
+00:04:53.350 --> 00:04:53.360 align:start position:0%
+Claw Hub. But the good news is we don't
+ 
+
+00:04:53.360 --> 00:04:54.950 align:start position:0%
+Claw Hub. But the good news is we don't
+have<00:04:53.440><c> to</c><00:04:53.600><c> run</c><00:04:53.759><c> any</c><00:04:54.000><c> more</c><00:04:54.160><c> commands.</c><00:04:54.720><c> We're</c>
+
+00:04:54.950 --> 00:04:54.960 align:start position:0%
+have to run any more commands. We're
+ 
+
+00:04:54.960 --> 00:04:57.030 align:start position:0%
+have to run any more commands. We're
+simply<00:04:55.280><c> going</c><00:04:55.360><c> to</c><00:04:55.520><c> feed</c><00:04:55.759><c> a</c><00:04:56.000><c> prompt</c><00:04:56.400><c> to</c><00:04:56.800><c> our</c>
+
+00:04:57.030 --> 00:04:57.040 align:start position:0%
+simply going to feed a prompt to our
+ 
+
+00:04:57.040 --> 00:04:58.870 align:start position:0%
+simply going to feed a prompt to our
+Claude<00:04:57.440><c> code.</c><00:04:58.000><c> So,</c><00:04:58.160><c> this</c><00:04:58.320><c> is</c><00:04:58.400><c> the</c><00:04:58.560><c> exact</c>
+
+00:04:58.870 --> 00:04:58.880 align:start position:0%
+Claude code. So, this is the exact
+ 
+
+00:04:58.880 --> 00:05:00.469 align:start position:0%
+Claude code. So, this is the exact
+prompt<00:04:59.199><c> that</c><00:04:59.440><c> I'm</c><00:04:59.680><c> going</c><00:04:59.759><c> to</c><00:04:59.919><c> put</c><00:05:00.080><c> in</c><00:05:00.240><c> the</c><00:05:00.320><c> show</c>
+
+00:05:00.469 --> 00:05:00.479 align:start position:0%
+prompt that I'm going to put in the show
+ 
+
+00:05:00.479 --> 00:05:02.310 align:start position:0%
+prompt that I'm going to put in the show
+notes<00:05:00.800><c> that</c><00:05:01.040><c> you</c><00:05:01.199><c> can</c><00:05:01.360><c> run</c><00:05:01.600><c> to</c><00:05:01.840><c> install</c><00:05:02.160><c> the</c>
+
+00:05:02.310 --> 00:05:02.320 align:start position:0%
+notes that you can run to install the
+ 
+
+00:05:02.320 --> 00:05:04.150 align:start position:0%
+notes that you can run to install the
+agent<00:05:02.720><c> mail</c><00:05:02.960><c> skill.</c><00:05:03.280><c> It</c><00:05:03.520><c> basically</c><00:05:03.840><c> tells</c>
+
+00:05:04.150 --> 00:05:04.160 align:start position:0%
+agent mail skill. It basically tells
+ 
+
+00:05:04.160 --> 00:05:06.310 align:start position:0%
+agent mail skill. It basically tells
+Claude<00:05:04.560><c> code</c><00:05:04.880><c> to</c><00:05:05.120><c> look</c><00:05:05.280><c> at</c><00:05:05.440><c> the</c><00:05:05.600><c> agent</c><00:05:06.000><c> mail</c>
+
+00:05:06.310 --> 00:05:06.320 align:start position:0%
+Claude code to look at the agent mail
+ 
+
+00:05:06.320 --> 00:05:08.550 align:start position:0%
+Claude code to look at the agent mail
+documentation<00:05:06.960><c> in</c><00:05:07.199><c> Claw</c><00:05:07.520><c> Hub,</c><00:05:07.840><c> install</c><00:05:08.320><c> and</c>
+
+00:05:08.550 --> 00:05:08.560 align:start position:0%
+documentation in Claw Hub, install and
+ 
+
+00:05:08.560 --> 00:05:10.390 align:start position:0%
+documentation in Claw Hub, install and
+download<00:05:08.800><c> the</c><00:05:08.960><c> Claw</c><00:05:09.280><c> Hub</c><00:05:09.520><c> skill</c><00:05:09.919><c> and</c><00:05:10.080><c> it</c><00:05:10.240><c> will</c>
+
+00:05:10.390 --> 00:05:10.400 align:start position:0%
+download the Claw Hub skill and it will
+ 
+
+00:05:10.400 --> 00:05:12.469 align:start position:0%
+download the Claw Hub skill and it will
+prompt<00:05:10.720><c> you</c><00:05:10.880><c> to</c><00:05:11.120><c> give</c><00:05:11.280><c> it</c><00:05:11.440><c> the</c><00:05:11.600><c> API</c><00:05:12.080><c> key</c><00:05:12.320><c> and</c>
+
+00:05:12.469 --> 00:05:12.479 align:start position:0%
+prompt you to give it the API key and
+ 
+
+00:05:12.479 --> 00:05:14.390 align:start position:0%
+prompt you to give it the API key and
+the<00:05:12.639><c> agent</c><00:05:13.039><c> inbox</c><00:05:13.520><c> name</c><00:05:13.680><c> that</c><00:05:13.919><c> we</c><00:05:14.080><c> saved</c>
+
+00:05:14.390 --> 00:05:14.400 align:start position:0%
+the agent inbox name that we saved
+ 
+
+00:05:14.400 --> 00:05:16.550 align:start position:0%
+the agent inbox name that we saved
+earlier.<00:05:14.880><c> Once</c><00:05:15.120><c> you</c><00:05:15.280><c> do</c><00:05:15.440><c> that,</c><00:05:15.680><c> your</c><00:05:15.840><c> OpenClaw</c>
+
+00:05:16.550 --> 00:05:16.560 align:start position:0%
+earlier. Once you do that, your OpenClaw
+ 
+
+00:05:16.560 --> 00:05:18.230 align:start position:0%
+earlier. Once you do that, your OpenClaw
+is<00:05:16.720><c> officially</c><00:05:17.120><c> hooked</c><00:05:17.360><c> up</c><00:05:17.520><c> to</c><00:05:17.680><c> agent</c><00:05:18.000><c> mail</c>
+
+00:05:18.230 --> 00:05:18.240 align:start position:0%
+is officially hooked up to agent mail
+ 
+
+00:05:18.240 --> 00:05:19.990 align:start position:0%
+is officially hooked up to agent mail
+and<00:05:18.479><c> we</c><00:05:18.639><c> can</c><00:05:18.720><c> test</c><00:05:18.960><c> it</c><00:05:19.120><c> out.</c><00:05:19.440><c> So,</c><00:05:19.600><c> what</c><00:05:19.759><c> I've</c>
+
+00:05:19.990 --> 00:05:20.000 align:start position:0%
+and we can test it out. So, what I've
+ 
+
+00:05:20.000 --> 00:05:22.230 align:start position:0%
+and we can test it out. So, what I've
+done<00:05:20.160><c> here</c><00:05:20.320><c> is</c><00:05:20.479><c> I've</c><00:05:20.800><c> actually</c><00:05:21.039><c> forwarded</c><00:05:21.759><c> a</c>
+
+00:05:22.230 --> 00:05:22.240 align:start position:0%
+done here is I've actually forwarded a
+ 
+
+00:05:22.240 --> 00:05:25.029 align:start position:0%
+done here is I've actually forwarded a
+email<00:05:22.800><c> that</c><00:05:23.039><c> I</c><00:05:23.199><c> got</c><00:05:23.440><c> in</c><00:05:23.600><c> my</c><00:05:23.840><c> personal</c><00:05:24.240><c> email</c><00:05:24.720><c> to</c>
+
+00:05:25.029 --> 00:05:25.039 align:start position:0%
+email that I got in my personal email to
+ 
+
+00:05:25.039 --> 00:05:27.110 align:start position:0%
+email that I got in my personal email to
+my<00:05:25.199><c> agent</c><00:05:25.600><c> mail</c><00:05:25.840><c> inbox</c><00:05:26.240><c> and</c><00:05:26.400><c> this</c><00:05:26.560><c> is</c><00:05:26.720><c> just</c><00:05:26.880><c> a</c>
+
+00:05:27.110 --> 00:05:27.120 align:start position:0%
+my agent mail inbox and this is just a
+ 
+
+00:05:27.120 --> 00:05:29.350 align:start position:0%
+my agent mail inbox and this is just a
+newsletter<00:05:27.680><c> about</c><00:05:28.080><c> actually</c><00:05:28.560><c> how</c><00:05:28.800><c> to</c><00:05:29.039><c> set</c><00:05:29.199><c> up</c>
+
+00:05:29.350 --> 00:05:29.360 align:start position:0%
+newsletter about actually how to set up
+ 
+
+00:05:29.360 --> 00:05:32.070 align:start position:0%
+newsletter about actually how to set up
+your<00:05:29.600><c> first</c><00:05:29.840><c> AI</c><00:05:30.240><c> agent</c><00:05:30.639><c> in</c><00:05:30.880><c> OpenClaw.</c><00:05:31.520><c> And</c><00:05:31.759><c> so,</c>
+
+00:05:32.070 --> 00:05:32.080 align:start position:0%
+your first AI agent in OpenClaw. And so,
+ 
+
+00:05:32.080 --> 00:05:34.310 align:start position:0%
+your first AI agent in OpenClaw. And so,
+OpenC<00:05:32.400><c> Claw</c><00:05:32.720><c> is</c><00:05:32.960><c> going</c><00:05:33.039><c> to</c><00:05:33.199><c> see</c><00:05:33.360><c> that</c><00:05:33.680><c> in</c><00:05:34.000><c> agent</c>
+
+00:05:34.310 --> 00:05:34.320 align:start position:0%
+OpenC Claw is going to see that in agent
+ 
+
+00:05:34.320 --> 00:05:35.749 align:start position:0%
+OpenC Claw is going to see that in agent
+mail<00:05:34.479><c> and</c><00:05:34.720><c> it's</c><00:05:34.880><c> going</c><00:05:34.960><c> to</c><00:05:35.120><c> prompt</c><00:05:35.360><c> me</c><00:05:35.520><c> in</c>
+
+00:05:35.749 --> 00:05:35.759 align:start position:0%
+mail and it's going to prompt me in
+ 
+
+00:05:35.759 --> 00:05:37.749 align:start position:0%
+mail and it's going to prompt me in
+Telegram.<00:05:36.240><c> And</c><00:05:36.400><c> now,</c><00:05:36.639><c> as</c><00:05:36.800><c> you</c><00:05:36.960><c> can</c><00:05:37.039><c> see,</c><00:05:37.520><c> it's</c>
+
+00:05:37.749 --> 00:05:37.759 align:start position:0%
+Telegram. And now, as you can see, it's
+ 
+
+00:05:37.759 --> 00:05:39.990 align:start position:0%
+Telegram. And now, as you can see, it's
+showing<00:05:38.000><c> up</c><00:05:38.240><c> in</c><00:05:38.560><c> my</c><00:05:38.880><c> Telegram,</c><00:05:39.440><c> alerting</c><00:05:39.840><c> me</c>
+
+00:05:39.990 --> 00:05:40.000 align:start position:0%
+showing up in my Telegram, alerting me
+ 
+
+00:05:40.000 --> 00:05:41.830 align:start position:0%
+showing up in my Telegram, alerting me
+that<00:05:40.240><c> this</c><00:05:40.560><c> just</c><00:05:40.800><c> got</c><00:05:40.960><c> dropped</c><00:05:41.280><c> in</c><00:05:41.440><c> my</c><00:05:41.520><c> agent</c>
+
+00:05:41.830 --> 00:05:41.840 align:start position:0%
+that this just got dropped in my agent
+ 
+
+00:05:41.840 --> 00:05:43.510 align:start position:0%
+that this just got dropped in my agent
+mail<00:05:42.080><c> inbox.</c><00:05:42.560><c> And</c><00:05:42.720><c> now,</c><00:05:42.800><c> I'm</c><00:05:42.960><c> going</c><00:05:43.039><c> to</c><00:05:43.120><c> ask</c><00:05:43.280><c> it</c>
+
+00:05:43.510 --> 00:05:43.520 align:start position:0%
+mail inbox. And now, I'm going to ask it
+ 
+
+00:05:43.520 --> 00:05:44.710 align:start position:0%
+mail inbox. And now, I'm going to ask it
+just<00:05:43.759><c> basically,</c><00:05:44.160><c> give</c><00:05:44.240><c> me</c><00:05:44.400><c> the</c><00:05:44.560><c> main</c>
+
+00:05:44.710 --> 00:05:44.720 align:start position:0%
+just basically, give me the main
+ 
+
+00:05:44.720 --> 00:05:46.310 align:start position:0%
+just basically, give me the main
+takeaways<00:05:45.199><c> from</c><00:05:45.360><c> this</c><00:05:45.600><c> email.</c><00:05:46.000><c> And</c><00:05:46.160><c> you</c><00:05:46.240><c> can</c>
+
+00:05:46.310 --> 00:05:46.320 align:start position:0%
+takeaways from this email. And you can
+ 
+
+00:05:46.320 --> 00:05:47.990 align:start position:0%
+takeaways from this email. And you can
+see<00:05:46.479><c> it</c><00:05:46.639><c> comes</c><00:05:46.800><c> back</c><00:05:46.960><c> with</c><00:05:47.120><c> a</c><00:05:47.360><c> really</c><00:05:47.520><c> nice</c>
+
+00:05:47.990 --> 00:05:48.000 align:start position:0%
+see it comes back with a really nice
+ 
+
+00:05:48.000 --> 00:05:49.670 align:start position:0%
+see it comes back with a really nice
+summary<00:05:48.400><c> of</c><00:05:48.560><c> all</c><00:05:48.720><c> the</c><00:05:48.880><c> key</c><00:05:49.039><c> takeaways</c><00:05:49.520><c> from</c>
+
+00:05:49.670 --> 00:05:49.680 align:start position:0%
+summary of all the key takeaways from
+ 
+
+00:05:49.680 --> 00:05:51.189 align:start position:0%
+summary of all the key takeaways from
+that<00:05:49.919><c> email.</c><00:05:50.320><c> So,</c><00:05:50.479><c> there</c><00:05:50.639><c> are</c><00:05:50.720><c> a</c><00:05:50.880><c> ton</c><00:05:51.039><c> of</c>
+
+00:05:51.189 --> 00:05:51.199 align:start position:0%
+that email. So, there are a ton of
+ 
+
+00:05:51.199 --> 00:05:52.870 align:start position:0%
+that email. So, there are a ton of
+possibilities<00:05:51.759><c> you</c><00:05:52.000><c> can</c><00:05:52.160><c> build</c><00:05:52.320><c> with</c><00:05:52.560><c> agent</c>
+
+00:05:52.870 --> 00:05:52.880 align:start position:0%
+possibilities you can build with agent
+ 
+
+00:05:52.880 --> 00:05:54.790 align:start position:0%
+possibilities you can build with agent
+mail.<00:05:53.280><c> Obviously,</c><00:05:53.680><c> this</c><00:05:53.840><c> is</c><00:05:53.919><c> a</c><00:05:54.160><c> really</c><00:05:54.400><c> simple</c>
+
+00:05:54.790 --> 00:05:54.800 align:start position:0%
+mail. Obviously, this is a really simple
+ 
+
+00:05:54.800 --> 00:05:56.710 align:start position:0%
+mail. Obviously, this is a really simple
+personal<00:05:55.280><c> use</c><00:05:55.520><c> case.</c><00:05:55.840><c> I'm</c><00:05:56.080><c> forwarding</c>
+
+00:05:56.710 --> 00:05:56.720 align:start position:0%
+personal use case. I'm forwarding
+ 
+
+00:05:56.720 --> 00:05:58.629 align:start position:0%
+personal use case. I'm forwarding
+invoices<00:05:57.360><c> and</c><00:05:57.680><c> newsletters</c><00:05:58.160><c> and</c><00:05:58.400><c> other</c>
+
+00:05:58.629 --> 00:05:58.639 align:start position:0%
+invoices and newsletters and other
+ 
+
+00:05:58.639 --> 00:06:00.390 align:start position:0%
+invoices and newsletters and other
+things<00:05:58.720><c> that</c><00:05:58.960><c> I</c><00:05:59.120><c> get</c><00:05:59.280><c> in</c><00:05:59.520><c> my</c><00:05:59.680><c> day-to-day</c><00:06:00.160><c> life</c>
+
+00:06:00.390 --> 00:06:00.400 align:start position:0%
+things that I get in my day-to-day life
+ 
+
+00:06:00.400 --> 00:06:02.950 align:start position:0%
+things that I get in my day-to-day life
+to<00:06:00.720><c> Jarvis</c><00:06:01.360><c> to</c><00:06:01.520><c> my</c><00:06:01.680><c> openclaw</c><00:06:02.240><c> and</c><00:06:02.479><c> it's</c><00:06:02.720><c> coming</c>
+
+00:06:02.950 --> 00:06:02.960 align:start position:0%
+to Jarvis to my openclaw and it's coming
+ 
+
+00:06:02.960 --> 00:06:04.790 align:start position:0%
+to Jarvis to my openclaw and it's coming
+back<00:06:03.120><c> and</c><00:06:03.360><c> giving</c><00:06:03.600><c> me</c><00:06:03.759><c> actions,</c><00:06:04.240><c> summaries,</c>
+
+00:06:04.790 --> 00:06:04.800 align:start position:0%
+back and giving me actions, summaries,
+ 
+
+00:06:04.800 --> 00:06:06.390 align:start position:0%
+back and giving me actions, summaries,
+other<00:06:05.039><c> things</c><00:06:05.280><c> based</c><00:06:05.520><c> on</c><00:06:05.680><c> those.</c><00:06:06.080><c> But</c><00:06:06.240><c> you</c>
+
+00:06:06.390 --> 00:06:06.400 align:start position:0%
+other things based on those. But you
+ 
+
+00:06:06.400 --> 00:06:07.909 align:start position:0%
+other things based on those. But you
+could<00:06:06.479><c> build</c><00:06:06.639><c> this</c><00:06:06.800><c> into</c><00:06:07.120><c> your</c><00:06:07.280><c> business.</c><00:06:07.680><c> You</c>
+
+00:06:07.909 --> 00:06:07.919 align:start position:0%
+could build this into your business. You
+ 
+
+00:06:07.919 --> 00:06:10.230 align:start position:0%
+could build this into your business. You
+could<00:06:08.080><c> have</c><00:06:08.240><c> a</c><00:06:08.560><c> support</c><00:06:08.880><c> inbox</c><00:06:09.520><c> where</c><00:06:09.919><c> agent</c>
+
+00:06:10.230 --> 00:06:10.240 align:start position:0%
+could have a support inbox where agent
+ 
+
+00:06:10.240 --> 00:06:11.990 align:start position:0%
+could have a support inbox where agent
+mail<00:06:10.479><c> is</c><00:06:10.720><c> acting</c><00:06:10.960><c> as</c><00:06:11.199><c> a</c><00:06:11.440><c> first</c><00:06:11.600><c> line</c><00:06:11.840><c> of</c>
+
+00:06:11.990 --> 00:06:12.000 align:start position:0%
+mail is acting as a first line of
+ 
+
+00:06:12.000 --> 00:06:14.550 align:start position:0%
+mail is acting as a first line of
+defense<00:06:12.400><c> to</c><00:06:12.800><c> field</c><00:06:13.120><c> any</c><00:06:13.440><c> user</c><00:06:13.759><c> inquiries,</c><00:06:14.319><c> any</c>
+
+00:06:14.550 --> 00:06:14.560 align:start position:0%
+defense to field any user inquiries, any
+ 
+
+00:06:14.560 --> 00:06:16.230 align:start position:0%
+defense to field any user inquiries, any
+user<00:06:14.880><c> bugs,</c><00:06:15.280><c> things</c><00:06:15.520><c> like</c><00:06:15.600><c> that,</c><00:06:15.919><c> people</c>
+
+00:06:16.230 --> 00:06:16.240 align:start position:0%
+user bugs, things like that, people
+ 
+
+00:06:16.240 --> 00:06:17.670 align:start position:0%
+user bugs, things like that, people
+reporting<00:06:16.639><c> about</c><00:06:16.880><c> your</c><00:06:17.039><c> products.</c><00:06:17.520><c> The</c>
+
+00:06:17.670 --> 00:06:17.680 align:start position:0%
+reporting about your products. The
+ 
+
+00:06:17.680 --> 00:06:19.670 align:start position:0%
+reporting about your products. The
+possibilities<00:06:18.240><c> are</c><00:06:18.479><c> really</c><00:06:18.720><c> endless.</c><00:06:19.360><c> Okay,</c>
+
+00:06:19.670 --> 00:06:19.680 align:start position:0%
+possibilities are really endless. Okay,
+ 
+
+00:06:19.680 --> 00:06:21.590 align:start position:0%
+possibilities are really endless. Okay,
+tool<00:06:20.080><c> number</c><00:06:20.319><c> two,</c><00:06:20.639><c> and</c><00:06:20.880><c> honestly,</c><00:06:21.360><c> this</c>
+
+00:06:21.590 --> 00:06:21.600 align:start position:0%
+tool number two, and honestly, this
+ 
+
+00:06:21.600 --> 00:06:23.350 align:start position:0%
+tool number two, and honestly, this
+might<00:06:21.759><c> be</c><00:06:21.919><c> the</c><00:06:22.160><c> biggest</c><00:06:22.560><c> single</c><00:06:22.880><c> upgrade</c><00:06:23.199><c> that</c>
+
+00:06:23.350 --> 00:06:23.360 align:start position:0%
+might be the biggest single upgrade that
+ 
+
+00:06:23.360 --> 00:06:25.029 align:start position:0%
+might be the biggest single upgrade that
+you<00:06:23.520><c> could</c><00:06:23.600><c> make</c><00:06:23.759><c> to</c><00:06:23.919><c> your</c><00:06:24.160><c> open</c><00:06:24.319><c> claw.</c><00:06:24.639><c> So</c><00:06:24.880><c> let</c>
+
+00:06:25.029 --> 00:06:25.039 align:start position:0%
+you could make to your open claw. So let
+ 
+
+00:06:25.039 --> 00:06:26.790 align:start position:0%
+you could make to your open claw. So let
+me<00:06:25.120><c> explain</c><00:06:25.440><c> the</c><00:06:25.680><c> problem</c><00:06:26.000><c> first.</c><00:06:26.400><c> So</c><00:06:26.639><c> right</c>
+
+00:06:26.790 --> 00:06:26.800 align:start position:0%
+me explain the problem first. So right
+ 
+
+00:06:26.800 --> 00:06:28.950 align:start position:0%
+me explain the problem first. So right
+out<00:06:26.960><c> of</c><00:06:27.039><c> the</c><00:06:27.199><c> box,</c><00:06:27.440><c> OpenClaw</c><00:06:28.160><c> has</c><00:06:28.319><c> a</c><00:06:28.560><c> memory</c>
+
+00:06:28.950 --> 00:06:28.960 align:start position:0%
+out of the box, OpenClaw has a memory
+ 
+
+00:06:28.960 --> 00:06:30.790 align:start position:0%
+out of the box, OpenClaw has a memory
+system.<00:06:29.440><c> When</c><00:06:29.600><c> you</c><00:06:29.759><c> interact</c><00:06:30.080><c> with</c><00:06:30.240><c> it,</c><00:06:30.560><c> it</c>
+
+00:06:30.790 --> 00:06:30.800 align:start position:0%
+system. When you interact with it, it
+ 
+
+00:06:30.800 --> 00:06:32.950 align:start position:0%
+system. When you interact with it, it
+creates<00:06:31.120><c> markdown</c><00:06:31.680><c> files</c><00:06:32.000><c> that</c><00:06:32.240><c> it</c><00:06:32.479><c> stores</c><00:06:32.800><c> in</c>
+
+00:06:32.950 --> 00:06:32.960 align:start position:0%
+creates markdown files that it stores in
+ 
+
+00:06:32.960 --> 00:06:35.510 align:start position:0%
+creates markdown files that it stores in
+a<00:06:33.120><c> local</c><00:06:33.440><c> SQLite</c><00:06:34.080><c> database.</c><00:06:34.639><c> And</c><00:06:34.880><c> anytime</c><00:06:35.280><c> you</c>
+
+00:06:35.510 --> 00:06:35.520 align:start position:0%
+a local SQLite database. And anytime you
+ 
+
+00:06:35.520 --> 00:06:37.189 align:start position:0%
+a local SQLite database. And anytime you
+want<00:06:35.680><c> to</c><00:06:35.840><c> ask</c><00:06:36.160><c> about</c><00:06:36.479><c> previous</c><00:06:36.800><c> work,</c>
+
+00:06:37.189 --> 00:06:37.199 align:start position:0%
+want to ask about previous work,
+ 
+
+00:06:37.199 --> 00:06:38.390 align:start position:0%
+want to ask about previous work,
+previous<00:06:37.520><c> sessions</c><00:06:37.840><c> you've</c><00:06:38.080><c> run</c><00:06:38.240><c> with</c>
+
+00:06:38.390 --> 00:06:38.400 align:start position:0%
+previous sessions you've run with
+ 
+
+00:06:38.400 --> 00:06:40.710 align:start position:0%
+previous sessions you've run with
+OpenClaw,<00:06:39.039><c> it</c><00:06:39.199><c> uses</c><00:06:39.440><c> a</c><00:06:39.680><c> keyword-based</c><00:06:40.400><c> search</c>
+
+00:06:40.710 --> 00:06:40.720 align:start position:0%
+OpenClaw, it uses a keyword-based search
+ 
+
+00:06:40.720 --> 00:06:42.230 align:start position:0%
+OpenClaw, it uses a keyword-based search
+to<00:06:40.880><c> search</c><00:06:41.120><c> through</c><00:06:41.360><c> those</c><00:06:41.520><c> memories.</c><00:06:42.000><c> Now</c>
+
+00:06:42.230 --> 00:06:42.240 align:start position:0%
+to search through those memories. Now
+ 
+
+00:06:42.240 --> 00:06:43.909 align:start position:0%
+to search through those memories. Now
+the<00:06:42.400><c> problem</c><00:06:42.560><c> with</c><00:06:42.800><c> that</c><00:06:43.199><c> is</c><00:06:43.440><c> if</c><00:06:43.680><c> you're</c>
+
+00:06:43.909 --> 00:06:43.919 align:start position:0%
+the problem with that is if you're
+ 
+
+00:06:43.919 --> 00:06:45.590 align:start position:0%
+the problem with that is if you're
+asking<00:06:44.240><c> about,</c><00:06:44.560><c> hey,</c><00:06:44.800><c> what</c><00:06:44.960><c> did</c><00:06:45.120><c> we</c><00:06:45.280><c> do</c><00:06:45.360><c> with</c>
+
+00:06:45.590 --> 00:06:45.600 align:start position:0%
+asking about, hey, what did we do with
+ 
+
+00:06:45.600 --> 00:06:47.749 align:start position:0%
+asking about, hey, what did we do with
+XYZ<00:06:46.319><c> last</c><00:06:46.560><c> week?</c><00:06:47.039><c> In</c><00:06:47.199><c> the</c><00:06:47.360><c> actual</c>
+
+00:06:47.749 --> 00:06:47.759 align:start position:0%
+XYZ last week? In the actual
+ 
+
+00:06:47.759 --> 00:06:50.469 align:start position:0%
+XYZ last week? In the actual
+conversation<00:06:48.560><c> didn't</c><00:06:48.880><c> use</c><00:06:49.120><c> the</c><00:06:49.360><c> words</c><00:06:49.759><c> XYZ,</c>
+
+00:06:50.469 --> 00:06:50.479 align:start position:0%
+conversation didn't use the words XYZ,
+ 
+
+00:06:50.479 --> 00:06:52.469 align:start position:0%
+conversation didn't use the words XYZ,
+the<00:06:50.720><c> keyword</c><00:06:51.120><c> search</c><00:06:51.440><c> is</c><00:06:51.600><c> going</c><00:06:51.759><c> to</c><00:06:51.840><c> fail.</c><00:06:52.319><c> So</c>
+
+00:06:52.469 --> 00:06:52.479 align:start position:0%
+the keyword search is going to fail. So
+ 
+
+00:06:52.479 --> 00:06:54.230 align:start position:0%
+the keyword search is going to fail. So
+it<00:06:52.720><c> can</c><00:06:52.800><c> easily</c><00:06:53.199><c> forget</c><00:06:53.600><c> things</c><00:06:53.759><c> that</c><00:06:54.000><c> you've</c>
+
+00:06:54.230 --> 00:06:54.240 align:start position:0%
+it can easily forget things that you've
+ 
+
+00:06:54.240 --> 00:06:55.909 align:start position:0%
+it can easily forget things that you've
+worked<00:06:54.400><c> on.</c><00:06:54.720><c> And</c><00:06:54.880><c> it</c><00:06:55.039><c> gets</c><00:06:55.199><c> worse</c><00:06:55.440><c> the</c><00:06:55.759><c> more</c>
+
+00:06:55.909 --> 00:06:55.919 align:start position:0%
+worked on. And it gets worse the more
+ 
+
+00:06:55.919 --> 00:06:57.990 align:start position:0%
+worked on. And it gets worse the more
+context<00:06:56.400><c> your</c><00:06:56.639><c> agent</c><00:06:57.039><c> accumulates.</c><00:06:57.680><c> So</c><00:06:57.840><c> the</c>
+
+00:06:57.990 --> 00:06:58.000 align:start position:0%
+context your agent accumulates. So the
+ 
+
+00:06:58.000 --> 00:06:59.830 align:start position:0%
+context your agent accumulates. So the
+more<00:06:58.160><c> you</c><00:06:58.400><c> interact</c><00:06:58.720><c> with</c><00:06:58.960><c> OpenClaw</c><00:06:59.520><c> and</c><00:06:59.680><c> the</c>
+
+00:06:59.830 --> 00:06:59.840 align:start position:0%
+more you interact with OpenClaw and the
+ 
+
+00:06:59.840 --> 00:07:01.510 align:start position:0%
+more you interact with OpenClaw and the
+more<00:07:00.000><c> memories</c><00:07:00.479><c> you</c><00:07:00.720><c> store,</c><00:07:01.199><c> the</c><00:07:01.360><c> more</c>
+
+00:07:01.510 --> 00:07:01.520 align:start position:0%
+more memories you store, the more
+ 
+
+00:07:01.520 --> 00:07:03.270 align:start position:0%
+more memories you store, the more
+bloated<00:07:02.000><c> your</c><00:07:02.240><c> queries</c><00:07:02.639><c> get</c><00:07:02.880><c> when</c><00:07:03.120><c> you're</c>
+
+00:07:03.270 --> 00:07:03.280 align:start position:0%
+bloated your queries get when you're
+ 
+
+00:07:03.280 --> 00:07:04.870 align:start position:0%
+bloated your queries get when you're
+asking<00:07:03.599><c> about</c><00:07:03.840><c> the</c><00:07:04.000><c> history,</c><00:07:04.479><c> the</c><00:07:04.720><c> more</c>
+
+00:07:04.870 --> 00:07:04.880 align:start position:0%
+asking about the history, the more
+ 
+
+00:07:04.880 --> 00:07:06.390 align:start position:0%
+asking about the history, the more
+tokens<00:07:05.199><c> you</c><00:07:05.360><c> burn</c><00:07:05.599><c> and</c><00:07:05.759><c> it</c><00:07:05.919><c> costs</c><00:07:06.080><c> a</c><00:07:06.240><c> lot</c><00:07:06.319><c> of</c>
+
+00:07:06.390 --> 00:07:06.400 align:start position:0%
+tokens you burn and it costs a lot of
+ 
+
+00:07:06.400 --> 00:07:08.550 align:start position:0%
+tokens you burn and it costs a lot of
+money.<00:07:06.720><c> But</c><00:07:06.880><c> luckily</c><00:07:07.440><c> there</c><00:07:07.599><c> is</c><00:07:07.759><c> a</c><00:07:08.000><c> solution.</c>
+
+00:07:08.550 --> 00:07:08.560 align:start position:0%
+money. But luckily there is a solution.
+ 
+
+00:07:08.560 --> 00:07:11.510 align:start position:0%
+money. But luckily there is a solution.
+This<00:07:08.720><c> is</c><00:07:08.800><c> where</c><00:07:09.039><c> QMD</c><00:07:09.759><c> comes</c><00:07:10.000><c> in.</c><00:07:10.400><c> So</c><00:07:10.560><c> QMD</c><00:07:11.199><c> is</c><00:07:11.360><c> an</c>
+
+00:07:11.510 --> 00:07:11.520 align:start position:0%
+This is where QMD comes in. So QMD is an
+ 
+
+00:07:11.520 --> 00:07:13.830 align:start position:0%
+This is where QMD comes in. So QMD is an
+open-<00:07:11.759><c> source</c><00:07:12.000><c> tool</c><00:07:12.400><c> built</c><00:07:12.720><c> by</c><00:07:12.880><c> Toby</c><00:07:13.280><c> Ludkkey,</c>
+
+00:07:13.830 --> 00:07:13.840 align:start position:0%
+open- source tool built by Toby Ludkkey,
+ 
+
+00:07:13.840 --> 00:07:16.309 align:start position:0%
+open- source tool built by Toby Ludkkey,
+who<00:07:14.000><c> is</c><00:07:14.080><c> the</c><00:07:14.319><c> CEO</c><00:07:14.639><c> of</c><00:07:14.880><c> Shopify.</c><00:07:15.599><c> It's</c><00:07:15.840><c> a</c><00:07:16.000><c> local</c>
+
+00:07:16.309 --> 00:07:16.319 align:start position:0%
+who is the CEO of Shopify. It's a local
+ 
+
+00:07:16.319 --> 00:07:18.629 align:start position:0%
+who is the CEO of Shopify. It's a local
+hybrid<00:07:16.880><c> search</c><00:07:17.199><c> engine</c><00:07:17.440><c> for</c><00:07:17.680><c> markdown</c><00:07:18.160><c> files.</c>
+
+00:07:18.629 --> 00:07:18.639 align:start position:0%
+hybrid search engine for markdown files.
+ 
+
+00:07:18.639 --> 00:07:20.550 align:start position:0%
+hybrid search engine for markdown files.
+It<00:07:18.880><c> combines</c><00:07:19.360><c> three</c><00:07:19.840><c> different</c><00:07:20.240><c> search</c>
+
+00:07:20.550 --> 00:07:20.560 align:start position:0%
+It combines three different search
+ 
+
+00:07:20.560 --> 00:07:22.550 align:start position:0%
+It combines three different search
+strategies.<00:07:21.199><c> So,</c><00:07:21.440><c> it</c><00:07:21.599><c> is</c><00:07:21.759><c> using</c><00:07:21.919><c> a</c><00:07:22.160><c> keyword</c>
+
+00:07:22.550 --> 00:07:22.560 align:start position:0%
+strategies. So, it is using a keyword
+ 
+
+00:07:22.560 --> 00:07:24.469 align:start position:0%
+strategies. So, it is using a keyword
+search,<00:07:22.800><c> but</c><00:07:23.039><c> it's</c><00:07:23.280><c> also</c><00:07:23.759><c> layering</c><00:07:24.000><c> on</c><00:07:24.240><c> top</c><00:07:24.400><c> of</c>
+
+00:07:24.469 --> 00:07:24.479 align:start position:0%
+search, but it's also layering on top of
+ 
+
+00:07:24.479 --> 00:07:27.350 align:start position:0%
+search, but it's also layering on top of
+that<00:07:24.720><c> a</c><00:07:24.960><c> vector</c><00:07:25.360><c> search</c><00:07:25.759><c> as</c><00:07:26.080><c> well</c><00:07:26.240><c> as</c><00:07:26.479><c> an</c><00:07:26.720><c> LLM</c>
+
+00:07:27.350 --> 00:07:27.360 align:start position:0%
+that a vector search as well as an LLM
+ 
+
+00:07:27.360 --> 00:07:29.350 align:start position:0%
+that a vector search as well as an LLM
+powered<00:07:27.919><c> re-ranker</c><00:07:28.560><c> to</c><00:07:28.720><c> give</c><00:07:28.800><c> you</c><00:07:28.960><c> the</c><00:07:29.199><c> best</c>
+
+00:07:29.350 --> 00:07:29.360 align:start position:0%
+powered re-ranker to give you the best
+ 
+
+00:07:29.360 --> 00:07:30.870 align:start position:0%
+powered re-ranker to give you the best
+possible<00:07:29.759><c> results.</c><00:07:30.240><c> Now,</c><00:07:30.400><c> you</c><00:07:30.560><c> don't</c><00:07:30.639><c> need</c><00:07:30.720><c> to</c>
+
+00:07:30.870 --> 00:07:30.880 align:start position:0%
+possible results. Now, you don't need to
+ 
+
+00:07:30.880 --> 00:07:32.469 align:start position:0%
+possible results. Now, you don't need to
+worry<00:07:31.039><c> about</c><00:07:31.199><c> the</c><00:07:31.360><c> technical</c><00:07:31.759><c> details.</c><00:07:32.319><c> All</c>
+
+00:07:32.469 --> 00:07:32.479 align:start position:0%
+worry about the technical details. All
+ 
+
+00:07:32.479 --> 00:07:34.469 align:start position:0%
+worry about the technical details. All
+you<00:07:32.639><c> need</c><00:07:32.800><c> to</c><00:07:32.880><c> know</c><00:07:33.199><c> is</c><00:07:33.360><c> that</c><00:07:33.680><c> this</c><00:07:33.919><c> is</c><00:07:34.000><c> a</c><00:07:34.240><c> much</c>
+
+00:07:34.469 --> 00:07:34.479 align:start position:0%
+you need to know is that this is a much
+ 
+
+00:07:34.479 --> 00:07:36.629 align:start position:0%
+you need to know is that this is a much
+better<00:07:34.800><c> way</c><00:07:34.960><c> to</c><00:07:35.280><c> interact</c><00:07:35.680><c> with</c><00:07:36.000><c> and</c><00:07:36.319><c> search</c>
+
+00:07:36.629 --> 00:07:36.639 align:start position:0%
+better way to interact with and search
+ 
+
+00:07:36.639 --> 00:07:38.629 align:start position:0%
+better way to interact with and search
+your<00:07:36.880><c> memories</c><00:07:37.280><c> in</c><00:07:37.599><c> OpenCloud.</c><00:07:38.240><c> And</c><00:07:38.319><c> the</c><00:07:38.479><c> best</c>
+
+00:07:38.629 --> 00:07:38.639 align:start position:0%
+your memories in OpenCloud. And the best
+ 
+
+00:07:38.639 --> 00:07:40.230 align:start position:0%
+your memories in OpenCloud. And the best
+part<00:07:38.800><c> about</c><00:07:39.039><c> all</c><00:07:39.199><c> this</c><00:07:39.440><c> is</c><00:07:39.599><c> because</c><00:07:40.000><c> it's</c>
+
+00:07:40.230 --> 00:07:40.240 align:start position:0%
+part about all this is because it's
+ 
+
+00:07:40.240 --> 00:07:41.909 align:start position:0%
+part about all this is because it's
+open-<00:07:40.560><c> source,</c><00:07:40.960><c> you</c><00:07:41.199><c> don't</c><00:07:41.360><c> have</c><00:07:41.440><c> to</c><00:07:41.599><c> pay</c><00:07:41.759><c> for</c>
+
+00:07:41.909 --> 00:07:41.919 align:start position:0%
+open- source, you don't have to pay for
+ 
+
+00:07:41.919 --> 00:07:43.990 align:start position:0%
+open- source, you don't have to pay for
+this.<00:07:42.160><c> There</c><00:07:42.240><c> are</c><00:07:42.319><c> no</c><00:07:42.479><c> API</c><00:07:42.960><c> keys.</c><00:07:43.520><c> It's</c><00:07:43.759><c> all</c>
+
+00:07:43.990 --> 00:07:44.000 align:start position:0%
+this. There are no API keys. It's all
+ 
+
+00:07:44.000 --> 00:07:45.909 align:start position:0%
+this. There are no API keys. It's all
+running<00:07:44.319><c> locally</c><00:07:44.720><c> on</c><00:07:44.960><c> your</c><00:07:45.199><c> machine.</c><00:07:45.680><c> Even</c>
+
+00:07:45.909 --> 00:07:45.919 align:start position:0%
+running locally on your machine. Even
+ 
+
+00:07:45.919 --> 00:07:47.990 align:start position:0%
+running locally on your machine. Even
+the<00:07:46.080><c> actual</c><00:07:46.319><c> AI</c><00:07:46.720><c> part</c><00:07:46.880><c> of</c><00:07:46.960><c> it,</c><00:07:47.120><c> the</c><00:07:47.280><c> LLM</c><00:07:47.840><c> I</c>
+
+00:07:47.990 --> 00:07:48.000 align:start position:0%
+the actual AI part of it, the LLM I
+ 
+
+00:07:48.000 --> 00:07:49.909 align:start position:0%
+the actual AI part of it, the LLM I
+mentioned,<00:07:48.400><c> these</c><00:07:48.639><c> are</c><00:07:48.800><c> local</c><00:07:49.120><c> models</c><00:07:49.680><c> and</c>
+
+00:07:49.909 --> 00:07:49.919 align:start position:0%
+mentioned, these are local models and
+ 
+
+00:07:49.919 --> 00:07:51.029 align:start position:0%
+mentioned, these are local models and
+they're<00:07:50.160><c> really</c><00:07:50.400><c> small.</c><00:07:50.639><c> all.</c><00:07:50.800><c> They</c><00:07:50.960><c> don't</c>
+
+00:07:51.029 --> 00:07:51.039 align:start position:0%
+they're really small. all. They don't
+ 
+
+00:07:51.039 --> 00:07:52.550 align:start position:0%
+they're really small. all. They don't
+take<00:07:51.199><c> up</c><00:07:51.280><c> a</c><00:07:51.440><c> lot</c><00:07:51.520><c> of</c><00:07:51.680><c> space</c><00:07:51.840><c> on</c><00:07:52.000><c> your</c><00:07:52.240><c> computer,</c>
+
+00:07:52.550 --> 00:07:52.560 align:start position:0%
+take up a lot of space on your computer,
+ 
+
+00:07:52.560 --> 00:07:54.390 align:start position:0%
+take up a lot of space on your computer,
+so<00:07:52.720><c> it's</c><00:07:52.960><c> super</c><00:07:53.199><c> efficient.</c><00:07:53.759><c> So,</c><00:07:53.919><c> how</c><00:07:54.080><c> do</c><00:07:54.160><c> you</c>
+
+00:07:54.390 --> 00:07:54.400 align:start position:0%
+so it's super efficient. So, how do you
+ 
+
+00:07:54.400 --> 00:07:56.309 align:start position:0%
+so it's super efficient. So, how do you
+set<00:07:54.560><c> this</c><00:07:54.800><c> up</c><00:07:55.039><c> with</c><00:07:55.280><c> OpenCloud?</c><00:07:56.000><c> So,</c><00:07:56.160><c> there's</c>
+
+00:07:56.309 --> 00:07:56.319 align:start position:0%
+set this up with OpenCloud? So, there's
+ 
+
+00:07:56.319 --> 00:07:58.309 align:start position:0%
+set this up with OpenCloud? So, there's
+a<00:07:56.479><c> very</c><00:07:56.720><c> detailed</c><00:07:57.199><c> guide</c><00:07:57.520><c> actually</c><00:07:57.919><c> in</c><00:07:58.160><c> the</c>
+
+00:07:58.309 --> 00:07:58.319 align:start position:0%
+a very detailed guide actually in the
+ 
+
+00:07:58.319 --> 00:08:00.390 align:start position:0%
+a very detailed guide actually in the
+OpenCloud<00:07:58.960><c> docs.</c><00:07:59.360><c> But</c><00:07:59.440><c> the</c><00:07:59.599><c> best</c><00:07:59.759><c> part</c><00:07:59.919><c> is</c><00:08:00.160><c> you</c>
+
+00:08:00.390 --> 00:08:00.400 align:start position:0%
+OpenCloud docs. But the best part is you
+ 
+
+00:08:00.400 --> 00:08:01.909 align:start position:0%
+OpenCloud docs. But the best part is you
+don't<00:08:00.479><c> have</c><00:08:00.639><c> to</c><00:08:00.800><c> read</c><00:08:01.039><c> any</c><00:08:01.199><c> of</c><00:08:01.360><c> this.</c><00:08:01.599><c> You</c><00:08:01.840><c> can</c>
+
+00:08:01.909 --> 00:08:01.919 align:start position:0%
+don't have to read any of this. You can
+ 
+
+00:08:01.919 --> 00:08:03.749 align:start position:0%
+don't have to read any of this. You can
+just<00:08:02.080><c> prompt</c><00:08:02.479><c> Claude</c><00:08:02.879><c> Code</c><00:08:03.120><c> to</c><00:08:03.280><c> build</c><00:08:03.440><c> it</c><00:08:03.599><c> for</c>
+
+00:08:03.749 --> 00:08:03.759 align:start position:0%
+just prompt Claude Code to build it for
+ 
+
+00:08:03.759 --> 00:08:05.430 align:start position:0%
+just prompt Claude Code to build it for
+you.<00:08:03.919><c> So,</c><00:08:04.160><c> go</c><00:08:04.240><c> ahead,</c><00:08:04.560><c> open</c><00:08:04.800><c> a</c><00:08:05.039><c> terminal</c>
+
+00:08:05.430 --> 00:08:05.440 align:start position:0%
+you. So, go ahead, open a terminal
+ 
+
+00:08:05.440 --> 00:08:07.830 align:start position:0%
+you. So, go ahead, open a terminal
+window,<00:08:05.840><c> open</c><00:08:06.160><c> Claude</c><00:08:06.479><c> Code,</c><00:08:06.960><c> and</c><00:08:07.280><c> paste</c><00:08:07.599><c> this</c>
+
+00:08:07.830 --> 00:08:07.840 align:start position:0%
+window, open Claude Code, and paste this
+ 
+
+00:08:07.840 --> 00:08:09.189 align:start position:0%
+window, open Claude Code, and paste this
+prompt<00:08:08.080><c> in.</c><00:08:08.400><c> I'll</c><00:08:08.560><c> put</c><00:08:08.639><c> this</c><00:08:08.800><c> in</c><00:08:08.960><c> the</c><00:08:09.120><c> show</c>
+
+00:08:09.189 --> 00:08:09.199 align:start position:0%
+prompt in. I'll put this in the show
+ 
+
+00:08:09.199 --> 00:08:11.270 align:start position:0%
+prompt in. I'll put this in the show
+notes,<00:08:09.520><c> so</c><00:08:09.680><c> no</c><00:08:09.919><c> need</c><00:08:10.080><c> to</c><00:08:10.319><c> read</c><00:08:10.560><c> it</c><00:08:10.720><c> right</c><00:08:10.879><c> here.</c>
+
+00:08:11.270 --> 00:08:11.280 align:start position:0%
+notes, so no need to read it right here.
+ 
+
+00:08:11.280 --> 00:08:13.029 align:start position:0%
+notes, so no need to read it right here.
+But<00:08:11.440><c> basically,</c><00:08:11.840><c> we're</c><00:08:12.080><c> just</c><00:08:12.240><c> asking</c><00:08:12.560><c> Claude</c>
+
+00:08:13.029 --> 00:08:13.039 align:start position:0%
+But basically, we're just asking Claude
+ 
+
+00:08:13.039 --> 00:08:15.270 align:start position:0%
+But basically, we're just asking Claude
+Code<00:08:13.360><c> to</c><00:08:13.840><c> read</c><00:08:14.080><c> the</c><00:08:14.319><c> documentation</c><00:08:14.879><c> we</c><00:08:15.120><c> just</c>
+
+00:08:15.270 --> 00:08:15.280 align:start position:0%
+Code to read the documentation we just
+ 
+
+00:08:15.280 --> 00:08:17.909 align:start position:0%
+Code to read the documentation we just
+showed<00:08:15.680><c> and</c><00:08:15.840><c> to</c><00:08:16.080><c> set</c><00:08:16.240><c> up</c><00:08:16.319><c> the</c><00:08:16.479><c> QMD</c><00:08:17.280><c> skill</c><00:08:17.759><c> so</c>
+
+00:08:17.909 --> 00:08:17.919 align:start position:0%
+showed and to set up the QMD skill so
+ 
+
+00:08:17.919 --> 00:08:19.670 align:start position:0%
+showed and to set up the QMD skill so
+that<00:08:18.080><c> you</c><00:08:18.319><c> can</c><00:08:18.400><c> use</c><00:08:18.639><c> it</c><00:08:18.800><c> going</c><00:08:19.039><c> forward.</c><00:08:19.440><c> And</c>
+
+00:08:19.670 --> 00:08:19.680 align:start position:0%
+that you can use it going forward. And
+ 
+
+00:08:19.680 --> 00:08:21.110 align:start position:0%
+that you can use it going forward. And
+once<00:08:19.840><c> you</c><00:08:20.000><c> do</c><00:08:20.080><c> that,</c><00:08:20.319><c> that's</c><00:08:20.560><c> it.</c><00:08:20.800><c> You'll</c><00:08:20.960><c> have</c>
+
+00:08:21.110 --> 00:08:21.120 align:start position:0%
+once you do that, that's it. You'll have
+ 
+
+00:08:21.120 --> 00:08:22.950 align:start position:0%
+once you do that, that's it. You'll have
+QMD<00:08:21.680><c> installed</c><00:08:22.080><c> and</c><00:08:22.240><c> you</c><00:08:22.400><c> can</c><00:08:22.560><c> start</c><00:08:22.720><c> seeing</c>
+
+00:08:22.950 --> 00:08:22.960 align:start position:0%
+QMD installed and you can start seeing
+ 
+
+00:08:22.960 --> 00:08:24.869 align:start position:0%
+QMD installed and you can start seeing
+the<00:08:23.120><c> benefits</c><00:08:23.520><c> right</c><00:08:23.759><c> away.</c><00:08:24.160><c> I'd</c><00:08:24.319><c> say</c><00:08:24.560><c> this</c><00:08:24.720><c> is</c>
+
+00:08:24.869 --> 00:08:24.879 align:start position:0%
+the benefits right away. I'd say this is
+ 
+
+00:08:24.879 --> 00:08:26.309 align:start position:0%
+the benefits right away. I'd say this is
+one<00:08:25.199><c> upgrade</c><00:08:25.599><c> that</c><00:08:25.840><c> is</c><00:08:26.000><c> absolutely</c>
+
+00:08:26.309 --> 00:08:26.319 align:start position:0%
+one upgrade that is absolutely
+ 
+
+00:08:26.319 --> 00:08:28.629 align:start position:0%
+one upgrade that is absolutely
+non-negotiable.<00:08:27.360><c> All</c><00:08:27.440><c> right,</c><00:08:27.680><c> the</c><00:08:28.000><c> third</c><00:08:28.319><c> and</c>
+
+00:08:28.629 --> 00:08:28.639 align:start position:0%
+non-negotiable. All right, the third and
+ 
+
+00:08:28.639 --> 00:08:31.270 align:start position:0%
+non-negotiable. All right, the third and
+final<00:08:28.960><c> tool</c><00:08:29.360><c> is</c><00:08:29.840><c> agent</c><00:08:30.160><c> browser.</c><00:08:30.639><c> Now,</c><00:08:30.879><c> agent</c>
+
+00:08:31.270 --> 00:08:31.280 align:start position:0%
+final tool is agent browser. Now, agent
+ 
+
+00:08:31.280 --> 00:08:33.990 align:start position:0%
+final tool is agent browser. Now, agent
+browser<00:08:31.840><c> is</c><00:08:32.080><c> a</c><00:08:32.399><c> command</c><00:08:32.719><c> line</c><00:08:33.039><c> tool</c><00:08:33.440><c> built</c><00:08:33.760><c> by</c>
+
+00:08:33.990 --> 00:08:34.000 align:start position:0%
+browser is a command line tool built by
+ 
+
+00:08:34.000 --> 00:08:36.070 align:start position:0%
+browser is a command line tool built by
+Verscell<00:08:34.719><c> that</c><00:08:34.959><c> allows</c><00:08:35.279><c> your</c><00:08:35.519><c> agent</c><00:08:35.839><c> to</c>
+
+00:08:36.070 --> 00:08:36.080 align:start position:0%
+Verscell that allows your agent to
+ 
+
+00:08:36.080 --> 00:08:37.750 align:start position:0%
+Verscell that allows your agent to
+browse<00:08:36.320><c> the</c><00:08:36.560><c> web.</c><00:08:36.800><c> Now,</c><00:08:37.039><c> this</c><00:08:37.200><c> is</c><00:08:37.360><c> not</c><00:08:37.519><c> just</c>
+
+00:08:37.750 --> 00:08:37.760 align:start position:0%
+browse the web. Now, this is not just
+ 
+
+00:08:37.760 --> 00:08:40.870 align:start position:0%
+browse the web. Now, this is not just
+simply<00:08:38.240><c> pulling</c><00:08:38.719><c> HTML</c><00:08:39.440><c> and</c><00:08:39.680><c> scraping</c><00:08:40.159><c> HTML.</c>
+
+00:08:40.870 --> 00:08:40.880 align:start position:0%
+simply pulling HTML and scraping HTML.
+ 
+
+00:08:40.880 --> 00:08:42.550 align:start position:0%
+simply pulling HTML and scraping HTML.
+This<00:08:41.039><c> is</c><00:08:41.200><c> actually</c><00:08:41.599><c> interacting</c><00:08:42.159><c> with</c><00:08:42.320><c> a</c>
+
+00:08:42.550 --> 00:08:42.560 align:start position:0%
+This is actually interacting with a
+ 
+
+00:08:42.560 --> 00:08:45.110 align:start position:0%
+This is actually interacting with a
+browser<00:08:43.039><c> like</c><00:08:43.279><c> a</c><00:08:43.519><c> user</c><00:08:43.839><c> would,</c><00:08:44.240><c> i.e.</c><00:08:44.800><c> clicking</c>
+
+00:08:45.110 --> 00:08:45.120 align:start position:0%
+browser like a user would, i.e. clicking
+ 
+
+00:08:45.120 --> 00:08:47.269 align:start position:0%
+browser like a user would, i.e. clicking
+on<00:08:45.360><c> stuff,</c><00:08:45.839><c> taking</c><00:08:46.240><c> screenshots,</c><00:08:47.040><c> filling</c>
+
+00:08:47.269 --> 00:08:47.279 align:start position:0%
+on stuff, taking screenshots, filling
+ 
+
+00:08:47.279 --> 00:08:49.190 align:start position:0%
+on stuff, taking screenshots, filling
+out<00:08:47.519><c> forms.</c><00:08:48.000><c> Now,</c><00:08:48.160><c> you</c><00:08:48.399><c> might</c><00:08:48.480><c> be</c><00:08:48.720><c> thinking,</c>
+
+00:08:49.190 --> 00:08:49.200 align:start position:0%
+out forms. Now, you might be thinking,
+ 
+
+00:08:49.200 --> 00:08:51.590 align:start position:0%
+out forms. Now, you might be thinking,
+why<00:08:49.440><c> not</c><00:08:49.600><c> just</c><00:08:49.839><c> use</c><00:08:50.080><c> Playright</c><00:08:50.720><c> or</c><00:08:51.120><c> whatever</c>
+
+00:08:51.590 --> 00:08:51.600 align:start position:0%
+why not just use Playright or whatever
+ 
+
+00:08:51.600 --> 00:08:54.150 align:start position:0%
+why not just use Playright or whatever
+browser<00:08:52.000><c> that</c><00:08:52.320><c> OpenClaw</c><00:08:52.959><c> has</c><00:08:53.279><c> built</c><00:08:53.519><c> in.</c><00:08:53.920><c> Now,</c>
+
+00:08:54.150 --> 00:08:54.160 align:start position:0%
+browser that OpenClaw has built in. Now,
+ 
+
+00:08:54.160 --> 00:08:55.990 align:start position:0%
+browser that OpenClaw has built in. Now,
+Playright<00:08:54.720><c> is</c><00:08:54.880><c> just</c><00:08:55.120><c> fine,</c><00:08:55.440><c> but</c><00:08:55.680><c> if</c><00:08:55.839><c> you've</c>
+
+00:08:55.990 --> 00:08:56.000 align:start position:0%
+Playright is just fine, but if you've
+ 
+
+00:08:56.000 --> 00:08:57.750 align:start position:0%
+Playright is just fine, but if you've
+ever<00:08:56.160><c> used</c><00:08:56.399><c> it</c><00:08:56.640><c> before,</c><00:08:57.040><c> you</c><00:08:57.279><c> probably</c><00:08:57.600><c> have</c>
+
+00:08:57.750 --> 00:08:57.760 align:start position:0%
+ever used it before, you probably have
+ 
+
+00:08:57.760 --> 00:09:00.230 align:start position:0%
+ever used it before, you probably have
+seen<00:08:58.080><c> how</c><00:08:58.399><c> it</c><00:08:58.640><c> is</c><00:08:58.800><c> so</c><00:08:59.200><c> token</c><00:08:59.600><c> inefficient.</c>
+
+00:09:00.230 --> 00:09:00.240 align:start position:0%
+seen how it is so token inefficient.
+ 
+
+00:09:00.240 --> 00:09:01.829 align:start position:0%
+seen how it is so token inefficient.
+Now,<00:09:00.399><c> what</c><00:09:00.560><c> that</c><00:09:00.720><c> means</c><00:09:00.880><c> is</c><00:09:01.279><c> every</c><00:09:01.600><c> time</c>
+
+00:09:01.829 --> 00:09:01.839 align:start position:0%
+Now, what that means is every time
+ 
+
+00:09:01.839 --> 00:09:03.910 align:start position:0%
+Now, what that means is every time
+Playright<00:09:02.399><c> is</c><00:09:02.640><c> interacting</c><00:09:03.120><c> with</c><00:09:03.360><c> a</c><00:09:03.519><c> website,</c>
+
+00:09:03.910 --> 00:09:03.920 align:start position:0%
+Playright is interacting with a website,
+ 
+
+00:09:03.920 --> 00:09:06.870 align:start position:0%
+Playright is interacting with a website,
+it<00:09:04.160><c> is</c><00:09:04.399><c> generating</c><00:09:05.040><c> a</c><00:09:05.360><c> ton</c><00:09:05.920><c> of</c><00:09:06.240><c> information.</c>
+
+00:09:06.870 --> 00:09:06.880 align:start position:0%
+it is generating a ton of information.
+ 
+
+00:09:06.880 --> 00:09:08.630 align:start position:0%
+it is generating a ton of information.
+And<00:09:07.040><c> if</c><00:09:07.200><c> your</c><00:09:07.360><c> AI</c><00:09:07.680><c> agent</c><00:09:08.000><c> is</c><00:09:08.160><c> hooked</c><00:09:08.399><c> up</c><00:09:08.480><c> to</c>
+
+00:09:08.630 --> 00:09:08.640 align:start position:0%
+And if your AI agent is hooked up to
+ 
+
+00:09:08.640 --> 00:09:10.870 align:start position:0%
+And if your AI agent is hooked up to
+Playright,<00:09:09.279><c> it</c><00:09:09.519><c> has</c><00:09:09.680><c> to</c><00:09:09.839><c> process</c><00:09:10.320><c> all</c><00:09:10.560><c> that</c>
+
+00:09:10.870 --> 00:09:10.880 align:start position:0%
+Playright, it has to process all that
+ 
+
+00:09:10.880 --> 00:09:12.310 align:start position:0%
+Playright, it has to process all that
+information,<00:09:11.440><c> which</c><00:09:11.680><c> fills</c><00:09:12.000><c> up</c><00:09:12.160><c> your</c>
+
+00:09:12.310 --> 00:09:12.320 align:start position:0%
+information, which fills up your
+ 
+
+00:09:12.320 --> 00:09:14.630 align:start position:0%
+information, which fills up your
+contacts<00:09:12.800><c> window</c><00:09:13.200><c> and</c><00:09:13.440><c> gives</c><00:09:13.680><c> you</c><00:09:14.080><c> ultimately</c>
+
+00:09:14.630 --> 00:09:14.640 align:start position:0%
+contacts window and gives you ultimately
+ 
+
+00:09:14.640 --> 00:09:17.110 align:start position:0%
+contacts window and gives you ultimately
+a<00:09:14.880><c> worse</c><00:09:15.200><c> outcome.</c><00:09:15.680><c> Agent</c><00:09:16.080><c> browser</c><00:09:16.480><c> takes</c><00:09:16.800><c> a</c>
+
+00:09:17.110 --> 00:09:17.120 align:start position:0%
+a worse outcome. Agent browser takes a
+ 
+
+00:09:17.120 --> 00:09:19.030 align:start position:0%
+a worse outcome. Agent browser takes a
+completely<00:09:17.760><c> different</c><00:09:18.160><c> approach.</c><00:09:18.720><c> Now,</c><00:09:18.880><c> we</c>
+
+00:09:19.030 --> 00:09:19.040 align:start position:0%
+completely different approach. Now, we
+ 
+
+00:09:19.040 --> 00:09:20.470 align:start position:0%
+completely different approach. Now, we
+don't<00:09:19.200><c> have</c><00:09:19.360><c> to</c><00:09:19.440><c> get</c><00:09:19.600><c> into</c><00:09:19.839><c> the</c><00:09:20.080><c> technical</c>
+
+00:09:20.470 --> 00:09:20.480 align:start position:0%
+don't have to get into the technical
+ 
+
+00:09:20.480 --> 00:09:22.150 align:start position:0%
+don't have to get into the technical
+details<00:09:20.880><c> of</c><00:09:21.040><c> the</c><00:09:21.200><c> how</c><00:09:21.360><c> and</c><00:09:21.600><c> why,</c><00:09:21.920><c> but</c>
+
+00:09:22.150 --> 00:09:22.160 align:start position:0%
+details of the how and why, but
+ 
+
+00:09:22.160 --> 00:09:23.910 align:start position:0%
+details of the how and why, but
+basically<00:09:22.560><c> what</c><00:09:22.800><c> you</c><00:09:23.040><c> need</c><00:09:23.120><c> to</c><00:09:23.279><c> know</c><00:09:23.440><c> is</c>
+
+00:09:23.910 --> 00:09:23.920 align:start position:0%
+basically what you need to know is
+ 
+
+00:09:23.920 --> 00:09:25.910 align:start position:0%
+basically what you need to know is
+everything<00:09:24.240><c> that</c><00:09:24.480><c> Playright</c><00:09:25.040><c> can</c><00:09:25.200><c> do,</c><00:09:25.519><c> Agent</c>
+
+00:09:25.910 --> 00:09:25.920 align:start position:0%
+everything that Playright can do, Agent
+ 
+
+00:09:25.920 --> 00:09:29.590 align:start position:0%
+everything that Playright can do, Agent
+Browser<00:09:26.320><c> can</c><00:09:26.480><c> do</c><00:09:26.640><c> it</c><00:09:26.800><c> with</c><00:09:27.200><c> 93%</c><00:09:28.480><c> less</c><00:09:29.040><c> tokens</c>
+
+00:09:29.590 --> 00:09:29.600 align:start position:0%
+Browser can do it with 93% less tokens
+ 
+
+00:09:29.600 --> 00:09:31.910 align:start position:0%
+Browser can do it with 93% less tokens
+used.<00:09:30.160><c> That</c><00:09:30.399><c> means</c><00:09:30.640><c> that</c><00:09:30.880><c> your</c><00:09:31.120><c> agent</c><00:09:31.519><c> can</c><00:09:31.760><c> do</c>
+
+00:09:31.910 --> 00:09:31.920 align:start position:0%
+used. That means that your agent can do
+ 
+
+00:09:31.920 --> 00:09:34.790 align:start position:0%
+used. That means that your agent can do
+a<00:09:32.240><c> lot</c><00:09:32.399><c> more</c><00:09:32.720><c> for</c><00:09:33.040><c> a</c><00:09:33.360><c> lot</c><00:09:33.600><c> less.</c><00:09:34.160><c> So,</c><00:09:34.399><c> in</c><00:09:34.640><c> order</c>
+
+00:09:34.790 --> 00:09:34.800 align:start position:0%
+a lot more for a lot less. So, in order
+ 
+
+00:09:34.800 --> 00:09:37.190 align:start position:0%
+a lot more for a lot less. So, in order
+to<00:09:34.959><c> get</c><00:09:35.279><c> access</c><00:09:35.680><c> to</c><00:09:36.080><c> agent</c><00:09:36.480><c> browser</c><00:09:36.800><c> and</c><00:09:36.959><c> to</c>
+
+00:09:37.190 --> 00:09:37.200 align:start position:0%
+to get access to agent browser and to
+ 
+
+00:09:37.200 --> 00:09:39.430 align:start position:0%
+to get access to agent browser and to
+use<00:09:37.360><c> it,</c><00:09:37.600><c> you</c><00:09:37.839><c> need</c><00:09:37.920><c> to</c><00:09:38.240><c> install</c><00:09:39.040><c> agent</c>
+
+00:09:39.430 --> 00:09:39.440 align:start position:0%
+use it, you need to install agent
+ 
+
+00:09:39.440 --> 00:09:41.750 align:start position:0%
+use it, you need to install agent
+browser<00:09:39.920><c> locally.</c><00:09:40.560><c> So,</c><00:09:40.720><c> on</c><00:09:40.959><c> your</c><00:09:41.200><c> OpenClaw</c>
+
+00:09:41.750 --> 00:09:41.760 align:start position:0%
+browser locally. So, on your OpenClaw
+ 
+
+00:09:41.760 --> 00:09:43.829 align:start position:0%
+browser locally. So, on your OpenClaw
+machine,<00:09:42.480><c> just</c><00:09:42.720><c> run</c><00:09:42.959><c> this</c><00:09:43.200><c> command.</c><00:09:43.519><c> And</c><00:09:43.680><c> I'll</c>
+
+00:09:43.829 --> 00:09:43.839 align:start position:0%
+machine, just run this command. And I'll
+ 
+
+00:09:43.839 --> 00:09:45.910 align:start position:0%
+machine, just run this command. And I'll
+put<00:09:43.920><c> this</c><00:09:44.080><c> in</c><00:09:44.240><c> the</c><00:09:44.320><c> show</c><00:09:44.480><c> notes.</c><00:09:45.200><c> Uh,</c><00:09:45.440><c> and</c><00:09:45.680><c> once</c>
+
+00:09:45.910 --> 00:09:45.920 align:start position:0%
+put this in the show notes. Uh, and once
+ 
+
+00:09:45.920 --> 00:09:47.509 align:start position:0%
+put this in the show notes. Uh, and once
+you<00:09:46.080><c> do</c><00:09:46.160><c> that,</c><00:09:46.399><c> you</c><00:09:46.560><c> will</c><00:09:46.640><c> have</c><00:09:46.880><c> agent</c><00:09:47.200><c> browser</c>
+
+00:09:47.509 --> 00:09:47.519 align:start position:0%
+you do that, you will have agent browser
+ 
+
+00:09:47.519 --> 00:09:48.790 align:start position:0%
+you do that, you will have agent browser
+ready.<00:09:47.839><c> But</c><00:09:48.000><c> there's</c><00:09:48.160><c> one</c><00:09:48.320><c> more</c><00:09:48.399><c> thing</c><00:09:48.560><c> we</c>
+
+00:09:48.790 --> 00:09:48.800 align:start position:0%
+ready. But there's one more thing we
+ 
+
+00:09:48.800 --> 00:09:49.910 align:start position:0%
+ready. But there's one more thing we
+need<00:09:48.880><c> to</c><00:09:49.040><c> do.</c><00:09:49.279><c> The</c><00:09:49.440><c> next</c><00:09:49.600><c> thing</c><00:09:49.680><c> you're</c><00:09:49.920><c> going</c>
+
+00:09:49.910 --> 00:09:49.920 align:start position:0%
+need to do. The next thing you're going
+ 
+
+00:09:49.920 --> 00:09:51.670 align:start position:0%
+need to do. The next thing you're going
+to<00:09:50.080><c> want</c><00:09:50.160><c> to</c><00:09:50.240><c> do</c><00:09:50.399><c> is</c><00:09:50.560><c> open</c><00:09:50.800><c> up</c><00:09:50.959><c> Cloud</c><00:09:51.279><c> Code</c><00:09:51.519><c> and</c>
+
+00:09:51.670 --> 00:09:51.680 align:start position:0%
+to want to do is open up Cloud Code and
+ 
+
+00:09:51.680 --> 00:09:53.590 align:start position:0%
+to want to do is open up Cloud Code and
+paste<00:09:52.000><c> in</c><00:09:52.240><c> this</c><00:09:52.480><c> prompt.</c><00:09:52.959><c> Again,</c><00:09:53.279><c> this</c><00:09:53.440><c> is</c>
+
+00:09:53.590 --> 00:09:53.600 align:start position:0%
+paste in this prompt. Again, this is
+ 
+
+00:09:53.600 --> 00:09:54.870 align:start position:0%
+paste in this prompt. Again, this is
+going<00:09:53.680><c> to</c><00:09:53.760><c> be</c><00:09:53.839><c> in</c><00:09:54.000><c> the</c><00:09:54.080><c> show</c><00:09:54.240><c> notes</c><00:09:54.480><c> for</c><00:09:54.640><c> you</c><00:09:54.720><c> to</c>
+
+00:09:54.870 --> 00:09:54.880 align:start position:0%
+going to be in the show notes for you to
+ 
+
+00:09:54.880 --> 00:09:56.870 align:start position:0%
+going to be in the show notes for you to
+copy<00:09:55.120><c> and</c><00:09:55.279><c> paste</c><00:09:55.600><c> into</c><00:09:55.839><c> your</c><00:09:56.080><c> own</c><00:09:56.399><c> openclaw</c>
+
+00:09:56.870 --> 00:09:56.880 align:start position:0%
+copy and paste into your own openclaw
+ 
+
+00:09:56.880 --> 00:09:58.550 align:start position:0%
+copy and paste into your own openclaw
+instance.<00:09:57.360><c> But</c><00:09:57.519><c> what</c><00:09:57.680><c> this</c><00:09:57.920><c> is</c><00:09:58.080><c> basically</c>
+
+00:09:58.550 --> 00:09:58.560 align:start position:0%
+instance. But what this is basically
+ 
+
+00:09:58.560 --> 00:10:01.190 align:start position:0%
+instance. But what this is basically
+doing<00:09:58.959><c> is</c><00:09:59.200><c> it's</c><00:09:59.680><c> taking</c><00:10:00.000><c> the</c><00:10:00.320><c> skills</c><00:10:00.880><c> that</c>
+
+00:10:01.190 --> 00:10:01.200 align:start position:0%
+doing is it's taking the skills that
+ 
+
+00:10:01.200 --> 00:10:02.870 align:start position:0%
+doing is it's taking the skills that
+Verscell<00:10:01.760><c> has</c><00:10:01.920><c> published</c><00:10:02.240><c> for</c><00:10:02.480><c> Asian</c>
+
+00:10:02.870 --> 00:10:02.880 align:start position:0%
+Verscell has published for Asian
+ 
+
+00:10:02.880 --> 00:10:04.949 align:start position:0%
+Verscell has published for Asian
+browser.<00:10:03.279><c> It's</c><00:10:03.519><c> pulling</c><00:10:03.839><c> them</c><00:10:04.000><c> from</c><00:10:04.480><c> GitHub</c>
+
+00:10:04.949 --> 00:10:04.959 align:start position:0%
+browser. It's pulling them from GitHub
+ 
+
+00:10:04.959 --> 00:10:06.790 align:start position:0%
+browser. It's pulling them from GitHub
+onto<00:10:05.360><c> your</c><00:10:05.519><c> OpenClaw</c><00:10:06.080><c> machine</c><00:10:06.399><c> and</c><00:10:06.640><c> it's</c>
+
+00:10:06.790 --> 00:10:06.800 align:start position:0%
+onto your OpenClaw machine and it's
+ 
+
+00:10:06.800 --> 00:10:08.389 align:start position:0%
+onto your OpenClaw machine and it's
+telling<00:10:06.959><c> your</c><00:10:07.200><c> openclaw</c><00:10:07.760><c> how</c><00:10:07.920><c> to</c><00:10:08.080><c> use</c><00:10:08.240><c> them</c>
+
+00:10:08.389 --> 00:10:08.399 align:start position:0%
+telling your openclaw how to use them
+ 
+
+00:10:08.399 --> 00:10:10.630 align:start position:0%
+telling your openclaw how to use them
+and<00:10:08.640><c> how</c><00:10:08.800><c> to</c><00:10:08.959><c> run</c><00:10:09.120><c> a</c><00:10:09.519><c> browser.</c><00:10:10.000><c> And</c><00:10:10.160><c> it's</c><00:10:10.399><c> also</c>
+
+00:10:10.630 --> 00:10:10.640 align:start position:0%
+and how to run a browser. And it's also
+ 
+
+00:10:10.640 --> 00:10:12.710 align:start position:0%
+and how to run a browser. And it's also
+telling<00:10:10.880><c> it</c><00:10:11.120><c> that</c><00:10:11.440><c> anytime</c><00:10:12.000><c> that</c><00:10:12.160><c> OpenClaw</c>
+
+00:10:12.710 --> 00:10:12.720 align:start position:0%
+telling it that anytime that OpenClaw
+ 
+
+00:10:12.720 --> 00:10:14.630 align:start position:0%
+telling it that anytime that OpenClaw
+needs<00:10:12.959><c> to</c><00:10:13.200><c> interact</c><00:10:13.680><c> with</c><00:10:13.839><c> the</c><00:10:14.079><c> internet</c><00:10:14.480><c> or</c>
+
+00:10:14.630 --> 00:10:14.640 align:start position:0%
+needs to interact with the internet or
+ 
+
+00:10:14.640 --> 00:10:16.710 align:start position:0%
+needs to interact with the internet or
+browse<00:10:14.880><c> a</c><00:10:15.120><c> web</c><00:10:15.279><c> page,</c><00:10:15.600><c> it</c><00:10:15.839><c> should</c><00:10:16.000><c> use</c><00:10:16.399><c> agent</c>
+
+00:10:16.710 --> 00:10:16.720 align:start position:0%
+browse a web page, it should use agent
+ 
+
+00:10:16.720 --> 00:10:18.310 align:start position:0%
+browse a web page, it should use agent
+browser.<00:10:17.200><c> Once</c><00:10:17.440><c> you</c><00:10:17.600><c> do</c><00:10:17.680><c> that,</c><00:10:17.920><c> you</c><00:10:18.079><c> will</c><00:10:18.240><c> have</c>
+
+00:10:18.310 --> 00:10:18.320 align:start position:0%
+browser. Once you do that, you will have
+ 
+
+00:10:18.320 --> 00:10:20.230 align:start position:0%
+browser. Once you do that, you will have
+the<00:10:18.480><c> agent</c><00:10:18.880><c> browser</c><00:10:19.200><c> skills</c><00:10:19.600><c> on</c><00:10:19.839><c> your</c><00:10:20.000><c> local</c>
+
+00:10:20.230 --> 00:10:20.240 align:start position:0%
+the agent browser skills on your local
+ 
+
+00:10:20.240 --> 00:10:22.230 align:start position:0%
+the agent browser skills on your local
+machine,<00:10:20.720><c> which</c><00:10:20.880><c> you</c><00:10:21.040><c> can</c><00:10:21.200><c> use</c><00:10:21.360><c> with</c><00:10:21.600><c> OpenClaw</c>
+
+00:10:22.230 --> 00:10:22.240 align:start position:0%
+machine, which you can use with OpenClaw
+ 
+
+00:10:22.240 --> 00:10:24.310 align:start position:0%
+machine, which you can use with OpenClaw
+or<00:10:22.480><c> any</c><00:10:22.720><c> AI</c><00:10:23.120><c> agent</c><00:10:23.440><c> that</c><00:10:23.600><c> you</c><00:10:23.760><c> have</c><00:10:23.839><c> on</c><00:10:24.000><c> there,</c>
+
+00:10:24.310 --> 00:10:24.320 align:start position:0%
+or any AI agent that you have on there,
+ 
+
+00:10:24.320 --> 00:10:26.310 align:start position:0%
+or any AI agent that you have on there,
+including<00:10:24.720><c> codeex</c><00:10:25.200><c> and</c><00:10:25.440><c> cloud</c><00:10:25.760><c> code.</c><00:10:26.160><c> I'm</c>
+
+00:10:26.310 --> 00:10:26.320 align:start position:0%
+including codeex and cloud code. I'm
+ 
+
+00:10:26.320 --> 00:10:27.750 align:start position:0%
+including codeex and cloud code. I'm
+going<00:10:26.399><c> to</c><00:10:26.480><c> show</c><00:10:26.640><c> you</c><00:10:26.800><c> a</c><00:10:26.959><c> simple</c><00:10:27.279><c> command</c><00:10:27.519><c> that</c>
+
+00:10:27.750 --> 00:10:27.760 align:start position:0%
+going to show you a simple command that
+ 
+
+00:10:27.760 --> 00:10:29.750 align:start position:0%
+going to show you a simple command that
+we<00:10:27.920><c> can</c><00:10:28.079><c> use</c><00:10:28.160><c> in</c><00:10:28.399><c> cloud</c><00:10:28.800><c> code</c><00:10:29.120><c> through</c><00:10:29.360><c> agent</c>
+
+00:10:29.750 --> 00:10:29.760 align:start position:0%
+we can use in cloud code through agent
+ 
+
+00:10:29.760 --> 00:10:31.269 align:start position:0%
+we can use in cloud code through agent
+browser.<00:10:30.240><c> You</c><00:10:30.399><c> can</c><00:10:30.560><c> do</c><00:10:30.640><c> the</c><00:10:30.880><c> same</c><00:10:31.040><c> thing</c>
+
+00:10:31.269 --> 00:10:31.279 align:start position:0%
+browser. You can do the same thing
+ 
+
+00:10:31.279 --> 00:10:33.030 align:start position:0%
+browser. You can do the same thing
+through<00:10:31.440><c> your</c><00:10:31.680><c> openclaw</c><00:10:32.240><c> instance.</c><00:10:32.800><c> Because</c>
+
+00:10:33.030 --> 00:10:33.040 align:start position:0%
+through your openclaw instance. Because
+ 
+
+00:10:33.040 --> 00:10:34.790 align:start position:0%
+through your openclaw instance. Because
+mine<00:10:33.360><c> is</c><00:10:33.600><c> running</c><00:10:33.839><c> on</c><00:10:34.000><c> a</c><00:10:34.240><c> different</c><00:10:34.399><c> machine,</c>
+
+00:10:34.790 --> 00:10:34.800 align:start position:0%
+mine is running on a different machine,
+ 
+
+00:10:34.800 --> 00:10:36.630 align:start position:0%
+mine is running on a different machine,
+my<00:10:35.040><c> Mac</c><00:10:35.360><c> Mini,</c><00:10:35.680><c> I</c><00:10:35.839><c> just</c><00:10:36.000><c> can't</c><00:10:36.240><c> showcase</c>
+
+00:10:36.630 --> 00:10:36.640 align:start position:0%
+my Mac Mini, I just can't showcase
+ 
+
+00:10:36.640 --> 00:10:38.389 align:start position:0%
+my Mac Mini, I just can't showcase
+what's<00:10:36.959><c> happening</c><00:10:37.279><c> locally</c><00:10:37.680><c> on</c><00:10:37.839><c> that</c><00:10:38.079><c> machine</c>
+
+00:10:38.389 --> 00:10:38.399 align:start position:0%
+what's happening locally on that machine
+ 
+
+00:10:38.399 --> 00:10:40.310 align:start position:0%
+what's happening locally on that machine
+here.<00:10:38.880><c> All</c><00:10:39.120><c> that</c><00:10:39.360><c> stuff</c><00:10:39.519><c> is</c><00:10:39.760><c> happening</c><00:10:40.000><c> in</c><00:10:40.160><c> the</c>
+
+00:10:40.310 --> 00:10:40.320 align:start position:0%
+here. All that stuff is happening in the
+ 
+
+00:10:40.320 --> 00:10:41.750 align:start position:0%
+here. All that stuff is happening in the
+background.<00:10:40.800><c> I'll</c><00:10:40.959><c> just</c><00:10:41.120><c> show</c><00:10:41.200><c> you</c><00:10:41.440><c> right</c><00:10:41.600><c> now</c>
+
+00:10:41.750 --> 00:10:41.760 align:start position:0%
+background. I'll just show you right now
+ 
+
+00:10:41.760 --> 00:10:44.069 align:start position:0%
+background. I'll just show you right now
+how<00:10:42.079><c> agent</c><00:10:42.399><c> browser</c><00:10:42.880><c> works.</c><00:10:43.279><c> Okay.</c><00:10:43.600><c> So,</c><00:10:43.760><c> I'm</c>
+
+00:10:44.069 --> 00:10:44.079 align:start position:0%
+how agent browser works. Okay. So, I'm
+ 
+
+00:10:44.079 --> 00:10:46.150 align:start position:0%
+how agent browser works. Okay. So, I'm
+going<00:10:44.160><c> to</c><00:10:44.399><c> ask</c><00:10:44.720><c> cloud</c><00:10:45.040><c> code</c><00:10:45.360><c> to</c><00:10:45.519><c> use</c><00:10:45.680><c> the</c><00:10:45.839><c> agent</c>
+
+00:10:46.150 --> 00:10:46.160 align:start position:0%
+going to ask cloud code to use the agent
+ 
+
+00:10:46.160 --> 00:10:48.150 align:start position:0%
+going to ask cloud code to use the agent
+browser<00:10:46.560><c> skill.</c><00:10:46.959><c> Navigate</c><00:10:47.279><c> to</c><00:10:47.519><c> hacker</c><00:10:47.920><c> news</c>
+
+00:10:48.150 --> 00:10:48.160 align:start position:0%
+browser skill. Navigate to hacker news
+ 
+
+00:10:48.160 --> 00:10:50.150 align:start position:0%
+browser skill. Navigate to hacker news
+and<00:10:48.320><c> tell</c><00:10:48.480><c> me</c><00:10:48.640><c> what's</c><00:10:48.959><c> trending</c><00:10:49.360><c> today.</c><00:10:49.920><c> Okay.</c>
+
+00:10:50.150 --> 00:10:50.160 align:start position:0%
+and tell me what's trending today. Okay.
+ 
+
+00:10:50.160 --> 00:10:51.590 align:start position:0%
+and tell me what's trending today. Okay.
+And<00:10:50.320><c> you</c><00:10:50.399><c> can</c><00:10:50.480><c> see</c><00:10:50.640><c> it's</c><00:10:50.880><c> actually</c><00:10:51.200><c> opened</c>
+
+00:10:51.590 --> 00:10:51.600 align:start position:0%
+And you can see it's actually opened
+ 
+
+00:10:51.600 --> 00:10:53.990 align:start position:0%
+And you can see it's actually opened
+hackernews<00:10:52.320><c> news.whitecominator.com</c>
+
+00:10:53.990 --> 00:10:54.000 align:start position:0%
+hackernews news.whitecominator.com
+ 
+
+00:10:54.000 --> 00:10:56.389 align:start position:0%
+hackernews news.whitecominator.com
+through<00:10:54.240><c> the</c><00:10:54.399><c> command</c><00:10:54.720><c> line.</c><00:10:55.519><c> It's</c><00:10:55.839><c> taking</c><00:10:56.160><c> a</c>
+
+00:10:56.389 --> 00:10:56.399 align:start position:0%
+through the command line. It's taking a
+ 
+
+00:10:56.399 --> 00:10:58.790 align:start position:0%
+through the command line. It's taking a
+snapshot<00:10:56.959><c> or</c><00:10:57.279><c> screenshot</c><00:10:57.760><c> of</c><00:10:57.920><c> that</c><00:10:58.160><c> web</c><00:10:58.399><c> page.</c>
+
+00:10:58.790 --> 00:10:58.800 align:start position:0%
+snapshot or screenshot of that web page.
+ 
+
+00:10:58.800 --> 00:11:00.790 align:start position:0%
+snapshot or screenshot of that web page.
+And<00:10:58.959><c> then</c><00:10:59.120><c> it's</c><00:10:59.360><c> closing</c><00:10:59.680><c> the</c><00:10:59.920><c> browser.</c><00:11:00.640><c> And</c>
+
+00:11:00.790 --> 00:11:00.800 align:start position:0%
+And then it's closing the browser. And
+ 
+
+00:11:00.800 --> 00:11:02.710 align:start position:0%
+And then it's closing the browser. And
+here<00:11:01.040><c> you</c><00:11:01.200><c> go.</c><00:11:01.440><c> It</c><00:11:01.680><c> gives</c><00:11:01.920><c> me</c><00:11:02.160><c> all</c><00:11:02.399><c> of</c><00:11:02.560><c> the</c>
+
+00:11:02.710 --> 00:11:02.720 align:start position:0%
+here you go. It gives me all of the
+ 
+
+00:11:02.720 --> 00:11:05.190 align:start position:0%
+here you go. It gives me all of the
+trending<00:11:03.200><c> topics</c><00:11:03.600><c> for</c><00:11:03.920><c> today</c><00:11:04.480><c> in</c><00:11:04.800><c> a</c><00:11:04.959><c> nice</c>
+
+00:11:05.190 --> 00:11:05.200 align:start position:0%
+trending topics for today in a nice
+ 
+
+00:11:05.200 --> 00:11:07.110 align:start position:0%
+trending topics for today in a nice
+little<00:11:05.360><c> chart</c><00:11:05.680><c> here.</c><00:11:06.079><c> So,</c><00:11:06.399><c> it's</c><00:11:06.640><c> distilled</c>
+
+00:11:07.110 --> 00:11:07.120 align:start position:0%
+little chart here. So, it's distilled
+ 
+
+00:11:07.120 --> 00:11:09.030 align:start position:0%
+little chart here. So, it's distilled
+all<00:11:07.279><c> that</c><00:11:07.519><c> information</c><00:11:08.079><c> from</c><00:11:08.480><c> just</c><00:11:08.720><c> searching</c>
+
+00:11:09.030 --> 00:11:09.040 align:start position:0%
+all that information from just searching
+ 
+
+00:11:09.040 --> 00:11:10.630 align:start position:0%
+all that information from just searching
+the<00:11:09.279><c> website</c><00:11:09.600><c> through</c><00:11:09.839><c> the</c><00:11:10.000><c> command</c><00:11:10.240><c> line,</c>
+
+00:11:10.630 --> 00:11:10.640 align:start position:0%
+the website through the command line,
+ 
+
+00:11:10.640 --> 00:11:13.350 align:start position:0%
+the website through the command line,
+taking<00:11:10.880><c> a</c><00:11:11.120><c> screenshot,</c><00:11:11.920><c> and</c><00:11:12.160><c> it</c><00:11:12.399><c> only</c><00:11:12.560><c> took</c><00:11:12.880><c> 42</c>
+
+00:11:13.350 --> 00:11:13.360 align:start position:0%
+taking a screenshot, and it only took 42
+ 
+
+00:11:13.360 --> 00:11:14.949 align:start position:0%
+taking a screenshot, and it only took 42
+seconds<00:11:13.680><c> to</c><00:11:13.920><c> do</c><00:11:14.079><c> all</c><00:11:14.320><c> of</c><00:11:14.399><c> that.</c><00:11:14.720><c> All</c><00:11:14.720><c> right.</c>
+
+00:11:14.949 --> 00:11:14.959 align:start position:0%
+seconds to do all of that. All right.
+ 
+
+00:11:14.959 --> 00:11:17.030 align:start position:0%
+seconds to do all of that. All right.
+And<00:11:15.120><c> you</c><00:11:15.360><c> see</c><00:11:15.519><c> if</c><00:11:15.760><c> I</c><00:11:16.000><c> run</c><00:11:16.160><c> the</c><00:11:16.480><c> exact</c><00:11:16.720><c> same</c>
+
+00:11:17.030 --> 00:11:17.040 align:start position:0%
+And you see if I run the exact same
+ 
+
+00:11:17.040 --> 00:11:19.670 align:start position:0%
+And you see if I run the exact same
+query<00:11:17.519><c> through</c><00:11:18.000><c> my</c><00:11:18.480><c> Jarvis</c><00:11:18.959><c> AI</c><00:11:19.279><c> assistant</c>
+
+00:11:19.670 --> 00:11:19.680 align:start position:0%
+query through my Jarvis AI assistant
+ 
+
+00:11:19.680 --> 00:11:21.509 align:start position:0%
+query through my Jarvis AI assistant
+through<00:11:19.920><c> OpenClaw,</c><00:11:20.560><c> it</c><00:11:20.720><c> gives</c><00:11:20.880><c> me</c><00:11:21.040><c> a</c><00:11:21.279><c> nice</c>
+
+00:11:21.509 --> 00:11:21.519 align:start position:0%
+through OpenClaw, it gives me a nice
+ 
+
+00:11:21.519 --> 00:11:23.990 align:start position:0%
+through OpenClaw, it gives me a nice
+neat<00:11:21.920><c> markdown</c><00:11:22.560><c> formatted</c><00:11:23.120><c> response</c><00:11:23.680><c> of</c><00:11:23.839><c> that</c>
+
+00:11:23.990 --> 00:11:24.000 align:start position:0%
+neat markdown formatted response of that
+ 
+
+00:11:24.000 --> 00:11:25.750 align:start position:0%
+neat markdown formatted response of that
+chart<00:11:24.320><c> we</c><00:11:24.560><c> just</c><00:11:24.720><c> saw</c><00:11:24.880><c> in</c><00:11:25.040><c> the</c><00:11:25.200><c> command</c><00:11:25.440><c> line.</c>
+
+00:11:25.750 --> 00:11:25.760 align:start position:0%
+chart we just saw in the command line.
+ 
+
+00:11:25.760 --> 00:11:27.509 align:start position:0%
+chart we just saw in the command line.
+Okay,<00:11:26.000><c> browsing</c><00:11:26.399><c> Hacker</c><00:11:26.800><c> News</c><00:11:27.040><c> is</c><00:11:27.200><c> certainly</c>
+
+00:11:27.509 --> 00:11:27.519 align:start position:0%
+Okay, browsing Hacker News is certainly
+ 
+
+00:11:27.519 --> 00:11:29.350 align:start position:0%
+Okay, browsing Hacker News is certainly
+cool,<00:11:27.760><c> but</c><00:11:27.920><c> that's</c><00:11:28.160><c> a</c><00:11:28.320><c> very</c><00:11:28.560><c> simple</c><00:11:28.880><c> demo</c><00:11:29.200><c> of</c>
+
+00:11:29.350 --> 00:11:29.360 align:start position:0%
+cool, but that's a very simple demo of
+ 
+
+00:11:29.360 --> 00:11:31.110 align:start position:0%
+cool, but that's a very simple demo of
+what<00:11:29.600><c> agent</c><00:11:30.000><c> browser</c><00:11:30.320><c> can</c><00:11:30.480><c> do.</c><00:11:30.800><c> There</c><00:11:30.959><c> are</c>
+
+00:11:31.110 --> 00:11:31.120 align:start position:0%
+what agent browser can do. There are
+ 
+
+00:11:31.120 --> 00:11:33.269 align:start position:0%
+what agent browser can do. There are
+some<00:11:31.279><c> really</c><00:11:31.600><c> advanced</c><00:11:32.079><c> use</c><00:11:32.399><c> cases</c><00:11:32.720><c> of</c><00:11:33.040><c> where</c>
+
+00:11:33.269 --> 00:11:33.279 align:start position:0%
+some really advanced use cases of where
+ 
+
+00:11:33.279 --> 00:11:34.630 align:start position:0%
+some really advanced use cases of where
+you<00:11:33.440><c> can</c><00:11:33.519><c> take</c><00:11:33.760><c> this</c><00:11:33.920><c> thing.</c><00:11:34.160><c> I'll</c><00:11:34.480><c> just</c><00:11:34.560><c> go</c>
+
+00:11:34.630 --> 00:11:34.640 align:start position:0%
+you can take this thing. I'll just go
+ 
+
+00:11:34.640 --> 00:11:36.550 align:start position:0%
+you can take this thing. I'll just go
+over<00:11:34.880><c> a</c><00:11:35.040><c> couple</c><00:11:35.200><c> of</c><00:11:35.279><c> them</c><00:11:35.519><c> briefly</c><00:11:35.920><c> here.</c><00:11:36.320><c> So</c>
+
+00:11:36.550 --> 00:11:36.560 align:start position:0%
+over a couple of them briefly here. So
+ 
+
+00:11:36.560 --> 00:11:39.350 align:start position:0%
+over a couple of them briefly here. So
+number<00:11:36.800><c> one,</c><00:11:37.120><c> a</c><00:11:37.360><c> no</c><00:11:37.680><c> API</c><00:11:38.160><c> workflow.</c><00:11:38.800><c> Basically</c>
+
+00:11:39.350 --> 00:11:39.360 align:start position:0%
+number one, a no API workflow. Basically
+ 
+
+00:11:39.360 --> 00:11:41.910 align:start position:0%
+number one, a no API workflow. Basically
+any<00:11:39.920><c> site</c><00:11:40.240><c> or</c><00:11:40.560><c> service</c><00:11:40.959><c> that</c><00:11:41.279><c> doesn't</c><00:11:41.519><c> have</c><00:11:41.680><c> an</c>
+
+00:11:41.910 --> 00:11:41.920 align:start position:0%
+any site or service that doesn't have an
+ 
+
+00:11:41.920 --> 00:11:43.829 align:start position:0%
+any site or service that doesn't have an
+API<00:11:42.399><c> where</c><00:11:42.560><c> you</c><00:11:42.720><c> actually</c><00:11:42.959><c> have</c><00:11:43.120><c> to</c><00:11:43.279><c> go</c><00:11:43.440><c> to</c><00:11:43.680><c> a</c>
+
+00:11:43.829 --> 00:11:43.839 align:start position:0%
+API where you actually have to go to a
+ 
+
+00:11:43.839 --> 00:11:45.670 align:start position:0%
+API where you actually have to go to a
+web<00:11:44.079><c> console</c><00:11:44.480><c> or</c><00:11:44.720><c> some</c><00:11:44.959><c> dashboard</c><00:11:45.440><c> to</c>
+
+00:11:45.670 --> 00:11:45.680 align:start position:0%
+web console or some dashboard to
+ 
+
+00:11:45.680 --> 00:11:47.509 align:start position:0%
+web console or some dashboard to
+interact<00:11:45.920><c> with.</c><00:11:46.320><c> You</c><00:11:46.480><c> can</c><00:11:46.560><c> use</c><00:11:46.800><c> agent</c><00:11:47.120><c> browser</c>
+
+00:11:47.509 --> 00:11:47.519 align:start position:0%
+interact with. You can use agent browser
+ 
+
+00:11:47.519 --> 00:11:49.190 align:start position:0%
+interact with. You can use agent browser
+to<00:11:47.760><c> programmatically</c><00:11:48.640><c> pull</c><00:11:48.959><c> that</c>
+
+00:11:49.190 --> 00:11:49.200 align:start position:0%
+to programmatically pull that
+ 
+
+00:11:49.200 --> 00:11:50.630 align:start position:0%
+to programmatically pull that
+information<00:11:49.600><c> or</c><00:11:49.920><c> interact</c><00:11:50.240><c> with</c><00:11:50.399><c> that</c>
+
+00:11:50.630 --> 00:11:50.640 align:start position:0%
+information or interact with that
+ 
+
+00:11:50.640 --> 00:11:52.389 align:start position:0%
+information or interact with that
+dashboard.<00:11:51.200><c> So</c><00:11:51.360><c> you</c><00:11:51.519><c> don't</c><00:11:51.680><c> have</c><00:11:51.760><c> to</c><00:11:52.000><c> open</c><00:11:52.240><c> a</c>
+
+00:11:52.389 --> 00:11:52.399 align:start position:0%
+dashboard. So you don't have to open a
+ 
+
+00:11:52.399 --> 00:11:54.230 align:start position:0%
+dashboard. So you don't have to open a
+browser<00:11:52.720><c> and</c><00:11:52.959><c> do</c><00:11:53.040><c> that</c><00:11:53.279><c> yourself.</c><00:11:53.920><c> Number</c><00:11:54.079><c> two</c>
+
+00:11:54.230 --> 00:11:54.240 align:start position:0%
+browser and do that yourself. Number two
+ 
+
+00:11:54.240 --> 00:11:56.550 align:start position:0%
+browser and do that yourself. Number two
+is<00:11:54.480><c> self-verifying</c><00:11:55.360><c> code.</c><00:11:55.760><c> So,</c><00:11:56.079><c> anytime</c>
+
+00:11:56.550 --> 00:11:56.560 align:start position:0%
+is self-verifying code. So, anytime
+ 
+
+00:11:56.560 --> 00:11:58.230 align:start position:0%
+is self-verifying code. So, anytime
+you're<00:11:56.800><c> using</c><00:11:57.200><c> Playright</c><00:11:57.760><c> to</c><00:11:58.000><c> sort</c><00:11:58.160><c> of</c>
+
+00:11:58.230 --> 00:11:58.240 align:start position:0%
+you're using Playright to sort of
+ 
+
+00:11:58.240 --> 00:12:00.470 align:start position:0%
+you're using Playright to sort of
+automate<00:11:58.720><c> and</c><00:11:58.959><c> check</c><00:11:59.279><c> front</c><00:11:59.600><c> end</c><00:11:59.839><c> or</c><00:12:00.160><c> changes</c>
+
+00:12:00.470 --> 00:12:00.480 align:start position:0%
+automate and check front end or changes
+ 
+
+00:12:00.480 --> 00:12:02.550 align:start position:0%
+automate and check front end or changes
+that<00:12:00.720><c> your</c><00:12:00.959><c> agent</c><00:12:01.279><c> is</c><00:12:01.440><c> making</c><00:12:01.680><c> to</c><00:12:01.920><c> code,</c><00:12:02.399><c> your</c>
+
+00:12:02.550 --> 00:12:02.560 align:start position:0%
+that your agent is making to code, your
+ 
+
+00:12:02.560 --> 00:12:04.069 align:start position:0%
+that your agent is making to code, your
+agent<00:12:02.800><c> can</c><00:12:03.040><c> just</c><00:12:03.200><c> use</c><00:12:03.360><c> agent</c><00:12:03.680><c> browser</c>
+
+00:12:04.069 --> 00:12:04.079 align:start position:0%
+agent can just use agent browser
+ 
+
+00:12:04.079 --> 00:12:06.150 align:start position:0%
+agent can just use agent browser
+instead,<00:12:04.640><c> take</c><00:12:04.800><c> a</c><00:12:04.959><c> screenshot,</c><00:12:05.680><c> send</c><00:12:05.839><c> that</c><00:12:06.000><c> to</c>
+
+00:12:06.150 --> 00:12:06.160 align:start position:0%
+instead, take a screenshot, send that to
+ 
+
+00:12:06.160 --> 00:12:08.069 align:start position:0%
+instead, take a screenshot, send that to
+you,<00:12:06.399><c> or</c><00:12:06.639><c> just</c><00:12:06.880><c> validate</c><00:12:07.279><c> it</c><00:12:07.440><c> itself</c><00:12:07.760><c> to</c><00:12:08.000><c> make</c>
+
+00:12:08.069 --> 00:12:08.079 align:start position:0%
+you, or just validate it itself to make
+ 
+
+00:12:08.079 --> 00:12:09.509 align:start position:0%
+you, or just validate it itself to make
+sure<00:12:08.240><c> that</c><00:12:08.399><c> the</c><00:12:08.639><c> changes</c><00:12:08.880><c> it</c><00:12:09.120><c> made</c><00:12:09.279><c> are</c>
+
+00:12:09.509 --> 00:12:09.519 align:start position:0%
+sure that the changes it made are
+ 
+
+00:12:09.519 --> 00:12:11.269 align:start position:0%
+sure that the changes it made are
+actually<00:12:09.760><c> good.</c><00:12:10.079><c> Number</c><00:12:10.399><c> three,</c><00:12:10.800><c> website</c>
+
+00:12:11.269 --> 00:12:11.279 align:start position:0%
+actually good. Number three, website
+ 
+
+00:12:11.279 --> 00:12:13.350 align:start position:0%
+actually good. Number three, website
+monitoring.<00:12:12.000><c> Any</c><00:12:12.320><c> website</c><00:12:12.720><c> where</c><00:12:13.040><c> things</c>
+
+00:12:13.350 --> 00:12:13.360 align:start position:0%
+monitoring. Any website where things
+ 
+
+00:12:13.360 --> 00:12:16.069 align:start position:0%
+monitoring. Any website where things
+change<00:12:13.920><c> like</c><00:12:14.320><c> prices,</c><00:12:15.279><c> product</c><00:12:15.519><c> listings,</c>
+
+00:12:16.069 --> 00:12:16.079 align:start position:0%
+change like prices, product listings,
+ 
+
+00:12:16.079 --> 00:12:17.829 align:start position:0%
+change like prices, product listings,
+things<00:12:16.320><c> like</c><00:12:16.399><c> that,</c><00:12:16.800><c> you</c><00:12:16.959><c> can</c><00:12:17.120><c> basically</c><00:12:17.519><c> use</c>
+
+00:12:17.829 --> 00:12:17.839 align:start position:0%
+things like that, you can basically use
+ 
+
+00:12:17.839 --> 00:12:19.910 align:start position:0%
+things like that, you can basically use
+agent<00:12:18.160><c> browser</c><00:12:18.560><c> to</c><00:12:18.800><c> monitor</c><00:12:19.120><c> that</c><00:12:19.440><c> page.</c>
+
+00:12:19.910 --> 00:12:19.920 align:start position:0%
+agent browser to monitor that page.
+ 
+
+00:12:19.920 --> 00:12:21.829 align:start position:0%
+agent browser to monitor that page.
+Number<00:12:20.160><c> four</c><00:12:20.399><c> is</c><00:12:20.720><c> not</c><00:12:20.880><c> really</c><00:12:21.120><c> a</c><00:12:21.360><c> use</c><00:12:21.600><c> case,</c>
+
+00:12:21.829 --> 00:12:21.839 align:start position:0%
+Number four is not really a use case,
+ 
+
+00:12:21.839 --> 00:12:23.269 align:start position:0%
+Number four is not really a use case,
+but<00:12:22.079><c> it's</c><00:12:22.240><c> just</c><00:12:22.399><c> something</c><00:12:22.560><c> to</c><00:12:22.720><c> point</c><00:12:22.880><c> out</c><00:12:23.040><c> for</c>
+
+00:12:23.269 --> 00:12:23.279 align:start position:0%
+but it's just something to point out for
+ 
+
+00:12:23.279 --> 00:12:25.190 align:start position:0%
+but it's just something to point out for
+agent<00:12:23.600><c> browser.</c><00:12:24.079><c> Agent</c><00:12:24.399><c> browser</c><00:12:24.800><c> does</c><00:12:25.040><c> have</c>
+
+00:12:25.190 --> 00:12:25.200 align:start position:0%
+agent browser. Agent browser does have
+ 
+
+00:12:25.200 --> 00:12:27.190 align:start position:0%
+agent browser. Agent browser does have
+some<00:12:25.440><c> built-in</c><00:12:26.000><c> security</c><00:12:26.399><c> guard</c><00:12:26.800><c> rails,</c>
+
+00:12:27.190 --> 00:12:27.200 align:start position:0%
+some built-in security guard rails,
+ 
+
+00:12:27.200 --> 00:12:29.269 align:start position:0%
+some built-in security guard rails,
+specifically<00:12:27.920><c> against</c><00:12:28.320><c> prompt</c><00:12:28.720><c> injection,</c>
+
+00:12:29.269 --> 00:12:29.279 align:start position:0%
+specifically against prompt injection,
+ 
+
+00:12:29.279 --> 00:12:31.190 align:start position:0%
+specifically against prompt injection,
+which<00:12:29.519><c> is</c><00:12:29.680><c> huge</c><00:12:30.079><c> when</c><00:12:30.320><c> you're</c><00:12:30.560><c> using</c><00:12:30.880><c> an</c>
+
+00:12:31.190 --> 00:12:31.200 align:start position:0%
+which is huge when you're using an
+ 
+
+00:12:31.200 --> 00:12:33.910 align:start position:0%
+which is huge when you're using an
+agentic<00:12:31.760><c> browser</c><00:12:32.399><c> to</c><00:12:32.639><c> navigate</c><00:12:33.040><c> the</c><00:12:33.360><c> web.</c><00:12:33.760><c> You</c>
+
+00:12:33.910 --> 00:12:33.920 align:start position:0%
+agentic browser to navigate the web. You
+ 
+
+00:12:33.920 --> 00:12:35.430 align:start position:0%
+agentic browser to navigate the web. You
+don't<00:12:34.079><c> want</c><00:12:34.240><c> your</c><00:12:34.399><c> AI</c><00:12:34.800><c> agent</c><00:12:35.120><c> getting</c>
+
+00:12:35.430 --> 00:12:35.440 align:start position:0%
+don't want your AI agent getting
+ 
+
+00:12:35.440 --> 00:12:37.590 align:start position:0%
+don't want your AI agent getting
+poisoned<00:12:35.920><c> with</c><00:12:36.160><c> any</c><00:12:36.399><c> prompt</c><00:12:36.720><c> injections</c><00:12:37.360><c> on</c>
+
+00:12:37.590 --> 00:12:37.600 align:start position:0%
+poisoned with any prompt injections on
+ 
+
+00:12:37.600 --> 00:12:39.509 align:start position:0%
+poisoned with any prompt injections on
+those<00:12:37.839><c> sites.</c><00:12:38.320><c> It's</c><00:12:38.639><c> not</c><00:12:38.800><c> perfect,</c><00:12:39.200><c> but</c><00:12:39.360><c> it's</c>
+
+00:12:39.509 --> 00:12:39.519 align:start position:0%
+those sites. It's not perfect, but it's
+ 
+
+00:12:39.519 --> 00:12:40.949 align:start position:0%
+those sites. It's not perfect, but it's
+good<00:12:39.680><c> to</c><00:12:39.760><c> know</c><00:12:39.920><c> that</c><00:12:40.079><c> it's</c><00:12:40.320><c> there</c><00:12:40.480><c> and</c><00:12:40.720><c> it's</c>
+
+00:12:40.949 --> 00:12:40.959 align:start position:0%
+good to know that it's there and it's
+ 
+
+00:12:40.959 --> 00:12:42.790 align:start position:0%
+good to know that it's there and it's
+providing<00:12:41.200><c> an</c><00:12:41.440><c> extra</c><00:12:41.680><c> line</c><00:12:41.920><c> of</c><00:12:42.079><c> defense.</c><00:12:42.639><c> And</c>
+
+00:12:42.790 --> 00:12:42.800 align:start position:0%
+providing an extra line of defense. And
+ 
+
+00:12:42.800 --> 00:12:44.389 align:start position:0%
+providing an extra line of defense. And
+number<00:12:42.959><c> five</c><00:12:43.200><c> is</c><00:12:43.360><c> a</c><00:12:43.519><c> new</c><00:12:43.680><c> skill</c><00:12:44.000><c> that</c><00:12:44.160><c> is</c>
+
+00:12:44.389 --> 00:12:44.399 align:start position:0%
+number five is a new skill that is
+ 
+
+00:12:44.399 --> 00:12:45.829 align:start position:0%
+number five is a new skill that is
+actually<00:12:44.560><c> available</c><00:12:44.880><c> with</c><00:12:45.120><c> agent</c><00:12:45.519><c> browser,</c>
+
+00:12:45.829 --> 00:12:45.839 align:start position:0%
+actually available with agent browser,
+ 
+
+00:12:45.839 --> 00:12:48.069 align:start position:0%
+actually available with agent browser,
+and<00:12:46.079><c> that's</c><00:12:46.240><c> the</c><00:12:46.560><c> electron</c><00:12:47.120><c> skill.</c><00:12:47.519><c> So,</c><00:12:47.839><c> in</c>
+
+00:12:48.069 --> 00:12:48.079 align:start position:0%
+and that's the electron skill. So, in
+ 
+
+00:12:48.079 --> 00:12:50.310 align:start position:0%
+and that's the electron skill. So, in
+addition<00:12:48.480><c> to</c><00:12:48.880><c> being</c><00:12:49.120><c> able</c><00:12:49.360><c> to</c><00:12:49.680><c> control</c><00:12:50.000><c> and</c>
+
+00:12:50.310 --> 00:12:50.320 align:start position:0%
+addition to being able to control and
+ 
+
+00:12:50.320 --> 00:12:52.069 align:start position:0%
+addition to being able to control and
+interact<00:12:50.720><c> with</c><00:12:50.880><c> a</c><00:12:51.200><c> browser,</c><00:12:51.760><c> you</c><00:12:51.920><c> can</c>
+
+00:12:52.069 --> 00:12:52.079 align:start position:0%
+interact with a browser, you can
+ 
+
+00:12:52.079 --> 00:12:53.750 align:start position:0%
+interact with a browser, you can
+actually<00:12:52.240><c> use</c><00:12:52.399><c> agent</c><00:12:52.800><c> browser</c><00:12:53.200><c> to</c><00:12:53.360><c> control</c>
+
+00:12:53.750 --> 00:12:53.760 align:start position:0%
+actually use agent browser to control
+ 
+
+00:12:53.760 --> 00:12:55.990 align:start position:0%
+actually use agent browser to control
+any<00:12:54.160><c> electron</c><00:12:54.720><c> app</c><00:12:55.040><c> on</c><00:12:55.279><c> your</c><00:12:55.519><c> computer,</c>
+
+00:12:55.990 --> 00:12:56.000 align:start position:0%
+any electron app on your computer,
+ 
+
+00:12:56.000 --> 00:12:58.470 align:start position:0%
+any electron app on your computer,
+whether<00:12:56.240><c> that</c><00:12:56.480><c> be</c><00:12:56.639><c> Slack</c><00:12:57.120><c> or</c><00:12:57.440><c> Notion,</c><00:12:58.079><c> VS</c>
+
+00:12:58.470 --> 00:12:58.480 align:start position:0%
+whether that be Slack or Notion, VS
+ 
+
+00:12:58.480 --> 00:13:00.310 align:start position:0%
+whether that be Slack or Notion, VS
+Code,<00:12:58.800><c> Discord.</c><00:12:59.360><c> I</c><00:12:59.600><c> haven't</c><00:12:59.760><c> tested</c><00:13:00.000><c> this</c><00:13:00.240><c> out</c>
+
+00:13:00.310 --> 00:13:00.320 align:start position:0%
+Code, Discord. I haven't tested this out
+ 
+
+00:13:00.320 --> 00:13:02.069 align:start position:0%
+Code, Discord. I haven't tested this out
+yet,<00:13:00.560><c> but</c><00:13:00.800><c> it</c><00:13:01.040><c> sounds</c><00:13:01.360><c> really</c><00:13:01.680><c> cool.</c><00:13:02.079><c> All</c>
+
+00:13:02.069 --> 00:13:02.079 align:start position:0%
+yet, but it sounds really cool. All
+ 
+
+00:13:02.079 --> 00:13:03.509 align:start position:0%
+yet, but it sounds really cool. All
+right,<00:13:02.320><c> so</c><00:13:02.560><c> there</c><00:13:02.720><c> you</c><00:13:02.880><c> have</c><00:13:02.959><c> it.</c><00:13:03.200><c> That's</c>
+
+00:13:03.509 --> 00:13:03.519 align:start position:0%
+right, so there you have it. That's
+ 
+
+00:13:03.519 --> 00:13:05.910 align:start position:0%
+right, so there you have it. That's
+three<00:13:03.839><c> tools,</c><00:13:04.480><c> three</c><00:13:04.880><c> simple</c><00:13:05.279><c> but</c><00:13:05.600><c> highly</c>
+
+00:13:05.910 --> 00:13:05.920 align:start position:0%
+three tools, three simple but highly
+ 
+
+00:13:05.920 --> 00:13:07.910 align:start position:0%
+three tools, three simple but highly
+effective<00:13:06.480><c> upgrades</c><00:13:06.880><c> for</c><00:13:07.120><c> your</c><00:13:07.279><c> OpenClaw.</c>
+
+00:13:07.910 --> 00:13:07.920 align:start position:0%
+effective upgrades for your OpenClaw.
+ 
+
+00:13:07.920 --> 00:13:09.990 align:start position:0%
+effective upgrades for your OpenClaw.
+Agent<00:13:08.240><c> Mail</c><00:13:08.560><c> gives</c><00:13:08.800><c> your</c><00:13:09.120><c> agent</c><00:13:09.519><c> its</c><00:13:09.760><c> own</c>
+
+00:13:09.990 --> 00:13:10.000 align:start position:0%
+Agent Mail gives your agent its own
+ 
+
+00:13:10.000 --> 00:13:12.629 align:start position:0%
+Agent Mail gives your agent its own
+dedicated<00:13:10.560><c> inbox.</c><00:13:11.200><c> QMD</c><00:13:11.839><c> gives</c><00:13:12.079><c> your</c><00:13:12.240><c> agent</c>
+
+00:13:12.629 --> 00:13:12.639 align:start position:0%
+dedicated inbox. QMD gives your agent
+ 
+
+00:13:12.639 --> 00:13:15.030 align:start position:0%
+dedicated inbox. QMD gives your agent
+real<00:13:12.959><c> memory</c><00:13:13.440><c> and</c><00:13:13.760><c> agent</c><00:13:14.079><c> browser</c><00:13:14.560><c> gives</c><00:13:14.800><c> your</c>
+
+00:13:15.030 --> 00:13:15.040 align:start position:0%
+real memory and agent browser gives your
+ 
+
+00:13:15.040 --> 00:13:17.509 align:start position:0%
+real memory and agent browser gives your
+agent<00:13:15.440><c> a</c><00:13:15.680><c> better</c><00:13:16.000><c> and</c><00:13:16.240><c> faster</c><00:13:16.720><c> way</c><00:13:16.880><c> to</c><00:13:17.200><c> browse</c>
+
+00:13:17.509 --> 00:13:17.519 align:start position:0%
+agent a better and faster way to browse
+ 
+
+00:13:17.519 --> 00:13:19.670 align:start position:0%
+agent a better and faster way to browse
+the<00:13:17.760><c> web.</c><00:13:18.240><c> Each</c><00:13:18.480><c> one</c><00:13:18.720><c> took</c><00:13:19.040><c> only</c><00:13:19.279><c> a</c><00:13:19.519><c> few</c>
+
+00:13:19.670 --> 00:13:19.680 align:start position:0%
+the web. Each one took only a few
+ 
+
+00:13:19.680 --> 00:13:21.670 align:start position:0%
+the web. Each one took only a few
+minutes<00:13:19.920><c> to</c><00:13:20.160><c> set</c><00:13:20.320><c> up,</c><00:13:20.560><c> but</c><00:13:20.800><c> together</c><00:13:21.360><c> they</c>
+
+00:13:21.670 --> 00:13:21.680 align:start position:0%
+minutes to set up, but together they
+ 
+
+00:13:21.680 --> 00:13:24.069 align:start position:0%
+minutes to set up, but together they
+turn<00:13:21.839><c> a</c><00:13:22.160><c> really</c><00:13:22.399><c> basic</c><00:13:22.880><c> open</c><00:13:23.120><c> claw</c><00:13:23.440><c> setup</c><00:13:23.760><c> into</c>
+
+00:13:24.069 --> 00:13:24.079 align:start position:0%
+turn a really basic open claw setup into
+ 
+
+00:13:24.079 --> 00:13:25.670 align:start position:0%
+turn a really basic open claw setup into
+something<00:13:24.320><c> that</c><00:13:24.560><c> feels</c><00:13:24.880><c> like</c><00:13:25.040><c> an</c><00:13:25.279><c> actually</c>
+
+00:13:25.670 --> 00:13:25.680 align:start position:0%
+something that feels like an actually
+ 
+
+00:13:25.680 --> 00:13:27.670 align:start position:0%
+something that feels like an actually
+useful<00:13:26.160><c> assistant.</c><00:13:26.720><c> If</c><00:13:26.880><c> I</c><00:13:26.959><c> had</c><00:13:27.120><c> to</c><00:13:27.200><c> pick</c><00:13:27.440><c> just</c>
+
+00:13:27.670 --> 00:13:27.680 align:start position:0%
+useful assistant. If I had to pick just
+ 
+
+00:13:27.680 --> 00:13:29.829 align:start position:0%
+useful assistant. If I had to pick just
+one<00:13:27.839><c> to</c><00:13:28.079><c> start</c><00:13:28.240><c> with,</c><00:13:28.480><c> I'd</c><00:13:28.800><c> start</c><00:13:28.959><c> with</c><00:13:29.120><c> QMD.</c>
+
+00:13:29.829 --> 00:13:29.839 align:start position:0%
+one to start with, I'd start with QMD.
+ 
+
+00:13:29.839 --> 00:13:31.910 align:start position:0%
+one to start with, I'd start with QMD.
+The<00:13:30.079><c> memory</c><00:13:30.399><c> upgrade</c><00:13:30.800><c> is</c><00:13:31.040><c> the</c><00:13:31.279><c> single</c><00:13:31.600><c> biggest</c>
+
+00:13:31.910 --> 00:13:31.920 align:start position:0%
+The memory upgrade is the single biggest
+ 
+
+00:13:31.920 --> 00:13:33.269 align:start position:0%
+The memory upgrade is the single biggest
+quality<00:13:32.240><c> of</c><00:13:32.399><c> life</c><00:13:32.639><c> improvement</c><00:13:33.040><c> for</c>
+
+00:13:33.269 --> 00:13:33.279 align:start position:0%
+quality of life improvement for
+ 
+
+00:13:33.279 --> 00:13:35.110 align:start position:0%
+quality of life improvement for
+OpenClaw.<00:13:34.079><c> But</c><00:13:34.160><c> honestly,</c><00:13:34.560><c> hook</c><00:13:34.800><c> up</c><00:13:34.959><c> all</c>
+
+00:13:35.110 --> 00:13:35.120 align:start position:0%
+OpenClaw. But honestly, hook up all
+ 
+
+00:13:35.120 --> 00:13:36.790 align:start position:0%
+OpenClaw. But honestly, hook up all
+three.<00:13:35.519><c> It's</c><00:13:35.760><c> totally</c><00:13:36.000><c> worth</c><00:13:36.160><c> it.</c><00:13:36.480><c> If</c><00:13:36.720><c> you</c>
+
+00:13:36.790 --> 00:13:36.800 align:start position:0%
+three. It's totally worth it. If you
+ 
+
+00:13:36.800 --> 00:13:38.550 align:start position:0%
+three. It's totally worth it. If you
+found<00:13:36.959><c> this</c><00:13:37.200><c> helpful,</c><00:13:37.600><c> drop</c><00:13:37.760><c> a</c><00:13:38.000><c> comment</c><00:13:38.240><c> below</c>
+
+00:13:38.550 --> 00:13:38.560 align:start position:0%
+found this helpful, drop a comment below
+ 
+
+00:13:38.560 --> 00:13:40.230 align:start position:0%
+found this helpful, drop a comment below
+to<00:13:38.800><c> let</c><00:13:38.959><c> me</c><00:13:39.040><c> know</c><00:13:39.200><c> what</c><00:13:39.440><c> tool</c><00:13:39.760><c> you're</c><00:13:40.000><c> most</c>
+
+00:13:40.230 --> 00:13:40.240 align:start position:0%
+to let me know what tool you're most
+ 
+
+00:13:40.240 --> 00:13:41.910 align:start position:0%
+to let me know what tool you're most
+excited<00:13:40.639><c> about</c><00:13:40.880><c> for</c><00:13:41.120><c> using</c><00:13:41.360><c> with</c><00:13:41.600><c> OpenC</c>
+
+00:13:41.910 --> 00:13:41.920 align:start position:0%
+excited about for using with OpenC
+ 
+
+00:13:41.920 --> 00:13:43.430 align:start position:0%
+excited about for using with OpenC
+cloth.<00:13:42.160><c> And</c><00:13:42.320><c> if</c><00:13:42.399><c> there's</c><00:13:42.560><c> any</c><00:13:42.720><c> tools</c><00:13:43.040><c> I</c><00:13:43.279><c> should</c>
+
+00:13:43.430 --> 00:13:43.440 align:start position:0%
+cloth. And if there's any tools I should
+ 
+
+00:13:43.440 --> 00:13:45.350 align:start position:0%
+cloth. And if there's any tools I should
+check<00:13:43.600><c> out,</c><00:13:43.920><c> also</c><00:13:44.240><c> let</c><00:13:44.480><c> me</c><00:13:44.560><c> know.</c><00:13:44.880><c> I'm</c><00:13:45.120><c> always</c>
+
+00:13:45.350 --> 00:13:45.360 align:start position:0%
+check out, also let me know. I'm always
+ 
+
+00:13:45.360 --> 00:13:46.949 align:start position:0%
+check out, also let me know. I'm always
+trying<00:13:45.600><c> out</c><00:13:45.839><c> new</c><00:13:46.079><c> stuff</c><00:13:46.240><c> and</c><00:13:46.480><c> I</c><00:13:46.639><c> like</c><00:13:46.720><c> to</c><00:13:46.880><c> see</c>
+
+00:13:46.949 --> 00:13:46.959 align:start position:0%
+trying out new stuff and I like to see
+ 
+
+00:13:46.959 --> 00:13:48.550 align:start position:0%
+trying out new stuff and I like to see
+what<00:13:47.200><c> you</c><00:13:47.360><c> guys</c><00:13:47.519><c> are</c><00:13:47.680><c> using.</c><00:13:48.160><c> And</c><00:13:48.320><c> if</c><00:13:48.480><c> you</c>
+
+00:13:48.550 --> 00:13:48.560 align:start position:0%
+what you guys are using. And if you
+ 
+
+00:13:48.560 --> 00:13:50.310 align:start position:0%
+what you guys are using. And if you
+haven't<00:13:48.800><c> already,</c><00:13:49.279><c> make</c><00:13:49.440><c> sure</c><00:13:49.600><c> you</c><00:13:49.839><c> subscribe</c>
+
+00:13:50.310 --> 00:13:50.320 align:start position:0%
+haven't already, make sure you subscribe
+ 
+
+00:13:50.320 --> 00:13:51.990 align:start position:0%
+haven't already, make sure you subscribe
+because<00:13:50.560><c> I've</c><00:13:50.800><c> got</c><00:13:50.959><c> a</c><00:13:51.120><c> lot</c><00:13:51.279><c> more</c><00:13:51.519><c> content</c><00:13:51.839><c> in</c>
+
+00:13:51.990 --> 00:13:52.000 align:start position:0%
+because I've got a lot more content in
+ 
+
+00:13:52.000 --> 00:13:53.430 align:start position:0%
+because I've got a lot more content in
+the<00:13:52.160><c> pipeline</c><00:13:52.480><c> in</c><00:13:52.720><c> the</c><00:13:52.880><c> coming</c><00:13:53.040><c> weeks</c><00:13:53.279><c> for</c>
+
+00:13:53.430 --> 00:13:53.440 align:start position:0%
+the pipeline in the coming weeks for
+ 
+
+00:13:53.440 --> 00:13:55.110 align:start position:0%
+the pipeline in the coming weeks for
+OpenCloth.<00:13:54.160><c> Thanks</c><00:13:54.399><c> for</c><00:13:54.639><c> watching</c><00:13:54.800><c> and</c><00:13:54.959><c> I'll</c>
+
+00:13:55.110 --> 00:13:55.120 align:start position:0%
+OpenCloth. Thanks for watching and I'll
+ 
+
+00:13:55.120 --> 00:13:57.600 align:start position:0%
+OpenCloth. Thanks for watching and I'll
+see<00:13:55.279><c> you</c><00:13:55.440><c> next</c>
+

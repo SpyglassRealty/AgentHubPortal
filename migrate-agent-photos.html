@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Migrate Agent Photos - Mission Control</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        button {
+            background: #EF4923;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #d63d1e;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .updates-list {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        .update-item {
+            margin: 5px 0;
+            padding: 5px;
+            background: white;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ Migrate Agent Photos from REW to Mission Control</h1>
+        
+        <div class="warning">
+            <strong>⚠️ Important:</strong> This migration will update ALL agent photo URLs from REW 
+            (rew.spyglassrealty.com) to Mission Control's hosted versions. Make sure the deployment
+            with the photo files is complete before running this.
+        </div>
+
+        <div class="info">
+            <strong>What this does:</strong>
+            <ul>
+                <li>Finds all agents with photos hosted on REW</li>
+                <li>Updates their photo URLs to use Mission Control's server</li>
+                <li>Photos will be served from: <code>https://missioncontrol-tjfm.onrender.com/agent-photos/</code></li>
+                <li>This ensures photos continue working after REW is discontinued</li>
+            </ul>
+        </div>
+
+        <button id="checkPhotos" onclick="checkPhotoStatus()">Check Current Photo Status</button>
+        <button id="runMigration" onclick="runMigration()">Run Photo Migration</button>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        const MISSION_CONTROL_URL = 'https://missioncontrol-tjfm.onrender.com';
+        
+        async function checkPhotoStatus() {
+            const status = document.getElementById('status');
+            status.className = 'status info';
+            status.style.display = 'block';
+            status.innerHTML = '⏳ Checking current photo status...';
+            
+            try {
+                const response = await fetch(`${MISSION_CONTROL_URL}/api/admin/agents?limit=500`, {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch agents. Are you logged in?');
+                }
+                
+                const data = await response.json();
+                const agents = data.agents || [];
+                
+                let rewCount = 0;
+                let localCount = 0;
+                let noPhotoCount = 0;
+                
+                agents.forEach(agent => {
+                    if (!agent.headshotUrl) {
+                        noPhotoCount++;
+                    } else if (agent.headshotUrl.includes('rew.spyglassrealty.com')) {
+                        rewCount++;
+                    } else if (agent.headshotUrl.includes('missioncontrol')) {
+                        localCount++;
+                    }
+                });
+                
+                status.className = 'status info';
+                status.innerHTML = `
+                    📊 <strong>Current Photo Status:</strong><br><br>
+                    Total agents: ${agents.length}<br>
+                    Photos on REW: ${rewCount} ⚠️<br>
+                    Photos on Mission Control: ${localCount} ✅<br>
+                    No photo: ${noPhotoCount}<br><br>
+                    ${rewCount > 0 ? `<strong>Need to migrate ${rewCount} photos from REW</strong>` : '<strong>All photos already migrated! 🎉</strong>'}
+                `;
+            } catch (error) {
+                status.className = 'status error';
+                status.innerHTML = `
+                    ❌ <strong>Error checking status</strong><br>
+                    ${error.message}<br><br>
+                    Please make sure you're logged into Mission Control first:<br>
+                    <a href="${MISSION_CONTROL_URL}/admin" target="_blank">Open Mission Control Admin</a>
+                `;
+            }
+        }
+        
+        async function runMigration() {
+            const button = document.getElementById('runMigration');
+            const status = document.getElementById('status');
+            
+            if (!confirm('Are you sure you want to migrate all agent photos from REW to Mission Control?')) {
+                return;
+            }
+            
+            button.disabled = true;
+            button.textContent = 'Running...';
+            
+            status.className = 'status info';
+            status.style.display = 'block';
+            status.innerHTML = '⏳ Migrating photos... This may take a moment...';
+            
+            try {
+                const response = await fetch(`${MISSION_CONTROL_URL}/api/admin/migrate-agent-photos`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    status.className = 'status success';
+                    let updatesHtml = '';
+                    if (result.updates && result.updates.length > 0) {
+                        updatesHtml = '<div class="updates-list"><strong>Updated agents:</strong><br>';
+                        result.updates.forEach(update => {
+                            updatesHtml += `<div class="update-item">✅ ${update.agent}<br>Old: ${update.oldUrl}<br>New: ${update.newUrl}</div>`;
+                        });
+                        if (result.moreUpdates) {
+                            updatesHtml += `<div class="update-item">${result.moreUpdates}</div>`;
+                        }
+                        updatesHtml += '</div>';
+                    }
+                    
+                    status.innerHTML = `
+                        ✅ <strong>Migration successful!</strong><br><br>
+                        ${result.message}<br><br>
+                        ${updatesHtml}
+                    `;
+                } else {
+                    status.className = 'status error';
+                    status.innerHTML = `
+                        ❌ <strong>Migration failed</strong><br>
+                        ${result.error || 'Unknown error'}<br>
+                        ${result.details ? '<pre>' + result.details + '</pre>' : ''}
+                    `;
+                }
+            } catch (error) {
+                status.className = 'status error';
+                status.innerHTML = `
+                    ❌ <strong>Network error</strong><br>
+                    ${error.message}<br><br>
+                    Please make sure you're logged into Mission Control first:<br>
+                    <a href="${MISSION_CONTROL_URL}/admin" target="_blank">Open Mission Control Admin</a>
+                `;
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Run Photo Migration';
+            }
+        }
+        
+        // Check status on page load
+        window.addEventListener('load', () => {
+            setTimeout(checkPhotoStatus, 500);
+        });
+    </script>
+</body>
+</html>
