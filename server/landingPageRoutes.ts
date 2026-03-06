@@ -296,6 +296,33 @@ router.delete("/admin/landing-pages/:id", async (req, res) => {
 
 // ── PUBLIC ROUTES ────────────────────────────────────────────────────────
 
+// GET /api/landing-pages/blog-index - Lightweight blog listing (no content/sections)
+router.get("/landing-pages/blog-index", async (req, res) => {
+  try {
+    const pages = await db
+      .select({
+        id: landingPages.id,
+        slug: landingPages.slug,
+        title: landingPages.title,
+        publishDate: landingPages.publishDate,
+        ogImageUrl: landingPages.ogImageUrl,
+        metaDescription: landingPages.metaDescription,
+        pageType: landingPages.pageType,
+      })
+      .from(landingPages)
+      .where(and(
+        eq(landingPages.isPublished, true),
+        eq(landingPages.pageType, 'blog')
+      ))
+      .orderBy(desc(landingPages.publishDate));
+    
+    res.json({ pages });
+  } catch (error) {
+    console.error("Error fetching blog index:", error);
+    res.status(500).json({ error: "Failed to fetch blog index" });
+  }
+});
+
 // GET /api/landing-pages - Public landing pages (published only)
 router.get("/landing-pages", async (req, res) => {
   try {
