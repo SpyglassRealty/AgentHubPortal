@@ -83,6 +83,9 @@ async function runDirectMigrations() {
     // Agent Directory Profiles - ensure fub_email column exists
     await ensureAgentDirectoryFubEmail();
     
+    // Uploads table for image storage
+    await createUploadsTable();
+    
   } catch (error) {
     console.error("[Database] Direct migration error:", error);
     throw error;
@@ -949,5 +952,27 @@ async function ensureAgentDirectoryFubEmail() {
   } catch (error) {
     console.error("[Database] Error adding fub_email column:", error);
     // Don't throw - this is not critical for startup
+  }
+}
+
+async function createUploadsTable() {
+  try {
+    console.log("[Database] Creating uploads table...");
+    
+    await pool.query(\`
+      CREATE TABLE IF NOT EXISTS uploads (
+        id VARCHAR PRIMARY KEY,
+        filename VARCHAR NOT NULL,
+        mime_type VARCHAR NOT NULL,
+        data TEXT NOT NULL,
+        uploaded_by VARCHAR REFERENCES users(id),
+        uploaded_at TIMESTAMP DEFAULT NOW()
+      )
+    \`);
+    
+    console.log("[Database] Uploads table created/verified successfully");
+  } catch (error) {
+    console.error("[Database] Error creating uploads table:", error);
+    // Do not throw - table might already exist
   }
 }

@@ -48,6 +48,15 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const uploads = pgTable("uploads", {
+  id: varchar("id").primaryKey(),
+  filename: varchar("filename").notNull(),
+  mimeType: varchar("mime_type").notNull(),
+  data: text("data").notNull(), // Base64 encoded image data
+  uploadedBy: varchar("uploaded_by").references(() => users.id),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+});
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
