@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { X, Plus, Trash2, Upload } from 'lucide-react';
+import { ImageUpload } from "@/components/editor/ImageUpload";
 import { getWidgetDefinition } from './BlockRegistry';
 import { ImageUpload } from '@/components/editor/ImageUpload';
 
@@ -101,8 +102,8 @@ export function BlockSettingsPanel({ block, onUpdate, onClose }: BlockSettingsPa
       case 'image':
         return (
           <>
-            <Field label="Image URL">
-              <Input value={props.url || ''} onChange={e => update('url', e.target.value)} placeholder="https://..." />
+            <Field label="Image">
+              <ImageUpload value={props.url || ''} onChange={(url) => update('url', url)} placeholder="Upload an image or enter URL" />
             </Field>
             <Field label="Alt Text *">
               <Input
@@ -584,11 +585,15 @@ export function BlockSettingsPanel({ block, onUpdate, onClose }: BlockSettingsPa
                     cards[i] = { ...cards[i], description: e.target.value };
                     update('cards', cards);
                   }} />
-                  <Input placeholder="Image URL" value={card.image || ''} onChange={e => {
-                    const cards = [...(props.cards || [])];
-                    cards[i] = { ...cards[i], image: e.target.value };
-                    update('cards', cards);
-                  }} />
+                                    <ImageUpload
+                    value={card.image || ''}
+                    onChange={(url) => {
+                      const cards = [...(props.cards || [])];
+                      cards[i] = { ...cards[i], image: url };
+                      update('cards', cards);
+                    }}
+                    placeholder="Upload image or enter URL"
+                  />
                   <Input placeholder="Link URL" value={card.link || ''} onChange={e => {
                     const cards = [...(props.cards || [])];
                     cards[i] = { ...cards[i], link: e.target.value };
