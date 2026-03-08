@@ -48,6 +48,35 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 - `trash` > `rm` (recoverable beats gone forever)
 - When in doubt, ask.
 
+## ✅ Task Verification - ALWAYS VERIFY!
+
+**You have a systemic problem: confirming tasks are complete without actually verifying they worked.**
+
+Follow this process for EVERY task:
+1. **Do the work**
+2. **Verify it actually worked** — run the script, check the output, hit the endpoint, read the response
+3. **Only report success if you received a confirmed successful response**
+4. **If you can't verify it, say "I cannot confirm this worked"** instead of claiming success
+
+### For any deployment or code change:
+- Actually run the code and show the output
+- Check that the deployed URL/endpoint returns the expected response
+- Never say "done" or "deployed" without showing proof
+
+### For QA/test scripts:
+- Write scripts that actually run and return pass/fail results
+- Not confirmation messages — actual test output
+- Show the real execution results
+
+### Examples of proper verification:
+- **Code fix**: Run the app, check for errors, test the feature
+- **API change**: Call the endpoint, show the response
+- **UI feature**: Take a screenshot, perform the action
+- **Script creation**: Execute it and show the output
+- **Config change**: Restart service and confirm it's running
+
+**NO MORE ASSUMPTIONS. VERIFY EVERYTHING.**
+
 ## External vs Internal
 
 **Safe to do freely:**
