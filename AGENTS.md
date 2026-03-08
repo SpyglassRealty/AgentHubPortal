@@ -46,6 +46,7 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 - Don't exfiltrate private data. Ever.
 - Don't run destructive commands without asking.
 - `trash` > `rm` (recoverable beats gone forever)
+- **Never modify clawdbot.json without explicit permission** — Do not use `gateway config.patch` or `gateway config.apply` unless explicitly instructed.
 - When in doubt, ask.
 
 ## ✅ Task Verification - ALWAYS VERIFY!
