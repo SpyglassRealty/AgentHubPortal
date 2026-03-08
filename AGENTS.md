@@ -62,11 +62,13 @@ Follow this process for EVERY task:
 - Actually run the code and show the output
 - Check that the deployed URL/endpoint returns the expected response
 - Never say "done" or "deployed" without showing proof
+- **When doing QA, check the deployment** — verify it's actually deployed to production, not just working locally
 
 ### For QA/test scripts:
 - Write scripts that actually run and return pass/fail results
 - Not confirmation messages — actual test output
 - Show the real execution results
+- **Check deployment status** — verify changes are live on production URLs (Vercel, etc.)
 
 ### Examples of proper verification:
 - **Code fix**: Run the app, check for errors, test the feature
