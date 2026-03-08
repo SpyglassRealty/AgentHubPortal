@@ -621,7 +621,7 @@ export default function PolygonManager() {
           }
         }
       }}>
-        <DialogContent>
+        <DialogContent className="z-[9999]">
           <DialogHeader>
             <DialogTitle>
               {editingCommunity ? `Edit: ${editingCommunity.name}` : "Save Community Polygon"}
@@ -710,7 +710,7 @@ export default function PolygonManager() {
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="z-[9999]">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Polygon</AlertDialogTitle>
             <AlertDialogDescription>
