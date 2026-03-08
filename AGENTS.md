@@ -63,6 +63,7 @@ Follow this process for EVERY task:
 - Check that the deployed URL/endpoint returns the expected response
 - Never say "done" or "deployed" without showing proof
 - **When doing QA, check the deployment** — verify it's actually deployed to production, not just working locally
+- **For Vercel deployments specifically**: after pushing any code change, run `vercel logs` or check the Vercel dashboard to confirm the build succeeded. Do not report success until you see a successful deployment URL returned. If the deployment fails, show me the exact error from the build log and fix it before reporting done. Never assume a git push equals a successful Vercel deployment — they are not the same thing.
 
 ### For QA/test scripts:
 - Write scripts that actually run and return pass/fail results
