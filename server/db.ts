@@ -959,7 +959,7 @@ async function createUploadsTable() {
   try {
     console.log("[Database] Creating uploads table...");
     
-    await pool.query(\`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS uploads (
         id VARCHAR PRIMARY KEY,
         filename VARCHAR NOT NULL,
@@ -968,7 +968,7 @@ async function createUploadsTable() {
         uploaded_by VARCHAR REFERENCES users(id),
         uploaded_at TIMESTAMP DEFAULT NOW()
       )
-    \`);
+    `);
     
     console.log("[Database] Uploads table created/verified successfully");
   } catch (error) {
