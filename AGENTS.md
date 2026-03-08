@@ -64,6 +64,7 @@ Follow this process for EVERY task:
 - Never say "done" or "deployed" without showing proof
 - **When doing QA, check the deployment** — verify it's actually deployed to production, not just working locally
 - **For Vercel deployments specifically**: after pushing any code change, run `vercel logs` or check the Vercel dashboard to confirm the build succeeded. Do not report success until you see a successful deployment URL returned. If the deployment fails, show me the exact error from the build log and fix it before reporting done. Never assume a git push equals a successful Vercel deployment — they are not the same thing.
+- **For Render deployments specifically**: after pushing any code change, check the Render dashboard at render.com or use the Render API to confirm the deploy status shows "Live". If the build fails, show me the exact error from the Render build log and fix it before reporting done. Never assume a git push equals a successful Render deployment. **For ALL deployments (Vercel and Render)**: always wait for the build to fully complete, then curl the live URL and show me the response to confirm it is working in production.
 
 ### For QA/test scripts:
 - Write scripts that actually run and return pass/fail results
