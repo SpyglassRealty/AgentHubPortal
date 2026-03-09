@@ -1669,3 +1669,42 @@ export const submitIdxLeadSchema = z.object({
 
 export type SubmitIdxLeadInput = z.infer<typeof submitIdxLeadSchema>;
 
+// ── Community Content Blocks (Drag & Drop System) ─────────────────────────────
+export const communityContentBlocks = pgTable("community_content_blocks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  communityId: integer("community_id").notNull().references(() => communities.id, { onDelete: 'cascade' }),
+  title: varchar("title", { length: 255 }),
+  content: text("content"),
+  
+  // Media configuration
+  images: jsonb("images").$type<string[]>().default([]), // array of image URLs
+  videos: jsonb("videos").$type<string[]>().default([]), // array of video URLs
+  
+  // Layout configuration
+  backgroundColor: varchar("background_color", { length: 20 }).default("white"), // white, light, dark
+  mediaPosition: varchar("media_position", { length: 10 }).default("left"), // left, right
+  
+  // Call-to-action configuration
+  ctaButtons: jsonb("cta_buttons").$type<Array<{
+    text: string;
+    url: string;
+    style?: string; // primary, secondary, etc.
+  }>>().default([]),
+  
+  // Organization and publishing
+  sortOrder: integer("sort_order").default(0),
+  isPublished: boolean("is_published").default(true),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_community_content_blocks_community_id").on(table.communityId),
+  index("idx_community_content_blocks_sort_order").on(table.sortOrder),
+  index("idx_community_content_blocks_published").on(table.isPublished),
+  index("idx_community_content_blocks_community_published").on(table.communityId, table.isPublished),
+]);
+
+export type CommunityContentBlock = typeof communityContentBlocks.$inferSelect;
+export type InsertCommunityContentBlock = typeof communityContentBlocks.$inferInsert;
+
