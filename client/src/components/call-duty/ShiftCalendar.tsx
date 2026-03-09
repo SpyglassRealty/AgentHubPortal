@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { format, addDays, startOfWeek, isSameDay, isToday } from "date-fns";
-import ShiftSlot, { type SlotData } from "./ShiftSlot";
+import ShiftSlot, { type SlotData, type AvailableUser } from "./ShiftSlot";
 
 const SHIFT_TYPES = ["morning", "midday", "evening"] as const;
 
@@ -21,7 +21,13 @@ interface ShiftCalendarProps {
   slots: SlotData[];
   onSignUp: (slotId: string) => void;
   onCancel: (slotId: string) => void;
+  onJoinWaitlist: (slotId: string) => void;
   isLoading?: boolean;
+  // Admin props
+  isAdmin?: boolean;
+  availableUsers?: AvailableUser[];
+  onAssignAgent?: (slotId: string, userId: string) => void;
+  onRemoveAgent?: (slotId: string, signupId: string, agentName: string) => void;
 }
 
 export default function ShiftCalendar({
@@ -29,7 +35,12 @@ export default function ShiftCalendar({
   slots,
   onSignUp,
   onCancel,
+  onJoinWaitlist,
   isLoading,
+  isAdmin,
+  availableUsers,
+  onAssignAgent,
+  onRemoveAgent,
 }: ShiftCalendarProps) {
   // Build 7-day array from weekStart (Monday)
   const days = useMemo(() => {
@@ -107,7 +118,12 @@ export default function ShiftCalendar({
                   slot={slot}
                   onSignUp={onSignUp}
                   onCancel={onCancel}
+                  onJoinWaitlist={onJoinWaitlist}
                   isLoading={isLoading}
+                  isAdmin={isAdmin}
+                  availableUsers={availableUsers}
+                  onAssignAgent={onAssignAgent}
+                  onRemoveAgent={onRemoveAgent}
                 />
               );
             })}

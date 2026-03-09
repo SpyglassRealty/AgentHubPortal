@@ -5,10 +5,12 @@ import {
   callDutySlots,
   callDutySignups,
   callDutyHolidays,
+  callDutyWaitlist,
   users,
   type CallDutySlot,
   type CallDutySignup,
   type CallDutyHoliday,
+  type CallDutyWaitlist,
 } from "@shared/schema";
 import { isAuthenticated } from "./replitAuth";
 import {
@@ -244,14 +246,51 @@ router.get("/slots", isAuthenticated, async (req: any, res) => {
       return res.status(401).json({ message: "User not found in database" });
     }
 
-    // Build response with signup info
+    // Fetch waitlist data for these slots
+    const waitlistData = await db
+      .select({
+        id: callDutyWaitlist.id,
+        slotId: callDutyWaitlist.slotId,
+        userId: callDutyWaitlist.userId,
+        position: callDutyWaitlist.position,
+        status: callDutyWaitlist.status,
+        createdAt: callDutyWaitlist.createdAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+      })
+      .from(callDutyWaitlist)
+      .innerJoin(users, eq(callDutyWaitlist.userId, users.id))
+      .where(
+        and(
+          sql`${callDutyWaitlist.slotId} IN (${sql.join(slotIds.map(id => sql`${id}`), sql`, `)})`,
+          eq(callDutyWaitlist.status, "waiting")
+        )
+      )
+      .orderBy(callDutyWaitlist.slotId, callDutyWaitlist.position);
+
+    // Group waitlist by slot
+    const waitlistBySlot = new Map<string, typeof waitlistData>();
+    for (const waitlistEntry of waitlistData) {
+      const existing = waitlistBySlot.get(waitlistEntry.slotId) || [];
+      existing.push(waitlistEntry);
+      waitlistBySlot.set(waitlistEntry.slotId, existing);
+    }
+
+    // Build response with signup and waitlist info
     const result = slots.map((slot) => {
       const slotSignups = signupsBySlot.get(slot.id) || [];
+      const slotWaitlist = waitlistBySlot.get(slot.id) || [];
+      const userWaitlistEntry = slotWaitlist.find((w) => w.userId === currentUserId);
+      
       return {
         ...slot,
         signupCount: slotSignups.length,
         isFull: slotSignups.length >= slot.maxSignups,
         isSignedUp: slotSignups.some((s) => s.userId === currentUserId),
+        isOnWaitlist: !!userWaitlistEntry,
+        waitlistPosition: userWaitlistEntry?.position || null,
+        waitlistCount: slotWaitlist.length,
         signups: slotSignups.map((s) => ({
           id: s.id,
           userId: s.userId,
@@ -259,6 +298,15 @@ router.get("/slots", isAuthenticated, async (req: any, res) => {
           lastName: s.lastName,
           profileImageUrl: s.profileImageUrl,
           signedUpAt: s.signedUpAt,
+        })),
+        waitlist: slotWaitlist.map((w) => ({
+          id: w.id,
+          userId: w.userId,
+          position: w.position,
+          firstName: w.firstName,
+          lastName: w.lastName,
+          email: w.email,
+          createdAt: w.createdAt,
         })),
       };
     });
@@ -444,10 +492,126 @@ router.delete("/slots/:slotId/signup", isAuthenticated, async (req: any, res) =>
       notifyCallDutySlack("cancel", getUserName(req), slot);
     }
 
+    // Check waitlist and notify first person if a spot opened up
+    await processWaitlistForSlot(slotId);
+
     res.json(cancelled);
   } catch (error: any) {
     console.error("[Call Duty] Error cancelling signup:", error);
     res.status(500).json({ message: "Failed to cancel shift signup" });
+  }
+});
+
+/**
+ * POST /slots/:slotId/waitlist
+ * Join the waitlist for a full shift slot.
+ */
+router.post("/slots/:slotId/waitlist", isAuthenticated, async (req: any, res) => {
+  try {
+    const { slotId } = req.params;
+    const userId = await resolveUserId(req);
+    
+    if (!userId) {
+      return res.status(401).json({ message: "User not found in database" });
+    }
+
+    // Verify slot exists and is active
+    const [slot] = await db
+      .select()
+      .from(callDutySlots)
+      .where(and(eq(callDutySlots.id, slotId), eq(callDutySlots.isActive, true)));
+
+    if (!slot) {
+      return res.status(404).json({ message: "Shift slot not found or inactive" });
+    }
+
+    // Check if slot is in the past
+    const slotDate = new Date(`${slot.date}T${slot.startTime}:00`);
+    if (slotDate < new Date()) {
+      return res.status(400).json({ message: "Cannot join waitlist for a past shift" });
+    }
+
+    // Check if already signed up (active)
+    const [existingSignup] = await db
+      .select()
+      .from(callDutySignups)
+      .where(
+        and(
+          eq(callDutySignups.slotId, slotId),
+          eq(callDutySignups.userId, userId),
+          eq(callDutySignups.status, "active")
+        )
+      );
+
+    if (existingSignup) {
+      return res.status(409).json({ message: "You are already signed up for this shift" });
+    }
+
+    // Check if already on waitlist
+    const [existingWaitlist] = await db
+      .select()
+      .from(callDutyWaitlist)
+      .where(
+        and(
+          eq(callDutyWaitlist.slotId, slotId),
+          eq(callDutyWaitlist.userId, userId),
+          eq(callDutyWaitlist.status, "waiting")
+        )
+      );
+
+    if (existingWaitlist) {
+      return res.status(409).json({ 
+        message: `You are already on the waitlist for this shift (position #${existingWaitlist.position})` 
+      });
+    }
+
+    // Check if slot is actually full
+    const activeSignups = await db
+      .select({ id: callDutySignups.id })
+      .from(callDutySignups)
+      .where(
+        and(
+          eq(callDutySignups.slotId, slotId),
+          eq(callDutySignups.status, "active")
+        )
+      );
+
+    if (activeSignups.length < slot.maxSignups) {
+      return res.status(400).json({ message: "Slot is not full - you can sign up directly!" });
+    }
+
+    // Get next position in waitlist for this slot
+    const waitlistEntries = await db
+      .select({ position: callDutyWaitlist.position })
+      .from(callDutyWaitlist)
+      .where(
+        and(
+          eq(callDutyWaitlist.slotId, slotId),
+          eq(callDutyWaitlist.status, "waiting")
+        )
+      )
+      .orderBy(desc(callDutyWaitlist.position));
+
+    const nextPosition = waitlistEntries.length > 0 ? waitlistEntries[0].position + 1 : 1;
+
+    // Add to waitlist
+    const [waitlistEntry] = await db
+      .insert(callDutyWaitlist)
+      .values({
+        slotId,
+        userId,
+        position: nextPosition,
+        status: "waiting",
+      })
+      .returning();
+
+    res.status(201).json({
+      ...waitlistEntry,
+      message: `You've been added to the waitlist! You're #${nextPosition} in line.`,
+    });
+  } catch (error: any) {
+    console.error("[Call Duty] Error joining waitlist:", error);
+    res.status(500).json({ message: "Failed to join waitlist" });
   }
 });
 
@@ -937,5 +1101,92 @@ router.delete("/slots/:slotId/signups/:signupId", isAuthenticated, async (req: a
     res.status(500).json({ message: "Failed to remove agent from shift" });
   }
 });
+
+// ── Helper Functions ─────────────────────────────────────────────────────
+
+/**
+ * Process waitlist for a slot when a spot opens up.
+ * Notifies the first person in the waitlist via Slack.
+ */
+async function processWaitlistForSlot(slotId: string): Promise<void> {
+  try {
+    // Get the slot details
+    const [slot] = await db
+      .select()
+      .from(callDutySlots)
+      .where(eq(callDutySlots.id, slotId));
+
+    if (!slot) return;
+
+    // Check current signup count
+    const activeSignups = await db
+      .select({ id: callDutySignups.id })
+      .from(callDutySignups)
+      .where(
+        and(
+          eq(callDutySignups.slotId, slotId),
+          eq(callDutySignups.status, "active")
+        )
+      );
+
+    // If slot is still full, no need to process waitlist
+    if (activeSignups.length >= slot.maxSignups) {
+      return;
+    }
+
+    // Get the first person on the waitlist (lowest position)
+    const [firstWaitlist] = await db
+      .select({
+        id: callDutyWaitlist.id,
+        userId: callDutyWaitlist.userId,
+        position: callDutyWaitlist.position,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+      })
+      .from(callDutyWaitlist)
+      .innerJoin(users, eq(callDutyWaitlist.userId, users.id))
+      .where(
+        and(
+          eq(callDutyWaitlist.slotId, slotId),
+          eq(callDutyWaitlist.status, "waiting")
+        )
+      )
+      .orderBy(callDutyWaitlist.position)
+      .limit(1);
+
+    if (!firstWaitlist) {
+      // No one on waitlist
+      return;
+    }
+
+    // Mark waitlist entry as notified and set expiration (24 hours from now)
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
+
+    await db
+      .update(callDutyWaitlist)
+      .set({
+        status: "notified",
+        notifiedAt: new Date(),
+        expiresAt,
+      })
+      .where(eq(callDutyWaitlist.id, firstWaitlist.id));
+
+    // Send Slack notification
+    const agentName = `${firstWaitlist.firstName || ""} ${firstWaitlist.lastName || ""}`.trim() || firstWaitlist.email || "Agent";
+    const shiftLabel = SHIFT_TYPE_LABELS[slot.shiftType] || slot.shiftType;
+    const slackMessage = `🎯 <@${firstWaitlist.email}> A spot opened up for **${shiftLabel} Shift** on **${slot.date}** (${slot.startTime}–${slot.endTime}). Sign up now! You have 24 hours.`;
+
+    // Fire-and-forget Slack notification
+    sendSlackMessage(CALL_DUTY_SLACK_CHANNEL_ID, slackMessage).catch((error) => {
+      console.error("[Call Duty] Failed to send waitlist notification:", error);
+    });
+
+    console.log(`[Call Duty] Notified waitlist user ${agentName} about opening in slot ${slotId}`);
+  } catch (error: any) {
+    console.error("[Call Duty] Error processing waitlist:", error);
+  }
+}
 
 export default router;

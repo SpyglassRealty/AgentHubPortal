@@ -1584,6 +1584,26 @@ export const callDutyHolidays = pgTable("call_duty_holidays", {
 export type CallDutyHoliday = typeof callDutyHolidays.$inferSelect;
 export type InsertCallDutyHoliday = typeof callDutyHolidays.$inferInsert;
 
+export const callDutyWaitlist = pgTable("call_duty_waitlist", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slotId: varchar("slot_id").notNull().references(() => callDutySlots.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  position: integer("position").notNull(), // 1, 2, 3, etc. (1 = first in line)
+  status: varchar("status").default("waiting"), // 'waiting' | 'notified' | 'expired'
+  notifiedAt: timestamp("notified_at"),
+  expiresAt: timestamp("expires_at"), // Notification expires after X hours
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("idx_call_duty_waitlist_slot_user").on(table.slotId, table.userId),
+  index("idx_call_duty_waitlist_slot").on(table.slotId),
+  index("idx_call_duty_waitlist_user").on(table.userId),
+  index("idx_call_duty_waitlist_status").on(table.status),
+  index("idx_call_duty_waitlist_position").on(table.position),
+]);
+
+export type CallDutyWaitlist = typeof callDutyWaitlist.$inferSelect;
+export type InsertCallDutyWaitlist = typeof callDutyWaitlist.$inferInsert;
+
 // =====================================================
 // IDX Site Lead Capture (Backup when FUB fails)
 // =====================================================

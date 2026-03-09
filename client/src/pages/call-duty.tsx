@@ -103,7 +103,7 @@ export default function CallDutyPage() {
 
   // Confirmation dialog state
   const [confirmAction, setConfirmAction] = useState<{
-    type: "signup" | "cancel" | "delete_holiday" | "assign_agent" | "remove_agent";
+    type: "signup" | "cancel" | "delete_holiday" | "assign_agent" | "remove_agent" | "join_waitlist";
     slotId?: string;
     holidayId?: string;
     signupId?: string;
@@ -347,7 +347,30 @@ export default function CallDutyPage() {
     },
   });
 
-  const isMutating = signUpMutation.isPending || cancelMutation.isPending || addHolidayMutation.isPending || deleteHolidayMutation.isPending || assignAgentMutation.isPending || removeAgentMutation.isPending;
+  // Join waitlist mutation
+  const joinWaitlistMutation = useMutation({
+    mutationFn: async (slotId: string) => {
+      const res = await fetch(`/api/call-duty/slots/${slotId}/waitlist`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to join waitlist");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/call-duty/slots"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/call-duty/unfilled-slots"] });
+      toast({ title: "Joined waitlist!", description: data.message || "You've been added to the waitlist." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not join waitlist", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const isMutating = signUpMutation.isPending || cancelMutation.isPending || addHolidayMutation.isPending || deleteHolidayMutation.isPending || assignAgentMutation.isPending || removeAgentMutation.isPending || joinWaitlistMutation.isPending;
 
   // Build slot label for confirmation dialog
   function getSlotLabel(slotId: string): string {
@@ -414,6 +437,14 @@ export default function CallDutyPage() {
     });
   }
 
+  function handleJoinWaitlist(slotId: string) {
+    setConfirmAction({
+      type: "join_waitlist",
+      slotId,
+      label: getSlotLabel(slotId),
+    });
+  }
+
   function handleConfirm() {
     if (!confirmAction) return;
     if (confirmAction.type === "signup" && confirmAction.slotId) {
@@ -426,6 +457,8 @@ export default function CallDutyPage() {
       assignAgentMutation.mutate({ slotId: confirmAction.slotId, userId: confirmAction.userId });
     } else if (confirmAction.type === "remove_agent" && confirmAction.slotId && confirmAction.signupId) {
       removeAgentMutation.mutate({ slotId: confirmAction.slotId, signupId: confirmAction.signupId });
+    } else if (confirmAction.type === "join_waitlist" && confirmAction.slotId) {
+      joinWaitlistMutation.mutate(confirmAction.slotId);
     }
     setConfirmAction(null);
   }
@@ -497,6 +530,7 @@ export default function CallDutyPage() {
                 slots={slots}
                 onSignUp={handleSignUp}
                 onCancel={handleCancel}
+                onJoinWaitlist={handleJoinWaitlist}
                 isLoading={isMutating}
                 isAdmin={isAdmin}
                 availableUsers={availableUsers}
@@ -815,7 +849,9 @@ export default function CallDutyPage() {
                 ? "Delete Holiday"
                 : confirmAction?.type === "assign_agent"
                 ? "Assign Agent"
-                : "Remove Agent"}
+                : confirmAction?.type === "remove_agent"
+                ? "Remove Agent"
+                : "Join Waitlist"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction?.type === "signup"
@@ -826,7 +862,9 @@ export default function CallDutyPage() {
                 ? `Are you sure you want to delete "${confirmAction?.label}"? This action cannot be undone.`
                 : confirmAction?.type === "assign_agent"
                 ? `Are you sure you want to assign ${confirmAction.label}?`
-                : `Are you sure you want to remove ${confirmAction?.label}?`}
+                : confirmAction?.type === "remove_agent"
+                ? `Are you sure you want to remove ${confirmAction?.label}?`
+                : `Are you sure you want to join the waitlist for ${confirmAction?.label}? You'll be notified if a spot opens up.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -847,7 +885,9 @@ export default function CallDutyPage() {
                 ? "Delete Holiday"
                 : confirmAction?.type === "assign_agent"
                 ? "Assign Agent"
-                : "Remove Agent"}
+                : confirmAction?.type === "remove_agent"
+                ? "Remove Agent"
+                : "Join Waitlist"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

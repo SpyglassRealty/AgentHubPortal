@@ -86,6 +86,9 @@ async function runDirectMigrations() {
     // Agent Directory Profiles - ensure fub_email column exists
     await ensureAgentDirectoryFubEmail();
     
+    // Call Duty Waitlist table (migration 0013)
+    await createCallDutyWaitlistTable();
+    
     // Uploads table for image storage
     await createUploadsTable();
     
@@ -1003,6 +1006,44 @@ async function ensureAgentDirectoryFubEmail() {
   } catch (error) {
     console.error("[Database] Error adding fub_email column:", error);
     // Don't throw - this is not critical for startup
+  }
+}
+
+// Call Duty Waitlist table (migration 0013) - Task 5: Waitlist system
+async function createCallDutyWaitlistTable() {
+  try {
+    console.log('[Database] Creating call_duty_waitlist table...');
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS call_duty_waitlist (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        slot_id varchar NOT NULL REFERENCES call_duty_slots(id),
+        user_id varchar NOT NULL REFERENCES users(id),
+        position integer NOT NULL,
+        status varchar DEFAULT 'waiting' NOT NULL,
+        notified_at timestamp,
+        expires_at timestamp,
+        created_at timestamp DEFAULT NOW() NOT NULL
+      )
+    `);
+
+    // Create indexes for performance
+    const indexes = [
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_call_duty_waitlist_slot_user ON call_duty_waitlist(slot_id, user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_call_duty_waitlist_slot ON call_duty_waitlist(slot_id)',
+      'CREATE INDEX IF NOT EXISTS idx_call_duty_waitlist_user ON call_duty_waitlist(user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_call_duty_waitlist_status ON call_duty_waitlist(status)',
+      'CREATE INDEX IF NOT EXISTS idx_call_duty_waitlist_position ON call_duty_waitlist(position)',
+    ];
+
+    for (const idx of indexes) {
+      try { await pool.query(idx); } catch (e) { /* index may already exist */ }
+    }
+
+    console.log('[Database] ✅ call_duty_waitlist table created successfully');
+  } catch (error) {
+    console.error('[Database] ❌ Error creating call_duty_waitlist table:', error);
+    throw error;
   }
 }
 
