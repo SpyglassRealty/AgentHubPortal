@@ -256,8 +256,8 @@ export default function CallDutyPage() {
     refetchInterval: 30000, // Refresh every 30 seconds for real-time updates
   });
 
-  // Calculate report date range
-  const getReportDateRange = () => {
+  // Calculate report date range (memoized to prevent infinite re-renders)
+  const reportsDateRange = useMemo(() => {
     const today = new Date();
     let startDate: string;
     let endDate: string;
@@ -278,10 +278,9 @@ export default function CallDutyPage() {
     }
 
     return { startDate, endDate };
-  };
+  }, [reportDateRange, customStartDate, customEndDate]);
 
   // Fetch reports (only for admin/developer when reports view is active)
-  const reportsDateRange = getReportDateRange();
   const {
     data: reportData,
     isLoading: reportsLoading,
@@ -299,7 +298,12 @@ export default function CallDutyPage() {
       if (!res.ok) throw new Error("Failed to fetch reports");
       return res.json();
     },
-    enabled: isAdmin && showReports && reportsDateRange.startDate && reportsDateRange.endDate,
+    enabled: isAdmin && 
+              showReports && 
+              reportsDateRange?.startDate && 
+              reportsDateRange?.endDate && 
+              reportsDateRange.startDate.length === 10 && 
+              reportsDateRange.endDate.length === 10,
   });
 
   // Sign up mutation with soft warning support
@@ -1143,19 +1147,19 @@ export default function CallDutyPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                           <div className="bg-muted/30 rounded-lg p-4">
                             <div className="text-2xl font-bold text-foreground">
-                              {reportData.coverageStats.coveragePercentage}%
+                              {reportData?.coverageStats?.coveragePercentage ?? 0}%
                             </div>
                             <div className="text-xs text-muted-foreground">Overall Coverage</div>
                           </div>
                           <div className="bg-muted/30 rounded-lg p-4">
                             <div className="text-2xl font-bold text-foreground">
-                              {reportData.coverageStats.filledSlots}
+                              {reportData?.coverageStats?.filledSlots ?? 0}
                             </div>
                             <div className="text-xs text-muted-foreground">Filled Slots</div>
                           </div>
                           <div className="bg-muted/30 rounded-lg p-4">
                             <div className="text-2xl font-bold text-foreground">
-                              {reportData.coverageStats.totalSlots}
+                              {reportData?.coverageStats?.totalSlots ?? 0}
                             </div>
                             <div className="text-xs text-muted-foreground">Total Slots</div>
                           </div>
@@ -1163,7 +1167,7 @@ export default function CallDutyPage() {
                       </div>
 
                       {/* Weekly Coverage */}
-                      {reportData.coverageByWeek.length > 0 && (
+                      {reportData?.coverageByWeek && reportData.coverageByWeek.length > 0 && (
                         <div>
                           <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
                             <Calendar className="h-4 w-4" />
@@ -1199,7 +1203,7 @@ export default function CallDutyPage() {
                           Agent Activity (Ranked by Active Shifts)
                         </h4>
                         <div className="space-y-2">
-                          {reportData.agentActivity.slice(0, 10).map((agent, index) => (
+                          {(reportData?.agentActivity || []).slice(0, 10).map((agent, index) => (
                             <div key={agent.userId} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                               <div className="flex items-center gap-3">
                                 <div className="w-6 h-6 rounded-full bg-[#EF4923]/10 flex items-center justify-center text-xs font-bold text-[#EF4923]">
@@ -1228,7 +1232,7 @@ export default function CallDutyPage() {
                               </div>
                             </div>
                           ))}
-                          {reportData.agentActivity.length === 0 && (
+                          {(!reportData?.agentActivity || reportData.agentActivity.length === 0) && (
                             <div className="text-center py-8 text-sm text-muted-foreground">
                               No agent activity found in this date range.
                             </div>
@@ -1240,10 +1244,10 @@ export default function CallDutyPage() {
                       <div>
                         <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
                           <Activity className="h-4 w-4" />
-                          Recent Shift History ({reportData.shiftHistory.length} events)
+                          Recent Shift History ({reportData?.shiftHistory?.length ?? 0} events)
                         </h4>
                         <div className="space-y-2 max-h-96 overflow-y-auto">
-                          {reportData.shiftHistory.slice(0, 50).map((event) => (
+                          {(reportData?.shiftHistory || []).slice(0, 50).map((event) => (
                             <div key={event.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-muted/30 rounded-lg gap-2">
                               <div className="flex items-center gap-3 min-w-0 flex-1">
                                 <div className={`w-2 h-2 rounded-full flex-shrink-0 ${event.action === "signup" ? "bg-green-500" : "bg-red-500"}`} />
@@ -1272,7 +1276,7 @@ export default function CallDutyPage() {
                               </div>
                             </div>
                           ))}
-                          {reportData.shiftHistory.length === 0 && (
+                          {(!reportData?.shiftHistory || reportData.shiftHistory.length === 0) && (
                             <div className="text-center py-8 text-sm text-muted-foreground">
                               No shift activity found in this date range.
                             </div>
