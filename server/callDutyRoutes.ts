@@ -4,9 +4,11 @@ import { db } from "./db";
 import {
   callDutySlots,
   callDutySignups,
+  callDutyHolidays,
   users,
   type CallDutySlot,
   type CallDutySignup,
+  type CallDutyHoliday,
 } from "@shared/schema";
 import { isAuthenticated } from "./replitAuth";
 import {
@@ -440,6 +442,136 @@ router.get("/my-shifts", isAuthenticated, async (req: any, res) => {
   } catch (error: any) {
     console.error("[Call Duty] Error fetching my shifts:", error);
     res.status(500).json({ message: "Failed to fetch your shifts" });
+  }
+});
+
+// ── Holiday Management Routes ────────────────────────────────────────────
+
+/**
+ * Check if the current user has admin or developer role
+ */
+async function checkAdminRole(req: any, res: any): Promise<boolean> {
+  try {
+    const userId = getUserId(req);
+    const [user] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, userId));
+
+    if (!user || (user.role !== 'admin' && user.role !== 'developer')) {
+      res.status(403).json({ message: "Admin access required" });
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("[Call Duty] Admin check error:", error);
+    res.status(500).json({ message: "Authorization check failed" });
+    return false;
+  }
+}
+
+/**
+ * GET /holidays
+ * List all holidays sorted by date ascending
+ */
+router.get("/holidays", isAuthenticated, async (req: any, res) => {
+  try {
+    const holidays = await db
+      .select()
+      .from(callDutyHolidays)
+      .orderBy(callDutyHolidays.date);
+
+    res.json(holidays);
+  } catch (error: any) {
+    console.error("[Call Duty] Error fetching holidays:", error);
+    res.status(500).json({ message: "Failed to fetch holidays" });
+  }
+});
+
+/**
+ * POST /holidays
+ * Create a new holiday entry
+ * Requires admin role
+ */
+router.post("/holidays", isAuthenticated, async (req: any, res) => {
+  try {
+    const isAdmin = await checkAdminRole(req, res);
+    if (!isAdmin) return;
+
+    const { name, date, isRecurring = false } = req.body;
+
+    // Validation
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      return res.status(400).json({ message: "Holiday name is required" });
+    }
+
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ message: "Date is required in YYYY-MM-DD format" });
+    }
+
+    // Check for duplicate dates
+    const [existingHoliday] = await db
+      .select()
+      .from(callDutyHolidays)
+      .where(eq(callDutyHolidays.date, date));
+
+    if (existingHoliday) {
+      return res.status(400).json({ message: "A holiday already exists for this date" });
+    }
+
+    // Create the holiday
+    const [newHoliday] = await db
+      .insert(callDutyHolidays)
+      .values({
+        name: name.trim(),
+        date: new Date(date),
+        isRecurring: Boolean(isRecurring),
+        createdBy: getUserId(req),
+      })
+      .returning();
+
+    res.status(201).json(newHoliday);
+  } catch (error: any) {
+    console.error("[Call Duty] Error creating holiday:", error);
+    res.status(500).json({ message: "Failed to create holiday" });
+  }
+});
+
+/**
+ * DELETE /holidays/:id
+ * Remove a holiday entry
+ * Requires admin role
+ */
+router.delete("/holidays/:id", isAuthenticated, async (req: any, res) => {
+  try {
+    const isAdmin = await checkAdminRole(req, res);
+    if (!isAdmin) return;
+
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: "Holiday ID is required" });
+    }
+
+    // Check if holiday exists
+    const [existingHoliday] = await db
+      .select()
+      .from(callDutyHolidays)
+      .where(eq(callDutyHolidays.id, id));
+
+    if (!existingHoliday) {
+      return res.status(404).json({ message: "Holiday not found" });
+    }
+
+    // Delete the holiday
+    await db
+      .delete(callDutyHolidays)
+      .where(eq(callDutyHolidays.id, id));
+
+    res.json({ message: "Holiday deleted successfully" });
+  } catch (error: any) {
+    console.error("[Call Duty] Error deleting holiday:", error);
+    res.status(500).json({ message: "Failed to delete holiday" });
   }
 });
 
