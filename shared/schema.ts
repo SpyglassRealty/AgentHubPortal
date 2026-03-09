@@ -1558,6 +1558,7 @@ export const callDutySignups = pgTable("call_duty_signups", {
   status: varchar("status").default("active"), // 'active' | 'cancelled'
   signedUpAt: timestamp("signed_up_at").defaultNow(),
   cancelledAt: timestamp("cancelled_at"),
+  cancellationReason: text("cancellation_reason"), // Task 6: Required reason for all cancellations
 }, (table) => [
   uniqueIndex("idx_call_duty_signups_slot_user").on(table.slotId, table.userId),
   index("idx_call_duty_signups_user").on(table.userId),

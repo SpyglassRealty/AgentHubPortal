@@ -809,6 +809,12 @@ async function updateCallDutyTables() {
       WHERE max_signups = 1
     `);
 
+    // Task 6: Add cancellation_reason column to call_duty_signups
+    await pool.query(`
+      ALTER TABLE call_duty_signups 
+      ADD COLUMN IF NOT EXISTS cancellation_reason TEXT
+    `);
+
     console.log('[Database] ✅ call_duty tables updated successfully');
   } catch (error) {
     console.error('[Database] ❌ Error updating call_duty tables:', error);

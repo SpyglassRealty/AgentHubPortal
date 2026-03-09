@@ -95,12 +95,18 @@ function notifyCallDutySlack(
   action: "signup" | "cancel",
   agentName: string,
   slot: { date: string; shiftType: string; startTime: string; endTime: string },
+  cancellationReason?: string,
 ): void {
   const label = SHIFT_TYPE_LABELS[slot.shiftType] || slot.shiftType;
   const emoji = action === "signup" ? "✅" : "❌";
   const verb = action === "signup" ? "signed up for" : "cancelled";
 
-  const text = `${emoji} *${agentName}* ${verb} *${label} Shift* on *${slot.date}* (${slot.startTime}–${slot.endTime})`;
+  let text = `${emoji} *${agentName}* ${verb} *${label} Shift* on *${slot.date}* (${slot.startTime}–${slot.endTime})`;
+  
+  // Task 6: Include cancellation reason in Slack notifications
+  if (action === "cancel" && cancellationReason) {
+    text += `. Reason: ${cancellationReason}`;
+  }
 
   // Fire-and-forget — don't await
   sendSlackMessage(CALL_DUTY_SLACK_CHANNEL_ID, text).catch(() => {});
@@ -325,6 +331,7 @@ router.get("/slots", isAuthenticated, async (req: any, res) => {
 router.post("/slots/:slotId/signup", isAuthenticated, async (req: any, res) => {
   try {
     const { slotId } = req.params;
+    const { confirmed } = req.body; // Support for confirmed warnings
     const userId = await resolveUserId(req);
     
     if (!userId) {
@@ -378,7 +385,8 @@ router.post("/slots/:slotId/signup", isAuthenticated, async (req: any, res) => {
       return res.status(409).json({ message: "This shift is already full" });
     }
 
-    // Check max shifts per week (if enforced)
+    // Soft warning: Check for 5+ shifts per week (Task 6)
+    let weeklyLimitWarning = false;
     if (MAX_SHIFTS_PER_WEEK !== null) {
       // Determine the week (Mon-Sun) for the slot date
       const d = new Date(slot.date);
@@ -405,10 +413,18 @@ router.post("/slots/:slotId/signup", isAuthenticated, async (req: any, res) => {
           )
         );
 
+      // Soft warning: Show warning at 5+ shifts, but allow if confirmed
       if (weekSignups.length >= MAX_SHIFTS_PER_WEEK) {
-        return res.status(409).json({
-          message: `You have reached the maximum of ${MAX_SHIFTS_PER_WEEK} shifts per week`,
-        });
+        weeklyLimitWarning = true;
+        
+        // If not confirmed, return warning (don't block)
+        if (!confirmed) {
+          return res.status(409).json({
+            warning: "weekly_limit",
+            message: `You already have ${weekSignups.length} shifts this week. Are you sure?`,
+            canProceed: true,
+          });
+        }
       }
     }
 
@@ -444,10 +460,19 @@ router.post("/slots/:slotId/signup", isAuthenticated, async (req: any, res) => {
 router.delete("/slots/:slotId/signup", isAuthenticated, async (req: any, res) => {
   try {
     const { slotId } = req.params;
+    const { confirmed, cancellationReason } = req.body; // Support for confirmed warnings + cancellation reason
     const userId = await resolveUserId(req);
     
     if (!userId) {
       return res.status(401).json({ message: "User not found in database" });
+    }
+
+    // Require cancellation reason (Task 6)
+    if (!cancellationReason || cancellationReason.trim() === "") {
+      return res.status(400).json({ 
+        requiresReason: true,
+        message: "Cancellation reason is required" 
+      });
     }
 
     // Find the active signup
@@ -466,30 +491,55 @@ router.delete("/slots/:slotId/signup", isAuthenticated, async (req: any, res) =>
       return res.status(404).json({ message: "No active signup found for this shift" });
     }
 
-    // Soft-cancel: update status to 'cancelled' and set cancelledAt
+    // Get slot details for 24-hour warning check
+    const [slot] = await db
+      .select()
+      .from(callDutySlots)
+      .where(eq(callDutySlots.id, slotId));
+
+    if (!slot) {
+      return res.status(404).json({ message: "Shift slot not found" });
+    }
+
+    // Soft warning: Check for cancellation within 24 hours (Task 6)
+    const slotDateTime = new Date(`${slot.date}T${slot.startTime}:00`);
+    const now = new Date();
+    const hoursUntilShift = (slotDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+    
+    let shortNoticeWarning = false;
+    if (hoursUntilShift < 24 && hoursUntilShift > 0) {
+      shortNoticeWarning = true;
+      
+      // If not confirmed, return warning (don't block)
+      if (!confirmed) {
+        return res.status(409).json({
+          warning: "short_notice_cancellation",
+          message: "This shift starts in less than 24 hours. Late cancellations are tracked.",
+          canProceed: true,
+        });
+      }
+    }
+
+    // Soft-cancel: update status to 'cancelled', set cancelledAt, and store reason
     const [cancelled] = await db
       .update(callDutySignups)
       .set({
         status: "cancelled",
         cancelledAt: new Date(),
+        cancellationReason: cancellationReason.trim(),
       })
       .where(eq(callDutySignups.id, signup.id))
       .returning();
 
     // Google Calendar: remove agent from the event attendees
     const agentEmail = getUserEmail(req);
-    const [slot] = await db
-      .select()
-      .from(callDutySlots)
-      .where(eq(callDutySlots.id, slotId));
-
     if (agentEmail && slot?.googleCalendarEventId) {
       await removeCallDutyAttendee(slot.googleCalendarEventId, agentEmail);
     }
 
     // Slack notification (fire-and-forget)
     if (slot) {
-      notifyCallDutySlack("cancel", getUserName(req), slot);
+      notifyCallDutySlack("cancel", getUserName(req), slot, cancellationReason.trim());
     }
 
     // Check waitlist and notify first person if a spot opened up
@@ -1037,9 +1087,18 @@ router.delete("/slots/:slotId/signups/:signupId", isAuthenticated, async (req: a
     if (!isAdmin) return;
 
     const { slotId, signupId } = req.params;
+    const { cancellationReason } = req.body; // Task 6: Require cancellation reason
 
     if (!signupId) {
       return res.status(400).json({ message: "Signup ID is required" });
+    }
+
+    // Require cancellation reason (Task 6)
+    if (!cancellationReason || cancellationReason.trim() === "") {
+      return res.status(400).json({ 
+        requiresReason: true,
+        message: "Cancellation reason is required" 
+      });
     }
 
     // Find the active signup and verify it belongs to the specified slot
@@ -1074,12 +1133,13 @@ router.delete("/slots/:slotId/signups/:signupId", isAuthenticated, async (req: a
       .from(callDutySlots)
       .where(eq(callDutySlots.id, slotId));
 
-    // Soft-cancel: update status to 'cancelled' and set cancelledAt
+    // Soft-cancel: update status to 'cancelled', set cancelledAt, and store reason
     const [cancelled] = await db
       .update(callDutySignups)
       .set({
         status: "cancelled",
         cancelledAt: new Date(),
+        cancellationReason: cancellationReason.trim(),
       })
       .where(eq(callDutySignups.id, signupId))
       .returning();
@@ -1092,7 +1152,7 @@ router.delete("/slots/:slotId/signups/:signupId", isAuthenticated, async (req: a
     // Slack notification (fire-and-forget)
     if (slot && targetUser) {
       const agentName = `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || targetUser.email || "An agent";
-      notifyCallDutySlack("cancel", agentName, slot);
+      notifyCallDutySlack("cancel", agentName, slot, cancellationReason.trim());
     }
 
     res.json(cancelled);

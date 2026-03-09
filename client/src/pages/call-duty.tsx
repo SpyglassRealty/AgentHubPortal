@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -103,13 +104,17 @@ export default function CallDutyPage() {
 
   // Confirmation dialog state
   const [confirmAction, setConfirmAction] = useState<{
-    type: "signup" | "cancel" | "delete_holiday" | "assign_agent" | "remove_agent" | "join_waitlist";
+    type: "signup" | "cancel" | "delete_holiday" | "assign_agent" | "remove_agent" | "join_waitlist" | "signup_warning" | "cancel_warning" | "cancel_reason" | "admin_remove_reason";
     slotId?: string;
     holidayId?: string;
     signupId?: string;
     userId?: string;
     label: string;
+    cancellationReason?: string;
   } | null>(null);
+
+  // Cancellation reason input state
+  const [cancellationReason, setCancellationReason] = useState("");
 
   // Holiday management state
   const [newHoliday, setNewHoliday] = useState({
@@ -200,18 +205,27 @@ export default function CallDutyPage() {
     refetchInterval: 30000, // Refresh every 30 seconds for real-time updates
   });
 
-  // Sign up mutation
+  // Sign up mutation with soft warning support
   const signUpMutation = useMutation({
-    mutationFn: async (slotId: string) => {
+    mutationFn: async ({ slotId, confirmed = false }: { slotId: string; confirmed?: boolean }) => {
       const res = await fetch(`/api/call-duty/slots/${slotId}/signup`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ confirmed }),
       });
+      
+      const data = await res.json();
+      
+      // Handle soft warnings (409 with warning flag)
+      if (res.status === 409 && data.warning && data.canProceed) {
+        throw { warning: data.warning, message: data.message, slotId };
+      }
+      
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.message || "Failed to sign up");
       }
-      return res.json();
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/call-duty/slots"] });
@@ -219,23 +233,46 @@ export default function CallDutyPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/call-duty/unfilled-slots"] });
       toast({ title: "Signed up!", description: "You've been added to this shift." });
     },
-    onError: (error: Error) => {
-      toast({ title: "Could not sign up", description: error.message, variant: "destructive" });
+    onError: (error: any) => {
+      // Handle soft warnings by showing confirmation dialog
+      if (error.warning) {
+        setConfirmAction({
+          type: "signup_warning",
+          slotId: error.slotId,
+          label: error.message,
+        });
+      } else {
+        toast({ title: "Could not sign up", description: error.message, variant: "destructive" });
+      }
     },
   });
 
-  // Cancel mutation
+  // Cancel mutation with soft warning support and cancellation reason
   const cancelMutation = useMutation({
-    mutationFn: async (slotId: string) => {
+    mutationFn: async ({ slotId, confirmed = false, cancellationReason = "" }: { slotId: string; confirmed?: boolean; cancellationReason?: string }) => {
       const res = await fetch(`/api/call-duty/slots/${slotId}/signup`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ confirmed, cancellationReason }),
       });
+      
+      const data = await res.json();
+      
+      // Handle cancellation reason requirement
+      if (res.status === 400 && data.requiresReason) {
+        throw { requiresReason: true, slotId };
+      }
+      
+      // Handle soft warnings (409 with warning flag)
+      if (res.status === 409 && data.warning && data.canProceed) {
+        throw { warning: data.warning, message: data.message, slotId, cancellationReason };
+      }
+      
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.message || "Failed to cancel");
       }
-      return res.json();
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/call-duty/slots"] });
@@ -243,8 +280,25 @@ export default function CallDutyPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/call-duty/unfilled-slots"] });
       toast({ title: "Shift cancelled", description: "Your signup has been removed." });
     },
-    onError: (error: Error) => {
-      toast({ title: "Could not cancel", description: error.message, variant: "destructive" });
+    onError: (error: any) => {
+      // Handle cancellation reason requirement
+      if (error.requiresReason) {
+        setConfirmAction({
+          type: "cancel_reason",
+          slotId: error.slotId,
+          label: getSlotLabel(error.slotId),
+        });
+      } else if (error.warning) {
+        // Handle soft warnings by showing confirmation dialog
+        setConfirmAction({
+          type: "cancel_warning",
+          slotId: error.slotId,
+          label: error.message,
+          cancellationReason: error.cancellationReason,
+        });
+      } else {
+        toast({ title: "Could not cancel", description: error.message, variant: "destructive" });
+      }
     },
   });
 
@@ -323,18 +377,27 @@ export default function CallDutyPage() {
     },
   });
 
-  // Remove agent mutation (admin only)
+  // Remove agent mutation (admin only) with cancellation reason
   const removeAgentMutation = useMutation({
-    mutationFn: async ({ slotId, signupId }: { slotId: string; signupId: string }) => {
+    mutationFn: async ({ slotId, signupId, cancellationReason = "" }: { slotId: string; signupId: string; cancellationReason?: string }) => {
       const res = await fetch(`/api/call-duty/slots/${slotId}/signups/${signupId}`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ cancellationReason }),
       });
+      
+      const data = await res.json();
+      
+      // Handle cancellation reason requirement
+      if (res.status === 400 && data.requiresReason) {
+        throw { requiresReason: true, slotId, signupId };
+      }
+      
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.message || "Failed to remove agent");
       }
-      return res.json();
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/call-duty/slots"] });
@@ -342,8 +405,18 @@ export default function CallDutyPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/call-duty/unfilled-slots"] });
       toast({ title: "Agent removed", description: "The agent has been removed from this shift." });
     },
-    onError: (error: Error) => {
-      toast({ title: "Could not remove agent", description: error.message, variant: "destructive" });
+    onError: (error: any) => {
+      // Handle cancellation reason requirement
+      if (error.requiresReason) {
+        setConfirmAction({
+          type: "admin_remove_reason",
+          slotId: error.slotId,
+          signupId: error.signupId,
+          label: "Remove agent from shift",
+        });
+      } else {
+        toast({ title: "Could not remove agent", description: error.message, variant: "destructive" });
+      }
     },
   });
 
@@ -380,19 +453,18 @@ export default function CallDutyPage() {
   }
 
   function handleSignUp(slotId: string) {
-    setConfirmAction({
-      type: "signup",
-      slotId,
-      label: getSlotLabel(slotId),
-    });
+    // Call mutation directly - let it handle warnings
+    signUpMutation.mutate({ slotId });
   }
 
   function handleCancel(slotId: string) {
+    // First show cancellation reason dialog
     setConfirmAction({
-      type: "cancel",
+      type: "cancel_reason",
       slotId,
       label: getSlotLabel(slotId),
     });
+    setCancellationReason("");
   }
 
   function handleDeleteHoliday(holidayId: string, holidayName: string) {
@@ -426,15 +498,14 @@ export default function CallDutyPage() {
   }
 
   function handleRemoveAgent(slotId: string, signupId: string, agentName: string) {
-    const slot = slots.find(s => s.id === slotId);
-    const slotLabel = slot ? `${formatShiftLabel(slot.shiftType)} (${formatTimeRange(slot.startTime, slot.endTime)}) on ${format(new Date(slot.date + "T00:00:00"), "EEE, MMM d")}` : "this shift";
-    
+    // First show cancellation reason dialog for admin removal
     setConfirmAction({
-      type: "remove_agent",
+      type: "admin_remove_reason",
       slotId,
       signupId,
-      label: `${agentName} from ${slotLabel}`,
+      label: `Remove ${agentName} from shift`,
     });
+    setCancellationReason("");
   }
 
   function handleJoinWaitlist(slotId: string) {
@@ -448,9 +519,9 @@ export default function CallDutyPage() {
   function handleConfirm() {
     if (!confirmAction) return;
     if (confirmAction.type === "signup" && confirmAction.slotId) {
-      signUpMutation.mutate(confirmAction.slotId);
+      signUpMutation.mutate({ slotId: confirmAction.slotId });
     } else if (confirmAction.type === "cancel" && confirmAction.slotId) {
-      cancelMutation.mutate(confirmAction.slotId);
+      cancelMutation.mutate({ slotId: confirmAction.slotId });
     } else if (confirmAction.type === "delete_holiday" && confirmAction.holidayId) {
       deleteHolidayMutation.mutate(confirmAction.holidayId);
     } else if (confirmAction.type === "assign_agent" && confirmAction.slotId && confirmAction.userId) {
@@ -459,8 +530,37 @@ export default function CallDutyPage() {
       removeAgentMutation.mutate({ slotId: confirmAction.slotId, signupId: confirmAction.signupId });
     } else if (confirmAction.type === "join_waitlist" && confirmAction.slotId) {
       joinWaitlistMutation.mutate(confirmAction.slotId);
+    } else if (confirmAction.type === "signup_warning" && confirmAction.slotId) {
+      // Confirmed signup with warning
+      signUpMutation.mutate({ slotId: confirmAction.slotId, confirmed: true });
+    } else if (confirmAction.type === "cancel_warning" && confirmAction.slotId) {
+      // Confirmed cancel with warning (including reason)
+      cancelMutation.mutate({ 
+        slotId: confirmAction.slotId, 
+        confirmed: true, 
+        cancellationReason: confirmAction.cancellationReason || cancellationReason 
+      });
+    } else if (confirmAction.type === "cancel_reason" && confirmAction.slotId) {
+      // Cancel with reason provided
+      if (!cancellationReason.trim()) {
+        toast({ title: "Reason required", description: "Please provide a reason for cancellation.", variant: "destructive" });
+        return;
+      }
+      cancelMutation.mutate({ slotId: confirmAction.slotId, cancellationReason: cancellationReason.trim() });
+    } else if (confirmAction.type === "admin_remove_reason" && confirmAction.slotId && confirmAction.signupId) {
+      // Admin remove with reason provided
+      if (!cancellationReason.trim()) {
+        toast({ title: "Reason required", description: "Please provide a reason for removal.", variant: "destructive" });
+        return;
+      }
+      removeAgentMutation.mutate({ 
+        slotId: confirmAction.slotId, 
+        signupId: confirmAction.signupId, 
+        cancellationReason: cancellationReason.trim() 
+      });
     }
     setConfirmAction(null);
+    setCancellationReason("");
   }
 
   return (
@@ -851,6 +951,14 @@ export default function CallDutyPage() {
                 ? "Assign Agent"
                 : confirmAction?.type === "remove_agent"
                 ? "Remove Agent"
+                : confirmAction?.type === "signup_warning"
+                ? "⚠️ Weekly Limit Warning"
+                : confirmAction?.type === "cancel_warning"
+                ? "⚠️ Short Notice Cancellation"
+                : confirmAction?.type === "cancel_reason"
+                ? "Cancel Shift"
+                : confirmAction?.type === "admin_remove_reason"
+                ? "Remove Agent"
                 : "Join Waitlist"}
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -864,16 +972,44 @@ export default function CallDutyPage() {
                 ? `Are you sure you want to assign ${confirmAction.label}?`
                 : confirmAction?.type === "remove_agent"
                 ? `Are you sure you want to remove ${confirmAction?.label}?`
+                : confirmAction?.type === "signup_warning" || confirmAction?.type === "cancel_warning"
+                ? confirmAction.label
+                : confirmAction?.type === "cancel_reason"
+                ? `Please provide a reason for cancelling your signup for ${confirmAction.label}:`
+                : confirmAction?.type === "admin_remove_reason"
+                ? `Please provide a reason for removing this agent:`
                 : `Are you sure you want to join the waitlist for ${confirmAction?.label}? You'll be notified if a spot opens up.`}
             </AlertDialogDescription>
+            
+            {/* Cancellation reason input */}
+            {(confirmAction?.type === "cancel_reason" || confirmAction?.type === "admin_remove_reason") && (
+              <div className="mt-4">
+                <Textarea
+                  placeholder="Enter reason for cancellation..."
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  className="min-h-[80px] resize-none"
+                  required
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  This reason will be recorded and included in notifications.
+                </p>
+              </div>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Go Back</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirm}
+              disabled={
+                (confirmAction?.type === "cancel_reason" || confirmAction?.type === "admin_remove_reason") 
+                && !cancellationReason.trim()
+              }
               className={
-                confirmAction?.type === "cancel" || confirmAction?.type === "delete_holiday" || confirmAction?.type === "remove_agent"
+                confirmAction?.type === "cancel" || confirmAction?.type === "delete_holiday" || confirmAction?.type === "remove_agent" || confirmAction?.type === "cancel_reason" || confirmAction?.type === "admin_remove_reason"
                   ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : confirmAction?.type === "signup_warning" || confirmAction?.type === "cancel_warning"
+                  ? "bg-amber-600 hover:bg-amber-600/90 text-white"
                   : "bg-[#EF4923] hover:bg-[#EF4923]/90"
               }
             >
@@ -886,6 +1022,14 @@ export default function CallDutyPage() {
                 : confirmAction?.type === "assign_agent"
                 ? "Assign Agent"
                 : confirmAction?.type === "remove_agent"
+                ? "Remove Agent"
+                : confirmAction?.type === "signup_warning"
+                ? "Yes, Sign Up Anyway"
+                : confirmAction?.type === "cancel_warning"
+                ? "Yes, Cancel Anyway"
+                : confirmAction?.type === "cancel_reason"
+                ? "Cancel Shift"
+                : confirmAction?.type === "admin_remove_reason"
                 ? "Remove Agent"
                 : "Join Waitlist"}
             </AlertDialogAction>
