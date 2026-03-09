@@ -361,7 +361,7 @@ export const blockRegistry: WidgetDefinition[] = [
 
   // ── Core Pages ──────────────────────────────────
   {
-    type: 'core-hero',
+    type: 'hero',
     label: 'Core Hero',
     icon: '🎯',
     category: 'Core Pages',
@@ -374,7 +374,7 @@ export const blockRegistry: WidgetDefinition[] = [
     },
   },
   {
-    type: 'core-split',
+    type: 'idx-two-column',
     label: 'Core Split Section',
     icon: '📐',
     category: 'Core Pages',
@@ -391,7 +391,7 @@ export const blockRegistry: WidgetDefinition[] = [
     },
   },
   {
-    type: 'core-cards',
+    type: 'cards',
     label: 'Core Cards Grid',
     icon: '🎴',
     category: 'Core Pages',
@@ -407,7 +407,7 @@ export const blockRegistry: WidgetDefinition[] = [
     },
   },
   {
-    type: 'core-testimonial',
+    type: 'testimonial',
     label: 'Core Testimonials',
     icon: '⭐',
     category: 'Core Pages',
@@ -422,7 +422,7 @@ export const blockRegistry: WidgetDefinition[] = [
     },
   },
   {
-    type: 'core-text',
+    type: 'text',
     label: 'Core Text Section',
     icon: '📄',
     category: 'Core Pages',
