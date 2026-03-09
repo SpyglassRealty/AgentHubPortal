@@ -437,12 +437,12 @@ function DeveloperPage() {
     },
   });
 
-  // Prepare chart data
+  // Prepare chart data with proper null safety
   const activityChartData = React.useMemo(() => {
     if (!activityData?.logs) return [];
     
     const dailyActivity: Record<string, number> = {};
-    activityData?.logs?.forEach((log) => {
+    activityData.logs.forEach((log) => {
       const date = new Date(log.created_at).toISOString().split('T')[0];
       dailyActivity[date] = (dailyActivity[date] || 0) + 1;
     });
@@ -451,32 +451,22 @@ function DeveloperPage() {
       .map(([date, count]) => ({ date, count }))
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(-7); // Last 7 days
-  }, [activityData]);
+  }, [activityData?.logs]);
 
   const integrationStatusData = React.useMemo(() => {
     if (!systemHealth?.integrations) return [];
     
-    const connected = (systemHealth?.integrations || []).filter(i => i.last_test_result === 'success').length;
-    const failed = (systemHealth?.integrations || []).filter(i => i.last_test_result === 'failed').length;
-    const untested = (systemHealth?.integrations || []).length - connected - failed;
+    const integrations = systemHealth.integrations;
+    const connected = integrations.filter(i => i.last_test_result === 'success').length;
+    const failed = integrations.filter(i => i.last_test_result === 'failed').length;
+    const untested = integrations.length - connected - failed;
     
     return [
       { name: 'Connected', value: connected, color: '#10b981' },
       { name: 'Failed', value: failed, color: '#ef4444' },
       { name: 'Untested', value: untested, color: '#f59e0b' },
     ];
-  }, [systemHealth]);
-
-  // Null guard — prevents ALL rendering crashes from undefined API data
-  if (!activityData || !systemHealth || !usersData || !changelogData) {
-    return (
-      <Layout>
-        <div className="p-6 text-center text-muted-foreground">
-          <p>Loading developer dashboard...</p>
-        </div>
-      </Layout>
-    );
-  }
+  }, [systemHealth?.integrations]);
 
   return (
     <Layout>
@@ -586,7 +576,18 @@ function DeveloperPage() {
                 <CardDescription>Daily activity volume across the platform</CardDescription>
               </CardHeader>
               <CardContent>
-                {(activityChartData || []).length > 0 ? (
+                {activityLoading ? (
+                  <div className="h-[300px] flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : activityError ? (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    <div className="text-center">
+                      <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                      <p>Failed to load activity data</p>
+                    </div>
+                  </div>
+                ) : (activityChartData || []).length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={activityChartData || []}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -1152,26 +1153,43 @@ function DeveloperPage() {
                       <CardTitle>Integration Status</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-3">
-                        {systemHealth?.integrations?.map((integration) => (
-                          <div key={integration.name} className="flex items-center justify-between p-3 border rounded-lg">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-2 h-2 rounded-full ${
-                                integration.last_test_result === 'success' ? 'bg-green-500' :
-                                integration.last_test_result === 'failed' ? 'bg-red-500' : 'bg-yellow-500'
-                              }`} />
-                              <span className="font-medium text-sm">{integration.display_name}</span>
+                      {healthLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        </div>
+                      ) : healthError ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                          <p>Failed to load integration status</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {(systemHealth?.integrations || []).map((integration) => (
+                            <div key={integration.name} className="flex items-center justify-between p-3 border rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-2 h-2 rounded-full ${
+                                  integration.last_test_result === 'success' ? 'bg-green-500' :
+                                  integration.last_test_result === 'failed' ? 'bg-red-500' : 'bg-yellow-500'
+                                }`} />
+                                <span className="font-medium text-sm">{integration.display_name}</span>
+                              </div>
+                              <Badge variant={
+                                integration.last_test_result === 'success' ? 'default' :
+                                integration.last_test_result === 'failed' ? 'destructive' : 'secondary'
+                              }>
+                                {integration.last_test_result === 'success' ? 'Connected' :
+                                 integration.last_test_result === 'failed' ? 'Failed' : 'Untested'}
+                              </Badge>
                             </div>
-                            <Badge variant={
-                              integration.last_test_result === 'success' ? 'default' :
-                              integration.last_test_result === 'failed' ? 'destructive' : 'secondary'
-                            }>
-                              {integration.last_test_result === 'success' ? 'Connected' :
-                               integration.last_test_result === 'failed' ? 'Failed' : 'Untested'}
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                          {(!systemHealth?.integrations || systemHealth.integrations.length === 0) && (
+                            <div className="text-center py-8 text-muted-foreground">
+                              <Plug className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p>No integrations configured</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 
@@ -1180,7 +1198,18 @@ function DeveloperPage() {
                       <CardTitle>Integration Overview</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {(integrationStatusData || []).length > 0 ? (
+                      {healthLoading ? (
+                        <div className="h-[200px] flex items-center justify-center">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        </div>
+                      ) : healthError ? (
+                        <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                          <div className="text-center">
+                            <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                            <p>Failed to load integration data</p>
+                          </div>
+                        </div>
+                      ) : (integrationStatusData || []).length > 0 ? (
                         <ResponsiveContainer width="100%" height={200}>
                           <PieChart>
                             <Pie
