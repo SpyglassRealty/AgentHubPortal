@@ -29,7 +29,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronLeft, ChevronRight, Phone, Calendar, Clock, Settings, Trash2, Plus, CalendarDays, AlertTriangle, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, Phone, Calendar, Clock, Settings, Trash2, Plus, CalendarDays, AlertTriangle, ChevronDown, BarChart3, TrendingUp, Users, Activity, FileText, Download } from "lucide-react";
 
 interface MyShift {
   signupId: string;
@@ -67,6 +67,43 @@ interface UnfilledSlot {
     lastName: string | null;
     email: string;
     signedUpAt: string;
+  }[];
+}
+
+interface CallDutyReport {
+  dateRange: {
+    startDate: string;
+    endDate: string;
+  };
+  coverageStats: {
+    totalSlots: number;
+    filledSlots: number;
+    coveragePercentage: number;
+  };
+  coverageByWeek: {
+    weekStart: string;
+    filled: number;
+    total: number;
+    percentage: number;
+  }[];
+  agentActivity: {
+    userId: string;
+    name: string;
+    email: string;
+    activeShifts: number;
+    totalSignups: number;
+    cancellations: number;
+  }[];
+  shiftHistory: {
+    id: string;
+    agentName: string;
+    email: string;
+    action: "signup" | "cancellation";
+    shiftDate: string;
+    shiftType: string;
+    shiftTime: string;
+    timestamp: string;
+    cancellationReason?: string | null;
   }[];
 }
 
@@ -115,6 +152,20 @@ export default function CallDutyPage() {
 
   // Cancellation reason input state
   const [cancellationReason, setCancellationReason] = useState("");
+
+  // Reports state
+  const [showReports, setShowReports] = useState(false);
+  const [reportDateRange, setReportDateRange] = useState<"thisWeek" | "thisMonth" | "custom">("thisWeek");
+  const [customStartDate, setCustomStartDate] = useState(() => {
+    // Default to start of current month
+    const today = new Date();
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    return format(monthStart, "yyyy-MM-dd");
+  });
+  const [customEndDate, setCustomEndDate] = useState(() => {
+    // Default to today
+    return format(new Date(), "yyyy-MM-dd");
+  });
 
   // Holiday management state
   const [newHoliday, setNewHoliday] = useState({
@@ -203,6 +254,52 @@ export default function CallDutyPage() {
     },
     enabled: isAdmin, // Only fetch if user is admin/developer
     refetchInterval: 30000, // Refresh every 30 seconds for real-time updates
+  });
+
+  // Calculate report date range
+  const getReportDateRange = () => {
+    const today = new Date();
+    let startDate: string;
+    let endDate: string;
+
+    if (reportDateRange === "thisWeek") {
+      const monday = startOfWeek(today, { weekStartsOn: 1 });
+      const sunday = endOfWeek(today, { weekStartsOn: 1 });
+      startDate = format(monday, "yyyy-MM-dd");
+      endDate = format(sunday, "yyyy-MM-dd");
+    } else if (reportDateRange === "thisMonth") {
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      startDate = format(monthStart, "yyyy-MM-dd");
+      endDate = format(monthEnd, "yyyy-MM-dd");
+    } else {
+      startDate = customStartDate;
+      endDate = customEndDate;
+    }
+
+    return { startDate, endDate };
+  };
+
+  // Fetch reports (only for admin/developer when reports view is active)
+  const reportsDateRange = getReportDateRange();
+  const {
+    data: reportData,
+    isLoading: reportsLoading,
+    error: reportsError,
+  } = useQuery<CallDutyReport>({
+    queryKey: ["/api/call-duty/reports", reportsDateRange.startDate, reportsDateRange.endDate],
+    queryFn: async () => {
+      const { startDate, endDate } = reportsDateRange;
+      if (!startDate || !endDate) throw new Error("Date range required");
+      
+      const res = await fetch(
+        `/api/call-duty/reports?startDate=${startDate}&endDate=${endDate}`,
+        { credentials: "include" }
+      );
+      if (!res.ok) throw new Error("Failed to fetch reports");
+      return res.json();
+    },
+    enabled: isAdmin && showReports && reportsDateRange.startDate && reportsDateRange.endDate,
   });
 
   // Sign up mutation with soft warning support
@@ -931,6 +1028,261 @@ export default function CallDutyPage() {
                   </div>
                 )}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Reports Section - Admin/Developer Only */}
+        {isAdmin && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-[#EF4923]" />
+                Call Duty Reports
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Coverage statistics, agent activity, and shift history for accountability tracking.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Reports Toggle */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={showReports ? "default" : "outline"}
+                    onClick={() => setShowReports(!showReports)}
+                    className={showReports ? "bg-[#EF4923] hover:bg-[#EF4923]/90" : ""}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    {showReports ? "Hide Reports" : "Show Reports"}
+                  </Button>
+                </div>
+
+                {/* Date Range Selector */}
+                {showReports && (
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <Label className="text-xs font-medium whitespace-nowrap">Date Range:</Label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={reportDateRange === "thisWeek" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setReportDateRange("thisWeek")}
+                        className={reportDateRange === "thisWeek" ? "bg-[#EF4923] hover:bg-[#EF4923]/90" : ""}
+                      >
+                        This Week
+                      </Button>
+                      <Button
+                        variant={reportDateRange === "thisMonth" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setReportDateRange("thisMonth")}
+                        className={reportDateRange === "thisMonth" ? "bg-[#EF4923] hover:bg-[#EF4923]/90" : ""}
+                      >
+                        This Month
+                      </Button>
+                      <Button
+                        variant={reportDateRange === "custom" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setReportDateRange("custom")}
+                        className={reportDateRange === "custom" ? "bg-[#EF4923] hover:bg-[#EF4923]/90" : ""}
+                      >
+                        Custom
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Custom Date Range Inputs */}
+              {showReports && reportDateRange === "custom" && (
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <Label htmlFor="report-start-date" className="text-xs font-medium">Start Date</Label>
+                    <Input
+                      id="report-start-date"
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label htmlFor="report-end-date" className="text-xs font-medium">End Date</Label>
+                    <Input
+                      id="report-end-date"
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Reports Content */}
+              {showReports && (
+                <div className="space-y-6">
+                  {reportsLoading ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((i) => (
+                        <Skeleton key={i} className="h-24 w-full" />
+                      ))}
+                    </div>
+                  ) : reportsError ? (
+                    <div className="text-center py-8 text-sm text-destructive border-2 border-dashed border-destructive/20 rounded-lg">
+                      <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
+                      Failed to load reports. Please try again.
+                    </div>
+                  ) : reportData ? (
+                    <>
+                      {/* Coverage Statistics */}
+                      <div>
+                        <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4" />
+                          Coverage Statistics
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="bg-muted/30 rounded-lg p-4">
+                            <div className="text-2xl font-bold text-foreground">
+                              {reportData.coverageStats.coveragePercentage}%
+                            </div>
+                            <div className="text-xs text-muted-foreground">Overall Coverage</div>
+                          </div>
+                          <div className="bg-muted/30 rounded-lg p-4">
+                            <div className="text-2xl font-bold text-foreground">
+                              {reportData.coverageStats.filledSlots}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Filled Slots</div>
+                          </div>
+                          <div className="bg-muted/30 rounded-lg p-4">
+                            <div className="text-2xl font-bold text-foreground">
+                              {reportData.coverageStats.totalSlots}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Total Slots</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Weekly Coverage */}
+                      {reportData.coverageByWeek.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            Weekly Coverage
+                          </h4>
+                          <div className="space-y-2">
+                            {reportData.coverageByWeek.map((week) => (
+                              <div key={week.weekStart} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                                <div className="text-sm">
+                                  Week of {format(new Date(week.weekStart + "T00:00:00"), "MMM d, yyyy")}
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <div className="text-sm text-muted-foreground">
+                                    {week.filled}/{week.total} slots
+                                  </div>
+                                  <Badge 
+                                    variant={week.percentage >= 80 ? "default" : week.percentage >= 50 ? "secondary" : "destructive"}
+                                    className="min-w-[48px]"
+                                  >
+                                    {week.percentage}%
+                                  </Badge>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Agent Activity */}
+                      <div>
+                        <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Agent Activity (Ranked by Active Shifts)
+                        </h4>
+                        <div className="space-y-2">
+                          {reportData.agentActivity.slice(0, 10).map((agent, index) => (
+                            <div key={agent.userId} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <div className="w-6 h-6 rounded-full bg-[#EF4923]/10 flex items-center justify-center text-xs font-bold text-[#EF4923]">
+                                  {index + 1}
+                                </div>
+                                <div>
+                                  <div className="text-sm font-medium">{agent.name}</div>
+                                  <div className="text-xs text-muted-foreground">{agent.email}</div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4 text-xs">
+                                <div className="text-center">
+                                  <div className="font-bold text-green-600">{agent.activeShifts}</div>
+                                  <div className="text-muted-foreground">Active</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="font-bold text-muted-foreground">{agent.totalSignups}</div>
+                                  <div className="text-muted-foreground">Total</div>
+                                </div>
+                                {agent.cancellations > 0 && (
+                                  <div className="text-center">
+                                    <div className="font-bold text-red-600">{agent.cancellations}</div>
+                                    <div className="text-muted-foreground">Cancelled</div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                          {reportData.agentActivity.length === 0 && (
+                            <div className="text-center py-8 text-sm text-muted-foreground">
+                              No agent activity found in this date range.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Shift History */}
+                      <div>
+                        <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                          <Activity className="h-4 w-4" />
+                          Recent Shift History ({reportData.shiftHistory.length} events)
+                        </h4>
+                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                          {reportData.shiftHistory.slice(0, 50).map((event) => (
+                            <div key={event.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-muted/30 rounded-lg gap-2">
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${event.action === "signup" ? "bg-green-500" : "bg-red-500"}`} />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-sm">
+                                    <span className="font-medium">{event.agentName}</span>
+                                    <span className="text-muted-foreground ml-1">
+                                      {event.action === "signup" ? "signed up for" : "cancelled"}
+                                    </span>
+                                    <span className="font-medium ml-1">
+                                      {formatShiftLabel(event.shiftType)} shift
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {format(new Date(event.shiftDate + "T00:00:00"), "EEE, MMM d")} • {event.shiftTime}
+                                    {event.cancellationReason && (
+                                      <span className="ml-2 text-red-600">
+                                        Reason: {event.cancellationReason}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-xs text-muted-foreground flex-shrink-0">
+                                {format(new Date(event.timestamp), "MMM d, h:mm a")}
+                              </div>
+                            </div>
+                          ))}
+                          {reportData.shiftHistory.length === 0 && (
+                            <div className="text-center py-8 text-sm text-muted-foreground">
+                              No shift activity found in this date range.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

@@ -1249,4 +1249,185 @@ async function processWaitlistForSlot(slotId: string): Promise<void> {
   }
 }
 
+// ── Reporting Routes ─────────────────────────────────────────────────────
+
+/**
+ * GET /reports
+ * Generate Call Duty coverage and activity reports (admin/developer only).
+ * Query params: startDate, endDate (YYYY-MM-DD format)
+ */
+router.get("/reports", isAuthenticated, async (req: any, res) => {
+  try {
+    // Check admin access
+    const isAdmin = await checkAdminRole(req, res);
+    if (!isAdmin) return;
+
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: "startDate and endDate are required (YYYY-MM-DD)" });
+    }
+
+    // Validate date format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+      return res.status(400).json({ message: "Dates must be in YYYY-MM-DD format" });
+    }
+
+    // Get all slots in the date range
+    const slots = await db
+      .select({
+        id: callDutySlots.id,
+        date: callDutySlots.date,
+        shiftType: callDutySlots.shiftType,
+        startTime: callDutySlots.startTime,
+        endTime: callDutySlots.endTime,
+        maxSignups: callDutySlots.maxSignups,
+        isActive: callDutySlots.isActive,
+      })
+      .from(callDutySlots)
+      .where(
+        and(
+          gte(callDutySlots.date, startDate as string),
+          lte(callDutySlots.date, endDate as string),
+          eq(callDutySlots.isActive, true)
+        )
+      )
+      .orderBy(callDutySlots.date, callDutySlots.startTime);
+
+    // Get all signups (active and cancelled) in the date range
+    const signups = await db
+      .select({
+        id: callDutySignups.id,
+        slotId: callDutySignups.slotId,
+        userId: callDutySignups.userId,
+        status: callDutySignups.status,
+        signedUpAt: callDutySignups.signedUpAt,
+        cancelledAt: callDutySignups.cancelledAt,
+        cancellationReason: callDutySignups.cancellationReason,
+        // User info
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        // Slot info
+        slotDate: callDutySlots.date,
+        shiftType: callDutySlots.shiftType,
+        startTime: callDutySlots.startTime,
+        endTime: callDutySlots.endTime,
+      })
+      .from(callDutySignups)
+      .innerJoin(users, eq(callDutySignups.userId, users.id))
+      .innerJoin(callDutySlots, eq(callDutySignups.slotId, callDutySlots.id))
+      .where(
+        and(
+          gte(callDutySlots.date, startDate as string),
+          lte(callDutySlots.date, endDate as string),
+          eq(callDutySlots.isActive, true)
+        )
+      )
+      .orderBy(desc(callDutySignups.signedUpAt));
+
+    // Calculate coverage statistics
+    const totalSlots = slots.reduce((sum, slot) => sum + slot.maxSignups, 0);
+    const activeSignups = signups.filter(s => s.status === "active").length;
+    const coveragePercentage = totalSlots > 0 ? Math.round((activeSignups / totalSlots) * 100) : 0;
+
+    // Group coverage by week
+    const coverageByWeek = new Map<string, { filled: number; total: number }>();
+    
+    for (const slot of slots) {
+      const slotDate = new Date(slot.date + "T00:00:00");
+      const day = slotDate.getDay();
+      const mondayOffset = day === 0 ? -6 : 1 - day;
+      const weekStart = new Date(slotDate);
+      weekStart.setDate(slotDate.getDate() + mondayOffset);
+      const weekKey = weekStart.toISOString().split("T")[0];
+      
+      const existing = coverageByWeek.get(weekKey) || { filled: 0, total: 0 };
+      existing.total += slot.maxSignups;
+      
+      // Count active signups for this slot
+      const slotActiveSignups = signups.filter(s => s.slotId === slot.id && s.status === "active").length;
+      existing.filled += slotActiveSignups;
+      
+      coverageByWeek.set(weekKey, existing);
+    }
+
+    // Calculate agent activity (ranked by active shifts)
+    const agentActivity = new Map<string, { 
+      userId: string; 
+      name: string; 
+      email: string; 
+      activeShifts: number; 
+      totalSignups: number; 
+      cancellations: number 
+    }>();
+
+    for (const signup of signups) {
+      const agentKey = signup.userId;
+      const agentName = `${signup.firstName || ""} ${signup.lastName || ""}`.trim() || signup.email;
+      
+      const existing = agentActivity.get(agentKey) || {
+        userId: signup.userId,
+        name: agentName,
+        email: signup.email,
+        activeShifts: 0,
+        totalSignups: 0,
+        cancellations: 0,
+      };
+      
+      existing.totalSignups++;
+      if (signup.status === "active") {
+        existing.activeShifts++;
+      } else if (signup.status === "cancelled") {
+        existing.cancellations++;
+      }
+      
+      agentActivity.set(agentKey, existing);
+    }
+
+    // Convert to sorted arrays
+    const agentActivityArray = Array.from(agentActivity.values())
+      .sort((a, b) => b.activeShifts - a.activeShifts);
+
+    const coverageByWeekArray = Array.from(coverageByWeek.entries())
+      .map(([weekStart, stats]) => ({
+        weekStart,
+        ...stats,
+        percentage: stats.total > 0 ? Math.round((stats.filled / stats.total) * 100) : 0,
+      }))
+      .sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+
+    // Build shift history log
+    const shiftHistory = signups.map(signup => ({
+      id: signup.id,
+      agentName: `${signup.firstName || ""} ${signup.lastName || ""}`.trim() || signup.email,
+      email: signup.email,
+      action: signup.status === "active" ? "signup" : "cancellation",
+      shiftDate: signup.slotDate,
+      shiftType: signup.shiftType,
+      shiftTime: `${signup.startTime}–${signup.endTime}`,
+      timestamp: signup.status === "cancelled" && signup.cancelledAt ? signup.cancelledAt : signup.signedUpAt,
+      cancellationReason: signup.cancellationReason,
+    }));
+
+    const report = {
+      dateRange: { startDate, endDate },
+      coverageStats: {
+        totalSlots,
+        filledSlots: activeSignups,
+        coveragePercentage,
+      },
+      coverageByWeek: coverageByWeekArray,
+      agentActivity: agentActivityArray,
+      shiftHistory,
+    };
+
+    res.json(report);
+  } catch (error: any) {
+    console.error("[Call Duty] Error generating reports:", error);
+    res.status(500).json({ message: "Failed to generate reports" });
+  }
+});
+
 export default router;
