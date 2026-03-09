@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Maggie Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .test-step { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        .console-output { background-color: #f8f9fa; padding: 10px; border-radius: 3px; font-family: monospace; }
+        #fileUpload { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Maggie Debug Test</h1>
+    <p><strong>Instructions:</strong> Open browser console (F12) and follow these steps</p>
+    
+    <div class="test-step info">
+        <h3>Step 1: Basic JavaScript Test</h3>
+        <button onclick="testBasicJS()">Test JavaScript</button>
+        <div id="jsTest"></div>
+    </div>
+    
+    <div class="test-step info">
+        <h3>Step 2: API Connection Test</h3>
+        <button onclick="testAPIConnection()">Test API</button>
+        <div id="apiTest"></div>
+    </div>
+    
+    <div class="test-step info">
+        <h3>Step 3: File Upload Test</h3>
+        <input type="file" id="fileUpload" accept=".pdf,.txt">
+        <button onclick="testFileUpload()">Test Upload</button>
+        <div id="uploadTest"></div>
+    </div>
+    
+    <div class="test-step info">
+        <h3>Console Output:</h3>
+        <div id="consoleOutput" class="console-output">
+            Watch the browser console (F12 → Console tab) for detailed logs...
+        </div>
+    </div>
+
+    <script>
+        console.log('🚀 Maggie Debug Test loaded successfully!');
+        
+        function testBasicJS() {
+            console.log('🧪 Testing basic JavaScript...');
+            const output = document.getElementById('jsTest');
+            
+            try {
+                const now = new Date();
+                output.innerHTML = `<div class="success">✅ JavaScript works! Time: ${now.toLocaleTimeString()}</div>`;
+                console.log('✅ Basic JavaScript test passed');
+            } catch (error) {
+                output.innerHTML = `<div class="error">❌ JavaScript error: ${error.message}</div>`;
+                console.error('❌ Basic JavaScript test failed:', error);
+            }
+        }
+        
+        async function testAPIConnection() {
+            console.log('🌐 Testing API connection...');
+            const output = document.getElementById('apiTest');
+            
+            try {
+                const response = await fetch('http://192.168.1.162:3001/api/test/document-scanning');
+                console.log('📡 API response status:', response.status);
+                
+                const data = await response.json();
+                console.log('📊 API response data:', data);
+                
+                if (response.ok && data.ready) {
+                    output.innerHTML = `<div class="success">✅ API connection works! ${data.message}</div>`;
+                    console.log('✅ API connection test passed');
+                } else {
+                    output.innerHTML = `<div class="error">❌ API not ready: ${JSON.stringify(data)}</div>`;
+                    console.error('❌ API not ready:', data);
+                }
+            } catch (error) {
+                output.innerHTML = `<div class="error">❌ API connection failed: ${error.message}</div>`;
+                console.error('❌ API connection test failed:', error);
+            }
+        }
+        
+        async function testFileUpload() {
+            console.log('📁 Testing file upload...');
+            const output = document.getElementById('uploadTest');
+            const fileInput = document.getElementById('fileUpload');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                output.innerHTML = '<div class="error">❌ Please select a file first</div>';
+                console.error('❌ No file selected');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            console.log('📄 Selected file:', {
+                name: file.name,
+                size: file.size,
+                type: file.type
+            });
+            
+            try {
+                // Convert to base64
+                console.log('🔄 Converting file to base64...');
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const result = reader.result.split(',')[1];
+                        console.log('📊 Base64 length:', result.length);
+                        resolve(result);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+                
+                // Test API upload
+                console.log('🚀 Sending upload request to API...');
+                const uploadData = {
+                    documentId: `debug_${Date.now()}`,
+                    fileName: file.name,
+                    fileData: base64,
+                    transactionType: 'purchase'
+                };
+                console.log('📤 Upload data:', {
+                    ...uploadData,
+                    fileData: `[${base64.length} characters]`
+                });
+                
+                const response = await fetch('http://192.168.1.162:3001/api/documents/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(uploadData)
+                });
+                
+                console.log('📡 Upload response status:', response.status);
+                console.log('📡 Upload response headers:', [...response.headers.entries()]);
+                
+                const result = await response.json();
+                console.log('📊 Upload response data:', result);
+                
+                if (response.ok && result.success) {
+                    const fieldCount = result.extractedTerms ? Object.keys(result.extractedTerms).length : 0;
+                    output.innerHTML = \`
+                        <div class="success">
+                            <h4>✅ Upload successful!</h4>
+                            <p><strong>File:</strong> \${result.fileName}</p>
+                            <p><strong>Status:</strong> \${result.success ? 'Success' : 'Failed'}</p>
+                            <p><strong>Fields extracted:</strong> \${fieldCount}</p>
+                            <p><strong>Method:</strong> \${result.extractedTerms?.extractionMethod || 'unknown'}</p>
+                            <p><strong>Flags:</strong> \${result.extractedTerms?.flags?.join(', ') || 'none'}</p>
+                        </div>
+                    \`;
+                    console.log('✅ File upload test passed');
+                    
+                    // Test form population
+                    console.log('🎯 Testing form population logic...');
+                    const testData = result.extractedTerms;
+                    if (testData) {
+                        console.log('📋 Extracted data for form population:', testData);
+                        if (testData.property?.address) {
+                            console.log('🏠 Property address:', testData.property.address);
+                        }
+                        if (testData.buyer?.fullName) {
+                            console.log('👤 Buyer name:', testData.buyer.fullName);
+                        }
+                        if (testData.terms?.purchasePrice) {
+                            console.log('💰 Purchase price:', testData.terms.purchasePrice);
+                        }
+                    }
+                } else {
+                    output.innerHTML = \`<div class="error">❌ Upload failed: \${result.error || 'Unknown error'}</div>\`;
+                    console.error('❌ File upload test failed:', result);
+                }
+                
+            } catch (error) {
+                output.innerHTML = \`<div class="error">❌ Upload error: \${error.message}</div>\`;
+                console.error('❌ File upload test failed:', error);
+            }
+        }
+        
+        // Capture console logs and display them
+        const consoleOutput = document.getElementById('consoleOutput');
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        function addToConsoleOutput(message, isError = false) {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = isError ? 'red' : 'black';
+            consoleOutput.innerHTML += \`<div style="color: \${color}; margin: 2px 0;">[<\${timestamp}>] \${message}</div>\`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToConsoleOutput(args.join(' '));
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToConsoleOutput(args.join(' '), true);
+        };
+        
+        console.log('🎯 Ready for testing! Click the buttons above and watch the console.');
+    </script>
+</body>
+</html>
