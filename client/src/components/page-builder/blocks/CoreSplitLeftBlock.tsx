@@ -1,7 +1,7 @@
 import React from 'react';
 import { BlockProps } from '../types';
 
-interface CoreSplitProps extends BlockProps {
+interface CoreSplitLeftProps extends BlockProps {
   imageUrl?: string;
   videoUrl?: string;
   imageAlt?: string;
@@ -11,7 +11,6 @@ interface CoreSplitProps extends BlockProps {
   primaryButtonUrl?: string;
   secondaryButtonText?: string;
   secondaryButtonUrl?: string;
-  reverse?: boolean;
   background?: 'white' | 'light' | 'dark';
 }
 
@@ -95,7 +94,7 @@ function VideoThumbnail({ videoUrl, className }: { videoUrl: string; className?:
   );
 }
 
-export function CoreSplitBlock({ 
+export function CoreSplitLeftBlock({ 
   imageUrl,
   videoUrl,
   imageAlt = '',
@@ -105,9 +104,8 @@ export function CoreSplitBlock({
   primaryButtonUrl,
   secondaryButtonText,
   secondaryButtonUrl,
-  reverse = false,
   background = 'white'
-}: CoreSplitProps) {
+}: CoreSplitLeftProps) {
   const bgClass = {
     white: 'bg-white',
     light: 'bg-gray-50',
@@ -117,9 +115,9 @@ export function CoreSplitBlock({
   return (
     <section className={`py-16 ${bgClass}`}>
       <div className="max-w-[1100px] mx-auto px-4">
-        <div className={`grid grid-cols-1 md:grid-cols-2 gap-12 items-center ${reverse ? 'md:flex-row-reverse' : ''}`}>
-          {/* Media */}
-          <div className={reverse ? 'md:order-2' : ''}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+          {/* Media - Left Side */}
+          <div>
             {videoUrl ? (
               <VideoThumbnail videoUrl={videoUrl} className="w-full" />
             ) : imageUrl ? (
@@ -136,28 +134,27 @@ export function CoreSplitBlock({
             )}
           </div>
           
-          {/* Content */}
-          <div className={reverse ? 'md:order-1' : ''}>
+          {/* Content - Right Side */}
+          <div>
             <h2 className="text-3xl font-bold mb-4">{heading}</h2>
             <div 
               className="prose prose-lg mb-6"
               dangerouslySetInnerHTML={{ __html: content }}
             />
             
-            {/* Buttons */}
             {(primaryButtonText || secondaryButtonText) && (
               <div className="flex flex-wrap gap-3">
-                {primaryButtonText && (
+                {primaryButtonText && primaryButtonUrl && (
                   <a 
-                    href={primaryButtonUrl || '#'}
+                    href={primaryButtonUrl}
                     className="inline-flex px-6 py-3 bg-[#fa4616] text-white font-medium rounded hover:opacity-85 transition-opacity"
                   >
                     {primaryButtonText}
                   </a>
                 )}
-                {secondaryButtonText && (
+                {secondaryButtonText && secondaryButtonUrl && (
                   <a 
-                    href={secondaryButtonUrl || '#'}
+                    href={secondaryButtonUrl}
                     className="inline-flex px-6 py-3 border-2 border-[#fa4616] text-[#fa4616] font-medium rounded hover:bg-[#fa4616] hover:text-white transition-colors"
                   >
                     {secondaryButtonText}
@@ -171,25 +168,3 @@ export function CoreSplitBlock({
     </section>
   );
 }
-
-CoreSplitBlock.displayName = 'Core Split Section';
-CoreSplitBlock.schema = {
-  imageUrl: { type: 'string', label: 'Image URL', required: true },
-  imageAlt: { type: 'string', label: 'Image Alt Text' },
-  heading: { type: 'string', label: 'Heading', required: true },
-  content: { type: 'richtext', label: 'Content', required: true },
-  primaryButtonText: { type: 'string', label: 'Primary Button Text' },
-  primaryButtonUrl: { type: 'string', label: 'Primary Button URL' },
-  secondaryButtonText: { type: 'string', label: 'Secondary Button Text' },
-  secondaryButtonUrl: { type: 'string', label: 'Secondary Button URL' },
-  reverse: { type: 'boolean', label: 'Reverse Layout' },
-  background: { 
-    type: 'select', 
-    label: 'Background', 
-    options: [
-      { value: 'white', label: 'White' },
-      { value: 'light', label: 'Light Gray' },
-      { value: 'dark', label: 'Dark' }
-    ]
-  }
-};
