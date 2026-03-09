@@ -6,6 +6,9 @@ import { redirects } from "@shared/schema";
 import { eq, ilike, and, or, sql, desc, asc, count } from "drizzle-orm";
 import type { User } from "@shared/schema";
 import { z } from "zod";
+import multer from "multer";
+import * as XLSX from "xlsx";
+import { parse } from "csv-parse/sync";
 
 // ── Helper: get DB user ──────────────────────────────
 async function getDbUser(req: any): Promise<User | undefined> {
@@ -341,6 +344,346 @@ export function registerRedirectsRoutes(app: Express) {
     } catch (error) {
       console.error("[Redirects] Error looking up redirect:", error);
       res.status(500).json({ message: "Failed to lookup redirect" });
+    }
+  });
+
+  // ── Configure multer for file uploads ──
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      // Accept CSV, XLSX, and XLS files
+      const allowedTypes = [
+        'text/csv',
+        'application/csv',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ];
+      if (allowedTypes.includes(file.mimetype) || file.originalname.endsWith('.csv')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only CSV and Excel files are allowed'), false);
+      }
+    }
+  });
+
+  // ── Helper function to normalize URL paths ──
+  function normalizeUrl(url: string): string {
+    if (!url || typeof url !== 'string') return '';
+    let normalized = url.trim();
+    
+    // Ensure source URLs start with /
+    if (!normalized.startsWith('/') && !normalized.startsWith('http')) {
+      normalized = '/' + normalized;
+    }
+    
+    return normalized;
+  }
+
+  // ── Helper function to parse uploaded file data ──
+  function parseFileData(buffer: Buffer, filename: string): { old: string; new: string }[] {
+    const ext = filename.toLowerCase().split('.').pop();
+    let data: any[] = [];
+
+    if (ext === 'csv') {
+      // Parse CSV
+      const csvData = buffer.toString('utf-8');
+      data = parse(csvData, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true
+      });
+    } else if (ext === 'xlsx' || ext === 'xls') {
+      // Parse Excel
+      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      data = XLSX.utils.sheet_to_json(worksheet);
+    } else {
+      throw new Error('Unsupported file format');
+    }
+
+    // Normalize column names and validate structure
+    return data.map((row: any) => {
+      // Support various column name formats
+      const oldUrl = row['old'] || row['Old'] || row['OLD'] || row['source'] || row['Source'] || row['SOURCE_URL'] || '';
+      const newUrl = row['new'] || row['New'] || row['NEW'] || row['destination'] || row['Destination'] || row['DESTINATION_URL'] || '';
+      
+      if (!oldUrl || !newUrl) {
+        throw new Error(`Missing required columns. Expected 'old' and 'new' columns. Got: ${Object.keys(row).join(', ')}`);
+      }
+
+      return {
+        old: normalizeUrl(oldUrl),
+        new: normalizeUrl(newUrl)
+      };
+    });
+  }
+
+  // ── POST /api/admin/redirects/bulk-upload — bulk upload CSV/XLSX ──
+  app.post("/api/admin/redirects/bulk-upload", isAuthenticated, requireSuperAdmin, upload.single('file'), async (req: any, res) => {
+    try {
+      const user = req.dbUser;
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      console.log(`[Redirects] Processing bulk upload: ${file.originalname} (${file.size} bytes) by ${user?.email}`);
+
+      // Parse file data
+      let redirectsData: { old: string; new: string }[];
+      try {
+        redirectsData = parseFileData(file.buffer, file.originalname);
+      } catch (parseError) {
+        console.error("[Redirects] File parsing error:", parseError);
+        return res.status(400).json({ 
+          message: "Failed to parse file", 
+          error: parseError instanceof Error ? parseError.message : "Unknown parsing error"
+        });
+      }
+
+      if (redirectsData.length === 0) {
+        return res.status(400).json({ message: "No valid redirect data found in file" });
+      }
+
+      // Validate and process redirects
+      const results = {
+        total: redirectsData.length,
+        created: 0,
+        skipped: 0,
+        errors: [] as string[]
+      };
+
+      const createdRedirects = [];
+
+      for (let i = 0; i < redirectsData.length; i++) {
+        const { old: sourceUrl, new: destinationUrl } = redirectsData[i];
+
+        try {
+          // Validate URLs
+          if (!sourceUrl || !destinationUrl) {
+            results.errors.push(`Row ${i + 1}: Missing source or destination URL`);
+            results.skipped++;
+            continue;
+          }
+
+          if (!sourceUrl.startsWith('/')) {
+            results.errors.push(`Row ${i + 1}: Source URL must start with / (got: ${sourceUrl})`);
+            results.skipped++;
+            continue;
+          }
+
+          // Check for existing active redirect with same source URL
+          const existing = await db
+            .select()
+            .from(redirects)
+            .where(and(
+              eq(redirects.sourceUrl, sourceUrl),
+              eq(redirects.isActive, true)
+            ))
+            .limit(1);
+
+          if (existing.length > 0) {
+            results.errors.push(`Row ${i + 1}: Active redirect already exists for ${sourceUrl}`);
+            results.skipped++;
+            continue;
+          }
+
+          // Create redirect
+          const [created] = await db
+            .insert(redirects)
+            .values({
+              sourceUrl,
+              destinationUrl,
+              redirectType: '301',
+              description: `Bulk upload from ${file.originalname}`,
+              isActive: true,
+              createdBy: user?.email || user?.id || "admin",
+            })
+            .returning();
+
+          createdRedirects.push(created);
+          results.created++;
+
+        } catch (error) {
+          console.error(`[Redirects] Error creating redirect for row ${i + 1}:`, error);
+          results.errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          results.skipped++;
+        }
+      }
+
+      console.log(`[Redirects] Bulk upload completed: ${results.created} created, ${results.skipped} skipped by ${user?.email}`);
+      
+      res.json({
+        message: `Bulk upload completed: ${results.created} redirects created, ${results.skipped} skipped`,
+        results,
+        created: createdRedirects
+      });
+
+    } catch (error) {
+      console.error("[Redirects] Error processing bulk upload:", error);
+      res.status(500).json({ message: "Failed to process bulk upload" });
+    }
+  });
+
+  // ── Google Sheets import validation schema ──
+  const googleSheetsImportSchema = z.object({
+    spreadsheetUrl: z.string().url("Please enter a valid Google Sheets URL"),
+    sheetName: z.string().optional(),
+    range: z.string().optional(),
+  });
+
+  // ── POST /api/admin/redirects/google-sheets-import — import from Google Sheets ──
+  app.post("/api/admin/redirects/google-sheets-import", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const user = req.dbUser;
+      const validatedData = googleSheetsImportSchema.parse(req.body);
+
+      console.log(`[Redirects] Processing Google Sheets import: ${validatedData.spreadsheetUrl} by ${user?.email}`);
+
+      // Extract spreadsheet ID from URL
+      const match = validatedData.spreadsheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      if (!match) {
+        return res.status(400).json({ message: "Invalid Google Sheets URL format" });
+      }
+
+      const spreadsheetId = match[1];
+      const sheetName = validatedData.sheetName || 'Sheet1';
+      const range = validatedData.range || 'A:B';
+
+      // Construct CSV export URL
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&range=${encodeURIComponent(range)}`;
+
+      // Fetch CSV data
+      const response = await fetch(csvUrl);
+      if (!response.ok) {
+        return res.status(400).json({ message: "Failed to fetch data from Google Sheets. Make sure the sheet is publicly viewable or shared." });
+      }
+
+      const csvData = await response.text();
+
+      // Parse CSV data
+      let redirectsData: { old: string; new: string }[];
+      try {
+        const parsedData = parse(csvData, {
+          columns: true,
+          skip_empty_lines: true,
+          trim: true
+        });
+
+        redirectsData = parsedData.map((row: any) => {
+          // Support various column name formats
+          const oldUrl = row['old'] || row['Old'] || row['OLD'] || row['source'] || row['Source'] || row['SOURCE_URL'] || '';
+          const newUrl = row['new'] || row['New'] || row['NEW'] || row['destination'] || row['Destination'] || row['DESTINATION_URL'] || '';
+          
+          if (!oldUrl || !newUrl) {
+            throw new Error(`Missing required columns. Expected 'old' and 'new' columns. Got: ${Object.keys(row).join(', ')}`);
+          }
+
+          return {
+            old: normalizeUrl(oldUrl),
+            new: normalizeUrl(newUrl)
+          };
+        });
+      } catch (parseError) {
+        console.error("[Redirects] Google Sheets parsing error:", parseError);
+        return res.status(400).json({ 
+          message: "Failed to parse Google Sheets data", 
+          error: parseError instanceof Error ? parseError.message : "Unknown parsing error"
+        });
+      }
+
+      if (redirectsData.length === 0) {
+        return res.status(400).json({ message: "No valid redirect data found in Google Sheet" });
+      }
+
+      // Validate and process redirects (same logic as file upload)
+      const results = {
+        total: redirectsData.length,
+        created: 0,
+        skipped: 0,
+        errors: [] as string[]
+      };
+
+      const createdRedirects = [];
+
+      for (let i = 0; i < redirectsData.length; i++) {
+        const { old: sourceUrl, new: destinationUrl } = redirectsData[i];
+
+        try {
+          // Validate URLs
+          if (!sourceUrl || !destinationUrl) {
+            results.errors.push(`Row ${i + 1}: Missing source or destination URL`);
+            results.skipped++;
+            continue;
+          }
+
+          if (!sourceUrl.startsWith('/')) {
+            results.errors.push(`Row ${i + 1}: Source URL must start with / (got: ${sourceUrl})`);
+            results.skipped++;
+            continue;
+          }
+
+          // Check for existing active redirect with same source URL
+          const existing = await db
+            .select()
+            .from(redirects)
+            .where(and(
+              eq(redirects.sourceUrl, sourceUrl),
+              eq(redirects.isActive, true)
+            ))
+            .limit(1);
+
+          if (existing.length > 0) {
+            results.errors.push(`Row ${i + 1}: Active redirect already exists for ${sourceUrl}`);
+            results.skipped++;
+            continue;
+          }
+
+          // Create redirect
+          const [created] = await db
+            .insert(redirects)
+            .values({
+              sourceUrl,
+              destinationUrl,
+              redirectType: '301',
+              description: `Google Sheets import from ${validatedData.spreadsheetUrl}`,
+              isActive: true,
+              createdBy: user?.email || user?.id || "admin",
+            })
+            .returning();
+
+          createdRedirects.push(created);
+          results.created++;
+
+        } catch (error) {
+          console.error(`[Redirects] Error creating redirect for row ${i + 1}:`, error);
+          results.errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          results.skipped++;
+        }
+      }
+
+      console.log(`[Redirects] Google Sheets import completed: ${results.created} created, ${results.skipped} skipped by ${user?.email}`);
+      
+      res.json({
+        message: `Google Sheets import completed: ${results.created} redirects created, ${results.skipped} skipped`,
+        results,
+        created: createdRedirects
+      });
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      console.error("[Redirects] Error processing Google Sheets import:", error);
+      res.status(500).json({ message: "Failed to process Google Sheets import" });
     }
   });
 }
