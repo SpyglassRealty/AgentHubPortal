@@ -32,6 +32,85 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
+// ── Video thumbnail component ──────────────────────────────────
+interface VideoData {
+  thumbnailUrl: string;
+  embedUrl: string;
+  isVideo: boolean;
+}
+
+function extractVideoData(url: string): VideoData {
+  if (!url) return { thumbnailUrl: '', embedUrl: '', isVideo: false };
+  
+  // YouTube video detection
+  const youtubeMatch = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+  if (youtubeMatch) {
+    const videoId = youtubeMatch[1];
+    return {
+      thumbnailUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+      embedUrl: `https://www.youtube.com/embed/${videoId}`,
+      isVideo: true
+    };
+  }
+  
+  // Vimeo video detection
+  const vimeoMatch = url.match(/(?:https?:\/\/)?(?:www\.)?vimeo\.com\/(\d+)/);
+  if (vimeoMatch) {
+    const videoId = vimeoMatch[1];
+    return {
+      thumbnailUrl: `https://vumbnail.com/${videoId}.jpg`,
+      embedUrl: `https://player.vimeo.com/video/${videoId}`,
+      isVideo: true
+    };
+  }
+  
+  // Direct video file detection
+  const videoExtensions = /\.(mp4|webm|ogg|mov|avi)(\?.*)?$/i;
+  if (videoExtensions.test(url)) {
+    return {
+      thumbnailUrl: '',
+      embedUrl: url,
+      isVideo: true
+    };
+  }
+  
+  return { thumbnailUrl: '', embedUrl: '', isVideo: false };
+}
+
+function VideoThumbnail({ videoUrl }: { videoUrl: string }) {
+  const videoData = extractVideoData(videoUrl);
+  const [showVideo, setShowVideo] = React.useState(false);
+  
+  if (!videoData.isVideo) return null;
+  
+  if (showVideo) {
+    return (
+      <iframe 
+        src={videoData.embedUrl}
+        className="w-full h-[300px] rounded-lg"
+        frameBorder="0"
+        allowFullScreen
+      />
+    );
+  }
+  
+  return (
+    <div 
+      className="relative cursor-pointer group w-full"
+      onClick={() => setShowVideo(true)}
+    >
+      <div 
+        className="w-full h-[300px] rounded-lg bg-gray-900 bg-cover bg-center flex items-center justify-center shadow-sm"
+        style={videoData.thumbnailUrl ? { backgroundImage: `url(${videoData.thumbnailUrl})` } : {}}
+      >
+        <div className="w-20 h-20 bg-white/90 rounded-full flex items-center justify-center group-hover:bg-white transition-colors">
+          <div className="w-0 h-0 border-l-[25px] border-l-[#fa4616] border-t-[15px] border-t-transparent border-b-[15px] border-b-transparent ml-1" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRendererProps) {
   const { type, props } = block;
 
@@ -187,11 +266,15 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
           <div className="max-w-[1100px] mx-auto px-4">
             <div className={`grid grid-cols-1 md:grid-cols-2 gap-12 items-center`}>
               <div className={props.reverse ? 'md:order-2' : ''}>
-                <img 
-                  src={props.imageUrl || 'https://via.placeholder.com/600x400'} 
-                  alt={props.imageAlt || ''}
-                  className="w-full rounded-lg shadow-sm"
-                />
+                {props.videoUrl ? (
+                  <VideoThumbnail videoUrl={props.videoUrl} />
+                ) : (
+                  <img 
+                    src={props.imageUrl || 'https://via.placeholder.com/600x400'} 
+                    alt={props.imageAlt || ''}
+                    className="w-full rounded-lg shadow-sm"
+                  />
+                )}
               </div>
               <div className={props.reverse ? 'md:order-1' : ''}>
                 <h2 className="text-3xl font-bold mb-4">{props.heading || 'Section Heading'}</h2>
@@ -218,6 +301,102 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
                       </a>
                     )}
                   </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+
+    case 'core-split-left':
+      return (
+        <section className={`py-16 ${props.background === 'light' ? 'bg-gray-50' : props.background === 'dark' ? 'bg-gray-900 text-white' : 'bg-white'}`}>
+          <div className="max-w-[1100px] mx-auto px-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+              <div>
+                {props.videoUrl ? (
+                  <VideoThumbnail videoUrl={props.videoUrl} />
+                ) : (
+                  <img 
+                    src={props.imageUrl || 'https://via.placeholder.com/600x400'} 
+                    alt={props.imageAlt || ''}
+                    className="w-full rounded-lg shadow-sm"
+                  />
+                )}
+              </div>
+              <div>
+                <h2 className="text-3xl font-bold mb-4">{props.heading || 'Section Heading'}</h2>
+                <div 
+                  className="prose prose-lg mb-6"
+                  dangerouslySetInnerHTML={{ __html: props.content || '<p>Content goes here...</p>' }}
+                />
+                {(props.primaryButtonText || props.secondaryButtonText) && (
+                  <div className="flex flex-wrap gap-3">
+                    {props.primaryButtonText && (
+                      <a 
+                        href={props.primaryButtonUrl || '#'}
+                        className="inline-flex px-6 py-3 bg-[#fa4616] text-white font-medium rounded hover:opacity-85 transition-opacity"
+                      >
+                        {props.primaryButtonText}
+                      </a>
+                    )}
+                    {props.secondaryButtonText && (
+                      <a 
+                        href={props.secondaryButtonUrl || '#'}
+                        className="inline-flex px-6 py-3 border-2 border-[#fa4616] text-[#fa4616] font-medium rounded hover:bg-[#fa4616] hover:text-white transition-colors"
+                      >
+                        {props.secondaryButtonText}
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+
+    case 'core-split-right':
+      return (
+        <section className={`py-16 ${props.background === 'light' ? 'bg-gray-50' : props.background === 'dark' ? 'bg-gray-900 text-white' : 'bg-white'}`}>
+          <div className="max-w-[1100px] mx-auto px-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+              <div>
+                <h2 className="text-3xl font-bold mb-4">{props.heading || 'Section Heading'}</h2>
+                <div 
+                  className="prose prose-lg mb-6"
+                  dangerouslySetInnerHTML={{ __html: props.content || '<p>Content goes here...</p>' }}
+                />
+                {(props.primaryButtonText || props.secondaryButtonText) && (
+                  <div className="flex flex-wrap gap-3">
+                    {props.primaryButtonText && (
+                      <a 
+                        href={props.primaryButtonUrl || '#'}
+                        className="inline-flex px-6 py-3 bg-[#fa4616] text-white font-medium rounded hover:opacity-85 transition-opacity"
+                      >
+                        {props.primaryButtonText}
+                      </a>
+                    )}
+                    {props.secondaryButtonText && (
+                      <a 
+                        href={props.secondaryButtonUrl || '#'}
+                        className="inline-flex px-6 py-3 border-2 border-[#fa4616] text-[#fa4616] font-medium rounded hover:bg-[#fa4616] hover:text-white transition-colors"
+                      >
+                        {props.secondaryButtonText}
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div>
+                {props.videoUrl ? (
+                  <VideoThumbnail videoUrl={props.videoUrl} />
+                ) : (
+                  <img 
+                    src={props.imageUrl || 'https://via.placeholder.com/600x400'} 
+                    alt={props.imageAlt || ''}
+                    className="w-full rounded-lg shadow-sm"
+                  />
                 )}
               </div>
             </div>
