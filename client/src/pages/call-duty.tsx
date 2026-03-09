@@ -821,7 +821,7 @@ export default function CallDutyPage() {
                   </Button>
                 </CollapsibleTrigger>
                 <p className="text-sm text-muted-foreground text-left">
-                  Current week's shifts needing more agents (Johnny Mac's Leads Huddle)
+                  Current week's shifts needing more agents
                 </p>
               </CardHeader>
               <CollapsibleContent>
