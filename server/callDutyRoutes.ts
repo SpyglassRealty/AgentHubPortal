@@ -575,4 +575,176 @@ router.delete("/holidays/:id", isAuthenticated, async (req: any, res) => {
   }
 });
 
+// ── Admin Assignment Routes ──────────────────────────────────────────────
+
+/**
+ * POST /slots/:slotId/assign
+ * Admin assigns an agent to a shift slot
+ * Requires admin/developer role
+ */
+router.post("/slots/:slotId/assign", isAuthenticated, async (req: any, res) => {
+  try {
+    const isAdmin = await checkAdminRole(req, res);
+    if (!isAdmin) return;
+
+    const { slotId } = req.params;
+    const { userId } = req.body;
+
+    // Validation
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    // Verify slot exists and is active
+    const [slot] = await db
+      .select()
+      .from(callDutySlots)
+      .where(and(eq(callDutySlots.id, slotId), eq(callDutySlots.isActive, true)));
+
+    if (!slot) {
+      return res.status(404).json({ message: "Shift slot not found or inactive" });
+    }
+
+    // Verify user exists
+    const [targetUser] = await db
+      .select({ id: users.id, email: users.email, firstName: users.firstName, lastName: users.lastName })
+      .from(users)
+      .where(eq(users.id, userId));
+
+    if (!targetUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if user already signed up for this slot (active)
+    const [existingSignup] = await db
+      .select()
+      .from(callDutySignups)
+      .where(
+        and(
+          eq(callDutySignups.slotId, slotId),
+          eq(callDutySignups.userId, userId),
+          eq(callDutySignups.status, "active")
+        )
+      );
+
+    if (existingSignup) {
+      return res.status(409).json({ message: "Agent is already signed up for this shift" });
+    }
+
+    // Check if slot is full
+    const activeSignups = await db
+      .select({ id: callDutySignups.id })
+      .from(callDutySignups)
+      .where(
+        and(
+          eq(callDutySignups.slotId, slotId),
+          eq(callDutySignups.status, "active")
+        )
+      );
+
+    if (activeSignups.length >= slot.maxSignups) {
+      return res.status(409).json({ message: "This shift is already full" });
+    }
+
+    // Create the assignment (signup)
+    const [signup] = await db
+      .insert(callDutySignups)
+      .values({ slotId, userId })
+      .returning();
+
+    // Google Calendar: ensure event exists, then add agent as attendee
+    if (targetUser.email) {
+      const eventId = await ensureCalendarEvent(slot);
+      if (eventId) {
+        await addCallDutyAttendee(eventId, targetUser.email);
+      }
+    }
+
+    // Slack notification (fire-and-forget)
+    const agentName = `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || targetUser.email || "An agent";
+    notifyCallDutySlack("signup", agentName, slot);
+
+    res.status(201).json(signup);
+  } catch (error: any) {
+    console.error("[Call Duty] Error assigning agent to slot:", error);
+    res.status(500).json({ message: "Failed to assign agent to shift" });
+  }
+});
+
+/**
+ * DELETE /slots/:slotId/signups/:signupId
+ * Admin removes an agent from a shift slot
+ * Requires admin/developer role
+ */
+router.delete("/slots/:slotId/signups/:signupId", isAuthenticated, async (req: any, res) => {
+  try {
+    const isAdmin = await checkAdminRole(req, res);
+    if (!isAdmin) return;
+
+    const { slotId, signupId } = req.params;
+
+    if (!signupId) {
+      return res.status(400).json({ message: "Signup ID is required" });
+    }
+
+    // Find the active signup and verify it belongs to the specified slot
+    const [signup] = await db
+      .select({
+        id: callDutySignups.id,
+        slotId: callDutySignups.slotId,
+        userId: callDutySignups.userId,
+        status: callDutySignups.status,
+      })
+      .from(callDutySignups)
+      .where(
+        and(
+          eq(callDutySignups.id, signupId),
+          eq(callDutySignups.slotId, slotId),
+          eq(callDutySignups.status, "active")
+        )
+      );
+
+    if (!signup) {
+      return res.status(404).json({ message: "Active signup not found for this shift" });
+    }
+
+    // Get user and slot info for notifications
+    const [targetUser] = await db
+      .select({ email: users.email, firstName: users.firstName, lastName: users.lastName })
+      .from(users)
+      .where(eq(users.id, signup.userId));
+
+    const [slot] = await db
+      .select()
+      .from(callDutySlots)
+      .where(eq(callDutySlots.id, slotId));
+
+    // Soft-cancel: update status to 'cancelled' and set cancelledAt
+    const [cancelled] = await db
+      .update(callDutySignups)
+      .set({
+        status: "cancelled",
+        cancelledAt: new Date(),
+      })
+      .where(eq(callDutySignups.id, signupId))
+      .returning();
+
+    // Google Calendar: remove agent from the event attendees
+    if (targetUser?.email && slot?.googleCalendarEventId) {
+      await removeCallDutyAttendee(slot.googleCalendarEventId, targetUser.email);
+    }
+
+    // Slack notification (fire-and-forget)
+    if (slot && targetUser) {
+      const agentName = `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || targetUser.email || "An agent";
+      notifyCallDutySlack("cancel", agentName, slot);
+    }
+
+    res.json(cancelled);
+  } catch (error: any) {
+    console.error("[Call Duty] Error removing agent from slot:", error);
+    res.status(500).json({ message: "Failed to remove agent from shift" });
+  }
+});
+
 export default router;
