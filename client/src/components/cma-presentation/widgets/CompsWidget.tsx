@@ -142,6 +142,8 @@ const normalizeStatus = (status: string): string => {
 
 function convertToProperty(cmaProperty: CmaProperty): Property {
   return {
+    id: cmaProperty.id,
+    unparsedAddress: cmaProperty.address,
     mlsNumber: cmaProperty.id,
     address: cmaProperty.address,
     city: cmaProperty.city,
@@ -525,8 +527,8 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
               {/* Subject Header */}
               <div className="text-center">
                 {(() => {
-                  const subLat = subjectProperty?.latitude || subjectProperty?.map?.latitude || geocodedCoords?.latitude;
-                  const subLng = subjectProperty?.longitude || subjectProperty?.map?.longitude || geocodedCoords?.longitude;
+                  const subLat = subjectProperty?.latitude || geocodedCoords?.latitude;
+                  const subLng = subjectProperty?.longitude || geocodedCoords?.longitude;
                   return (subLat && subLng && mapboxToken) ? (
                     <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden mb-2">
                       <img
@@ -979,7 +981,7 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
   }, []);
 
   useEffect(() => {
-    if (mapboxToken && subjectProperty?.address && !subjectProperty?.latitude && !subjectProperty?.longitude && !subjectProperty?.map?.latitude) {
+    if (mapboxToken && subjectProperty?.address && !subjectProperty?.latitude && !subjectProperty?.longitude) {
       const addr = `${subjectProperty.address}, ${subjectProperty.city || ''}, ${subjectProperty.state || ''} ${subjectProperty.zipCode || ''}`.trim();
       fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?access_token=${mapboxToken}&limit=1`)
         .then(r => r.json())
