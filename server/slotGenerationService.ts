@@ -32,7 +32,10 @@ export async function generateSlotsForWeek(startDate: Date): Promise<number> {
       .from(callDutyHolidays);
     
     const holidayDates = new Set(
-      holidays.map(h => h.date.toISOString().split('T')[0])
+      holidays.map(h => {
+        const d = h.date instanceof Date ? h.date : new Date(h.date);
+        return d.toISOString().split('T')[0];
+      })
     );
     
     // Generate slots for 7 days
