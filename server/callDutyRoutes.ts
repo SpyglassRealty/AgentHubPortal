@@ -492,6 +492,125 @@ router.get("/my-shifts", isAuthenticated, async (req: any, res) => {
   }
 });
 
+/**
+ * GET /unfilled-slots
+ * Returns current week's slots with < 3/3 signups (admin/developer only).
+ * Used by Johnny Mac's Leads Huddle dashboard.
+ */
+router.get("/unfilled-slots", isAuthenticated, async (req: any, res) => {
+  try {
+    // Check admin access
+    const isAdmin = await checkAdminRole(req, res);
+    if (!isAdmin) return;
+
+    // Get current week (Mon-Sun)
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() + mondayOffset);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+
+    const startDate = weekStart.toISOString().split("T")[0];
+    const endDate = weekEnd.toISOString().split("T")[0];
+    const currentDateTime = new Date();
+
+    // Auto-generate missing slots for the current week
+    try {
+      const slotsGenerated = await generateSlotsForWeek(weekStart);
+      if (slotsGenerated > 0) {
+        console.log(`[Call Duty] Auto-generated ${slotsGenerated} slots for unfilled-slots check`);
+      }
+    } catch (generationError) {
+      console.error("[Call Duty] Error auto-generating slots for unfilled-slots:", generationError);
+    }
+
+    // Fetch active slots for current week, excluding past dates/times
+    const slots = await db
+      .select()
+      .from(callDutySlots)
+      .where(
+        and(
+          gte(callDutySlots.date, startDate),
+          lte(callDutySlots.date, endDate),
+          eq(callDutySlots.isActive, true)
+        )
+      )
+      .orderBy(callDutySlots.date, callDutySlots.startTime);
+
+    if (slots.length === 0) {
+      return res.json([]);
+    }
+
+    // Filter out past slots
+    const currentSlots = slots.filter(slot => {
+      const slotDateTime = new Date(`${slot.date}T${slot.startTime}:00`);
+      return slotDateTime >= currentDateTime;
+    });
+
+    if (currentSlots.length === 0) {
+      return res.json([]);
+    }
+
+    // Fetch all active signups for these slots
+    const slotIds = currentSlots.map((s) => s.id);
+    const signups = await db
+      .select({
+        id: callDutySignups.id,
+        slotId: callDutySignups.slotId,
+        userId: callDutySignups.userId,
+        status: callDutySignups.status,
+        signedUpAt: callDutySignups.signedUpAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+      })
+      .from(callDutySignups)
+      .innerJoin(users, eq(callDutySignups.userId, users.id))
+      .where(
+        and(
+          sql`${callDutySignups.slotId} IN (${sql.join(slotIds.map(id => sql`${id}`), sql`, `)})`,
+          eq(callDutySignups.status, "active")
+        )
+      );
+
+    // Group signups by slot
+    const signupsBySlot = new Map<string, typeof signups>();
+    for (const signup of signups) {
+      const existing = signupsBySlot.get(signup.slotId) || [];
+      existing.push(signup);
+      signupsBySlot.set(signup.slotId, existing);
+    }
+
+    // Filter for unfilled slots (< maxSignups)
+    const unfilledSlots = currentSlots
+      .map((slot) => {
+        const slotSignups = signupsBySlot.get(slot.id) || [];
+        return {
+          ...slot,
+          signupCount: slotSignups.length,
+          maxSignups: slot.maxSignups,
+          needsCount: slot.maxSignups - slotSignups.length,
+          signups: slotSignups.map((s) => ({
+            id: s.id,
+            userId: s.userId,
+            firstName: s.firstName,
+            lastName: s.lastName,
+            email: s.email,
+            signedUpAt: s.signedUpAt,
+          })),
+        };
+      })
+      .filter((slot) => slot.signupCount < slot.maxSignups);
+
+    res.json(unfilledSlots);
+  } catch (error: any) {
+    console.error("[Call Duty] Error fetching unfilled slots:", error);
+    res.status(500).json({ message: "Failed to fetch unfilled slots" });
+  }
+});
+
 // ── Holiday Management Routes ────────────────────────────────────────────
 
 /**

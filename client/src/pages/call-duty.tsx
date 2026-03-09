@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, addWeeks, subWeeks, startOfWeek, endOfWeek, addDays } from "date-fns";
 import Layout from "@/components/layout";
 import ShiftCalendar from "@/components/call-duty/ShiftCalendar";
-import { type SlotData } from "@/components/call-duty/ShiftSlot";
+import { type SlotData, type AvailableUser } from "@/components/call-duty/ShiftSlot";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +23,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, Phone, Calendar, Clock, Settings, Trash2, Plus, CalendarDays } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ChevronLeft, ChevronRight, Phone, Calendar, Clock, Settings, Trash2, Plus, CalendarDays, AlertTriangle, ChevronDown } from "lucide-react";
 
 interface MyShift {
   signupId: string;
@@ -43,6 +48,25 @@ interface Holiday {
   createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+interface UnfilledSlot {
+  id: string;
+  date: string;
+  shiftType: string;
+  startTime: string;
+  endTime: string;
+  maxSignups: number;
+  signupCount: number;
+  needsCount: number;
+  signups: {
+    id: string;
+    userId: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+    signedUpAt: string;
+  }[];
 }
 
 function formatShiftLabel(shiftType: string): string {
@@ -79,9 +103,11 @@ export default function CallDutyPage() {
 
   // Confirmation dialog state
   const [confirmAction, setConfirmAction] = useState<{
-    type: "signup" | "cancel" | "delete_holiday";
+    type: "signup" | "cancel" | "delete_holiday" | "assign_agent" | "remove_agent";
     slotId?: string;
     holidayId?: string;
+    signupId?: string;
+    userId?: string;
     label: string;
   } | null>(null);
 
@@ -91,6 +117,9 @@ export default function CallDutyPage() {
     date: "",
     isRecurring: false
   });
+
+  // Unfilled slots collapsible state
+  const [unfilledSlotsOpen, setUnfilledSlotsOpen] = useState(true);
 
   // Check if user has admin/developer role
   const isAdmin = user?.role === 'admin' || user?.role === 'developer';
@@ -142,6 +171,35 @@ export default function CallDutyPage() {
     enabled: isAdmin, // Only fetch if user is admin/developer
   });
 
+  // Fetch available users for assignment (only for admin/developer)
+  const {
+    data: availableUsers = [],
+    isLoading: usersLoading,
+  } = useQuery<AvailableUser[]>({
+    queryKey: ["/api/auth/users"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/users", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch users");
+      return res.json();
+    },
+    enabled: isAdmin, // Only fetch if user is admin/developer
+  });
+
+  // Fetch unfilled slots (only for admin/developer)
+  const {
+    data: unfilledSlots = [],
+    isLoading: unfilledSlotsLoading,
+  } = useQuery<UnfilledSlot[]>({
+    queryKey: ["/api/call-duty/unfilled-slots"],
+    queryFn: async () => {
+      const res = await fetch("/api/call-duty/unfilled-slots", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch unfilled slots");
+      return res.json();
+    },
+    enabled: isAdmin, // Only fetch if user is admin/developer
+    refetchInterval: 30000, // Refresh every 30 seconds for real-time updates
+  });
+
   // Sign up mutation
   const signUpMutation = useMutation({
     mutationFn: async (slotId: string) => {
@@ -158,6 +216,7 @@ export default function CallDutyPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/call-duty/slots"] });
       queryClient.invalidateQueries({ queryKey: ["/api/call-duty/my-shifts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/call-duty/unfilled-slots"] });
       toast({ title: "Signed up!", description: "You've been added to this shift." });
     },
     onError: (error: Error) => {
@@ -181,6 +240,7 @@ export default function CallDutyPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/call-duty/slots"] });
       queryClient.invalidateQueries({ queryKey: ["/api/call-duty/my-shifts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/call-duty/unfilled-slots"] });
       toast({ title: "Shift cancelled", description: "Your signup has been removed." });
     },
     onError: (error: Error) => {
@@ -237,7 +297,57 @@ export default function CallDutyPage() {
     },
   });
 
-  const isMutating = signUpMutation.isPending || cancelMutation.isPending || addHolidayMutation.isPending || deleteHolidayMutation.isPending;
+  // Assign agent mutation (admin only)
+  const assignAgentMutation = useMutation({
+    mutationFn: async ({ slotId, userId }: { slotId: string; userId: string }) => {
+      const res = await fetch(`/api/call-duty/slots/${slotId}/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ userId }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to assign agent");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/call-duty/slots"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/call-duty/my-shifts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/call-duty/unfilled-slots"] });
+      toast({ title: "Agent assigned", description: "The agent has been successfully assigned to this shift." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not assign agent", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Remove agent mutation (admin only)
+  const removeAgentMutation = useMutation({
+    mutationFn: async ({ slotId, signupId }: { slotId: string; signupId: string }) => {
+      const res = await fetch(`/api/call-duty/slots/${slotId}/signups/${signupId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to remove agent");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/call-duty/slots"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/call-duty/my-shifts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/call-duty/unfilled-slots"] });
+      toast({ title: "Agent removed", description: "The agent has been removed from this shift." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not remove agent", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const isMutating = signUpMutation.isPending || cancelMutation.isPending || addHolidayMutation.isPending || deleteHolidayMutation.isPending || assignAgentMutation.isPending || removeAgentMutation.isPending;
 
   // Build slot label for confirmation dialog
   function getSlotLabel(slotId: string): string {
@@ -278,6 +388,32 @@ export default function CallDutyPage() {
     addHolidayMutation.mutate(newHoliday);
   }
 
+  function handleAssignAgent(slotId: string, userId: string) {
+    const user = availableUsers.find(u => u.id === userId);
+    const userName = user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email : "Agent";
+    const slot = slots.find(s => s.id === slotId);
+    const slotLabel = slot ? `${formatShiftLabel(slot.shiftType)} (${formatTimeRange(slot.startTime, slot.endTime)}) on ${format(new Date(slot.date + "T00:00:00"), "EEE, MMM d")}` : "this shift";
+    
+    setConfirmAction({
+      type: "assign_agent",
+      slotId,
+      userId,
+      label: `${userName} to ${slotLabel}`,
+    });
+  }
+
+  function handleRemoveAgent(slotId: string, signupId: string, agentName: string) {
+    const slot = slots.find(s => s.id === slotId);
+    const slotLabel = slot ? `${formatShiftLabel(slot.shiftType)} (${formatTimeRange(slot.startTime, slot.endTime)}) on ${format(new Date(slot.date + "T00:00:00"), "EEE, MMM d")}` : "this shift";
+    
+    setConfirmAction({
+      type: "remove_agent",
+      slotId,
+      signupId,
+      label: `${agentName} from ${slotLabel}`,
+    });
+  }
+
   function handleConfirm() {
     if (!confirmAction) return;
     if (confirmAction.type === "signup" && confirmAction.slotId) {
@@ -286,6 +422,10 @@ export default function CallDutyPage() {
       cancelMutation.mutate(confirmAction.slotId);
     } else if (confirmAction.type === "delete_holiday" && confirmAction.holidayId) {
       deleteHolidayMutation.mutate(confirmAction.holidayId);
+    } else if (confirmAction.type === "assign_agent" && confirmAction.slotId && confirmAction.userId) {
+      assignAgentMutation.mutate({ slotId: confirmAction.slotId, userId: confirmAction.userId });
+    } else if (confirmAction.type === "remove_agent" && confirmAction.slotId && confirmAction.signupId) {
+      removeAgentMutation.mutate({ slotId: confirmAction.slotId, signupId: confirmAction.signupId });
     }
     setConfirmAction(null);
   }
@@ -358,6 +498,10 @@ export default function CallDutyPage() {
                 onSignUp={handleSignUp}
                 onCancel={handleCancel}
                 isLoading={isMutating}
+                isAdmin={isAdmin}
+                availableUsers={availableUsers}
+                onAssignAgent={handleAssignAgent}
+                onRemoveAgent={handleRemoveAgent}
               />
             )}
           </CardContent>
@@ -418,6 +562,113 @@ export default function CallDutyPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Unfilled Slots View - Admin/Developer Only */}
+        {isAdmin && (
+          <Card>
+            <Collapsible open={unfilledSlotsOpen} onOpenChange={setUnfilledSlotsOpen}>
+              <CardHeader className="pb-3">
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between p-0 h-auto hover:bg-transparent"
+                  >
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      Unfilled Slots
+                      {unfilledSlots.length > 0 && (
+                        <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200">
+                          {unfilledSlots.length}
+                        </Badge>
+                      )}
+                    </CardTitle>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${unfilledSlotsOpen ? "rotate-180" : ""}`} />
+                  </Button>
+                </CollapsibleTrigger>
+                <p className="text-sm text-muted-foreground text-left">
+                  Current week's shifts needing more agents (Johnny Mac's Leads Huddle)
+                </p>
+              </CardHeader>
+              <CollapsibleContent>
+                <CardContent>
+                  {unfilledSlotsLoading ? (
+                    <div className="space-y-2">
+                      {[1, 2, 3].map((i) => (
+                        <Skeleton key={i} className="h-16 w-full" />
+                      ))}
+                    </div>
+                  ) : unfilledSlots.length === 0 ? (
+                    <div className="text-center py-8 text-sm text-muted-foreground border-2 border-dashed rounded-lg bg-green-50 border-green-200">
+                      <Phone className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                      <div className="font-medium text-green-800 mb-1">All Slots Covered! 🎉</div>
+                      <div className="text-green-700">Every shift this week has enough agents signed up.</div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Group by date */}
+                      {Object.entries(
+                        unfilledSlots.reduce((acc, slot) => {
+                          const date = slot.date;
+                          if (!acc[date]) acc[date] = [];
+                          acc[date].push(slot);
+                          return acc;
+                        }, {} as Record<string, UnfilledSlot[]>)
+                      ).map(([date, slotsForDate]) => (
+                        <div key={date} className="space-y-2">
+                          <h4 className="text-sm font-medium text-foreground border-b pb-1">
+                            {format(new Date(date + "T00:00:00"), "EEEE, MMM d")}
+                          </h4>
+                          <div className="space-y-2 ml-4">
+                            {slotsForDate.map((slot) => (
+                              <div
+                                key={slot.id}
+                                className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100/50 transition-colors gap-3"
+                              >
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                  <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0 min-h-[44px] min-w-[44px]">
+                                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <div className="text-sm font-medium text-foreground">
+                                        {formatShiftLabel(slot.shiftType)} 
+                                        <span className="text-muted-foreground ml-1">
+                                          ({formatTimeRange(slot.startTime, slot.endTime)})
+                                        </span>
+                                      </div>
+                                      <Badge variant="outline" className="text-xs border-amber-300 text-amber-700">
+                                        {slot.signupCount}/{slot.maxSignups}
+                                      </Badge>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                      {slot.signups.length > 0 ? (
+                                        <>
+                                          <span className="text-foreground">Signed up: </span>
+                                          {slot.signups.map(signup => 
+                                            `${signup.firstName || ""} ${signup.lastName || ""}`.trim() || signup.email
+                                          ).join(", ")}
+                                          <span className="text-amber-700 ml-2 font-medium">
+                                            Need {slot.needsCount} more
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <span className="text-amber-700 font-medium">Need {slot.needsCount} agents</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </Card>
+        )}
 
         {/* Holiday Management - Admin/Developer Only */}
         {isAdmin && (
@@ -560,14 +811,22 @@ export default function CallDutyPage() {
                 ? "Sign Up for Shift"
                 : confirmAction?.type === "cancel"
                 ? "Cancel Shift"
-                : "Delete Holiday"}
+                : confirmAction?.type === "delete_holiday"
+                ? "Delete Holiday"
+                : confirmAction?.type === "assign_agent"
+                ? "Assign Agent"
+                : "Remove Agent"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction?.type === "signup"
                 ? `Are you sure you want to sign up for ${confirmAction.label}?`
                 : confirmAction?.type === "cancel"
                 ? `Are you sure you want to cancel your signup for ${confirmAction?.label}?`
-                : `Are you sure you want to delete "${confirmAction?.label}"? This action cannot be undone.`}
+                : confirmAction?.type === "delete_holiday"
+                ? `Are you sure you want to delete "${confirmAction?.label}"? This action cannot be undone.`
+                : confirmAction?.type === "assign_agent"
+                ? `Are you sure you want to assign ${confirmAction.label}?`
+                : `Are you sure you want to remove ${confirmAction?.label}?`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -575,7 +834,7 @@ export default function CallDutyPage() {
             <AlertDialogAction
               onClick={handleConfirm}
               className={
-                confirmAction?.type === "cancel" || confirmAction?.type === "delete_holiday"
+                confirmAction?.type === "cancel" || confirmAction?.type === "delete_holiday" || confirmAction?.type === "remove_agent"
                   ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   : "bg-[#EF4923] hover:bg-[#EF4923]/90"
               }
@@ -584,7 +843,11 @@ export default function CallDutyPage() {
                 ? "Sign Up" 
                 : confirmAction?.type === "cancel"
                 ? "Cancel Shift"
-                : "Delete Holiday"}
+                : confirmAction?.type === "delete_holiday"
+                ? "Delete Holiday"
+                : confirmAction?.type === "assign_agent"
+                ? "Assign Agent"
+                : "Remove Agent"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
