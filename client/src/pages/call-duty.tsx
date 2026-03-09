@@ -8,7 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, Phone, Calendar, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Phone, Calendar, Clock, Settings, Trash2, Plus, CalendarDays } from "lucide-react";
 
 interface MyShift {
   signupId: string;
@@ -29,6 +33,16 @@ interface MyShift {
   shiftType: string;
   startTime: string;
   endTime: string;
+}
+
+interface Holiday {
+  id: string;
+  name: string;
+  date: string;
+  isRecurring: boolean;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 function formatShiftLabel(shiftType: string): string {
@@ -54,6 +68,7 @@ function formatTimeRange(start: string, end: string): string {
 export default function CallDutyPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Week navigation — start on Monday
   const [weekStart, setWeekStart] = useState(() =>
@@ -64,10 +79,21 @@ export default function CallDutyPage() {
 
   // Confirmation dialog state
   const [confirmAction, setConfirmAction] = useState<{
-    type: "signup" | "cancel";
-    slotId: string;
+    type: "signup" | "cancel" | "delete_holiday";
+    slotId?: string;
+    holidayId?: string;
     label: string;
   } | null>(null);
+
+  // Holiday management state
+  const [newHoliday, setNewHoliday] = useState({
+    name: "",
+    date: "",
+    isRecurring: false
+  });
+
+  // Check if user has admin/developer role
+  const isAdmin = user?.role === 'admin' || user?.role === 'developer';
 
   // Date range strings for API
   const startDate = format(weekStart, "yyyy-MM-dd");
@@ -100,6 +126,20 @@ export default function CallDutyPage() {
       if (!res.ok) throw new Error("Failed to fetch my shifts");
       return res.json();
     },
+  });
+
+  // Fetch holidays (only for admin/developer)
+  const {
+    data: holidays = [],
+    isLoading: holidaysLoading,
+  } = useQuery<Holiday[]>({
+    queryKey: ["/api/call-duty/holidays"],
+    queryFn: async () => {
+      const res = await fetch("/api/call-duty/holidays", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch holidays");
+      return res.json();
+    },
+    enabled: isAdmin, // Only fetch if user is admin/developer
   });
 
   // Sign up mutation
@@ -148,7 +188,56 @@ export default function CallDutyPage() {
     },
   });
 
-  const isMutating = signUpMutation.isPending || cancelMutation.isPending;
+  // Add holiday mutation
+  const addHolidayMutation = useMutation({
+    mutationFn: async (holidayData: { name: string; date: string; isRecurring: boolean }) => {
+      const res = await fetch("/api/call-duty/holidays", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(holidayData),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to create holiday");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/call-duty/holidays"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/call-duty/slots"] }); // Refresh slots too since they depend on holidays
+      setNewHoliday({ name: "", date: "", isRecurring: false });
+      toast({ title: "Holiday added", description: "The holiday has been created successfully." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not add holiday", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Delete holiday mutation
+  const deleteHolidayMutation = useMutation({
+    mutationFn: async (holidayId: string) => {
+      const res = await fetch(`/api/call-duty/holidays/${holidayId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to delete holiday");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/call-duty/holidays"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/call-duty/slots"] }); // Refresh slots too
+      toast({ title: "Holiday deleted", description: "The holiday has been removed." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not delete holiday", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const isMutating = signUpMutation.isPending || cancelMutation.isPending || addHolidayMutation.isPending || deleteHolidayMutation.isPending;
 
   // Build slot label for confirmation dialog
   function getSlotLabel(slotId: string): string {
@@ -173,12 +262,30 @@ export default function CallDutyPage() {
     });
   }
 
+  function handleDeleteHoliday(holidayId: string, holidayName: string) {
+    setConfirmAction({
+      type: "delete_holiday",
+      holidayId,
+      label: holidayName,
+    });
+  }
+
+  function handleAddHoliday() {
+    if (!newHoliday.name.trim() || !newHoliday.date) {
+      toast({ title: "Missing information", description: "Please provide both name and date.", variant: "destructive" });
+      return;
+    }
+    addHolidayMutation.mutate(newHoliday);
+  }
+
   function handleConfirm() {
     if (!confirmAction) return;
-    if (confirmAction.type === "signup") {
+    if (confirmAction.type === "signup" && confirmAction.slotId) {
       signUpMutation.mutate(confirmAction.slotId);
-    } else {
+    } else if (confirmAction.type === "cancel" && confirmAction.slotId) {
       cancelMutation.mutate(confirmAction.slotId);
+    } else if (confirmAction.type === "delete_holiday" && confirmAction.holidayId) {
+      deleteHolidayMutation.mutate(confirmAction.holidayId);
     }
     setConfirmAction(null);
   }
@@ -311,6 +418,137 @@ export default function CallDutyPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Holiday Management - Admin/Developer Only */}
+        {isAdmin && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Settings className="h-4 w-4 text-[#EF4923]" />
+                Holiday Management
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Manage holidays and skip days. Slots will not be created on these dates.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Add Holiday Form */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Holiday
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="holiday-name" className="text-xs font-medium">
+                      Holiday Name
+                    </Label>
+                    <Input
+                      id="holiday-name"
+                      placeholder="e.g., Christmas Day"
+                      value={newHoliday.name}
+                      onChange={(e) => setNewHoliday(prev => ({ ...prev, name: e.target.value }))}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="holiday-date" className="text-xs font-medium">
+                      Date
+                    </Label>
+                    <Input
+                      id="holiday-date"
+                      type="date"
+                      value={newHoliday.date}
+                      onChange={(e) => setNewHoliday(prev => ({ ...prev, date: e.target.value }))}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <div className="flex items-center space-x-2 h-11">
+                      <Checkbox
+                        id="holiday-recurring"
+                        checked={newHoliday.isRecurring}
+                        onCheckedChange={(checked) => setNewHoliday(prev => ({ ...prev, isRecurring: !!checked }))}
+                      />
+                      <Label htmlFor="holiday-recurring" className="text-xs font-medium">
+                        Annual
+                      </Label>
+                    </div>
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      onClick={handleAddHoliday}
+                      disabled={isMutating || !newHoliday.name.trim() || !newHoliday.date}
+                      className="h-11 w-full sm:w-auto bg-[#EF4923] hover:bg-[#EF4923]/90 min-w-[44px]"
+                    >
+                      Add Holiday
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Holidays List */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4" />
+                  Current Holidays
+                </h4>
+                {holidaysLoading ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <Skeleton key={i} className="h-16 w-full" />
+                    ))}
+                  </div>
+                ) : holidays.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-muted-foreground border-2 border-dashed rounded-lg">
+                    <CalendarDays className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    No holidays configured yet. Add one above to get started.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {holidays.map((holiday) => (
+                      <div
+                        key={holiday.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors gap-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="h-10 w-10 rounded-lg bg-[#EF4923]/10 flex items-center justify-center flex-shrink-0">
+                            <CalendarDays className="h-4 w-4 text-[#EF4923]" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="text-sm font-medium text-foreground">
+                                {holiday.name}
+                              </div>
+                              {holiday.isRecurring && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Annual
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {format(new Date(holiday.date + "T00:00:00"), "EEEE, MMMM d, yyyy")}
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10 min-w-[44px] min-h-[44px] sm:min-w-auto sm:min-h-auto"
+                          onClick={() => handleDeleteHoliday(holiday.id, holiday.name)}
+                          disabled={isMutating}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only sm:not-sr-only sm:ml-1">Delete</span>
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Confirmation Dialog */}
@@ -318,12 +556,18 @@ export default function CallDutyPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmAction?.type === "signup" ? "Sign Up for Shift" : "Cancel Shift"}
+              {confirmAction?.type === "signup" 
+                ? "Sign Up for Shift"
+                : confirmAction?.type === "cancel"
+                ? "Cancel Shift"
+                : "Delete Holiday"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction?.type === "signup"
                 ? `Are you sure you want to sign up for ${confirmAction.label}?`
-                : `Are you sure you want to cancel your signup for ${confirmAction?.label}?`}
+                : confirmAction?.type === "cancel"
+                ? `Are you sure you want to cancel your signup for ${confirmAction?.label}?`
+                : `Are you sure you want to delete "${confirmAction?.label}"? This action cannot be undone.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -331,12 +575,16 @@ export default function CallDutyPage() {
             <AlertDialogAction
               onClick={handleConfirm}
               className={
-                confirmAction?.type === "cancel"
+                confirmAction?.type === "cancel" || confirmAction?.type === "delete_holiday"
                   ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   : "bg-[#EF4923] hover:bg-[#EF4923]/90"
               }
             >
-              {confirmAction?.type === "signup" ? "Sign Up" : "Cancel Shift"}
+              {confirmAction?.type === "signup" 
+                ? "Sign Up" 
+                : confirmAction?.type === "cancel"
+                ? "Cancel Shift"
+                : "Delete Holiday"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
