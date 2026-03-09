@@ -15,6 +15,7 @@ import {
   removeCallDutyAttendee,
 } from "./googleCalendarClient";
 import { sendSlackMessage } from "./slackNotify";
+import { generateSlotsForWeek } from "./slotGenerationService";
 
 const router = Router();
 
@@ -70,6 +71,34 @@ function notifyCallDutySlack(
 }
 
 /**
+ * Get all Monday dates (week start dates) within the given date range
+ */
+function getMondaysInRange(startDate: string, endDate: string): Date[] {
+  const mondays: Date[] = [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  // Find the first Monday within or before the start date
+  let current = new Date(start);
+  const dayOfWeek = current.getDay();
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 0=Sunday, 1=Monday
+  current.setDate(current.getDate() - daysFromMonday);
+  
+  // If this Monday is before our start date, get the next Monday
+  if (current < start) {
+    current.setDate(current.getDate() + 7);
+  }
+  
+  // Collect all Mondays within the range
+  while (current <= end) {
+    mondays.push(new Date(current));
+    current.setDate(current.getDate() + 7);
+  }
+  
+  return mondays;
+}
+
+/**
  * Ensure a slot has a Google Calendar event. If it doesn't yet (pre-Phase 2 slots
  * or if creation failed previously), create one now and store the event ID.
  * Returns the event ID, or null if creation fails.
@@ -100,6 +129,7 @@ async function ensureCalendarEvent(slot: CallDutySlot): Promise<string | null> {
 /**
  * GET /slots?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
  * Returns slots for a date range with signup counts and agent names.
+ * Auto-generates missing slots for any weeks in the range that don't have slots yet.
  * Requires authentication.
  */
 router.get("/slots", isAuthenticated, async (req: any, res) => {
@@ -108,6 +138,24 @@ router.get("/slots", isAuthenticated, async (req: any, res) => {
 
     if (!startDate || !endDate) {
       return res.status(400).json({ message: "startDate and endDate are required (YYYY-MM-DD)" });
+    }
+
+    // Auto-generate missing slots for weeks in the requested range
+    try {
+      const mondaysInRange = getMondaysInRange(startDate as string, endDate as string);
+      let totalSlotsGenerated = 0;
+      
+      for (const monday of mondaysInRange) {
+        const slotsCreated = await generateSlotsForWeek(monday);
+        totalSlotsGenerated += slotsCreated;
+      }
+      
+      if (totalSlotsGenerated > 0) {
+        console.log(`[Call Duty] Auto-generated ${totalSlotsGenerated} slots for date range ${startDate} to ${endDate}`);
+      }
+    } catch (generationError) {
+      // Log the error but don't fail the request - return existing slots
+      console.error("[Call Duty] Error auto-generating slots:", generationError);
     }
 
     // Fetch active slots in the date range
