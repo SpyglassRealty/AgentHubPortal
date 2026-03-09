@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SeoPanel } from "@/components/seo/SeoPanel";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { ImageUpload } from "@/components/editor/ImageUpload";
+import { ContentBlocksEditor } from "@/components/community/ContentBlocksEditor";
 import {
   ArrowLeft,
   Save,
@@ -422,6 +423,16 @@ export default function CommunityEditor() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* ── Content Blocks Editor ─────────────────────────── */}
+        {community?.id && (
+          <ContentBlocksEditor 
+            communityId={community.id} 
+            onSave={() => {
+              // Optional callback when blocks are saved
+            }}
+          />
+        )}
 
         {/* ── Tags Panel ─────────────────────────── */}
         <Card>

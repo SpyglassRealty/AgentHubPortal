@@ -905,6 +905,33 @@ export const communities = pgTable("communities", {
 export type Community = typeof communities.$inferSelect;
 export type InsertCommunity = typeof communities.$inferInsert;
 
+// ── Community Content Blocks ────────────────────────────────────
+export const communityContentBlocks = pgTable("community_content_blocks", {
+  id: serial("id").primaryKey(),
+  communityId: integer("community_id").notNull().references(() => communities.id, { onDelete: "cascade" }),
+  blockType: varchar("block_type", { length: 50 }).notNull().default('split'), // 'split', 'text', 'image', etc.
+  title: varchar("title", { length: 255 }),
+  content: text("content"), // HTML content
+  imageUrl: varchar("image_url", { length: 500 }),
+  videoUrl: varchar("video_url", { length: 500 }),
+  ctaText: varchar("cta_text", { length: 100 }),
+  ctaUrl: varchar("cta_url", { length: 500 }),
+  imagePosition: varchar("image_position", { length: 10 }).default('right'), // 'left' | 'right'
+  backgroundColor: varchar("background_color", { length: 20 }).default('white'), // 'white' | 'light' | 'dark'
+  sortOrder: integer("sort_order").notNull().default(0),
+  published: boolean("published").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by").references(() => users.id),
+}, (table) => [
+  index("idx_community_content_blocks_community_id").on(table.communityId),
+  index("idx_community_content_blocks_sort_order").on(table.sortOrder),
+  index("idx_community_content_blocks_published").on(table.published),
+]);
+
+export type CommunityContentBlock = typeof communityContentBlocks.$inferSelect;
+export type InsertCommunityContentBlock = typeof communityContentBlocks.$inferInsert;
+
 // Site Content table — stores homepage section content as JSON blobs
 export const siteContent = pgTable("site_content", {
   id: serial("id").primaryKey(),
