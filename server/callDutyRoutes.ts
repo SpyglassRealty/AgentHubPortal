@@ -41,7 +41,39 @@ const SHIFT_TYPE_LABELS: Record<string, string> = {
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 function getUserId(req: any): string {
-  return req.user.claims.sub;
+  const userId = req.user.claims.sub;
+  console.log("[Call Duty Debug] getUserId returning:", userId);
+  console.log("[Call Duty Debug] Full user object:", JSON.stringify(req.user, null, 2));
+  return userId;
+}
+
+/**
+ * Resolve the authenticated user's database ID with email fallback
+ */
+async function resolveUserId(req: any): Promise<string | null> {
+  // Try getUserId first
+  const authId = getUserId(req);
+  
+  // Look up user by ID
+  const [user] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.id, authId));
+    
+  if (user) return user.id;
+  
+  // Fallback: look up by email from session/claims
+  const email = req.user?.claims?.email || req.user?.email;
+  if (email) {
+    const [userByEmail] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, email));
+      
+    if (userByEmail) return userByEmail.id;
+  }
+  
+  return null;
 }
 
 function getUserEmail(req: any): string | null {
@@ -207,7 +239,10 @@ router.get("/slots", isAuthenticated, async (req: any, res) => {
       signupsBySlot.set(signup.slotId, existing);
     }
 
-    const currentUserId = getUserId(req);
+    const currentUserId = await resolveUserId(req);
+    if (!currentUserId) {
+      return res.status(401).json({ message: "User not found in database" });
+    }
 
     // Build response with signup info
     const result = slots.map((slot) => {
@@ -242,7 +277,11 @@ router.get("/slots", isAuthenticated, async (req: any, res) => {
 router.post("/slots/:slotId/signup", isAuthenticated, async (req: any, res) => {
   try {
     const { slotId } = req.params;
-    const userId = getUserId(req);
+    const userId = await resolveUserId(req);
+    
+    if (!userId) {
+      return res.status(401).json({ message: "User not found in database" });
+    }
 
     // Verify slot exists and is active
     const [slot] = await db
@@ -357,7 +396,11 @@ router.post("/slots/:slotId/signup", isAuthenticated, async (req: any, res) => {
 router.delete("/slots/:slotId/signup", isAuthenticated, async (req: any, res) => {
   try {
     const { slotId } = req.params;
-    const userId = getUserId(req);
+    const userId = await resolveUserId(req);
+    
+    if (!userId) {
+      return res.status(401).json({ message: "User not found in database" });
+    }
 
     // Find the active signup
     const [signup] = await db
@@ -414,7 +457,11 @@ router.delete("/slots/:slotId/signup", isAuthenticated, async (req: any, res) =>
  */
 router.get("/my-shifts", isAuthenticated, async (req: any, res) => {
   try {
-    const userId = getUserId(req);
+    const userId = await resolveUserId(req);
+    
+    if (!userId) {
+      return res.status(401).json({ message: "User not found in database" });
+    }
     const today = new Date().toISOString().split("T")[0];
 
     const myShifts = await db
@@ -452,16 +499,36 @@ router.get("/my-shifts", isAuthenticated, async (req: any, res) => {
  */
 async function checkAdminRole(req: any, res: any): Promise<boolean> {
   try {
-    const userId = getUserId(req);
+    const userId = await resolveUserId(req);
+    console.log("[Call Duty Debug] checkAdminRole - Looking for resolved user ID:", userId);
+    
+    if (!userId) {
+      console.log("[Call Duty Debug] checkAdminRole - Could not resolve user ID");
+      res.status(403).json({ message: "User not found in database" });
+      return false;
+    }
+    
     const [user] = await db
-      .select({ role: users.role })
+      .select({ role: users.role, id: users.id, email: users.email })
       .from(users)
       .where(eq(users.id, userId));
 
+    console.log("[Call Duty Debug] checkAdminRole - Found user:", user);
+    
+    // Also check if there are any users with similar IDs
+    const allUsers = await db
+      .select({ role: users.role, id: users.id, email: users.email })
+      .from(users)
+      .limit(10);
+    
+    console.log("[Call Duty Debug] checkAdminRole - All users in DB (first 10):", allUsers);
+
     if (!user || (user.role !== 'admin' && user.role !== 'developer')) {
+      console.log("[Call Duty Debug] checkAdminRole - Access denied. User found:", !!user, "Role:", user?.role);
       res.status(403).json({ message: "Admin access required" });
       return false;
     }
+    console.log("[Call Duty Debug] checkAdminRole - Access granted for role:", user.role);
     return true;
   } catch (error) {
     console.error("[Call Duty] Admin check error:", error);
@@ -520,13 +587,18 @@ router.post("/holidays", isAuthenticated, async (req: any, res) => {
     }
 
     // Create the holiday
+    const createdBy = await resolveUserId(req);
+    if (!createdBy) {
+      return res.status(401).json({ message: "User not found in database" });
+    }
+    
     const [newHoliday] = await db
       .insert(callDutyHolidays)
       .values({
         name: name.trim(),
         date: new Date(date),
         isRecurring: Boolean(isRecurring),
-        createdBy: getUserId(req),
+        createdBy,
       })
       .returning();
 
