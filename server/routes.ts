@@ -122,7 +122,8 @@ import savedSearchRoutes from "./savedSearchRoutes";
 import testimonialRoutes from "./testimonialRoutes";
 import pageBuilderRoutes from "./pageBuilderRoutes";
 import corePageRoutes from "./corePageRoutes";
-import uploadRoutes from "./uploadRoutes";
+import uploadRoutes from "./uploadRoutes-vercel-blob";
+// import uploadRoutesOld from "./uploadRoutes"; // Backup of old base64 system
 import callDutyRoutes from "./callDutyRoutes";
 import multicamRoutes from "./multicamRoutes";
 
