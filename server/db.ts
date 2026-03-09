@@ -79,6 +79,9 @@ async function runDirectMigrations() {
 
     // Call Duty tables (migration 0010)
     await createCallDutyTables();
+
+    // Call Duty enhancements (migration 0011)
+    await updateCallDutyTables();
     
     // Agent Directory Profiles - ensure fub_email column exists
     await ensureAgentDirectoryFubEmail();
@@ -758,6 +761,54 @@ async function createCallDutyTables() {
     console.log('[Database] ✅ call_duty tables created successfully');
   } catch (error) {
     console.error('[Database] ❌ Error creating call_duty tables:', error);
+    throw error;
+  }
+}
+
+// Call Duty enhancements (migration 0011) - Add holidays table and update maxSignups default
+async function updateCallDutyTables() {
+  try {
+    console.log('[Database] Updating call_duty tables...');
+
+    // Create call_duty_holidays table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS call_duty_holidays (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        name varchar NOT NULL,
+        date date NOT NULL,
+        is_recurring boolean DEFAULT false,
+        created_by varchar REFERENCES users(id),
+        created_at timestamp DEFAULT NOW(),
+        updated_at timestamp DEFAULT NOW()
+      )
+    `);
+
+    // Create indexes for holidays table
+    const holidayIndexes = [
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_call_duty_holidays_date ON call_duty_holidays(date)',
+      'CREATE INDEX IF NOT EXISTS idx_call_duty_holidays_recurring ON call_duty_holidays(is_recurring)',
+    ];
+
+    for (const idx of holidayIndexes) {
+      try { await pool.query(idx); } catch (e) { /* index may already exist */ }
+    }
+
+    // Update existing call_duty_slots default maxSignups from 1 to 3
+    await pool.query(`
+      ALTER TABLE call_duty_slots 
+      ALTER COLUMN max_signups SET DEFAULT 3
+    `);
+
+    // Update existing slots that have maxSignups = 1 to be 3
+    await pool.query(`
+      UPDATE call_duty_slots 
+      SET max_signups = 3 
+      WHERE max_signups = 1
+    `);
+
+    console.log('[Database] ✅ call_duty tables updated successfully');
+  } catch (error) {
+    console.error('[Database] ❌ Error updating call_duty tables:', error);
     throw error;
   }
 }

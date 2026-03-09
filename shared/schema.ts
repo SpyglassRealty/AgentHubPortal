@@ -1536,7 +1536,7 @@ export const callDutySlots = pgTable("call_duty_slots", {
   shiftType: varchar("shift_type").notNull(), // 'morning' | 'midday' | 'evening'
   startTime: varchar("start_time").notNull(), // '08:00' | '12:00' | '16:00'
   endTime: varchar("end_time").notNull(),     // '12:00' | '16:00' | '20:00'
-  maxSignups: integer("max_signups").notNull().default(1),
+  maxSignups: integer("max_signups").notNull().default(3),
   isActive: boolean("is_active").default(true),
   googleCalendarEventId: varchar("google_calendar_event_id"),
   createdBy: varchar("created_by").references(() => users.id),
@@ -1567,6 +1567,22 @@ export const callDutySignups = pgTable("call_duty_signups", {
 
 export type CallDutySignup = typeof callDutySignups.$inferSelect;
 export type InsertCallDutySignup = typeof callDutySignups.$inferInsert;
+
+export const callDutyHolidays = pgTable("call_duty_holidays", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(), // 'New Year\'s Day', 'Independence Day', etc.
+  date: date("date").notNull(), // Holiday date
+  isRecurring: boolean("is_recurring").default(false), // Annual holidays
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("idx_call_duty_holidays_date").on(table.date),
+  index("idx_call_duty_holidays_recurring").on(table.isRecurring),
+]);
+
+export type CallDutyHoliday = typeof callDutyHolidays.$inferSelect;
+export type InsertCallDutyHoliday = typeof callDutyHolidays.$inferInsert;
 
 // =====================================================
 // IDX Site Lead Capture (Backup when FUB fails)
