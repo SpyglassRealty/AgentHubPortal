@@ -152,3 +152,44 @@
 - 88 days on market (highest since Mar 2011)
 - 4.2 months inventory, 53% price cuts
 - Rates ~6.1%, bottom projected Q2-Q3 2026
+
+## Canonical Project Paths (Updated March 7, 2026)
+- **Mission Control** → ~/clawd/projects/AgentHubPortal (ignore other copies)
+- **Recruiting Pipeline** → ~/clawd/projects/recruiting-pipeline-next  
+- **Spyglass IDX** → ~/clawd/spyglass-idx
+- **Spyglass CRM** → ~/clawd/projects/spyglass-crm  
+- **Attorney Research** → ~/clawd/projects/attorney-recruitment-tracking (completed)
+- **Dashboard** → ~/clawd/projects/dashboard (project tracker)
+
+## Agent Workspace Configuration (Fixed March 7, 2026)
+- All agents (Clawd, Cody, Letty) now use the single workspace: ~/clawd
+- Old separate workspaces (clawd-cody, clawd-letty) have been archived
+- This prevents confusion and ensures all agents see the same files
+
+## Gmail Access (Updated March 7, 2026)
+- **Account:** clawd@spyglassrealty.com  
+- **Password:** 8&qZGQLNj9r56bU* (updated by Ryan on March 7)
+- **App Password:** No longer works for SMTP — use browser automation
+- **Working Method:** Playwright browser automation only
+- **Scripts:**
+  - `check-gmail.mjs` - Check/send email with browser automation
+  - `gmail-credentials-permanent.json` - Stores credentials
+- **RESTRICTION:** 2FA required on every login — need code from Ryan
+- **Note:** SMTP app passwords keep getting rejected by Google
+
+## Performance Crisis (March 7, 2026)
+Ryan: "The quality of your work and effectiveness has really gone down."
+- **Major failure:** Forgot project manager feature we were working on
+- **Deployed broken code:** Create Project button didn't work
+- **Missing features:** Forgot Fee Title Office steps, poor UI formatting
+- **Root causes:** Not updating MEMORY.md, overloading with tasks, no proactive communication
+- **Letty's findings:** Need better memory curation, task prioritization, error prevention
+- **Action taken:** Set up automated QA with Maggie, improved memory practices
+
+## Spyglass CRM Project Updates (March 7, 2026)
+- **Project Tracker:** Major overhaul after Ryan's critical feedback
+- **Team members added:** Sunny (COO), proper routing to Sunny/Trisha/Caleb/Daryl
+- **Database updates:** Added route_to and project_type fields to crm.projects table
+- **Fee Title Office:** Added 10-step workflow for title office projects
+- **UI fixes:** Proper container padding, centralized team member data
+- **Status:** Deployed to spyglass-crm.vercel.app with all fixes

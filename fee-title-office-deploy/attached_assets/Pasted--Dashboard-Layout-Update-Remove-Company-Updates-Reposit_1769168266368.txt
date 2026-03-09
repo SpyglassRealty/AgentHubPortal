@@ -1,0 +1,280 @@
+# Dashboard Layout Update - Remove Company Updates, Reposition Action Items
+
+## Overview
+Update the Mission Control Dashboard layout:
+1. Remove the "Company Updates" section from the right side
+2. Move the "No action items right now" card to the right of Market Pulse
+
+---
+
+## Current Layout
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Good evening, Daryl                                                        │
+│  Welcome to Mission Control. What would you like to work on today?          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────┐  ┌─────────────────────────────────┐  │
+│  │  Market Pulse          Refresh  │  │  Company Updates    View Training│  │
+│  │                                 │  │                                  │  │
+│  │  Austin Metro Area              │  │  [NEW] Training for Listing...  │  │
+│  │  ┌─────────────────────────┐   │  │                                  │  │
+│  │  │     CHART               │   │  │  [Announcement] Q4 Goals...     │  │
+│  │  └─────────────────────────┘   │  │                                  │  │
+│  │                                 │  │                                  │  │
+│  │  Active: 19,783  Under: 1,846  │  └──────────────────────────────────┘  │
+│  │  Pending: 2,593  Closed: 200   │                                        │
+│  │                                 │                                        │
+│  │  Total Active: 24,222          │                                        │
+│  └─────────────────────────────────┘                                        │
+│                                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                     No action items right now                         │ │
+│  │              Check back later for personalized suggestions            │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Target Layout
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Good evening, Daryl                                                        │
+│  Welcome to Mission Control. What would you like to work on today?          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────┐  ┌─────────────────────────────────┐  │
+│  │  Market Pulse          Refresh  │  │  Action Items                    │  │
+│  │                                 │  │                                  │  │
+│  │  Austin Metro Area              │  │                                  │  │
+│  │  ┌─────────────────────────┐   │  │      (sparkle icon)              │  │
+│  │  │     CHART               │   │  │                                  │  │
+│  │  └─────────────────────────┘   │  │  No action items right now       │  │
+│  │                                 │  │  Check back later for            │  │
+│  │  Active: 19,783  Under: 1,846  │  │  personalized suggestions        │  │
+│  │  Pending: 2,593  Closed: 200   │  │                                  │  │
+│  │                                 │  │                                  │  │
+│  │  Total Active: 24,222          │  │                                  │  │
+│  └─────────────────────────────────┘  └──────────────────────────────────┘  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Implementation
+
+### File: `client/src/pages/Dashboard.tsx` (or similar)
+
+```tsx
+export function Dashboard() {
+  const { user } = useAuth();
+  const greeting = getGreeting();
+
+  return (
+    <div className="p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">
+          {greeting}, {user?.firstName || 'there'}
+        </h1>
+        <p className="text-gray-600">
+          Welcome to Mission Control. What would you like to work on today?
+        </p>
+      </div>
+
+      {/* Main Content - Two Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column: Market Pulse */}
+        <MarketPulseCard />
+
+        {/* Right Column: Action Items (moved from bottom) */}
+        <ActionItemsCard />
+      </div>
+
+      {/* REMOVED: Company Updates section */}
+      {/* 
+      <div className="...">
+        <CompanyUpdates />
+      </div>
+      */}
+    </div>
+  );
+}
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+```
+
+### Action Items Card Component
+
+```tsx
+// ActionItemsCard.tsx
+import { Sparkles } from "lucide-react";
+
+interface ActionItem {
+  id: string;
+  title: string;
+  description: string;
+  type: "reminder" | "task" | "suggestion";
+  priority: "high" | "medium" | "low";
+  link?: string;
+  dueDate?: Date;
+}
+
+interface ActionItemsCardProps {
+  items?: ActionItem[];
+}
+
+export function ActionItemsCard({ items = [] }: ActionItemsCardProps) {
+  const hasItems = items.length > 0;
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6 h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-orange-500" />
+          Action Items
+        </h2>
+        {hasItems && (
+          <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs font-medium rounded-full">
+            {items.length} items
+          </span>
+        )}
+      </div>
+
+      {/* Content */}
+      {hasItems ? (
+        <div className="space-y-3">
+          {items.map((item) => (
+            <ActionItemRow key={item.id} item={item} />
+          ))}
+        </div>
+      ) : (
+        /* Empty State */
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <Sparkles className="h-6 w-6 text-gray-400" />
+          </div>
+          <p className="text-gray-900 font-medium">No action items right now</p>
+          <p className="text-gray-500 text-sm mt-1">
+            Check back later for personalized suggestions
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActionItemRow({ item }: { item: ActionItem }) {
+  return (
+    <div className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="font-medium text-gray-900">{item.title}</p>
+          <p className="text-sm text-gray-500 mt-0.5">{item.description}</p>
+        </div>
+        {item.priority === "high" && (
+          <span className="px-2 py-0.5 bg-red-100 text-red-600 text-xs rounded">
+            Urgent
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Action Items Logic (Placeholder)
+
+The card should eventually show personalized suggestions based on:
+
+```typescript
+// Example action items that could be generated:
+
+const possibleActionItems: ActionItem[] = [
+  // Closing date reminders
+  {
+    id: "1",
+    title: "Closing in 3 days",
+    description: "123 Main St - Review closing documents",
+    type: "reminder",
+    priority: "high",
+    link: "/transactions/123",
+  },
+  
+  // Missing information
+  {
+    id: "2",
+    title: "Complete listing details",
+    description: "456 Oak Ave - Missing property photos",
+    type: "task",
+    priority: "medium",
+    link: "/transactions/456/marketing",
+  },
+  
+  // Marketing suggestions
+  {
+    id: "3",
+    title: "Create marketing materials",
+    description: "789 Elm St - New listing needs flyer",
+    type: "suggestion",
+    priority: "low",
+    link: "/transactions/789/marketing",
+  },
+  
+  // Document reminders
+  {
+    id: "4",
+    title: "Documents pending",
+    description: "321 Pine Dr - Waiting for buyer signatures",
+    type: "task",
+    priority: "medium",
+    link: "/transactions/321/documents",
+  },
+];
+```
+
+---
+
+## CSS/Styling Notes
+
+- Both cards should have equal height (`h-full` on the Action Items card)
+- Use `grid grid-cols-2 gap-6` for side-by-side layout
+- On mobile (`lg:grid-cols-1`), cards should stack vertically
+- Maintain consistent padding and border radius with Market Pulse card
+
+---
+
+## Verification Checklist
+
+- [ ] Company Updates section removed from dashboard
+- [ ] Action Items card appears to the right of Market Pulse
+- [ ] Both cards have equal height
+- [ ] Empty state shows "No action items right now" message
+- [ ] Layout is responsive (stacks on mobile)
+- [ ] Card styling matches Market Pulse card (border, shadow, rounded corners)
+
+---
+
+## Files to Modify
+
+1. **`client/src/pages/Dashboard.tsx`** - Update layout, remove Company Updates
+2. **`client/src/components/dashboard/ActionItemsCard.tsx`** - Create/update component
+
+---
+
+## Next Step
+
+Check Agent Hub Portal Replit for the Action Items card logic and functionality, then update this implementation with the actual data fetching and action items generation logic.

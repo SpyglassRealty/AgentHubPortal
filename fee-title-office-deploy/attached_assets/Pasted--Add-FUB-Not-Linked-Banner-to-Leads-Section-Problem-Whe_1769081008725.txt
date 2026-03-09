@@ -1,0 +1,274 @@
+### Add "FUB Not Linked" Banner to Leads Section
+
+**Problem:**
+When a user's account is not linked to Follow Up Boss, the Leads section shows "No upcoming anniversaries found" which is confusing. Users don't know WHY there's no data.
+
+**Solution:**
+Add a clear banner/placeholder that explains the account isn't linked and provides a path to fix it.
+
+---
+
+## Implementation
+
+### 1. Update the API Response
+
+When `fubUserId` is null, return a specific flag:
+```typescript
+// In /api/fub/leads/anniversary (and other leads endpoints)
+
+if (!user.fubUserId) {
+  return res.json({
+    leads: [],
+    linked: false,
+    message: 'Follow Up Boss account not linked'
+  });
+}
+
+// If linked, return normal response
+return res.json({
+  leads: filteredLeads,
+  linked: true
+});
+```
+
+---
+
+### 2. Create FUB Not Linked Banner Component
+```tsx
+// components/leads/FubNotLinkedBanner.tsx
+
+import { Link2Off, Settings, ExternalLink } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Link } from 'react-router-dom';
+
+export function FubNotLinkedBanner() {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
+  return (
+    <div className={`
+      rounded-xl p-6 text-center
+      ${isDark ? 'bg-gray-800 border border-gray-700' : 'bg-orange-50 border border-orange-200'}
+    `}>
+      {/* Icon */}
+      <div className={`
+        w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center
+        ${isDark ? 'bg-gray-700' : 'bg-orange-100'}
+      `}>
+        <Link2Off className={`w-8 h-8 ${isDark ? 'text-orange-400' : 'text-orange-500'}`} />
+      </div>
+
+      {/* Title */}
+      <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        Follow Up Boss Not Connected
+      </h3>
+
+      {/* Description */}
+      <p className={`mb-6 max-w-md mx-auto ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+        Connect your Follow Up Boss account to see your leads, anniversaries, birthdays, and tasks here.
+      </p>
+
+      {/* Actions */}
+      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <Link
+          to="/settings"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+        >
+          <Settings className="w-4 h-4" />
+          Go to Settings
+        </Link>
+        
+        
+          href="https://www.followupboss.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`
+            inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors
+            ${isDark 
+              ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}
+          `}
+        >
+          <ExternalLink className="w-4 h-4" />
+          What is Follow Up Boss?
+        </a>
+      </div>
+
+      {/* Help text */}
+      <p className={`mt-6 text-sm ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+        Need help? Contact your administrator to link your account.
+      </p>
+    </div>
+  );
+}
+```
+
+---
+
+### 3. Update Leads Page to Show Banner
+```tsx
+// In client/src/pages/leads.tsx
+
+import { FubNotLinkedBanner } from '@/components/leads/FubNotLinkedBanner';
+
+export default function LeadsPage() {
+  const [leads, setLeads] = useState([]);
+  const [isLinked, setIsLinked] = useState(true); // Default to true, update on fetch
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLeads = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/fub/leads/${activeTab}`);
+        const data = await response.json();
+        
+        setLeads(data.leads || []);
+        setIsLinked(data.linked !== false); // Check if explicitly false
+        
+      } catch (error) {
+        console.error('Failed to fetch leads:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchLeads();
+  }, [activeTab]);
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-semibold mb-2">Leads</h1>
+      <p className="text-gray-500 mb-6">Smart lists to help you stay connected with your clients</p>
+
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6">
+        {/* ... existing tab buttons ... */}
+      </div>
+
+      {/* Content */}
+      {loading ? (
+        <LoadingSpinner />
+      ) : !isLinked ? (
+        // Show banner when FUB not linked
+        <FubNotLinkedBanner />
+      ) : leads.length === 0 ? (
+        // Show empty state when linked but no leads
+        <EmptyState 
+          icon={activeTab === 'anniversary' ? '🎉' : '📋'}
+          title={`No ${activeTab} found`}
+          description={getEmptyStateMessage(activeTab)}
+        />
+      ) : (
+        // Show leads list
+        <LeadsList leads={leads} type={activeTab} />
+      )}
+    </div>
+  );
+}
+
+// Helper for empty state messages (when linked but no data)
+function getEmptyStateMessage(tab: string) {
+  switch (tab) {
+    case 'anniversary':
+      return 'No upcoming anniversaries found. Make sure your leads have the Home Purchase Anniversary field set in Follow Up Boss.';
+    case 'birthdays':
+      return 'No upcoming birthdays found. Make sure your leads have the Birthday field set in Follow Up Boss.';
+    case 'recent-activity':
+      return 'No recent activity found in the last 3 days.';
+    case 'due-tasks':
+      return 'No pending tasks! You\'re all caught up.';
+    default:
+      return 'No data found.';
+  }
+}
+```
+
+---
+
+### 4. Visual Design
+
+**Light Mode:**
+┌─────────────────────────────────────────────────────────────────┐
+│                         🔗✕                                     │
+│                                                                 │
+│              Follow Up Boss Not Connected                       │
+│                                                                 │
+│    Connect your Follow Up Boss account to see your leads,       │
+│    anniversaries, birthdays, and tasks here.                    │
+│                                                                 │
+│         [🔧 Go to Settings]    [↗ What is Follow Up Boss?]     │
+│                                                                 │
+│       Need help? Contact your administrator to link your        │
+│                          account.                               │
+└─────────────────────────────────────────────────────────────────┘
+Background: Light orange (#FFF7ED)
+Border: Orange (#FDBA74)
+
+**Dark Mode:**
+┌─────────────────────────────────────────────────────────────────┐
+│                         🔗✕                                     │
+│                                                                 │
+│              Follow Up Boss Not Connected                       │
+│                                                                 │
+│    Connect your Follow Up Boss account to see your leads,       │
+│    anniversaries, birthdays, and tasks here.                    │
+│                                                                 │
+│         [🔧 Go to Settings]    [↗ What is Follow Up Boss?]     │
+│                                                                 │
+│       Need help? Contact your administrator to link your        │
+│                          account.                               │
+└─────────────────────────────────────────────────────────────────┘
+Background: Dark gray (#1F2937)
+Border: Gray (#374151)
+
+---
+
+### 5. Also Update Settings Page
+
+Add a section in Settings to link FUB account (if not already there):
+```tsx
+// In Settings page, add FUB connection section
+
+<div className={`${cardBg} rounded-xl p-6 border ${borderColor}`}>
+  <h3 className={`font-medium ${textPrimary} mb-4 flex items-center gap-2`}>
+    <Link2 className="w-5 h-5" />
+    Follow Up Boss Integration
+  </h3>
+  
+  {user?.fubUserId ? (
+    <div className="flex items-center justify-between">
+      <div>
+        <p className={textPrimary}>Connected</p>
+        <p className={`text-sm ${textSecondary}`}>FUB User ID: {user.fubUserId}</p>
+      </div>
+      <span className="text-green-500 text-sm flex items-center gap-1">
+        <CheckCircle className="w-4 h-4" />
+        Linked
+      </span>
+    </div>
+  ) : (
+    <div>
+      <p className={`${textSecondary} mb-4`}>
+        Your account is not linked to Follow Up Boss. Contact your administrator to set up the connection.
+      </p>
+      <p className={`text-sm ${textSecondary}`}>
+        Your email: {user?.email}
+      </p>
+    </div>
+  )}
+</div>
+```
+
+---
+
+## Testing Checklist
+
+- [ ] User not linked to FUB → sees "FUB Not Connected" banner
+- [ ] Banner shows on all tabs (Anniversary, Birthdays, Recent Activity, Due Tasks)
+- [ ] "Go to Settings" button navigates to Settings page
+- [ ] "What is Follow Up Boss?" opens external link in new tab
+- [ ] Banner looks correct in light mode
+- [ ] Banner looks correct in dark mode
+- [ ] User linked to FUB but no leads → sees appropriate empty state message
+- [ ] User linked to FUB with leads → sees leads list normally

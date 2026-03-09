@@ -1,0 +1,84 @@
+Update the favicon and page title for Mission Control.
+
+---
+
+## 1. FAVICON DESIGN
+
+Create favicon with:
+- Orange background: #d4a574
+- White "S" letter: #FFFFFF
+- Square with slight rounded corners
+
+Generate these sizes:
+- favicon.ico (32x32 and 16x16)
+- favicon-16x16.png
+- favicon-32x32.png
+- apple-touch-icon.png (180x180)
+
+You can create using SVG:
+```svg
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="4" fill="#d4a574"/>
+  <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" 
+        font-family="Arial, sans-serif" font-weight="bold" font-size="22" fill="white">
+    S
+  </text>
+</svg>
+```
+
+Add files to `public/` or `client/public/` folder.
+
+---
+
+## 2. UPDATE INDEX.HTML
+```html
+<head>
+  <title>Mission Control | Agent Hub Portal</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  
+  <!-- Theme color -->
+  <meta name="theme-color" content="#d4a574" />
+  
+  <!-- Meta tags -->
+  <meta name="description" content="Agent Hub Portal - Real estate tools and transaction management for Spyglass Realty agents." />
+</head>
+```
+
+---
+
+## 3. IF USING REACT HELMET OR DYNAMIC TITLES
+
+Update the default title in your app:
+```typescript
+// In App.tsx or layout component
+<Helmet>
+  <title>Mission Control | Agent Hub Portal</title>
+</Helmet>
+```
+
+Or in any title configuration file, change to: "Mission Control | Agent Hub Portal"
+
+---
+
+## EXPECTED RESULT
+
+Browser tab shows: [🟧 Orange square with white S] Mission Control | Agent Hub Portal
+
+---
+
+## CHECKLIST
+
+- [ ] Create favicon with white "S" on orange background
+- [ ] Add favicon.ico, favicon-16x16.png, favicon-32x32.png, apple-touch-icon.png
+- [ ] Update <title> to "Mission Control | Agent Hub Portal"
+- [ ] Add theme-color meta tag (#d4a574)
+- [ ] Update meta description
+- [ ] Test in browser
+
+Summary:
+ElementValueFaviconWhite "S" on orange (#d4a574) backgroundPage TitleMission Control | Agent Hub PortalTheme Color#d4a574 (orange)

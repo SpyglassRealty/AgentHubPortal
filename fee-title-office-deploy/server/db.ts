@@ -1,0 +1,978 @@
+import { drizzle } from "drizzle-orm/node-postgres";
+import { sql } from "drizzle-orm";
+import pg from "pg";
+import * as schema from "@shared/schema";
+
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is not set");
+}
+
+export const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+export const db = drizzle(pool, { schema });
+
+// Auto-migrate database schema on startup
+export async function initializeDatabase() {
+  try {
+    console.log("[Database] Initializing database schema...");
+    
+    // Direct SQL migrations for missing columns
+    await runDirectMigrations();
+    
+    console.log("[Database] Schema synchronized successfully");
+  } catch (error) {
+    console.warn("[Database] Schema sync warning:", error);
+    // Don't fail startup if schema sync fails - database might already be correct
+  }
+}
+
+async function runDirectMigrations() {
+  try {
+    console.log("[Database] Running comprehensive user table migrations...");
+    
+    // Get existing columns
+    const existingColumns = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'users'
+    `);
+    
+    const columnNames = new Set(existingColumns.rows.map(row => row.column_name));
+    
+    // Define all expected columns with their SQL types
+    const expectedColumns = [
+      { name: 'rezen_yenta_id', sql: 'ALTER TABLE users ADD COLUMN rezen_yenta_id varchar' },
+      { name: 'is_super_admin', sql: 'ALTER TABLE users ADD COLUMN is_super_admin boolean DEFAULT false' },
+      { name: 'theme', sql: 'ALTER TABLE users ADD COLUMN theme varchar DEFAULT \'light\'' },
+      { name: 'first_name', sql: 'ALTER TABLE users ADD COLUMN first_name varchar' },
+      { name: 'last_name', sql: 'ALTER TABLE users ADD COLUMN last_name varchar' },
+      { name: 'profile_image_url', sql: 'ALTER TABLE users ADD COLUMN profile_image_url varchar' },
+      { name: 'fub_user_id', sql: 'ALTER TABLE users ADD COLUMN fub_user_id integer' },
+      { name: 'fub_picture_url', sql: 'ALTER TABLE users ADD COLUMN fub_picture_url varchar' },
+      { name: 'created_at', sql: 'ALTER TABLE users ADD COLUMN created_at timestamp DEFAULT NOW()' },
+      { name: 'updated_at', sql: 'ALTER TABLE users ADD COLUMN updated_at timestamp DEFAULT NOW()' },
+    ];
+    
+    // Add missing columns
+    for (const column of expectedColumns) {
+      if (!columnNames.has(column.name)) {
+        console.log(`[Database] Adding missing ${column.name} column...`);
+        await pool.query(column.sql);
+        console.log(`[Database] Added ${column.name} column successfully`);
+      } else {
+        console.log(`[Database] ${column.name} column already exists`);
+      }
+    }
+    
+    console.log("[Database] User table migration completed");
+    
+    // Add agent profile marketing fields (Stage 2: CMA Bio editing)
+    await addAgentProfileMarketingFields();
+    
+    // Create pulse data tables for Market Pulse functionality
+    await createPulseDataTables();
+    
+    // CRITICAL: Create agent_resources table
+    await createAgentResourcesTable();
+
+    // Call Duty tables (migration 0010)
+    await createCallDutyTables();
+    
+    // Agent Directory Profiles - ensure fub_email column exists
+    await ensureAgentDirectoryFubEmail();
+    
+    // Uploads table for image storage
+    await createUploadsTable();
+    
+  } catch (error) {
+    console.error("[Database] Direct migration error:", error);
+    throw error;
+  }
+}
+
+async function addAgentProfileMarketingFields() {
+  try {
+    console.log("[Database] Adding missing phone column to agent_profiles...");
+    
+    // Check existing agent_profiles table columns
+    const existingColumns = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'agent_profiles'
+    `);
+    
+    const columnNames = new Set(existingColumns.rows.map(row => row.column_name));
+    console.log("[Database] Existing agent_profiles columns:", Array.from(columnNames).sort());
+    
+    // Add the missing phone column (the only one not in the actual database according to Daryl's query)
+    if (!columnNames.has('phone')) {
+      console.log(`[Database] Adding agent_profiles.phone column...`);
+      await pool.query('ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS phone TEXT');
+      console.log(`[Database] Added phone column successfully`);
+    } else {
+      console.log(`[Database] agent_profiles.phone column already exists`);
+    }
+    
+    // Verify the column was added
+    const verifyColumns = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'agent_profiles' AND column_name = 'phone'
+    `);
+    
+    if (verifyColumns.rows.length > 0) {
+      console.log("[Database] ✅ Phone column verification: FOUND");
+    } else {
+      console.error("[Database] ❌ Phone column verification: MISSING");
+      // Retry the migration
+      console.log("[Database] Retrying phone column creation...");
+      await pool.query('ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS phone TEXT');
+    }
+    
+    console.log("[Database] Agent profile migration completed");
+    
+  } catch (error) {
+    console.error("[Database] Agent profile migration error:", error);
+    console.error("[Database] Error details:", JSON.stringify(error, null, 2));
+    // Re-throw to make the error visible in startup logs
+    throw error;
+  }
+}
+
+async function createPulseDataTables() {
+  try {
+    console.log("[Database] Creating missing database tables...");
+    
+    // Create all missing tables based on schema
+    const missingTables = [
+      // CRITICAL: Sessions table for authentication
+      {
+        name: 'sessions',
+        sql: `
+          CREATE TABLE IF NOT EXISTS sessions (
+            sid varchar PRIMARY KEY,
+            sess jsonb NOT NULL,
+            expire timestamp NOT NULL
+          )
+        `
+      },
+      // Agent profiles table
+      {
+        name: 'agent_profiles',
+        sql: `
+          CREATE TABLE IF NOT EXISTS agent_profiles (
+            id varchar PRIMARY KEY,
+            user_id text NOT NULL,
+            title text,
+            headshot_url text,
+            bio text,
+            default_cover_letter text,
+            facebook_url text,
+            instagram_url text,
+            linkedin_url text,
+            twitter_url text,
+            website_url text,
+            marketing_company text,
+            phone text,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      // CMA tables
+      {
+        name: 'cmas',
+        sql: `
+          CREATE TABLE IF NOT EXISTS cmas (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            name varchar NOT NULL,
+            subject_property jsonb,
+            comparable_properties jsonb DEFAULT '[]'::jsonb,
+            notes text,
+            status varchar DEFAULT 'draft',
+            presentation_config jsonb,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      // Market Pulse snapshot table
+      {
+        name: 'market_pulse_snapshots',
+        sql: `
+          CREATE TABLE IF NOT EXISTS market_pulse_snapshots (
+            id serial PRIMARY KEY,
+            cached_data jsonb NOT NULL,
+            last_updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      // Pulse data tables
+      {
+        name: 'pulse_zillow_data',
+        sql: `
+          CREATE TABLE IF NOT EXISTS pulse_zillow_data (
+            id serial PRIMARY KEY,
+            zip varchar(10) NOT NULL,
+            date date NOT NULL,
+            home_value numeric,
+            rent_value numeric,
+            single_family_value numeric,
+            condo_value numeric,
+            created_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'pulse_census_data', 
+        sql: `
+          CREATE TABLE IF NOT EXISTS pulse_census_data (
+            id serial PRIMARY KEY,
+            zip varchar(10) NOT NULL,
+            year integer NOT NULL,
+            population integer,
+            median_household_income numeric,
+            median_age numeric,
+            total_households integer,
+            created_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'pulse_redfin_data',
+        sql: `
+          CREATE TABLE IF NOT EXISTS pulse_redfin_data (
+            id serial PRIMARY KEY,
+            zip varchar(10) NOT NULL,
+            period_start date NOT NULL,
+            inventory integer,
+            homes_sold integer,
+            median_dom integer,
+            median_sale_price numeric,
+            created_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'pulse_metrics',
+        sql: `
+          CREATE TABLE IF NOT EXISTS pulse_metrics (
+            id serial PRIMARY KEY,
+            zip varchar(10) NOT NULL,
+            date date NOT NULL,
+            price_forecast numeric,
+            overvalued_pct numeric,
+            cap_rate numeric,
+            created_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      // Market Pulse History for daily snapshots and trending
+      {
+        name: 'market_pulse_history',
+        sql: `
+          CREATE TABLE IF NOT EXISTS market_pulse_history (
+            id serial PRIMARY KEY,
+            date date NOT NULL,
+            zip varchar(5) NOT NULL,
+            
+            -- Price metrics
+            median_home_value numeric,
+            median_sale_price numeric,
+            median_list_price numeric,
+            price_per_sqft numeric,
+            
+            -- Market activity
+            homes_sold integer,
+            active_listings integer,
+            new_listings integer,
+            pending_listings integer,
+            
+            -- Market timing
+            median_dom integer,
+            avg_dom integer,
+            
+            -- Market conditions  
+            months_of_supply numeric,
+            sale_to_list_ratio numeric,
+            price_drops_pct numeric,
+            
+            -- Calculated metrics
+            inventory_growth_mom numeric, -- month-over-month inventory change
+            sales_growth_mom numeric,     -- month-over-month sales change
+            price_growth_mom numeric,     -- month-over-month price change
+            price_growth_yoy numeric,     -- year-over-year price change
+            
+            -- Market temperature (calculated)
+            market_temperature varchar(20), -- 'Hot', 'Warm', 'Balanced', 'Cool', 'Cold'
+            market_score integer,           -- 0-100 composite score
+            
+            -- Metadata
+            data_source varchar(50) DEFAULT 'repliers_mls',
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      // Notifications table
+      {
+        name: 'notifications',
+        sql: `
+          CREATE TABLE IF NOT EXISTS notifications (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            type varchar NOT NULL,
+            title varchar NOT NULL,
+            message text,
+            is_read boolean DEFAULT false,
+            payload jsonb,
+            created_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      // User video preferences table
+      {
+        name: 'user_video_preferences',
+        sql: `
+          CREATE TABLE IF NOT EXISTS user_video_preferences (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            video_id varchar(50) NOT NULL,
+            video_name varchar(255),
+            video_thumbnail varchar(500),
+            video_duration integer,
+            is_favorite boolean DEFAULT false,
+            is_watch_later boolean DEFAULT false,
+            watch_progress integer DEFAULT 0,
+            watch_percentage integer DEFAULT 0,
+            last_watched_at timestamp,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      // Site content table for homepage editor
+      {
+        name: 'site_content',
+        sql: `
+          CREATE TABLE IF NOT EXISTS site_content (
+            id serial PRIMARY KEY,
+            section varchar(100) NOT NULL UNIQUE,
+            content jsonb NOT NULL,
+            updated_by varchar REFERENCES users(id),
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      // Sync status table
+      {
+        name: 'sync_status',
+        sql: `
+          CREATE TABLE IF NOT EXISTS sync_status (
+            id serial PRIMARY KEY,
+            user_id varchar NOT NULL,
+            section varchar(50) NOT NULL,
+            last_manual_refresh timestamp,
+            last_auto_refresh timestamp,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      // CRITICAL MISSING TABLES - Adding to fix production issues
+      {
+        name: 'context_suggestions',
+        sql: `
+          CREATE TABLE IF NOT EXISTS context_suggestions (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            suggestion_type varchar NOT NULL,
+            title varchar NOT NULL,
+            description text,
+            priority integer DEFAULT 0,
+            payload jsonb,
+            recommended_app_id varchar,
+            status varchar DEFAULT 'active',
+            expires_at timestamp,
+            created_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'app_usage',
+        sql: `
+          CREATE TABLE IF NOT EXISTS app_usage (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            app_id varchar NOT NULL,
+            page varchar NOT NULL,
+            click_count integer DEFAULT 1,
+            last_used_at timestamp DEFAULT NOW(),
+            created_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'user_notification_settings',
+        sql: `
+          CREATE TABLE IF NOT EXISTS user_notification_settings (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL UNIQUE,
+            notifications_enabled boolean DEFAULT false,
+            lead_assigned_enabled boolean DEFAULT true,
+            appointment_reminder_enabled boolean DEFAULT true,
+            deal_update_enabled boolean DEFAULT true,
+            task_due_enabled boolean DEFAULT true,
+            system_enabled boolean DEFAULT true,
+            appointment_reminder_times jsonb DEFAULT '[1440, 60, 15]'::jsonb,
+            quiet_hours_enabled boolean DEFAULT false,
+            quiet_hours_start varchar DEFAULT '22:00',
+            quiet_hours_end varchar DEFAULT '07:00',
+            email_notifications_enabled boolean DEFAULT false,
+            notification_email varchar,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'saved_content_ideas',
+        sql: `
+          CREATE TABLE IF NOT EXISTS saved_content_ideas (
+            id serial PRIMARY KEY,
+            user_id varchar NOT NULL,
+            month varchar(20) NOT NULL,
+            year integer NOT NULL,
+            week integer NOT NULL,
+            theme varchar(100),
+            platform varchar(50) NOT NULL,
+            content_type varchar(50) NOT NULL,
+            best_time varchar(50),
+            content text NOT NULL,
+            hashtags text,
+            status varchar(20) DEFAULT 'saved',
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'cma_report_configs',
+        sql: `
+          CREATE TABLE IF NOT EXISTS cma_report_configs (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            cma_id varchar NOT NULL UNIQUE,
+            included_sections jsonb,
+            section_order jsonb,
+            cover_letter_override text,
+            layout text DEFAULT 'two_photos',
+            template text DEFAULT 'default',
+            theme text DEFAULT 'spyglass',
+            photo_layout text DEFAULT 'first_dozen',
+            map_style text DEFAULT 'streets',
+            show_map_polygon boolean DEFAULT true,
+            include_agent_footer boolean DEFAULT true,
+            cover_page_config jsonb,
+            custom_photo_selections jsonb,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'cma_report_templates',
+        sql: `
+          CREATE TABLE IF NOT EXISTS cma_report_templates (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            name text NOT NULL,
+            is_default boolean DEFAULT false,
+            included_sections jsonb,
+            section_order jsonb,
+            cover_letter_override text,
+            layout text DEFAULT 'two_photos',
+            theme text DEFAULT 'spyglass',
+            photo_layout text DEFAULT 'first_dozen',
+            map_style text DEFAULT 'streets',
+            show_map_polygon boolean DEFAULT true,
+            include_agent_footer boolean DEFAULT true,
+            cover_page_config jsonb,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'agent_resources',
+        sql: `
+          CREATE TABLE IF NOT EXISTS agent_resources (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id varchar NOT NULL,
+            title varchar(255) NOT NULL,
+            type varchar(50) NOT NULL,
+            file_data bytea,
+            file_name varchar(255),
+            file_size integer,
+            mime_type varchar(100),
+            redirect_url text,
+            sort_order integer NOT NULL DEFAULT 0,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'integration_configs',
+        sql: `
+          CREATE TABLE IF NOT EXISTS integration_configs (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            name varchar(100) NOT NULL UNIQUE,
+            display_name varchar(255) NOT NULL,
+            api_key text NOT NULL,
+            additional_config jsonb,
+            is_active boolean DEFAULT true,
+            last_tested_at timestamp,
+            last_test_result varchar(50),
+            last_test_message text,
+            created_by varchar,
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'app_visibility',
+        sql: `
+          CREATE TABLE IF NOT EXISTS app_visibility (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            app_id varchar UNIQUE NOT NULL,
+            hidden boolean DEFAULT false,
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      // CRITICAL: Developer Dashboard Tables (using snake_case to match existing backend SQL)
+      {
+        name: 'dev_changelog',
+        sql: `
+          CREATE TABLE IF NOT EXISTS dev_changelog (
+            id serial PRIMARY KEY,
+            description text NOT NULL,
+            developer_name varchar(255),
+            developer_email varchar(255),
+            requested_by varchar(255),
+            commit_hash varchar(100),
+            category varchar(50), -- bug_fix, feature, ui, database, api, deployment
+            status varchar(50) DEFAULT 'deployed', -- deployed, in_progress, reverted, pending
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
+        name: 'developer_activity_logs',
+        sql: `
+          CREATE TABLE IF NOT EXISTS developer_activity_logs (
+            id serial PRIMARY KEY,
+            user_id varchar REFERENCES users(id) ON DELETE SET NULL,
+            user_email varchar(255),
+            user_name varchar(255),
+            action_type varchar(100), -- create, update, delete, view, login, export, search
+            description text,
+            metadata jsonb,
+            ip_address varchar(45),
+            created_at timestamp DEFAULT NOW()
+          )
+        `
+      }
+    ];
+    
+    for (const table of missingTables) {
+      await pool.query(table.sql);
+      console.log(`[Database] Created/verified ${table.name} table`);
+    }
+    
+    // Create indexes for better performance
+    const indexes = [
+      'CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON sessions(expire)',
+      'CREATE INDEX IF NOT EXISTS idx_cmas_user_id ON cmas(user_id)',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_zillow_zip_date ON pulse_zillow_data(zip, date)',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_census_zip_year ON pulse_census_data(zip, year)',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_redfin_zip_period ON pulse_redfin_data(zip, period_start)',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_metrics_zip_date ON pulse_metrics(zip, date)',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_market_pulse_history_date_zip ON market_pulse_history(date, zip)',
+      'CREATE INDEX IF NOT EXISTS idx_market_pulse_history_zip_date ON market_pulse_history(zip, date DESC)',
+      // Developer dashboard indexes
+      'CREATE INDEX IF NOT EXISTS idx_dev_changelog_status ON dev_changelog(status)',
+      'CREATE INDEX IF NOT EXISTS idx_dev_changelog_category ON dev_changelog(category)',
+      'CREATE INDEX IF NOT EXISTS idx_dev_changelog_created_at ON dev_changelog(created_at)',
+      'CREATE INDEX IF NOT EXISTS idx_developer_activity_logs_user_id ON developer_activity_logs(user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_developer_activity_logs_action_type ON developer_activity_logs(action_type)',
+      'CREATE INDEX IF NOT EXISTS idx_developer_activity_logs_created_at ON developer_activity_logs(created_at)',
+    ];
+    
+    for (const indexSql of indexes) {
+      try {
+        await pool.query(indexSql);
+      } catch (error) {
+        // Ignore index creation errors (might already exist)
+      }
+    }
+    
+    // Communities table for SEO content editor
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS communities (
+        id serial PRIMARY KEY,
+        slug varchar(255) NOT NULL UNIQUE,
+        name varchar(255) NOT NULL,
+        county varchar(100),
+        meta_title varchar(255),
+        meta_description text,
+        focus_keyword varchar(255),
+        description text,
+        highlights jsonb,
+        best_for jsonb,
+        nearby_landmarks jsonb,
+        sections jsonb,
+        published boolean DEFAULT false,
+        featured boolean DEFAULT false,
+        created_at timestamp DEFAULT NOW(),
+        updated_at timestamp DEFAULT NOW(),
+        updated_by varchar(255)
+      )
+    `);
+    console.log(`[Database] Created/verified communities table`);
+
+    // Communities indexes
+    try {
+      await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_communities_slug ON communities(slug)');
+      await pool.query('CREATE INDEX IF NOT EXISTS idx_communities_county ON communities(county)');
+      await pool.query('CREATE INDEX IF NOT EXISTS idx_communities_published ON communities(published)');
+    } catch (e) { /* indexes may already exist */ }
+
+    console.log("[Database] All required tables created successfully");
+    
+    // Add market pulse snapshots schema migration
+    await migrateMarketPulseSnapshots();
+    
+  } catch (error) {
+    console.error("[Database] Tables creation error:", error);
+    // Don't throw - some features can work without all tables
+  }
+}
+
+// CRITICAL: Create agent_resources table with correct schema
+async function createAgentResourcesTable() {
+  try {
+    console.log('[Database] Creating/fixing agent_resources table...');
+    
+    
+    // Create table with correct schema matching shared/schema.ts
+    const createTableSQL = `
+      CREATE TABLE IF NOT EXISTS agent_resources (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id varchar NOT NULL,
+        title varchar(255) NOT NULL,
+        type varchar(50) NOT NULL,
+        file_data bytea,
+        file_name varchar(255),
+        file_size integer,
+        mime_type varchar(100),
+        redirect_url text,
+        sort_order integer NOT NULL DEFAULT 0,
+        created_at timestamp DEFAULT NOW(),
+        updated_at timestamp DEFAULT NOW()
+      )
+    `;
+    
+    await pool.query(createTableSQL);
+    
+    // Add indexes for performance
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_agent_resources_user_id ON agent_resources (user_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_agent_resources_sort_order ON agent_resources (user_id, sort_order)');
+    
+    console.log('[Database] ✅ agent_resources table created successfully');
+    
+  } catch (error) {
+    console.error('[Database] ❌ Error creating agent_resources table:', error);
+    throw error;
+  }
+}
+
+// Call Duty / Lead Duty tables (migration 0010)
+async function createCallDutyTables() {
+  try {
+    console.log('[Database] Creating call_duty tables...');
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS call_duty_slots (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        date date NOT NULL,
+        shift_type varchar NOT NULL,
+        start_time varchar NOT NULL,
+        end_time varchar NOT NULL,
+        max_signups integer NOT NULL DEFAULT 1,
+        is_active boolean DEFAULT true,
+        created_by varchar REFERENCES users(id),
+        created_at timestamp DEFAULT NOW(),
+        updated_at timestamp DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS call_duty_signups (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        slot_id varchar NOT NULL REFERENCES call_duty_slots(id),
+        user_id varchar NOT NULL REFERENCES users(id),
+        status varchar DEFAULT 'active',
+        signed_up_at timestamp DEFAULT NOW(),
+        cancelled_at timestamp
+      )
+    `);
+
+    // Indexes
+    const indexes = [
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_call_duty_slots_date_shift ON call_duty_slots(date, shift_type)',
+      'CREATE INDEX IF NOT EXISTS idx_call_duty_slots_date ON call_duty_slots(date)',
+      'CREATE INDEX IF NOT EXISTS idx_call_duty_slots_active ON call_duty_slots(is_active)',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_call_duty_signups_slot_user ON call_duty_signups(slot_id, user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_call_duty_signups_user ON call_duty_signups(user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_call_duty_signups_slot ON call_duty_signups(slot_id)',
+      'CREATE INDEX IF NOT EXISTS idx_call_duty_signups_status ON call_duty_signups(status)',
+    ];
+
+    for (const idx of indexes) {
+      try { await pool.query(idx); } catch (e) { /* index may already exist */ }
+    }
+
+    // Phase 2: add google_calendar_event_id column if missing
+    try {
+      await pool.query(`ALTER TABLE call_duty_slots ADD COLUMN IF NOT EXISTS google_calendar_event_id varchar`);
+      console.log('[Database] google_calendar_event_id column ensured');
+    } catch (e) { /* column may already exist */ }
+
+    console.log('[Database] ✅ call_duty tables created successfully');
+  } catch (error) {
+    console.error('[Database] ❌ Error creating call_duty tables:', error);
+    throw error;
+  }
+}
+
+// Auto-migration for market_pulse_snapshots to match schema.ts expectations
+export async function migrateMarketPulseSnapshots() {
+  try {
+    console.log('[Migration] Checking market_pulse_snapshots schema...');
+    
+    const alterStatements = [
+      // Market pulse snapshots
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS total_properties INTEGER DEFAULT 0",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS active INTEGER DEFAULT 0", 
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS active_under_contract INTEGER DEFAULT 0",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS pending INTEGER DEFAULT 0",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS closed INTEGER DEFAULT 0",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS last_updated_at TIMESTAMP DEFAULT NOW()",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS office_id VARCHAR(50) DEFAULT 'ACT1518371'",
+      "ALTER TABLE market_pulse_snapshots ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'spyglass'",
+      "ALTER TABLE market_pulse_snapshots ALTER COLUMN cached_data DROP NOT NULL",
+      
+      // CMA table fixes - add ALL missing columns to match schema.ts
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS subject_property JSONB",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS comparable_properties JSONB DEFAULT '[]'::jsonb",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS notes TEXT",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'draft'",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS presentation_config JSONB",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS share_token TEXT",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS share_created_at TIMESTAMP",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS properties_data JSONB",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS prepared_for TEXT", 
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS suggested_list_price INTEGER",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS cover_letter TEXT",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS brochure JSONB",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS adjustments JSONB",
+      "ALTER TABLE cmas ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP"
+    ];
+
+    for (const stmt of alterStatements) {
+      try {
+        await pool.query(stmt);
+        console.log(`[Migration] Executed: ${stmt.substring(0, 60)}...`);
+      } catch (e) {
+        // Ignore if column already exists
+        console.log(`[Migration] Column might already exist: ${e.message}`);
+      }
+    }
+    
+    // DEBUG: Diagnose phone column migration failure with detailed logging
+    try {
+      console.log('[Migration] 🔍 DEBUG: Diagnosing phone column migration failure...');
+      
+      // Get database connection info
+      const dbInfo = await db.execute(sql`SELECT current_database(), current_user, inet_server_addr(), inet_server_port()`);
+      console.log('[Migration] 🔗 CONNECTED TO:', JSON.stringify(dbInfo.rows));
+      
+      // BEFORE ALTER TABLE: Check if phone column exists
+      const beforeCheck = await db.execute(sql`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'agent_profiles' AND column_name = 'phone'
+      `);
+      console.log('[Migration] 📋 BEFORE ALTER: phone exists in DB?', beforeCheck.rows.length > 0, JSON.stringify(beforeCheck.rows));
+      
+      // Get ALL existing columns BEFORE
+      const existingColumnsResult = await db.execute(sql`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'agent_profiles'
+        ORDER BY ordinal_position
+      `);
+      console.log('[Migration] 📋 ALL columns BEFORE ALTER:', existingColumnsResult.rows.map((row: any) => row.column_name));
+      
+      // Execute the ALTER TABLE for phone column
+      console.log('[Migration] 🔨 Executing ALTER TABLE for phone column...');
+      await db.execute(sql`ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS phone TEXT`);
+      console.log('[Migration] ✅ ALTER TABLE executed');
+      
+      // IMMEDIATELY after ALTER TABLE: Check if phone column exists
+      const afterCheck = await db.execute(sql`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'agent_profiles' AND column_name = 'phone'
+      `);
+      console.log('[Migration] 📋 AFTER ALTER: phone exists in DB?', afterCheck.rows.length > 0, JSON.stringify(afterCheck.rows));
+      
+      // Get ALL existing columns AFTER
+      const finalColumnsResult = await db.execute(sql`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'agent_profiles'
+        ORDER BY ordinal_position
+      `);
+      console.log('[Migration] 📋 ALL columns AFTER ALTER:', finalColumnsResult.rows.map((row: any) => row.column_name));
+      
+      // If phone column still doesn't exist, this is critical
+      if (afterCheck.rows.length === 0) {
+        console.error('[Migration] ❌ CRITICAL: ALTER TABLE succeeded but phone column NOT found!');
+        console.error('[Migration] 🔍 Database connection details:', JSON.stringify(dbInfo.rows));
+        console.error('[Migration] 🔍 This suggests a connection or transaction issue');
+        throw new Error('CRITICAL: Phone column migration failed - ALTER succeeded but column not found');
+      } else {
+        console.log('[Migration] 🎉 SUCCESS: Phone column successfully added to database');
+      }
+      
+      // Now add other missing columns
+      const requiredColumns = [
+        { name: 'title', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS title TEXT' },
+        { name: 'headshot_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS headshot_url TEXT' },
+        { name: 'bio', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS bio TEXT' },
+        { name: 'facebook_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS facebook_url TEXT' },
+        { name: 'instagram_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS instagram_url TEXT' },
+        { name: 'linkedin_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS linkedin_url TEXT' },
+        { name: 'twitter_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS twitter_url TEXT' },
+        { name: 'website_url', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS website_url TEXT' },
+        { name: 'marketing_company', sql: 'ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS marketing_company TEXT' }
+      ];
+      
+      // Check and add each required column
+      for (const column of requiredColumns) {
+        const columnCheck = await db.execute(sql.raw(`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'agent_profiles' AND column_name = '${column.name}'
+        `));
+        
+        if (columnCheck.rows.length === 0) {
+          console.log(`[Migration] ➕ Adding missing column: ${column.name}`);
+          await db.execute(sql.raw(column.sql));
+          
+          // Verify it was added
+          const verifyCheck = await db.execute(sql.raw(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'agent_profiles' AND column_name = '${column.name}'
+          `));
+          console.log(`[Migration] 🔍 Column ${column.name} added? ${verifyCheck.rows.length > 0}`);
+        } else {
+          console.log(`[Migration] ✅ Column already exists: ${column.name}`);
+        }
+      }
+      
+      console.log('[Migration] 🎉 DEBUG: Agent profiles migration completed with detailed logging');
+      
+    } catch (e) {
+      console.error(`[Migration] ❌ CRITICAL: agent_profiles migration failed: ${e.message}`);
+      console.error('[Migration] Full error details:', e);
+      throw e; // Re-throw to fail startup if critical columns are missing
+    }
+    
+    console.log('[Migration] market_pulse_snapshots schema updated successfully');
+    
+  } catch (error) {
+    console.error('[Migration] CRITICAL: market_pulse_snapshots migration failed:', error);
+    console.error('[Migration] Full error details:', JSON.stringify(error, null, 2));
+    // Re-throw to see the error in startup logs
+    throw error;
+  }
+}
+
+async function ensureAgentDirectoryFubEmail() {
+  try {
+    console.log("[Database] Ensuring agent_directory_profiles has fub_email column...");
+    
+    // Check if the column exists
+    const existingColumns = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'agent_directory_profiles' AND column_name = 'fub_email'
+    `);
+    
+    if (existingColumns.rows.length === 0) {
+      console.log("[Database] Adding fub_email column to agent_directory_profiles...");
+      await pool.query(`
+        ALTER TABLE agent_directory_profiles 
+        ADD COLUMN IF NOT EXISTS fub_email VARCHAR(255)
+      `);
+      console.log("[Database] ✅ Successfully added fub_email column");
+      
+      // Add comment for documentation
+      await pool.query(`
+        COMMENT ON COLUMN agent_directory_profiles.fub_email IS 
+        'Follow Up Boss routing email for agent-specific lead assignment'
+      `);
+    } else {
+      console.log("[Database] fub_email column already exists in agent_directory_profiles");
+    }
+    
+  } catch (error) {
+    console.error("[Database] Error adding fub_email column:", error);
+    // Don't throw - this is not critical for startup
+  }
+}
+
+async function createUploadsTable() {
+  try {
+    console.log("[Database] Creating uploads table...");
+    
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS uploads (
+        id VARCHAR PRIMARY KEY,
+        filename VARCHAR NOT NULL,
+        mime_type VARCHAR NOT NULL,
+        data TEXT NOT NULL,
+        uploaded_by VARCHAR REFERENCES users(id),
+        uploaded_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    
+    console.log("[Database] Uploads table created/verified successfully");
+  } catch (error) {
+    console.error("[Database] Error creating uploads table:", error);
+    // Do not throw - table might already exist
+  }
+}

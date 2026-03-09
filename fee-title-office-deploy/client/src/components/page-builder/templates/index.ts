@@ -1,0 +1,1 @@
+export { idxHomepageTemplate } from './idx-homepage';

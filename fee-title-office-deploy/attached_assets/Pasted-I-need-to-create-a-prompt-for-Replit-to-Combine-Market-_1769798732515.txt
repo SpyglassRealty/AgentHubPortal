@@ -1,0 +1,889 @@
+I need to create a prompt for Replit to:
+
+Combine Market Pulse and Austin Metro Listings into a single card
+Have one refresh button that refreshes both
+Fix the listing detail modal to work when clicking on property cards
+Send this to Mission Control Replit:
+### Fix Properties Page - Combine into Single Card + Fix Listing Modal
+
+**Issues to Fix:**
+1. Market Pulse and Austin Metro Listings should be in ONE card (not separate cards)
+2. Single Refresh button should refresh both sections
+3. Listing detail modal is not opening when clicking on property cards - needs to be fixed
+
+---
+
+## PART 1: Combine Market Pulse + Listings into Single Card
+
+### Update `client/src/pages/properties.tsx`:
+```tsx
+import React, { useState, useRef } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { 
+  Building2, TrendingUp, ChevronLeft, ChevronRight, ChevronDown, 
+  Bed, Bath, Square, Home, FileText, Clock, CheckCircle, X
+} from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { RefreshButton } from '@/components/ui/RefreshButton';
+import { useSyncStatus } from '@/hooks/useSyncStatus';
+
+export default function PropertiesPage() {
+  const { isDark } = useTheme();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Status filter from URL
+  const urlStatus = searchParams.get('status') || 'Active';
+  const [statusFilter, setStatusFilter] = useState<string>(urlStatus);
+  const [sortBy, setSortBy] = useState<string>('listDate');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  
+  // IMPORTANT: State for selected listing modal
+  const [selectedListing, setSelectedListing] = useState<any>(null);
+  
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Fetch Market Pulse stats
+  const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useQuery({
+    queryKey: ['market-pulse-stats'],
+    queryFn: async () => {
+      const response = await fetch('/api/market-pulse/stats?city=Austin');
+      if (!response.ok) throw new Error('Failed to fetch');
+      return response.json();
+    },
+  });
+
+  // Fetch Austin Metro Listings
+  const { data: listingsData, isLoading: listingsLoading, refetch: refetchListings } = useQuery({
+    queryKey: ['austin-metro-listings', statusFilter, sortBy, sortOrder],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        city: 'Austin',
+        status: statusFilter === 'all' ? '' : statusFilter,
+        sortBy,
+        sortOrder,
+        limit: '50'
+      });
+      const response = await fetch(`/api/company-listings?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch');
+      return response.json();
+    },
+  });
+
+  const stats = statsData?.stats || {
+    active: 0,
+    activeUnderContract: 0,
+    pending: 0,
+    closed: 0,
+    totalActive: 0
+  };
+
+  const listings = listingsData?.listings || [];
+  const maxValue = Math.max(stats.active, stats.activeUnderContract, stats.pending, stats.closed, 1);
+
+  // Combined refresh function
+  const handleRefresh = async () => {
+    await Promise.all([refetchStats(), refetchListings()]);
+  };
+
+  // Status filter change
+  const handleStatusChange = (status: string) => {
+    setStatusFilter(status);
+    if (status === 'all') {
+      searchParams.delete('status');
+    } else {
+      searchParams.set('status', status);
+    }
+    setSearchParams(searchParams);
+  };
+
+  // Navigate to filtered view when clicking bar/card
+  const handleStatusClick = (status: string) => {
+    handleStatusChange(status);
+  };
+
+  // Scroll functions
+  const scrollLeft = () => scrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' });
+  const scrollRight = () => scrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' });
+
+  // Sort options
+  const sortOptions = [
+    { label: 'Newest Listed', value: 'listDate', order: 'desc' },
+    { label: 'Oldest Listed', value: 'listDate', order: 'asc' },
+    { label: 'Price: High to Low', value: 'listPrice', order: 'desc' },
+    { label: 'Price: Low to High', value: 'listPrice', order: 'asc' },
+    { label: 'Days on Market: Most', value: 'simpleDaysOnMarket', order: 'desc' },
+    { label: 'Days on Market: Least', value: 'simpleDaysOnMarket', order: 'asc' },
+  ];
+
+  const currentSortLabel = sortOptions.find(
+    opt => opt.value === sortBy && opt.order === sortOrder
+  )?.label || 'Newest Listed';
+
+  // Theme classes
+  const cardBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+
+  // Status config
+  const statusConfig = [
+    { key: 'Active', label: 'Active', sublabel: 'On Market', value: stats.active, color: '#22C55E', textColor: 'text-green-600', bgColor: isDark ? 'bg-green-900/20' : 'bg-green-50', borderColor: 'border-green-200', icon: Home },
+    { key: 'ActiveUnderContract', label: 'Under Contract', sublabel: '', value: stats.activeUnderContract, color: '#3B82F6', textColor: 'text-blue-600', bgColor: isDark ? 'bg-blue-900/20' : 'bg-blue-50', borderColor: 'border-blue-200', icon: FileText },
+    { key: 'Pending', label: 'Pending', sublabel: 'Closing Soon', value: stats.pending, color: '#EAB308', textColor: 'text-yellow-600', bgColor: isDark ? 'bg-yellow-900/20' : 'bg-yellow-50', borderColor: 'border-yellow-200', icon: Clock },
+    { key: 'Closed', label: 'Closed (30d)', sublabel: 'Sales', value: stats.closed, color: '#9CA3AF', textColor: 'text-gray-600', bgColor: isDark ? 'bg-gray-700/50' : 'bg-gray-50', borderColor: 'border-gray-300', icon: CheckCircle },
+  ];
+
+  // Status tabs for listings filter
+  const statusTabs = [
+    { key: 'Active', label: 'Active' },
+    { key: 'ActiveUnderContract', label: 'Under Contract' },
+    { key: 'Pending', label: 'Pending' },
+    { key: 'Closed', label: 'Closed' },
+    { key: 'all', label: 'All' },
+  ];
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
+  const isLoading = statsLoading || listingsLoading;
+
+  return (
+    <div className={`min-h-screen p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Page Header */}
+      <div className="flex items-center gap-3 mb-2">
+        <Building2 className="w-8 h-8 text-[#EF4923]" />
+        <h1 className={`text-2xl font-bold ${textPrimary}`}>Properties</h1>
+      </div>
+      <p className={`mb-6 ${textSecondary}`}>
+        Access property data, listings, and market insights for the Austin Metro Area.
+      </p>
+
+      {/* ============================================ */}
+      {/* SINGLE COMBINED CARD: Market Pulse + Listings */}
+      {/* ============================================ */}
+      <div className={`${cardBg} rounded-xl border ${borderColor} p-4 md:p-6 mb-6`}>
+        
+        {/* -------- MARKET PULSE SECTION -------- */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-[#EF4923]" />
+            <h2 className={`text-lg font-semibold ${textPrimary}`}>Market Pulse</h2>
+          </div>
+          {/* SINGLE REFRESH BUTTON FOR BOTH SECTIONS */}
+          <RefreshButton
+            onRefresh={handleRefresh}
+            lastManualRefresh={null}
+            lastAutoRefresh={null}
+            isLoading={isLoading}
+          />
+        </div>
+
+        <p className={`text-sm ${textSecondary} mb-4`}>Austin Metro Area</p>
+
+        {/* Bar Chart */}
+        <div className="mb-4">
+          <div className="flex">
+            <div className="w-10 flex flex-col justify-between text-xs text-gray-400 pr-2">
+              <span>{Math.round(maxValue / 1000)}k</span>
+              <span>{Math.round(maxValue / 2000)}k</span>
+              <span>0</span>
+            </div>
+            <div className="flex-1 flex items-end gap-3 h-36">
+              {statusConfig.map((item) => (
+                <div
+                  key={item.key}
+                  className="flex-1 flex flex-col items-center cursor-pointer group"
+                  onClick={() => handleStatusClick(item.key)}
+                >
+                  <div
+                    className="w-full rounded-t-md transition-all duration-200 group-hover:opacity-80 group-hover:scale-105"
+                    style={{
+                      height: `${Math.max((item.value / maxValue) * 100, 5)}%`,
+                      backgroundColor: item.color,
+                      minHeight: '8px'
+                    }}
+                  />
+                  <span className={`mt-2 text-xs ${textSecondary} group-hover:text-[#EF4923] transition-colors text-center`}>
+                    {item.label.replace(' (30d)', '')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Stat Cards */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          {statusConfig.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.key}
+                onClick={() => handleStatusClick(item.key)}
+                className={`p-3 rounded-lg border cursor-pointer transition-all duration-200
+                  hover:shadow-md hover:scale-[1.02] active:scale-[0.98]
+                  ${item.bgColor} ${item.borderColor}
+                `}
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Icon className={`w-4 h-4 ${item.textColor}`} />
+                  <span className={`text-sm font-medium ${item.textColor}`}>{item.label}</span>
+                </div>
+                {item.sublabel && (
+                  <p className={`text-xs ${textSecondary}`}>{item.sublabel}</p>
+                )}
+                <p className={`text-xl font-bold ${item.textColor} text-right`}>
+                  {item.value.toLocaleString()}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Total Active */}
+        <div className={`mb-6 text-center`}>
+          <span className={textSecondary}>Total Active: </span>
+          <span className={`font-bold ${textPrimary}`}>{stats.totalActive.toLocaleString()}</span>
+        </div>
+
+        {/* -------- DIVIDER -------- */}
+        <hr className={`${borderColor} mb-6`} />
+
+        {/* -------- AUSTIN METRO LISTINGS SECTION -------- */}
+        <div className="flex items-center gap-2 mb-4">
+          <Building2 className="w-5 h-5 text-[#EF4923]" />
+          <div>
+            <h2 className={`text-lg font-semibold ${textPrimary}`}>Austin Metro Listings</h2>
+            <p className={`text-sm ${textSecondary}`}>
+              {listingsData?.total?.toLocaleString() || listings.length} {statusFilter !== 'all' ? statusFilter.toLowerCase() : ''} listings
+            </p>
+          </div>
+        </div>
+
+        {/* Filters Row */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+          {/* Status Filter Tabs */}
+          <div className={`flex gap-1 p-1 rounded-lg overflow-x-auto ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+            {statusTabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => handleStatusChange(tab.key)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-all
+                  ${statusFilter === tab.key
+                    ? 'bg-[#EF4923] text-white'
+                    : isDark 
+                      ? 'text-gray-400 hover:text-white' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }
+                `}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowSortDropdown(!showSortDropdown)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-all
+                ${isDark 
+                  ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }
+              `}
+            >
+              <span>{currentSortLabel}</span>
+              <ChevronDown className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showSortDropdown && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowSortDropdown(false)} />
+                <div className={`absolute left-0 top-full mt-1 z-50 w-52 rounded-lg shadow-lg border ${cardBg} ${borderColor}`}>
+                  <div className="py-1">
+                    {sortOptions.map((option, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          setSortBy(option.value);
+                          setSortOrder(option.order as 'asc' | 'desc');
+                          setShowSortDropdown(false);
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm transition-colors
+                          ${sortBy === option.value && sortOrder === option.order
+                            ? 'bg-[#EF4923] text-white'
+                            : isDark ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
+                          }
+                        `}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Loading State */}
+        {listingsLoading && (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#EF4923]"></div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!listingsLoading && listings.length === 0 && (
+          <div className={`text-center py-8 rounded-lg border-2 border-dashed ${borderColor}`}>
+            <Building2 className={`w-10 h-10 mx-auto mb-2 ${textSecondary}`} />
+            <p className={`font-medium ${textPrimary}`}>No {statusFilter.toLowerCase()} listings</p>
+            <p className={`text-sm ${textSecondary}`}>Try a different filter</p>
+          </div>
+        )}
+
+        {/* Listings Horizontal Scroll */}
+        {!listingsLoading && listings.length > 0 && (
+          <div className="relative">
+            {/* Scroll Left */}
+            <button
+              onClick={scrollLeft}
+              className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full shadow-lg
+                ${isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-white hover:bg-gray-50 text-gray-700 border'}
+                hidden md:flex items-center justify-center`}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+
+            {/* Cards Container */}
+            <div
+              ref={scrollRef}
+              className="flex gap-4 overflow-x-auto pb-4 px-1 scroll-smooth"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+            >
+              {listings.map((listing: any) => (
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  isDark={isDark}
+                  onClick={() => {
+                    console.log('Opening listing modal:', listing);
+                    setSelectedListing(listing);
+                  }}
+                  formatPrice={formatPrice}
+                />
+              ))}
+            </div>
+
+            {/* Scroll Right */}
+            <button
+              onClick={scrollRight}
+              className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full shadow-lg
+                ${isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-white hover:bg-gray-50 text-gray-700 border'}
+                hidden md:flex items-center justify-center`}
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+
+            {/* Mobile Swipe Hint */}
+            <p className={`text-xs text-center mt-2 md:hidden ${textSecondary}`}>
+              ← Swipe to see more →
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Property Apps & Tools Section */}
+      <h2 className={`text-lg font-semibold mb-4 ${textPrimary}`}>Property Apps & Tools</h2>
+      {/* ... existing apps cards ... */}
+
+      {/* ============================================ */}
+      {/* LISTING DETAIL MODAL - MUST BE RENDERED */}
+      {/* ============================================ */}
+      {selectedListing && (
+        <ListingDetailModal
+          listing={selectedListing}
+          isDark={isDark}
+          onClose={() => setSelectedListing(null)}
+          formatPrice={formatPrice}
+        />
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+## PART 2: Listing Card Component
+```tsx
+interface ListingCardProps {
+  listing: any;
+  isDark: boolean;
+  onClick: () => void;
+  formatPrice: (price: number) => string;
+}
+
+function ListingCard({ listing, isDark, onClick, formatPrice }: ListingCardProps) {
+  const cardBg = isDark ? 'bg-gray-700' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-600' : 'border-gray-200';
+
+  const statusColors: Record<string, string> = {
+    'Active': 'bg-green-500',
+    'ActiveUnderContract': 'bg-blue-500',
+    'Pending': 'bg-yellow-500',
+    'Closed': 'bg-gray-500',
+  };
+
+  const getStatusLabel = (status: string) => {
+    if (status === 'ActiveUnderContract') return 'UNDER CONTRACT';
+    return status.toUpperCase();
+  };
+
+  const streetAddress = [
+    listing.address?.streetNumber,
+    listing.address?.streetName,
+    listing.address?.streetSuffix
+  ].filter(Boolean).join(' ');
+
+  const cityStateZip = `${listing.address?.city || ''}, ${listing.address?.state || 'TX'} ${listing.address?.postalCode || ''}`;
+
+  return (
+    <div
+      onClick={onClick}
+      className={`flex-shrink-0 w-64 sm:w-72 ${cardBg} rounded-xl border ${borderColor} overflow-hidden cursor-pointer 
+        transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]`}
+    >
+      {/* Photo */}
+      <div className="relative aspect-[4/3] bg-gray-800">
+        {listing.photos?.[0] ? (
+          <img
+            src={listing.photos[0]}
+            alt={streetAddress}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-800">
+            <Building2 className="w-12 h-12 text-gray-600" />
+          </div>
+        )}
+        
+        {/* Status Badge */}
+        <span className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold
+          ${statusColors[listing.status] || 'bg-gray-500'} text-white`}>
+          {getStatusLabel(listing.status)}
+        </span>
+        
+        {/* Photo Count */}
+        {listing.photos?.length > 1 && (
+          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/60 text-white text-xs">
+            1/{listing.photos.length}
+          </span>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="p-3">
+        <p className={`text-lg font-bold ${textPrimary}`}>
+          {formatPrice(listing.listPrice)}
+        </p>
+        <p className={`text-sm ${textPrimary} truncate`}>
+          {streetAddress}
+        </p>
+        <p className={`text-xs ${textSecondary} truncate mb-2`}>
+          {cityStateZip}
+        </p>
+        <div className="flex items-center gap-3 text-xs">
+          <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <Bed className="w-4 h-4" /> {listing.beds}
+          </span>
+          <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <Bath className="w-4 h-4" /> {listing.baths}
+          </span>
+          <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <Square className="w-4 h-4" /> {(listing.sqft || listing.livingArea)?.toLocaleString()}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## PART 3: Listing Detail Modal (FIXED)
+
+This is the critical component that was missing/broken:
+```tsx
+interface ListingDetailModalProps {
+  listing: any;
+  isDark: boolean;
+  onClose: () => void;
+  formatPrice: (price: number) => string;
+}
+
+function ListingDetailModal({ listing, isDark, onClose, formatPrice }: ListingDetailModalProps) {
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  
+  const modalBg = isDark ? 'bg-gray-900' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+
+  const photos = listing.photos || [];
+  const sqft = listing.sqft || listing.livingArea || 0;
+  const pricePerSqft = sqft ? Math.round(listing.listPrice / sqft) : null;
+  const daysOnMarket = listing.daysOnMarket || listing.simpleDaysOnMarket || 0;
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  // Prevent body scroll when modal is open
+  React.useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  // Photo navigation
+  const nextPhoto = () => {
+    setCurrentPhotoIndex((prev) => (prev + 1) % photos.length);
+  };
+
+  const prevPhoto = () => {
+    setCurrentPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length);
+  };
+
+  // Keyboard navigation
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') prevPhoto();
+      if (e.key === 'ArrowRight') nextPhoto();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [photos.length]);
+
+  // Build address
+  const streetAddress = [
+    listing.address?.streetNumber,
+    listing.address?.streetName,
+    listing.address?.streetSuffix
+  ].filter(Boolean).join(' ');
+
+  // Status colors
+  const statusColors: Record<string, string> = {
+    'Active': 'bg-green-500',
+    'ActiveUnderContract': 'bg-blue-500',
+    'Pending': 'bg-yellow-500',
+    'Closed': 'bg-gray-500',
+  };
+
+  const getStatusLabel = (status: string) => {
+    if (status === 'ActiveUnderContract') return 'Under Contract';
+    return status;
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      onClick={onClose}
+    >
+      <div 
+        className={`${modalBg} rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className={`flex items-start justify-between p-4 border-b ${borderColor}`}>
+          <div>
+            <h2 className={`text-xl font-bold ${textPrimary}`}>{streetAddress}</h2>
+            <p className={`text-sm ${textSecondary}`}>MLS# {listing.mlsNumber}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className={`p-2 rounded-full min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors
+              ${isDark ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Photo Carousel */}
+          <div className="relative bg-black">
+            <div className="aspect-[16/10] relative">
+              {photos.length > 0 ? (
+                <img
+                  src={photos[currentPhotoIndex]}
+                  alt={`Photo ${currentPhotoIndex + 1}`}
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                  <Building2 className="w-16 h-16 text-gray-600" />
+                </div>
+              )}
+
+              {/* Navigation Arrows */}
+              {photos.length > 1 && (
+                <>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); prevPhoto(); }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); nextPhoto(); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </button>
+                </>
+              )}
+
+              {/* Photo Counter */}
+              {photos.length > 0 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/70 text-white text-sm">
+                  {currentPhotoIndex + 1} / {photos.length}
+                </div>
+              )}
+            </div>
+
+            {/* Thumbnail Strip */}
+            {photos.length > 1 && (
+              <div className="flex gap-1 p-2 overflow-x-auto bg-gray-900">
+                {photos.slice(0, 10).map((photo: string, index: number) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentPhotoIndex(index)}
+                    className={`flex-shrink-0 w-16 h-12 rounded overflow-hidden border-2 transition-colors
+                      ${currentPhotoIndex === index ? 'border-[#EF4923]' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                  >
+                    <img src={photo} alt={`Thumb ${index + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+                {photos.length > 10 && (
+                  <div className="flex-shrink-0 w-16 h-12 rounded bg-gray-700 flex items-center justify-center text-white text-xs">
+                    +{photos.length - 10}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Property Details */}
+          <div className="p-4 space-y-4">
+            {/* Price Row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className={`text-sm ${textSecondary}`}>Price</p>
+                <p className={`text-2xl font-bold ${textPrimary}`}>
+                  {formatPrice(listing.listPrice)}
+                </p>
+              </div>
+              {pricePerSqft && (
+                <div>
+                  <p className={`text-sm ${textSecondary}`}>Price/SqFt</p>
+                  <p className={`text-2xl font-bold ${textPrimary}`}>
+                    ${pricePerSqft}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Stats Row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className={`text-sm ${textSecondary}`}>Bedrooms</p>
+                <p className={`text-xl font-bold ${textPrimary}`}>{listing.beds}</p>
+              </div>
+              <div>
+                <p className={`text-sm ${textSecondary}`}>Bathrooms</p>
+                <p className={`text-xl font-bold ${textPrimary}`}>{listing.baths}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className={`text-sm ${textSecondary}`}>Square Feet</p>
+                <p className={`text-xl font-bold ${textPrimary}`}>
+                  {sqft?.toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className={`text-sm ${textSecondary}`}>Days on Market</p>
+                <p className={`text-xl font-bold ${textPrimary}`}>
+                  {daysOnMarket}
+                </p>
+              </div>
+            </div>
+
+            {/* Status & Date */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className={`text-sm ${textSecondary} mb-1`}>Status</p>
+                <span className={`inline-block px-3 py-1 rounded text-sm font-medium
+                  ${statusColors[listing.status] || 'bg-gray-500'} text-white`}>
+                  {getStatusLabel(listing.status)}
+                </span>
+              </div>
+              <div>
+                <p className={`text-sm ${textSecondary}`}>List Date</p>
+                <p className={`text-lg font-medium ${textPrimary}`}>
+                  {formatDate(listing.listDate)}
+                </p>
+              </div>
+            </div>
+
+            {/* Full Address */}
+            <div className={`pt-4 border-t ${borderColor}`}>
+              <p className={`text-sm ${textSecondary}`}>Full Address</p>
+              <p className={`font-medium ${textPrimary}`}>
+                {listing.address?.full || `${streetAddress}, ${listing.address?.city}, ${listing.address?.state} ${listing.address?.postalCode}`}
+              </p>
+            </div>
+
+            {/* Subdivision if available */}
+            {listing.subdivision && (
+              <div>
+                <p className={`text-sm ${textSecondary}`}>Subdivision</p>
+                <p className={`font-medium ${textPrimary}`}>{listing.subdivision}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Visual Design Reference
+
+### Combined Card Layout
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  📈 Market Pulse                                           [↻ Refresh]     │
+│  Austin Metro Area                                                          │
+│                                                                             │
+│  [Bar Chart - Active | Under Contract | Pending | Closed]                   │
+│                                                                             │
+│  ┌──────────────┐  ┌──────────────┐                                        │
+│  │ 🏠 Active    │  │ 📋 Under     │                                        │
+│  │ On Market    │  │ Contract     │                                        │
+│  │      19,930  │  │       1,933  │                                        │
+│  └──────────────┘  └──────────────┘                                        │
+│  ┌──────────────┐  ┌──────────────┐                                        │
+│  │ ⏳ Pending   │  │ ✓ Closed     │                                        │
+│  │ Closing Soon │  │ (30d) Sales  │                                        │
+│  │       2,651  │  │         276  │                                        │
+│  └──────────────┘  └──────────────┘                                        │
+│                                                                             │
+│                     Total Active: 24,514                                    │
+│                                                                             │
+│  ───────────────────────────────────────────────────────────────────────── │
+│                                                                             │
+│  🏢 Austin Metro Listings                                                   │
+│  19,930 active listings                                                     │
+│                                                                             │
+│  [Active ▼] [Under Contract] [Pending] [Closed] [All]   [Newest Listed ▼]  │
+│                                                                             │
+│  [<] ┌──────┐  ┌──────┐  ┌──────┐  ┌──────┐  ┌──────┐ [>]                  │
+│      │PHOTO │  │PHOTO │  │PHOTO │  │PHOTO │  │PHOTO │                      │
+│      │$690K │  │$315K │  │$475K │  │$485K │  │$520K │                      │
+│      │Addr..│  │Addr..│  │Addr..│  │Addr..│  │Addr..│                      │
+│      └──────┘  └──────┘  └──────┘  └──────┘  └──────┘                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+### Modal Design (Matching 2nd Screenshot)
+┌─────────────────────────────────────────────────────────┐
+│  2400 Rockingham CIR                               [X]  │
+│  MLS# ACT2127053                                        │
+├─────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────┐   │
+│  │                                                 │   │
+│  │ [<]            [PHOTO]                    [>]   │   │
+│  │                                                 │   │
+│  │                  1 / 19                         │   │
+│  └─────────────────────────────────────────────────┘   │
+│  [thumb][thumb][thumb][thumb][thumb]...                 │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  Price              Price/SqFt                          │
+│  $990,000           $490                                │
+│                                                         │
+│  Bedrooms           Bathrooms                           │
+│  3                  2                                   │
+│                                                         │
+│  Square Feet        Days on Market                      │
+│  2,019              129                                 │
+│                                                         │
+│  Status             List Date                           │
+│  [Active]           Aug 2, 2025                         │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+
+---
+
+## 📱 Mobile Optimization
+
+**All changes must be optimized for iPad, iOS, and Android:**
+
+| Requirement | Implementation |
+|-------------|----------------|
+| Touch targets | 44x44px minimum on all buttons |
+| Modal | Full-screen on mobile, centered on desktop |
+| Photo nav | Swipe support + arrow buttons |
+| Scroll | momentum scrolling on listings |
+| Keyboard | ESC to close, arrows for photos |
+
+---
+
+## Testing Checklist
+
+### Combined Card
+- [ ] Market Pulse and Listings in ONE card
+- [ ] Single refresh button refreshes both sections
+- [ ] Divider separates the two sections
+
+### Listing Modal
+- [ ] Modal opens when clicking any listing card
+- [ ] Shows correct property details
+- [ ] Photo carousel works with arrows
+- [ ] Photo counter shows current/total
+- [ ] Thumbnail strip scrolls and is clickable
+- [ ] Close button works (X and click outside)
+- [ ] ESC key closes modal
+- [ ] Arrow keys navigate photos
+- [ ] Body scroll locked when modal open
+- [ ] Modal responsive on mobile
+
+### Theme Support
+- [ ] Light mode correct
+- [ ] Dark mode correct

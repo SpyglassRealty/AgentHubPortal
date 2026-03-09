@@ -1,0 +1,85 @@
+---
+
+## 📱 Mobile Optimization Requirements
+
+**All changes must be optimized for:**
+
+| Device | Browser | Screen Size |
+|--------|---------|-------------|
+| iPad Pro | Safari | 1024 x 1366 |
+| iPad Air/Mini | Safari | 768 x 1024 |
+| iPhone 14/15 Pro | Safari | 393 x 852 |
+| iPhone SE | Safari | 375 x 667 |
+| Android Tablet | Chrome | 800 x 1280 |
+| Android Phone | Chrome | 360 x 800 |
+
+### Mobile UX Checklist:
+- [ ] Touch targets minimum 44x44px
+- [ ] No hover-only interactions (provide touch alternatives)
+- [ ] Responsive layouts (stack on mobile, side-by-side on tablet+)
+- [ ] Safe area insets for notched devices
+- [ ] Smooth scrolling with momentum (-webkit-overflow-scrolling: touch)
+- [ ] No horizontal overflow
+- [ ] Readable font sizes (min 16px for body text)
+- [ ] Fast load times on mobile networks
+- [ ] Works in both portrait and landscape orientations
+
+### Responsive Breakpoints:
+```css
+/* Mobile: < 640px - Stack everything */
+/* Tablet: 640px - 1024px - Side-by-side where possible */
+/* Desktop: > 1024px - Full two-column layout */
+
+@media (max-width: 1023px) {
+  /* Stack Austin Metro and Company Listings */
+  .grid-cols-2 { grid-template-columns: 1fr; }
+}
+```
+
+### Theme Sync:
+- [ ] Light mode styling correct
+- [ ] Dark mode styling correct
+- [ ] System theme detection works
+- [ ] Theme toggle updates component immediately
+
+---
+
+## Testing Checklist
+
+### API
+- [ ] /api/company-listings/office?officeCode=5220 returns listings
+- [ ] Listings include complete address with ZIP
+- [ ] Agent name included when available
+- [ ] Error handling for missing API key
+
+### Dashboard Layout
+- [ ] Market Pulse shows two columns on desktop
+- [ ] Stacks to single column on mobile/tablet
+- [ ] Company Listings section visible
+- [ ] "View All" link navigates to Properties page
+
+### Company Listings Widget
+- [ ] Shows Spyglass Realty active listings
+- [ ] Displays listing count
+- [ ] Horizontal scroll works
+- [ ] Cards show photo, price, address, bed/bath/sqft
+- [ ] Clicking card opens modal
+- [ ] Swipe scroll on mobile
+
+### Listing Modal
+- [ ] Opens on card click
+- [ ] Photo carousel works
+- [ ] All details display
+- [ ] Close button works (44x44 touch target)
+- [ ] Click outside closes
+
+### Clickable Market Pulse
+- [ ] Bars navigate to Properties with status filter
+- [ ] Stat cards navigate to Properties with status filter
+- [ ] Hover effects on desktop
+- [ ] Touch feedback on mobile
+
+### Theme Support
+- [ ] Light mode correct
+- [ ] Dark mode correct
+- [ ] Transitions smooth on toggle

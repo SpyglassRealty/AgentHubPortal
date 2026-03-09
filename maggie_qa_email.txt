@@ -1,0 +1,9 @@
+Subject: Texas Contract Extraction QA
+
+Hi Maggie,
+
+Could you please QA test the contract extraction at http://192.168.1.162:3001/fee-title-office?
+
+The extraction logic follows the Texas residential purchase contract specification, parsing Paragraphs 3, 5, 9, and 23 for key terms. Please let me know if the extracted fields match what you normally pull for Jointly, and if you find any issues.
+
+Thanks!

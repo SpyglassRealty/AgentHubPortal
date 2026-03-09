@@ -1,0 +1,25 @@
+EMAIL SENDING INSTRUCTIONS
+========================
+
+TO: ryan@spyglassrealty.com, sunny@spyglassrealty.com
+FROM: clawd@spyglassrealty.com
+SUBJECT: Attorney Recruitment Project - Research Complete & Ready for Outreach
+
+ATTACHMENTS:
+1. attorney-master-list.csv
+2. email-report.md  
+3. dashboard-design.html
+
+EMAIL BODY:
+See email-body.txt in this folder
+
+GMAIL CREDENTIALS:
+Email: clawd@spyglassrealty.com
+App Password: swse uvpc cyfq jemh (remove spaces when using)
+
+Note: The Gmail authentication is currently failing. You may need to:
+1. Generate a new app password from Google Account settings
+2. Ensure 2-factor authentication is enabled
+3. Use the app password without spaces
+
+ALTERNATIVE: You can copy and paste the email body and manually attach the files using your preferred email client.

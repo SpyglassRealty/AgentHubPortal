@@ -1,0 +1,22 @@
+{
+  "email": "clawd@spyglassrealty.com",
+  "password": "8&qZGQLNj9r56bU*",
+  "updated_at": "2026-03-07T17:36:00-06:00",
+  "note": "Main Gmail account password (NOT app password). Use this to log in and generate app passwords.",
+  "app_passwords": {
+    "previous_attempts": [
+      {
+        "password": "swse uvpc cyfq jemh",
+        "status": "invalid - created from Ryan's personal account",
+        "date": "2026-03-07"
+      },
+      {
+        "password": "uxry pdao hknh rjke", 
+        "status": "rejected by SMTP",
+        "date": "2026-03-01"
+      }
+    ],
+    "current": null,
+    "needs_generation": true
+  }
+}

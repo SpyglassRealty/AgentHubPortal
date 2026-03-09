@@ -1,0 +1,1256 @@
+### Training Videos - Full Implementation: Favorites, Watch Later & Continue Watching
+
+**Goal:** Add personalized video features so agents can save favorites, mark videos to watch later, and resume videos where they left off.
+
+---
+
+## 1. Database Schema
+
+### Create new table: `user_video_preferences`
+```sql
+CREATE TABLE user_video_preferences (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  video_id VARCHAR(50) NOT NULL,  -- Vimeo video ID
+  video_name VARCHAR(255),        -- Cache video name for display
+  video_thumbnail VARCHAR(500),   -- Cache thumbnail URL
+  video_duration INTEGER,         -- Cache duration in seconds
+  is_favorite BOOLEAN DEFAULT FALSE,
+  is_watch_later BOOLEAN DEFAULT FALSE,
+  watch_progress INTEGER DEFAULT 0,  -- Progress in seconds
+  watch_percentage INTEGER DEFAULT 0, -- Progress as percentage (0-100)
+  last_watched_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  
+  UNIQUE(user_id, video_id)
+);
+
+-- Index for faster queries
+CREATE INDEX idx_user_video_prefs_user_id ON user_video_preferences(user_id);
+CREATE INDEX idx_user_video_prefs_favorite ON user_video_preferences(user_id, is_favorite) WHERE is_favorite = TRUE;
+CREATE INDEX idx_user_video_prefs_watch_later ON user_video_preferences(user_id, is_watch_later) WHERE is_watch_later = TRUE;
+CREATE INDEX idx_user_video_prefs_progress ON user_video_preferences(user_id, watch_progress) WHERE watch_progress > 0;
+```
+
+### Drizzle Schema (if using Drizzle ORM)
+```typescript
+// shared/schema.ts
+
+import { pgTable, serial, integer, varchar, boolean, timestamp } from 'drizzle-orm/pg-core';
+
+export const userVideoPreferences = pgTable('user_video_preferences', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  videoId: varchar('video_id', { length: 50 }).notNull(),
+  videoName: varchar('video_name', { length: 255 }),
+  videoThumbnail: varchar('video_thumbnail', { length: 500 }),
+  videoDuration: integer('video_duration'),
+  isFavorite: boolean('is_favorite').default(false),
+  isWatchLater: boolean('is_watch_later').default(false),
+  watchProgress: integer('watch_progress').default(0),
+  watchPercentage: integer('watch_percentage').default(0),
+  lastWatchedAt: timestamp('last_watched_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+```
+
+---
+
+## 2. API Endpoints
+
+### Add to `server/routes.ts`
+```typescript
+import { userVideoPreferences } from '@shared/schema';
+import { eq, and, desc } from 'drizzle-orm';
+
+// ============================================
+// GET /api/videos/preferences - Get all user's video preferences
+// ============================================
+router.get('/api/videos/preferences', async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: 'Not authenticated' });
+
+    const preferences = await db
+      .select()
+      .from(userVideoPreferences)
+      .where(eq(userVideoPreferences.userId, user.id));
+
+    // Convert to a map for easy lookup
+    const prefsMap: Record<string, any> = {};
+    preferences.forEach(pref => {
+      prefsMap[pref.videoId] = {
+        isFavorite: pref.isFavorite,
+        isWatchLater: pref.isWatchLater,
+        watchProgress: pref.watchProgress,
+        watchPercentage: pref.watchPercentage,
+        lastWatchedAt: pref.lastWatchedAt
+      };
+    });
+
+    res.json({ preferences: prefsMap });
+  } catch (error) {
+    console.error('[Video Preferences Error]', error);
+    res.status(500).json({ error: 'Failed to fetch preferences' });
+  }
+});
+
+// ============================================
+// GET /api/videos/favorites - Get user's favorite videos
+// ============================================
+router.get('/api/videos/favorites', async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: 'Not authenticated' });
+
+    const favorites = await db
+      .select()
+      .from(userVideoPreferences)
+      .where(
+        and(
+          eq(userVideoPreferences.userId, user.id),
+          eq(userVideoPreferences.isFavorite, true)
+        )
+      )
+      .orderBy(desc(userVideoPreferences.updatedAt));
+
+    res.json({ videos: favorites });
+  } catch (error) {
+    console.error('[Favorites Error]', error);
+    res.status(500).json({ error: 'Failed to fetch favorites' });
+  }
+});
+
+// ============================================
+// GET /api/videos/watch-later - Get user's watch later list
+// ============================================
+router.get('/api/videos/watch-later', async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: 'Not authenticated' });
+
+    const watchLater = await db
+      .select()
+      .from(userVideoPreferences)
+      .where(
+        and(
+          eq(userVideoPreferences.userId, user.id),
+          eq(userVideoPreferences.isWatchLater, true)
+        )
+      )
+      .orderBy(desc(userVideoPreferences.createdAt));
+
+    res.json({ videos: watchLater });
+  } catch (error) {
+    console.error('[Watch Later Error]', error);
+    res.status(500).json({ error: 'Failed to fetch watch later list' });
+  }
+});
+
+// ============================================
+// GET /api/videos/continue-watching - Get videos in progress
+// ============================================
+router.get('/api/videos/continue-watching', async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: 'Not authenticated' });
+
+    const inProgress = await db
+      .select()
+      .from(userVideoPreferences)
+      .where(
+        and(
+          eq(userVideoPreferences.userId, user.id),
+          // Has progress but not completed (less than 95%)
+          sql`${userVideoPreferences.watchProgress} > 0`,
+          sql`${userVideoPreferences.watchPercentage} < 95`
+        )
+      )
+      .orderBy(desc(userVideoPreferences.lastWatchedAt));
+
+    res.json({ videos: inProgress });
+  } catch (error) {
+    console.error('[Continue Watching Error]', error);
+    res.status(500).json({ error: 'Failed to fetch continue watching list' });
+  }
+});
+
+// ============================================
+// POST /api/videos/:videoId/favorite - Toggle favorite
+// ============================================
+router.post('/api/videos/:videoId/favorite', async (req, res) => {
+  try {
+    const user = req.user;
+    const { videoId } = req.params;
+    const { videoName, videoThumbnail, videoDuration } = req.body;
+    
+    if (!user) return res.status(401).json({ error: 'Not authenticated' });
+
+    // Check if preference exists
+    const existing = await db
+      .select()
+      .from(userVideoPreferences)
+      .where(
+        and(
+          eq(userVideoPreferences.userId, user.id),
+          eq(userVideoPreferences.videoId, videoId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      // Toggle favorite
+      const newValue = !existing[0].isFavorite;
+      await db
+        .update(userVideoPreferences)
+        .set({ 
+          isFavorite: newValue,
+          updatedAt: new Date()
+        })
+        .where(eq(userVideoPreferences.id, existing[0].id));
+
+      res.json({ isFavorite: newValue });
+    } else {
+      // Create new preference with favorite = true
+      await db.insert(userVideoPreferences).values({
+        userId: user.id,
+        videoId,
+        videoName,
+        videoThumbnail,
+        videoDuration,
+        isFavorite: true,
+        isWatchLater: false,
+        watchProgress: 0,
+        watchPercentage: 0
+      });
+
+      res.json({ isFavorite: true });
+    }
+  } catch (error) {
+    console.error('[Toggle Favorite Error]', error);
+    res.status(500).json({ error: 'Failed to toggle favorite' });
+  }
+});
+
+// ============================================
+// POST /api/videos/:videoId/watch-later - Toggle watch later
+// ============================================
+router.post('/api/videos/:videoId/watch-later', async (req, res) => {
+  try {
+    const user = req.user;
+    const { videoId } = req.params;
+    const { videoName, videoThumbnail, videoDuration } = req.body;
+    
+    if (!user) return res.status(401).json({ error: 'Not authenticated' });
+
+    const existing = await db
+      .select()
+      .from(userVideoPreferences)
+      .where(
+        and(
+          eq(userVideoPreferences.userId, user.id),
+          eq(userVideoPreferences.videoId, videoId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      const newValue = !existing[0].isWatchLater;
+      await db
+        .update(userVideoPreferences)
+        .set({ 
+          isWatchLater: newValue,
+          updatedAt: new Date()
+        })
+        .where(eq(userVideoPreferences.id, existing[0].id));
+
+      res.json({ isWatchLater: newValue });
+    } else {
+      await db.insert(userVideoPreferences).values({
+        userId: user.id,
+        videoId,
+        videoName,
+        videoThumbnail,
+        videoDuration,
+        isFavorite: false,
+        isWatchLater: true,
+        watchProgress: 0,
+        watchPercentage: 0
+      });
+
+      res.json({ isWatchLater: true });
+    }
+  } catch (error) {
+    console.error('[Toggle Watch Later Error]', error);
+    res.status(500).json({ error: 'Failed to toggle watch later' });
+  }
+});
+
+// ============================================
+// POST /api/videos/:videoId/progress - Update watch progress
+// ============================================
+router.post('/api/videos/:videoId/progress', async (req, res) => {
+  try {
+    const user = req.user;
+    const { videoId } = req.params;
+    const { progress, percentage, videoName, videoThumbnail, videoDuration } = req.body;
+    
+    if (!user) return res.status(401).json({ error: 'Not authenticated' });
+
+    const existing = await db
+      .select()
+      .from(userVideoPreferences)
+      .where(
+        and(
+          eq(userVideoPreferences.userId, user.id),
+          eq(userVideoPreferences.videoId, videoId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db
+        .update(userVideoPreferences)
+        .set({ 
+          watchProgress: progress,
+          watchPercentage: percentage,
+          lastWatchedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(userVideoPreferences.id, existing[0].id));
+    } else {
+      await db.insert(userVideoPreferences).values({
+        userId: user.id,
+        videoId,
+        videoName,
+        videoThumbnail,
+        videoDuration,
+        isFavorite: false,
+        isWatchLater: false,
+        watchProgress: progress,
+        watchPercentage: percentage,
+        lastWatchedAt: new Date()
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[Update Progress Error]', error);
+    res.status(500).json({ error: 'Failed to update progress' });
+  }
+});
+
+// ============================================
+// DELETE /api/videos/:videoId/progress - Clear progress (mark as unwatched)
+// ============================================
+router.delete('/api/videos/:videoId/progress', async (req, res) => {
+  try {
+    const user = req.user;
+    const { videoId } = req.params;
+    
+    if (!user) return res.status(401).json({ error: 'Not authenticated' });
+
+    await db
+      .update(userVideoPreferences)
+      .set({ 
+        watchProgress: 0,
+        watchPercentage: 0,
+        lastWatchedAt: null,
+        updatedAt: new Date()
+      })
+      .where(
+        and(
+          eq(userVideoPreferences.userId, user.id),
+          eq(userVideoPreferences.videoId, videoId)
+        )
+      );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[Clear Progress Error]', error);
+    res.status(500).json({ error: 'Failed to clear progress' });
+  }
+});
+```
+
+---
+
+## 3. Updated Training Videos Modal Component
+```tsx
+// components/TrainingVideosModal.tsx
+
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { 
+  X, Play, Clock, Calendar, ChevronRight, ChevronLeft, 
+  Loader2, Maximize2, Minimize2, Search, Heart, BookmarkPlus,
+  History, Star, CheckCircle
+} from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+
+interface VimeoVideo {
+  id: string;
+  name: string;
+  description: string;
+  duration: number;
+  created_time: string;
+  link: string;
+  player_embed_url: string;
+  pictures: {
+    sizes: Array<{ link: string; width: number; height: number }>;
+  };
+}
+
+interface VideoPreference {
+  isFavorite: boolean;
+  isWatchLater: boolean;
+  watchProgress: number;
+  watchPercentage: number;
+  lastWatchedAt: string | null;
+}
+
+interface TrainingVideosModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialVideoId?: string;
+}
+
+export function TrainingVideosModal({ isOpen, onClose, initialVideoId }: TrainingVideosModalProps) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const playerRef = useRef<HTMLIFrameElement>(null);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Video state
+  const [videos, setVideos] = useState<VimeoVideo[]>([]);
+  const [selectedVideo, setSelectedVideo] = useState<VimeoVideo | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // UI state
+  const [isTheaterMode, setIsTheaterMode] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [sortOrder, setSortOrder] = useState('newest');
+  
+  // Preferences state
+  const [preferences, setPreferences] = useState<Record<string, VideoPreference>>({});
+  const [prefsLoading, setPrefsLoading] = useState(false);
+
+  // ============================================
+  // THEME CLASSES
+  // ============================================
+  
+  const modalBg = isDark ? 'bg-gray-900' : 'bg-white';
+  const sidebarBg = isDark ? 'bg-gray-800' : 'bg-gray-50';
+  const overlayBg = isDark ? 'bg-black/80' : 'bg-black/50';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const textMuted = isDark ? 'text-gray-500' : 'text-gray-400';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+  const hoverBg = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100';
+  const inputBg = isDark ? 'bg-gray-700' : 'bg-white';
+  const inputBorder = isDark ? 'border-gray-600' : 'border-gray-300';
+  const inputText = isDark ? 'text-white' : 'text-gray-900';
+  const inputPlaceholder = isDark ? 'placeholder-gray-400' : 'placeholder-gray-500';
+  const buttonBg = isDark ? 'bg-gray-700' : 'bg-gray-100';
+  const buttonHover = isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-200';
+  const buttonText = isDark ? 'text-gray-300' : 'text-gray-700';
+  const cardHover = isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100';
+  const cardActive = isDark ? 'bg-orange-500/20' : 'bg-orange-50';
+  const activeText = isDark ? 'text-orange-400' : 'text-orange-600';
+  const activeBorder = isDark ? 'border-orange-500' : 'border-orange-500';
+  const divideColor = isDark ? 'divide-gray-700' : 'divide-gray-200';
+
+  // ============================================
+  // DATA FETCHING
+  // ============================================
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchVideos();
+      fetchPreferences();
+    }
+    
+    return () => {
+      // Clear progress interval on unmount
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (videos.length > 0 && !selectedVideo) {
+      if (initialVideoId) {
+        const initial = videos.find(v => v.id === initialVideoId);
+        setSelectedVideo(initial || videos[0]);
+      } else {
+        setSelectedVideo(videos[0]);
+      }
+    }
+  }, [videos, initialVideoId]);
+
+  const fetchVideos = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/vimeo/training-videos');
+      if (!response.ok) throw new Error('Failed to fetch videos');
+      
+      const data = await response.json();
+      const sortedVideos = (data.videos || []).sort((a: VimeoVideo, b: VimeoVideo) => 
+        new Date(b.created_time).getTime() - new Date(a.created_time).getTime()
+      );
+      setVideos(sortedVideos);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load videos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPreferences = async () => {
+    setPrefsLoading(true);
+    try {
+      const response = await fetch('/api/videos/preferences');
+      if (response.ok) {
+        const data = await response.json();
+        setPreferences(data.preferences || {});
+      }
+    } catch (err) {
+      console.error('Failed to fetch preferences:', err);
+    } finally {
+      setPrefsLoading(false);
+    }
+  };
+
+  // ============================================
+  // PREFERENCE ACTIONS
+  // ============================================
+
+  const toggleFavorite = async (video: VimeoVideo, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      const response = await fetch(`/api/videos/${video.id}/favorite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoName: video.name,
+          videoThumbnail: getThumbnail(video),
+          videoDuration: video.duration
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPreferences(prev => ({
+          ...prev,
+          [video.id]: {
+            ...prev[video.id],
+            isFavorite: data.isFavorite,
+            isWatchLater: prev[video.id]?.isWatchLater || false,
+            watchProgress: prev[video.id]?.watchProgress || 0,
+            watchPercentage: prev[video.id]?.watchPercentage || 0,
+            lastWatchedAt: prev[video.id]?.lastWatchedAt || null
+          }
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to toggle favorite:', err);
+    }
+  };
+
+  const toggleWatchLater = async (video: VimeoVideo, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      const response = await fetch(`/api/videos/${video.id}/watch-later`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoName: video.name,
+          videoThumbnail: getThumbnail(video),
+          videoDuration: video.duration
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPreferences(prev => ({
+          ...prev,
+          [video.id]: {
+            ...prev[video.id],
+            isFavorite: prev[video.id]?.isFavorite || false,
+            isWatchLater: data.isWatchLater,
+            watchProgress: prev[video.id]?.watchProgress || 0,
+            watchPercentage: prev[video.id]?.watchPercentage || 0,
+            lastWatchedAt: prev[video.id]?.lastWatchedAt || null
+          }
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to toggle watch later:', err);
+    }
+  };
+
+  const updateProgress = useCallback(async (video: VimeoVideo, progress: number, percentage: number) => {
+    try {
+      await fetch(`/api/videos/${video.id}/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          progress,
+          percentage,
+          videoName: video.name,
+          videoThumbnail: getThumbnail(video),
+          videoDuration: video.duration
+        })
+      });
+      
+      setPreferences(prev => ({
+        ...prev,
+        [video.id]: {
+          ...prev[video.id],
+          isFavorite: prev[video.id]?.isFavorite || false,
+          isWatchLater: prev[video.id]?.isWatchLater || false,
+          watchProgress: progress,
+          watchPercentage: percentage,
+          lastWatchedAt: new Date().toISOString()
+        }
+      }));
+    } catch (err) {
+      console.error('Failed to update progress:', err);
+    }
+  }, []);
+
+  // ============================================
+  // FILTERED VIDEOS
+  // ============================================
+
+  const filteredVideos = useMemo(() => {
+    let result = [...videos];
+    
+    // Search filter
+    if (searchQuery) {
+      result = result.filter(v => 
+        v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        v.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    // Category filters
+    if (filter === 'new') {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      result = result.filter(v => new Date(v.created_time) >= sevenDaysAgo);
+    } else if (filter === 'favorites') {
+      result = result.filter(v => preferences[v.id]?.isFavorite);
+    } else if (filter === 'watchLater') {
+      result = result.filter(v => preferences[v.id]?.isWatchLater);
+    } else if (filter === 'continue') {
+      result = result.filter(v => {
+        const pref = preferences[v.id];
+        return pref && pref.watchProgress > 0 && pref.watchPercentage < 95;
+      });
+      // Sort by last watched
+      result.sort((a, b) => {
+        const aTime = preferences[a.id]?.lastWatchedAt;
+        const bTime = preferences[b.id]?.lastWatchedAt;
+        if (!aTime) return 1;
+        if (!bTime) return -1;
+        return new Date(bTime).getTime() - new Date(aTime).getTime();
+      });
+    }
+    
+    // Sort (except for continue watching which has its own sort)
+    if (filter !== 'continue') {
+      if (sortOrder === 'oldest') {
+        result.sort((a, b) => new Date(a.created_time).getTime() - new Date(b.created_time).getTime());
+      } else if (sortOrder === 'duration') {
+        result.sort((a, b) => b.duration - a.duration);
+      } else {
+        result.sort((a, b) => new Date(b.created_time).getTime() - new Date(a.created_time).getTime());
+      }
+    }
+    
+    return result;
+  }, [videos, searchQuery, filter, sortOrder, preferences]);
+
+  const currentIndex = filteredVideos.findIndex(v => v.id === selectedVideo?.id);
+
+  // ============================================
+  // HELPER FUNCTIONS
+  // ============================================
+
+  const formatDuration = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const isNew = (video: VimeoVideo) => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return new Date(video.created_time) >= sevenDaysAgo;
+  };
+
+  const getThumbnail = (video: VimeoVideo) => {
+    const sizes = video.pictures?.sizes || [];
+    const medium = sizes.find(s => s.width >= 640) || sizes[sizes.length - 1];
+    return medium?.link || '';
+  };
+
+  const getEmbedUrl = (video: VimeoVideo) => {
+    const baseUrl = video.player_embed_url || `https://player.vimeo.com/video/${video.id}`;
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    const pref = preferences[video.id];
+    const startTime = pref?.watchProgress && pref.watchPercentage < 95 ? `#t=${pref.watchProgress}s` : '';
+    return `${baseUrl}${separator}autoplay=0&title=0&byline=0&portrait=0${startTime}`;
+  };
+
+  const playNext = () => {
+    if (currentIndex < filteredVideos.length - 1) {
+      setSelectedVideo(filteredVideos[currentIndex + 1]);
+    }
+  };
+
+  const playPrevious = () => {
+    if (currentIndex > 0) {
+      setSelectedVideo(filteredVideos[currentIndex - 1]);
+    }
+  };
+
+  // ============================================
+  // FILTER TABS CONFIG
+  // ============================================
+
+  const filterTabs = [
+    { key: 'all', label: 'All', icon: null },
+    { key: 'new', label: 'New', icon: null },
+    { key: 'favorites', label: 'Favorites', icon: Heart },
+    { key: 'watchLater', label: 'Watch Later', icon: BookmarkPlus },
+    { key: 'continue', label: 'Continue', icon: History },
+  ];
+
+  // ============================================
+  // RENDER
+  // ============================================
+
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${overlayBg}`}
+      onClick={onClose}
+    >
+      <div 
+        className={`
+          relative flex
+          ${isTheaterMode ? 'w-full h-full' : 'w-full max-w-6xl h-[85vh]'}
+          ${modalBg} rounded-xl shadow-2xl overflow-hidden
+          transition-all duration-300
+        `}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* ============================================ */}
+        {/* MAIN CONTENT AREA */}
+        {/* ============================================ */}
+        <div className="flex-1 flex flex-col min-w-0">
+          
+          {/* Header */}
+          <div className={`flex items-center justify-between px-4 py-3 border-b ${borderColor}`}>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+                <Play className="w-4 h-4 text-white fill-white" />
+              </div>
+              <div>
+                <h2 className={`font-semibold ${textPrimary}`}>Training Videos</h2>
+                <p className={`text-xs ${textSecondary}`}>
+                  {filteredVideos.length} video{filteredVideos.length !== 1 ? 's' : ''}
+                  {filter !== 'all' && ` in ${filterTabs.find(t => t.key === filter)?.label}`}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsTheaterMode(!isTheaterMode)}
+                className={`p-2 rounded-lg ${hoverBg} transition-colors ${textSecondary}`}
+                title={isTheaterMode ? 'Exit theater mode' : 'Theater mode'}
+              >
+                {isTheaterMode ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+              </button>
+              <button
+                onClick={onClose}
+                className={`p-2 rounded-lg ${hoverBg} transition-colors ${textSecondary}`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Video Player */}
+          <div className={`flex-1 ${isDark ? 'bg-black' : 'bg-gray-900'} flex items-center justify-center relative`}>
+            {loading ? (
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-white/50" />
+                <p className="text-white/50">Loading videos...</p>
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-red-400">{error}</p>
+                <button 
+                  onClick={fetchVideos}
+                  className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : selectedVideo ? (
+              <>
+                <iframe
+                  ref={playerRef}
+                  src={getEmbedUrl(selectedVideo)}
+                  className="w-full h-full"
+                  frameBorder="0"
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
+                  title={selectedVideo.name}
+                />
+                
+                {/* Quick action buttons overlay */}
+                <div className="absolute top-4 right-4 flex flex-col gap-2">
+                  <button
+                    onClick={(e) => toggleFavorite(selectedVideo, e)}
+                    className={`p-2 rounded-full transition-all ${
+                      preferences[selectedVideo.id]?.isFavorite 
+                        ? 'bg-red-500 text-white' 
+                        : 'bg-black/50 text-white hover:bg-black/70'
+                    }`}
+                    title={preferences[selectedVideo.id]?.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                  >
+                    <Heart className={`w-5 h-5 ${preferences[selectedVideo.id]?.isFavorite ? 'fill-white' : ''}`} />
+                  </button>
+                  <button
+                    onClick={(e) => toggleWatchLater(selectedVideo, e)}
+                    className={`p-2 rounded-full transition-all ${
+                      preferences[selectedVideo.id]?.isWatchLater 
+                        ? 'bg-orange-500 text-white' 
+                        : 'bg-black/50 text-white hover:bg-black/70'
+                    }`}
+                    title={preferences[selectedVideo.id]?.isWatchLater ? 'Remove from watch later' : 'Add to watch later'}
+                  >
+                    <BookmarkPlus className={`w-5 h-5 ${preferences[selectedVideo.id]?.isWatchLater ? 'fill-white' : ''}`} />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p className="text-white/50">No video selected</p>
+            )}
+          </div>
+
+          {/* Video Navigation & Info */}
+          {selectedVideo && !loading && (
+            <div className={`px-4 py-3 border-t ${borderColor}`}>
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={playPrevious}
+                  disabled={currentIndex === 0}
+                  className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors
+                    ${currentIndex === 0 
+                      ? `${textMuted} cursor-not-allowed` 
+                      : `${textSecondary} ${hoverBg}`
+                    }`}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span className="hidden sm:inline">Previous</span>
+                </button>
+                
+                <div className="text-center flex-1 min-w-0 px-4">
+                  <h3 className={`font-semibold ${textPrimary} truncate`}>{selectedVideo.name}</h3>
+                  <div className={`flex items-center justify-center gap-3 text-sm ${textSecondary} mt-1`}>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {formatDuration(selectedVideo.duration)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      {formatDate(selectedVideo.created_time)}
+                    </span>
+                    <span className={`text-xs ${textMuted}`}>
+                      {currentIndex + 1} of {filteredVideos.length}
+                    </span>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={playNext}
+                  disabled={currentIndex === filteredVideos.length - 1}
+                  className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors
+                    ${currentIndex === filteredVideos.length - 1 
+                      ? `${textMuted} cursor-not-allowed` 
+                      : `${textSecondary} ${hoverBg}`
+                    }`}
+                >
+                  <span className="hidden sm:inline">Next</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ============================================ */}
+        {/* SIDEBAR */}
+        {/* ============================================ */}
+        {!isTheaterMode && (
+          <div className={`w-80 ${sidebarBg} border-l ${borderColor} flex flex-col`}>
+            
+            {/* Search */}
+            <div className={`p-3 border-b ${borderColor}`}>
+              <div className="relative">
+                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textMuted}`} />
+                <input
+                  type="text"
+                  placeholder="Search videos..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={`w-full pl-9 pr-3 py-2 ${inputBg} border ${inputBorder} rounded-lg text-sm ${inputText} ${inputPlaceholder} focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors`}
+                />
+              </div>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className={`flex flex-wrap gap-1 p-2 border-b ${borderColor}`}>
+              {filterTabs.map(tab => {
+                const Icon = tab.icon;
+                const count = tab.key === 'favorites' 
+                  ? videos.filter(v => preferences[v.id]?.isFavorite).length
+                  : tab.key === 'watchLater'
+                  ? videos.filter(v => preferences[v.id]?.isWatchLater).length
+                  : tab.key === 'continue'
+                  ? videos.filter(v => {
+                      const pref = preferences[v.id];
+                      return pref && pref.watchProgress > 0 && pref.watchPercentage < 95;
+                    }).length
+                  : null;
+                
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setFilter(tab.key)}
+                    className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors
+                      ${filter === tab.key 
+                        ? 'bg-orange-500 text-white' 
+                        : `${buttonBg} ${buttonText} ${buttonHover}`
+                      }`}
+                  >
+                    {Icon && <Icon className="w-3 h-3" />}
+                    {tab.label}
+                    {count !== null && count > 0 && (
+                      <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs ${
+                        filter === tab.key ? 'bg-white/20' : isDark ? 'bg-gray-600' : 'bg-gray-300'
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Sort (only show for non-continue filters) */}
+            {filter !== 'continue' && (
+              <div className={`px-3 py-2 border-b ${borderColor} flex items-center justify-between`}>
+                <span className={`text-xs ${textSecondary}`}>Sort by</span>
+                <select 
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value)}
+                  className={`text-xs ${inputBg} border ${inputBorder} ${buttonText} rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-orange-500`}
+                >
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="duration">Duration</option>
+                </select>
+              </div>
+            )}
+
+            {/* Video List */}
+            <div className="flex-1 overflow-y-auto">
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className={`w-6 h-6 animate-spin ${textSecondary}`} />
+                </div>
+              ) : filteredVideos.length === 0 ? (
+                <div className={`p-6 text-center ${textSecondary}`}>
+                  {filter === 'favorites' ? (
+                    <>
+                      <Heart className={`w-12 h-12 mx-auto mb-3 ${textMuted}`} />
+                      <p className="font-medium">No favorites yet</p>
+                      <p className="text-sm mt-1">Click the heart icon on any video to add it to your favorites.</p>
+                    </>
+                  ) : filter === 'watchLater' ? (
+                    <>
+                      <BookmarkPlus className={`w-12 h-12 mx-auto mb-3 ${textMuted}`} />
+                      <p className="font-medium">Watch later list is empty</p>
+                      <p className="text-sm mt-1">Click the bookmark icon on any video to save it for later.</p>
+                    </>
+                  ) : filter === 'continue' ? (
+                    <>
+                      <History className={`w-12 h-12 mx-auto mb-3 ${textMuted}`} />
+                      <p className="font-medium">No videos in progress</p>
+                      <p className="text-sm mt-1">Start watching a video and it will appear here.</p>
+                    </>
+                  ) : searchQuery ? (
+                    <>
+                      <Search className={`w-12 h-12 mx-auto mb-3 ${textMuted}`} />
+                      <p className="font-medium">No results found</p>
+                      <p className="text-sm mt-1">Try a different search term.</p>
+                    </>
+                  ) : (
+                    <p>No videos available</p>
+                  )}
+                </div>
+              ) : (
+                <div className={`divide-y ${divideColor}`}>
+                  {filteredVideos.map((video) => {
+                    const pref = preferences[video.id];
+                    const hasProgress = pref && pref.watchProgress > 0 && pref.watchPercentage < 95;
+                    const isCompleted = pref && pref.watchPercentage >= 95;
+                    
+                    return (
+                      <button
+                        key={video.id}
+                        onClick={() => setSelectedVideo(video)}
+                        className={`
+                          w-full p-2 text-left transition-all duration-200 group relative
+                          ${selectedVideo?.id === video.id 
+                            ? `${cardActive} border-l-2 ${activeBorder}` 
+                            : `${cardHover} border-l-2 border-transparent`
+                          }
+                        `}
+                      >
+                        <div className="flex gap-3">
+                          {/* Thumbnail */}
+                          <div className="relative flex-shrink-0 w-28 h-16 rounded-lg overflow-hidden bg-gray-800">
+                            {getThumbnail(video) ? (
+                              <img 
+                                src={getThumbnail(video)} 
+                                alt={video.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Play className="w-6 h-6 text-white/30" />
+                              </div>
+                            )}
+                            
+                            {/* Play overlay */}
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <div className="w-8 h-8 bg-white/90 rounded-full flex items-center justify-center">
+                                <Play className="w-4 h-4 text-gray-900 fill-gray-900 ml-0.5" />
+                              </div>
+                            </div>
+                            
+                            {/* Progress bar */}
+                            {hasProgress && (
+                              <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/50">
+                                <div 
+                                  className="h-full bg-orange-500"
+                                  style={{ width: `${pref.watchPercentage}%` }}
+                                />
+                              </div>
+                            )}
+                            
+                            {/* Completed check */}
+                            {isCompleted && (
+                              <div className="absolute top-1 right-1">
+                                <CheckCircle className="w-4 h-4 text-green-500 fill-green-500" />
+                              </div>
+                            )}
+                            
+                            {/* Duration badge */}
+                            <span className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/80 text-white text-xs rounded font-medium">
+                              {formatDuration(video.duration)}
+                            </span>
+                            
+                            {/* NEW badge */}
+                            {isNew(video) && !hasProgress && !isCompleted && (
+                              <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-orange-500 text-white text-xs rounded font-bold">
+                                NEW
+                              </span>
+                            )}
+                            
+                            {/* Now playing */}
+                            {selectedVideo?.id === video.id && (
+                              <div className={`absolute inset-0 border-2 ${activeBorder} rounded-lg`}>
+                                <div className="absolute top-1 left-1 flex items-center gap-1 px-1.5 py-0.5 bg-orange-500 rounded text-xs text-white font-medium">
+                                  <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+                                  Playing
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Video info */}
+                          <div className="flex-1 min-w-0 py-0.5">
+                            <h4 className={`font-medium text-sm line-clamp-2 ${selectedVideo?.id === video.id ? activeText : textPrimary}`}>
+                              {video.name}
+                            </h4>
+                            <p className={`text-xs ${textSecondary} mt-1`}>
+                              {formatDate(video.created_time)}
+                            </p>
+                            
+                            {/* Status icons */}
+                            <div className="flex items-center gap-2 mt-1">
+                              {pref?.isFavorite && (
+                                <Heart className="w-3 h-3 text-red-500 fill-red-500" />
+                              )}
+                              {pref?.isWatchLater && (
+                                <BookmarkPlus className="w-3 h-3 text-orange-500 fill-orange-500" />
+                              )}
+                              {hasProgress && (
+                                <span className={`text-xs ${textMuted}`}>
+                                  {pref.watchPercentage}% watched
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Quick action buttons on hover */}
+                        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => toggleFavorite(video, e)}
+                            className={`p-1.5 rounded-full transition-colors ${
+                              pref?.isFavorite 
+                                ? 'bg-red-500 text-white' 
+                                : `${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'} ${textSecondary}`
+                            }`}
+                            title={pref?.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                          >
+                            <Heart className={`w-3 h-3 ${pref?.isFavorite ? 'fill-white' : ''}`} />
+                          </button>
+                          <button
+                            onClick={(e) => toggleWatchLater(video, e)}
+                            className={`p-1.5 rounded-full transition-colors ${
+                              pref?.isWatchLater 
+                                ? 'bg-orange-500 text-white' 
+                                : `${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'} ${textSecondary}`
+                            }`}
+                            title={pref?.isWatchLater ? 'Remove from watch later' : 'Add to watch later'}
+                          >
+                            <BookmarkPlus className={`w-3 h-3 ${pref?.isWatchLater ? 'fill-white' : ''}`} />
+                          </button>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## 4. Visual Summary
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  [▶] Training Videos                                               [⛶] [X]         │
+│      12 videos in Favorites                                                         │
+├───────────────────────────────────────────────────────────┬─────────────────────────┤
+│                                                           │ [🔍 Search videos...]    │
+│                                                           ├─────────────────────────┤
+│                                                           │ [All] [New] [♥ Fav 3]   │
+│                           ┌───────┐                       │ [🔖 Later 5] [↺ Cont 2] │
+│                           │ ♥ 🔖 │ <- Quick actions      ├─────────────────────────┤
+│                           └───────┘    on player          │ Sort by [Newest ▼]      │
+│                                                           ├─────────────────────────┤
+│               VIMEO PLAYER                                │ ┌─────────────────────┐ │
+│                                                           │ │ [thumb]  ♥ 🔖       │ │
+│                                                           │ │ ████░░░  Video 1    │ │
+│                                                           │ │ 45%      2 days ago │ │
+│                                                           │ └─────────────────────┘ │
+│                                                           │ ┌─────────────────────┐ │
+├───────────────────────────────────────────────────────────┤ │ [thumb] ✓           │ │
+│  [< Prev]     Video Title     [Next >]                    │ │         Video 2     │ │
+│               78:28 | Today | 1 of 12                     │ │         Yesterday   │ │
+└───────────────────────────────────────────────────────────┴─└─────────────────────┘─┘
+Legend:
+♥  = Favorite (red when active)
+🔖 = Watch Later (orange when active)
+✓  = Completed (green checkmark)
+████░░░ = Progress bar
+
+---
+
+## 5. Testing Checklist
+
+**Database:**
+- [ ] Table `user_video_preferences` created successfully
+- [ ] Indexes created for performance
+
+**API Endpoints:**
+- [ ] GET `/api/videos/preferences` returns user preferences
+- [ ] POST `/api/videos/:videoId/favorite` toggles favorite
+- [ ] POST `/api/videos/:videoId/watch-later` toggles watch later
+- [ ] POST `/api/videos/:videoId/progress` saves progress
+- [ ] DELETE `/api/videos/:videoId/progress` clears progress
+
+**UI - Favorites:**
+- [ ] Heart icon on video player overlay
+- [ ] Heart icon on video cards (hover)
+- [ ] Filled heart when favorited
+- [ ] "Favorites" filter tab with count
+- [ ] Empty state when no favorites
+
+**UI - Watch Later:**
+- [ ] Bookmark icon on video player overlay
+- [ ] Bookmark icon on video cards (hover)
+- [ ] Filled bookmark when saved
+- [ ] "Watch Later" filter tab with count
+- [ ] Empty state when list empty
+
+**UI - Continue Watching:**
+- [ ] Progress bar on video thumbnails
+- [ ] Percentage watched shown
+- [ ] "Continue" filter tab with count
+- [ ] Sorted by last watched
+- [ ] Videos resume from saved position
+- [ ] Empty state when no videos in progress
+
+**UI - Completed Videos:**
+- [ ] Green checkmark on completed videos (95%+)
+- [ ] Removed from "Continue Watching"
+
+**Theme Support:**
+- [ ] All new elements work in light mode
+- [ ] All new elements work in dark mode
+- [ ] All new elements work in system mode

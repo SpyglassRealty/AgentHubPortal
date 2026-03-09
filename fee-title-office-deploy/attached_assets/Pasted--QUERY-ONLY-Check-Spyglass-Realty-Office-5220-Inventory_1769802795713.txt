@@ -1,0 +1,203 @@
+### QUERY ONLY - Check Spyglass Realty Office 5220 Inventory
+
+**⚠️ DO NOT MAKE ANY CHANGES - This is a test query only**
+
+**Goal:** Query the Repliers MLS API to find the exact inventory count for Spyglass Realty (Office Code 5220) in Austin Metro Area.
+
+---
+
+## Create a Test Script
+
+Create a temporary test file `server/test-office-query.ts` or run this in a Node.js console/script:
+```typescript
+// Test query to find Spyglass Realty listings (Office 5220)
+
+const REPLIERS_API_KEY = process.env.REPLIERS_API_KEY;
+const REPLIERS_BASE_URL = 'https://api.repliers.io';
+
+async function testOfficeQuery() {
+  console.log('='.repeat(60));
+  console.log('TESTING REPLIERS API - OFFICE 5220 QUERY');
+  console.log('='.repeat(60));
+
+  if (!REPLIERS_API_KEY) {
+    console.error('ERROR: REPLIERS_API_KEY not set');
+    return;
+  }
+
+  // Try different field names for office filtering
+  const officeFields = [
+    'ListOfficeMlsId',
+    'ListOfficeKey', 
+    'ListOfficeId',
+    'officeId',
+    'listOfficeId',
+    'office',
+  ];
+
+  for (const fieldName of officeFields) {
+    console.log(`\n--- Testing field: ${fieldName} ---`);
+    
+    const params = new URLSearchParams({
+      'OriginatingSystemName': 'ACTRIS',
+      'status': 'Active',
+      'limit': '5', // Just get 5 to test
+      [fieldName]: '5220',
+    });
+
+    const url = `${REPLIERS_BASE_URL}/listings?${params}`;
+    console.log(`URL: ${url}`);
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${REPLIERS_API_KEY}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ SUCCESS with ${fieldName}`);
+        console.log(`   Total listings: ${data.total}`);
+        
+        // Show first listing's office info if available
+        if (data.listings?.[0]) {
+          const listing = data.listings[0];
+          console.log(`   Sample listing office info:`);
+          console.log(`   - ListOfficeName: ${listing.ListOfficeName || listing.listOfficeName || 'N/A'}`);
+          console.log(`   - ListOfficeMlsId: ${listing.ListOfficeMlsId || listing.listOfficeMlsId || 'N/A'}`);
+          console.log(`   - ListOfficeKey: ${listing.ListOfficeKey || listing.listOfficeKey || 'N/A'}`);
+          console.log(`   - Address: ${listing.address?.full || listing.StreetNumber + ' ' + listing.StreetName || 'N/A'}`);
+        }
+      } else {
+        const errorText = await response.text();
+        console.log(`❌ FAILED with ${fieldName}: ${response.status}`);
+        console.log(`   Error: ${errorText.substring(0, 200)}`);
+      }
+    } catch (error) {
+      console.log(`❌ ERROR with ${fieldName}:`, error);
+    }
+  }
+
+  // Also query WITHOUT office filter to compare
+  console.log('\n--- Baseline: All Austin Active Listings (no office filter) ---');
+  const baselineParams = new URLSearchParams({
+    'OriginatingSystemName': 'ACTRIS',
+    'status': 'Active',
+    'limit': '1',
+  });
+
+  try {
+    const response = await fetch(`${REPLIERS_BASE_URL}/listings?${baselineParams}`, {
+      headers: {
+        'Authorization': `Bearer ${REPLIERS_API_KEY}`,
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log(`Total Austin Metro Active (no office filter): ${data.total}`);
+    }
+  } catch (error) {
+    console.error('Baseline query error:', error);
+  }
+
+  // Try to find what office fields exist in the data
+  console.log('\n--- Inspecting listing object for office-related fields ---');
+  const inspectParams = new URLSearchParams({
+    'OriginatingSystemName': 'ACTRIS',
+    'status': 'Active',
+    'limit': '1',
+  });
+
+  try {
+    const response = await fetch(`${REPLIERS_BASE_URL}/listings?${inspectParams}`, {
+      headers: {
+        'Authorization': `Bearer ${REPLIERS_API_KEY}`,
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.listings?.[0]) {
+        const listing = data.listings[0];
+        console.log('\nAll office-related fields in listing object:');
+        
+        const officeRelatedKeys = Object.keys(listing).filter(key => 
+          key.toLowerCase().includes('office') || 
+          key.toLowerCase().includes('broker') ||
+          key.toLowerCase().includes('agent')
+        );
+        
+        officeRelatedKeys.forEach(key => {
+          console.log(`  ${key}: ${JSON.stringify(listing[key])}`);
+        });
+
+        // Also check nested objects
+        if (listing.office) {
+          console.log('\n  listing.office object:', JSON.stringify(listing.office, null, 2));
+        }
+        if (listing.listOffice) {
+          console.log('\n  listing.listOffice object:', JSON.stringify(listing.listOffice, null, 2));
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Inspect query error:', error);
+  }
+
+  console.log('\n' + '='.repeat(60));
+  console.log('QUERY COMPLETE');
+  console.log('='.repeat(60));
+}
+
+// Run the test
+testOfficeQuery();
+```
+
+---
+
+## Run the Test
+
+Execute the script and share the complete output:
+```bash
+# Option 1: Run directly with ts-node
+npx ts-node server/test-office-query.ts
+
+# Option 2: Add to package.json scripts and run
+npm run test:office-query
+
+# Option 3: Run in Node REPL with fetch
+node --experimental-fetch server/test-office-query.js
+```
+
+---
+
+## Expected Output Format
+
+Please share the complete console output showing:
+
+1. **Which field names work** for filtering by office
+2. **Total count** when filtered by office 5220
+3. **Sample listing** with office info (to verify it's Spyglass Realty)
+4. **Baseline count** of all Austin listings (for comparison)
+5. **All office-related fields** available in the listing object
+
+---
+
+## Questions to Answer
+
+After running the query:
+
+1. What is the **exact count** of Spyglass Realty (5220) active listings?
+2. Which **field name** successfully filters by office?
+3. Does the sample listing show **"Spyglass Realty"** as the office name?
+4. What **office-related fields** exist in the Repliers response?
+
+---
+
+**Remember: This is QUERY ONLY - do not modify any existing code.**

@@ -1,0 +1,153 @@
+{
+  "name": "Maggie",
+  "role": "Ultimate Transaction Coordinator & Operations Assistant",
+  "workspace": "/Users/randi-assistant/clawd-workspace",
+  "identity": {
+    "displayName": "Maggie - Transaction Coordinator",
+    "avatar": "🏠💼",
+    "description": "AI-powered transaction coordinator replacing 4 VAs, handling contracts, deadlines, client communication, and operations"
+  },
+  "security": {
+    "mode": "production",
+    "isolation": "strict",
+    "auditLevel": "full"
+  },
+  "channels": {
+    "primary": "bluebubbles",
+    "secondary": "slack",
+    "backup": "email"
+  },
+  "integrations": {
+    "contractConduit": {
+      "enabled": true,
+      "endpoint": "http://localhost:3000/api/contracts",
+      "capabilities": [
+        "contract_review",
+        "deadline_tracking", 
+        "document_processing",
+        "status_updates",
+        "client_notifications"
+      ]
+    },
+    "slack": {
+      "enabled": true,
+      "workspace": "spyglass-realty",
+      "channels": [
+        "#transactions",
+        "#agent-support", 
+        "#operations",
+        "#closings"
+      ],
+      "identity": {
+        "name": "Maggie TC Bot",
+        "emoji": ":house_with_garden:",
+        "status": "🏠 Managing transactions 24/7"
+      }
+    },
+    "spyglassApi": {
+      "enabled": true,
+      "baseUrl": "https://api.spyglassrealty.com",
+      "capabilities": ["crm_read", "crm_write", "listing_sync"]
+    },
+    "ghl": {
+      "enabled": true,
+      "mode": "readonly",
+      "capabilities": ["contact_sync", "pipeline_read"]
+    },
+    "docusign": {
+      "enabled": true,
+      "capabilities": ["document_send", "status_check", "completion_tracking"]
+    },
+    "mls": {
+      "enabled": true,
+      "mode": "readonly",
+      "capabilities": ["listing_data", "market_analysis"]
+    },
+    "gmail": {
+      "enabled": true,
+      "account": "randi@spyglassrealty.com",
+      "capabilities": ["read", "send", "organize", "auto_respond"]
+    }
+  },
+  "skills": {
+    "transaction_management": {
+      "contract_review": true,
+      "deadline_tracking": true,
+      "title_coordination": true,
+      "closing_preparation": true,
+      "commission_calculations": true,
+      "document_organization": true
+    },
+    "client_communication": {
+      "automated_updates": true,
+      "appointment_scheduling": true,
+      "inquiry_responses": true,
+      "status_reports": true,
+      "milestone_notifications": true,
+      "voice_messages": true
+    },
+    "data_management": {
+      "crm_updates": true,
+      "listing_sync": true,
+      "lead_processing": true,
+      "report_generation": true,
+      "analytics": true,
+      "cross_system_validation": true
+    },
+    "operations": {
+      "email_management": true,
+      "calendar_coordination": true,
+      "document_preparation": true,
+      "task_delegation": true,
+      "process_automation": true,
+      "quality_assurance": true
+    }
+  },
+  "voice": {
+    "enabled": true,
+    "provider": "clawdvoice",
+    "profiles": {
+      "professional": {
+        "voice": "nova",
+        "speed": "normal",
+        "tone": "professional"
+      },
+      "friendly": {
+        "voice": "alloy", 
+        "speed": "normal",
+        "tone": "conversational"
+      }
+    }
+  },
+  "automation": {
+    "contract_workflows": {
+      "new_contract_alert": true,
+      "deadline_reminders": true,
+      "status_updates": true,
+      "completion_notifications": true
+    },
+    "client_workflows": {
+      "welcome_sequence": true,
+      "progress_updates": true,
+      "appointment_reminders": true,
+      "closing_prep": true
+    },
+    "agent_workflows": {
+      "task_assignments": true,
+      "performance_reports": true,
+      "commission_summaries": true,
+      "lead_notifications": true
+    }
+  },
+  "monitoring": {
+    "performance_metrics": true,
+    "error_tracking": true,
+    "usage_analytics": true,
+    "client_satisfaction": true
+  },
+  "backup": {
+    "data_sync": true,
+    "configuration_backup": true,
+    "log_retention": "90_days"
+  }
+}

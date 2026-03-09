@@ -1,0 +1,59 @@
+ FUB API Requirements Audit
+Task
+Analyze the current Mission Control codebase to identify which Follow Up Boss (FUB) API endpoints are needed for the project's functionality. Do NOT build anything yet — just audit and report.
+What to Check
+1. Search the codebase for any existing FUB references:
+
+Search for "followupboss", "fub", "FUB", "appointments", "calendar"
+Check environment variables/secrets for FUB_API_KEY or similar
+Look in any API route files, services, or integrations folders
+
+2. Review the current feature set and identify where FUB integration would apply:
+Feature AreaPotential FUB UseLead capture/registrationPOST /v1/events (Registration event)Property favoritesPOST /v1/events (Saved Property event)Property inquiriesPOST /v1/events (Property Inquiry event)Calendar/scheduling/v1/appointments endpointsContact management/v1/people endpoints
+3. Check for any calendar UI components:
+
+Is there a Calendar page/section in the sidebar?
+Are there any scheduling or appointment features planned?
+Look for date pickers, time slot selectors, or booking flows
+
+Output Required
+Provide a report with:
+## FUB API Audit Report
+
+### Current FUB Integration Status
+- [ ] FUB API Key exists in secrets: Yes/No
+- [ ] Existing FUB code found: Yes/No (list files if yes)
+- [ ] FUB tracking code (client-side) present: Yes/No
+
+### Features Requiring FUB API
+
+| Feature | FUB Endpoint Needed | Priority | Currently Implemented |
+|---------|---------------------|----------|----------------------|
+| Example | POST /v1/events | High | No |
+
+### Calendar-Specific Needs
+- Does the app need calendar sync? Yes/No
+- Does it need to create appointments? Yes/No
+- Does it need to read appointments? Yes/No
+
+### Recommended FUB Endpoints for This Project
+1. [List specific endpoints]
+
+### Environment Variables Needed
+- FUB_API_KEY: [needed/not needed]
+- FUB_TRACKING_CODE: [exists: WT-MKYVRNSJ]
+Available FUB Calendar Endpoints (Reference)
+EndpointMethodPurpose/v1/appointmentsGETSearch appointments/v1/appointmentsPOSTCreate appointment/v1/appointments/{id}GETGet single appointment/v1/appointmentTypesGETList appointment types/v1/appointmentOutcomesGETList outcomes/v1/eventsPOSTSend lead events (Registration, Inquiry, Saved Property)
+Important Notes
+
+FUB appointments only return if created IN FUB (not synced from Google)
+The API key owner must own the appointment to retrieve it
+FUB Tracking Code (WT-MKYVRNSJ) handles client-side tracking without API
+
+Do NOT:
+
+Make any code changes
+Install any packages
+Create any files
+
+Just analyze and report back.

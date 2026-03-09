@@ -1,0 +1,481 @@
+## Enhance Pending Pipeline Table
+
+Add sorting, search filtering, and show all transactions to the Pending Pipeline table.
+
+### Requirements:
+
+1. SORTABLE COLUMNS
+   - Make each column header clickable to sort
+   - Click once: Sort ascending (A-Z, oldest first, lowest price first)
+   - Click twice: Sort descending (Z-A, newest first, highest price first)
+   - Click third time: Reset to default
+   - Show sort indicator arrow (▲ or ▼) on active sort column
+
+   Sortable columns:
+   - Address: A-Z / Z-A
+   - Price: Low to High / High to Low
+   - Est. Close: Oldest to Newest / Newest to Oldest
+   - My GCI: Low to High / High to Low
+   - Status: A-Z / Z-A
+
+2. SEARCH FILTER
+   - Add a search input above the table
+   - Placeholder: "Search transactions..."
+   - Filter across all columns (address, price, status)
+   - Real-time filtering as user types
+   - Show "X results found" or "No results found"
+
+3. SHOW ALL TRANSACTIONS
+   - Currently may be limited to 5-10 rows
+   - Option A: Show ALL transactions by default (if list is manageable, <50)
+   - Option B: Add pagination with "Show 10 / 25 / 50 / All" dropdown
+   - Option C: "Load More" button at bottom
+   - Recommended: Use pagination with default of 10, option to show all
+
+4. VISUAL UPDATES
+   - Clickable headers should have hover effect (cursor: pointer, slight highlight)
+   - Sort arrows should be visible and clear
+   - Search input should match the app's styling
+
+### Updated Component Code:
+```jsx
+import React, { useState, useMemo } from 'react';
+
+function PendingPipelineTable({ transactions = [] }) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: 'estClose', direction: 'asc' });
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Sorting function
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    } else if (sortConfig.key === key && sortConfig.direction === 'desc') {
+      direction = null; // Reset
+    }
+    setSortConfig({ key, direction });
+    setCurrentPage(1); // Reset to first page on sort
+  };
+
+  // Get sort indicator
+  const getSortIndicator = (key) => {
+    if (sortConfig.key !== key) return <span className="sort-indicator">⇅</span>;
+    if (sortConfig.direction === 'asc') return <span className="sort-indicator active">▲</span>;
+    if (sortConfig.direction === 'desc') return <span className="sort-indicator active">▼</span>;
+    return <span className="sort-indicator">⇅</span>;
+  };
+
+  // Filter and sort transactions
+  const filteredAndSortedTransactions = useMemo(() => {
+    let result = [...transactions];
+
+    // Apply search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(t => 
+        t.address?.toLowerCase().includes(term) ||
+        t.status?.toLowerCase().includes(term) ||
+        t.price?.toString().includes(term) ||
+        t.gci?.toString().includes(term)
+      );
+    }
+
+    // Apply sorting
+    if (sortConfig.key && sortConfig.direction) {
+      result.sort((a, b) => {
+        let aVal = a[sortConfig.key];
+        let bVal = b[sortConfig.key];
+
+        // Handle different data types
+        if (sortConfig.key === 'price' || sortConfig.key === 'gci') {
+          aVal = parseFloat(aVal) || 0;
+          bVal = parseFloat(bVal) || 0;
+        } else if (sortConfig.key === 'estClose') {
+          aVal = new Date(aVal || '9999-12-31');
+          bVal = new Date(bVal || '9999-12-31');
+        } else {
+          aVal = (aVal || '').toString().toLowerCase();
+          bVal = (bVal || '').toString().toLowerCase();
+        }
+
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [transactions, searchTerm, sortConfig]);
+
+  // Pagination
+  const totalPages = itemsPerPage === 'all' 
+    ? 1 
+    : Math.ceil(filteredAndSortedTransactions.length / itemsPerPage);
+  
+  const paginatedTransactions = itemsPerPage === 'all'
+    ? filteredAndSortedTransactions
+    : filteredAndSortedTransactions.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+      );
+
+  const formatCurrency = (amount) => {
+    if (!amount) return '$0';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'TBD';
+    return new Date(dateString).toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  const formatStatus = (status) => {
+    if (!status) return 'Open';
+    return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  return (
+    <div className="pipeline-section">
+      <div className="pipeline-header">
+        <h3>Pending Pipeline</h3>
+        <span className="transaction-count">
+          {filteredAndSortedTransactions.length} active transaction{filteredAndSortedTransactions.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      {/* Search and Controls */}
+      <div className="pipeline-controls">
+        <div className="search-box">
+          <input
+            type="text"
+            placeholder="Search transactions..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
+          />
+          {searchTerm && (
+            <button className="clear-search" onClick={() => setSearchTerm('')}>×</button>
+          )}
+        </div>
+        
+        <div className="items-per-page">
+          <label>Show:</label>
+          <select 
+            value={itemsPerPage} 
+            onChange={(e) => {
+              setItemsPerPage(e.target.value === 'all' ? 'all' : parseInt(e.target.value));
+              setCurrentPage(1);
+            }}
+          >
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value="all">All</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="table-wrapper">
+        <table className="pipeline-table">
+          <thead>
+            <tr>
+              <th onClick={() => handleSort('address')} className="sortable">
+                Address {getSortIndicator('address')}
+              </th>
+              <th onClick={() => handleSort('price')} className="sortable">
+                Price {getSortIndicator('price')}
+              </th>
+              <th onClick={() => handleSort('estClose')} className="sortable">
+                Est. Close {getSortIndicator('estClose')}
+              </th>
+              <th onClick={() => handleSort('gci')} className="sortable">
+                My GCI {getSortIndicator('gci')}
+              </th>
+              <th onClick={() => handleSort('status')} className="sortable">
+                Status {getSortIndicator('status')}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedTransactions.length === 0 ? (
+              <tr>
+                <td colSpan="5" className="no-results">
+                  {searchTerm ? 'No transactions found matching your search.' : 'No pending transactions.'}
+                </td>
+              </tr>
+            ) : (
+              paginatedTransactions.map((t, index) => (
+                <tr key={index}>
+                  <td className="address-cell">{t.address || 'Address TBD'}</td>
+                  <td>{formatCurrency(t.price)}</td>
+                  <td>{formatDate(t.estClose)}</td>
+                  <td className="gci-cell">{formatCurrency(t.gci)}</td>
+                  <td>
+                    <span className={`status-badge ${t.status?.toLowerCase().replace(/_/g, '-')}`}>
+                      {formatStatus(t.status)}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      {itemsPerPage !== 'all' && totalPages > 1 && (
+        <div className="pagination">
+          <button 
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            ← Previous
+          </button>
+          
+          <span className="page-info">
+            Page {currentPage} of {totalPages}
+          </span>
+          
+          <button 
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Next →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default PendingPipelineTable;
+```
+
+### CSS Styling:
+```css
+/* Pipeline Controls */
+.pipeline-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #eee;
+  gap: 16px;
+}
+
+.search-box {
+  position: relative;
+  flex: 1;
+  max-width: 300px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 8px 32px 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.search-box input:focus {
+  border-color: #E03103;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(224, 49, 3, 0.1);
+}
+
+.clear-search {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #999;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.clear-search:hover {
+  color: #333;
+}
+
+.items-per-page {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #666;
+}
+
+.items-per-page select {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.transaction-count {
+  font-size: 14px;
+  color: #666;
+  font-weight: normal;
+}
+
+/* Sortable Headers */
+.pipeline-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.pipeline-table th.sortable:hover {
+  background: #e9ecef;
+}
+
+.sort-indicator {
+  margin-left: 6px;
+  font-size: 10px;
+  color: #ccc;
+}
+
+.sort-indicator.active {
+  color: #E03103;
+}
+
+/* Table Wrapper for horizontal scroll on mobile */
+.table-wrapper {
+  overflow-x: auto;
+}
+
+/* Status Badge Colors */
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-badge.commission-document-sent {
+  background: #28a745;
+  color: white;
+}
+
+.status-badge.needs-commission-validation {
+  background: #ffc107;
+  color: #333;
+}
+
+.status-badge.approved-for-closing {
+  background: #17a2b8;
+  color: white;
+}
+
+.status-badge.under-contract {
+  background: #fd7e14;
+  color: white;
+}
+
+/* No Results */
+.no-results {
+  text-align: center;
+  padding: 40px !important;
+  color: #999;
+  font-style: italic;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border-top: 1px solid #eee;
+}
+
+.pagination button {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.pagination button:hover:not(:disabled) {
+  background: #f8f9fa;
+  border-color: #E03103;
+  color: #E03103;
+}
+
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 14px;
+  color: #666;
+}
+
+/* Address cell - truncate long addresses */
+.address-cell {
+  max-width: 250px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* GCI cell highlight */
+.gci-cell {
+  font-weight: 600;
+  color: #E03103;
+}
+```
+
+### Backend Update:
+
+Make sure the API returns ALL pending transactions, not just the first 10:
+```javascript
+// In the performance endpoint, update the OPEN transactions fetch:
+
+const openResponse = await fetch(
+  `${process.env.REZEN_BASE_URL}/api/v1/transactions/participant/${yentaId}/transactions/OPEN?pageNumber=0&pageSize=100`,  // Increased from 20 to 100
+  {
+    headers: {
+      'X-API-KEY': process.env.REZEN_API_KEY,
+      'Content-Type': 'application/json'
+    }
+  }
+);
+
+// If there could be more than 100, implement pagination in the backend
+// or fetch all pages and combine
+```
+
+### Summary of Features:
+
+1. ✅ Sortable columns (click header to sort)
+2. ✅ Search filter (searches across all columns)
+3. ✅ Pagination with "Show 10/25/50/All" option
+4. ✅ Shows all transactions (configurable)
+5. ✅ Clear sort indicators
+6. ✅ Responsive design
+
+Please implement these enhancements to the Pending Pipeline table.

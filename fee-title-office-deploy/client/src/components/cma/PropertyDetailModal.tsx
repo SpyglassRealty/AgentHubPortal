@@ -1,0 +1,313 @@
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { ChevronLeft, ChevronRight, X, Bed, Bath, Square, MapPin, Home } from "lucide-react";
+
+interface PropertyDetailModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  property: {
+    mlsNumber?: string;
+    address: string;
+    city?: string;
+    zip?: string;
+    price: number;
+    listPrice?: number;           // Current list price
+    soldPrice?: number;           // Sold price for closed properties  
+    originalPrice?: number;       // Original list price
+    pricePerSqft?: number;
+    beds?: number;
+    baths?: number;
+    sqft?: number;
+    propertyType?: string;
+    yearBuilt?: number;
+    subdivision?: string;
+    daysOnMarket?: number;
+    closeDate?: string;
+    listDate?: string;
+    soldDate?: string;
+    status: string;
+    photos: string[];
+    percentOfList?: string;
+    description?: string; // MLS property description ("About This Home")
+  };
+}
+
+export function PropertyDetailModal({ isOpen, onClose, property }: PropertyDetailModalProps) {
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  
+  // ===== DIAGNOSTIC LOGGING FOR QA DEBUGGING =====
+  console.log('[MODAL DEBUG] Property data received:', JSON.stringify({
+    mlsNumber: property.mlsNumber,
+    address: property.address,
+    hasDescription: !!property.description,
+    description: property.description,
+    descriptionLength: (property.description || '').length,
+    descriptionPreview: (property.description || '').substring(0, 100),
+    hasListDate: !!property.listDate,
+    listDate: property.listDate,
+    daysOnMarket: property.daysOnMarket,
+    allPropertyKeys: Object.keys(property),
+  }, null, 2));
+  // ===== END DIAGNOSTIC LOGGING =====
+  
+  const photos = property.photos?.length > 0 
+    ? property.photos 
+    : [];
+
+  useEffect(() => {
+    setCurrentPhotoIndex(0);
+  }, [property.mlsNumber, property.address]);
+
+  const safePhotoIndex = photos.length > 0 
+    ? Math.min(currentPhotoIndex, photos.length - 1) 
+    : 0;
+  
+  const nextPhoto = () => {
+    if (photos.length > 0) {
+      setCurrentPhotoIndex((prev) => (prev + 1) % photos.length);
+    }
+  };
+  
+  const prevPhoto = () => {
+    if (photos.length > 0) {
+      setCurrentPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    const s = status?.toLowerCase();
+    if (s?.includes('closed') || s?.includes('sold')) return 'bg-red-500';
+    if (s?.includes('active') && !s?.includes('under') && !s?.includes('contract')) return 'bg-green-500';
+    if (s?.includes('under contract') || s?.includes('active under')) return 'bg-orange-500';
+    if (s?.includes('pending')) return 'bg-gray-500';
+    return 'bg-gray-500';
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '—';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="w-[95vw] max-w-2xl p-0 overflow-hidden bg-zinc-900 border-zinc-700 [&>button]:hidden">
+        <div className="relative">
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 z-30 bg-black/50 hover:bg-black/70 rounded-full p-1.5 transition-colors touch-target-44"
+            data-testid="button-close-property-modal"
+          >
+            <X className="h-5 w-5 text-white" />
+          </button>
+          
+          {/* Photo container */}
+          <div className="relative h-72 bg-zinc-800">
+            {/* Status badge positioned INSIDE the photo area with proper spacing */}
+            <div className="absolute top-4 left-4 z-20">
+              <span className={`px-3 py-1.5 text-sm font-bold rounded shadow-lg ${getStatusColor(property.status)} text-white`}>
+                {property.status}
+              </span>
+            </div>
+            
+            {photos.length > 0 ? (
+              <img
+                src={photos[safePhotoIndex]}
+                alt={`Property photo ${safePhotoIndex + 1}`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Home className="w-16 h-16 text-zinc-600" />
+              </div>
+            )}
+            
+            {photos.length > 1 && (
+              <>
+                <button
+                  onClick={prevPhoto}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 
+                             min-w-[48px] min-h-[48px] 
+                             bg-black/50 hover:bg-black/70 
+                             text-white rounded-full 
+                             flex items-center justify-center
+                             transition-all duration-200
+                             shadow-lg z-10
+                             focus:outline-none focus:ring-2 focus:ring-white/50"
+                  data-testid="button-prev-photo"
+                  aria-label="Previous photo"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+                <button
+                  onClick={nextPhoto}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 
+                             min-w-[48px] min-h-[48px] 
+                             bg-black/50 hover:bg-black/70 
+                             text-white rounded-full 
+                             flex items-center justify-center
+                             transition-all duration-200
+                             shadow-lg z-10
+                             focus:outline-none focus:ring-2 focus:ring-white/50"
+                  data-testid="button-next-photo"
+                  aria-label="Next photo"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+                
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 px-3 py-1 rounded-full text-white text-sm">
+                  {safePhotoIndex + 1} / {photos.length}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+        
+        <div className="p-6">
+          <div className="mb-4">
+            <div className="text-3xl font-bold text-[#EF4923]">
+              {formatPrice(property.price)}
+            </div>
+            {property.pricePerSqft && (
+              <div className="text-zinc-400 text-sm">
+                ${property.pricePerSqft.toFixed(0)}/sqft
+              </div>
+            )}
+            
+            {/* Price History & Dates Section */}
+            {(property.originalPrice || property.listDate || property.soldDate) && (
+              <div className="mt-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                <h4 className="text-sm font-medium text-zinc-300 mb-2">Price History & Dates</h4>
+                <div className="space-y-1 text-sm">
+                  {property.listDate && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Listed:</span>
+                      <span className="text-white">{formatDate(property.listDate)}</span>
+                    </div>
+                  )}
+                  {property.originalPrice && property.originalPrice !== property.price && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Original Price:</span>
+                      <span className="text-white">{formatPrice(property.originalPrice)}</span>
+                    </div>
+                  )}
+                  {property.listPrice && property.listPrice !== property.price && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">List Price:</span>
+                      <span className="text-white">{formatPrice(property.listPrice)}</span>
+                    </div>
+                  )}
+                  {property.soldPrice && property.status?.toLowerCase() === 'closed' && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Sold Price:</span>
+                      <span className="text-white font-medium">{formatPrice(property.soldPrice)}</span>
+                    </div>
+                  )}
+                  {property.soldDate && property.status?.toLowerCase() === 'closed' && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Sold:</span>
+                      <span className="text-white">{formatDate(property.soldDate)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex items-start gap-2 mb-6">
+            <MapPin className="h-5 w-5 text-zinc-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <div className="text-white font-medium">{property.address}</div>
+              {(property.city || property.zip) && (
+                <div className="text-zinc-400 text-sm">
+                  {property.city}{property.city && property.zip ? ', ' : ''}{property.zip}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex justify-around py-4 border-y border-zinc-700 mb-6">
+            <div className="text-center">
+              <Bed className="h-5 w-5 text-zinc-400 mx-auto mb-1" />
+              <div className="text-xl font-semibold text-white">{property.beds ?? '—'}</div>
+              <div className="text-xs text-zinc-400">Beds</div>
+            </div>
+            <div className="text-center">
+              <Bath className="h-5 w-5 text-zinc-400 mx-auto mb-1" />
+              <div className="text-xl font-semibold text-white">{property.baths ?? '—'}</div>
+              <div className="text-xs text-zinc-400">Baths</div>
+            </div>
+            <div className="text-center">
+              <Square className="h-5 w-5 text-zinc-400 mx-auto mb-1" />
+              <div className="text-xl font-semibold text-white">{property.sqft?.toLocaleString() ?? '—'}</div>
+              <div className="text-xs text-zinc-400">Sq Ft</div>
+            </div>
+          </div>
+          
+          {property.description && property.description.trim() !== '' && (
+            <div className="mt-6 mb-6 pt-4 border-t border-zinc-700 px-2">
+              <h3 className="text-lg font-semibold text-white mb-3 pb-2 border-b-2 border-zinc-600">
+                About This Home
+              </h3>
+              <div className="text-sm text-zinc-300 leading-relaxed text-justify space-y-4">
+                {property.description
+                  .split(/\n\n|\r\n\r\n/)
+                  .filter(paragraph => paragraph.trim())
+                  .map((paragraph, index) => (
+                    <p key={index}>{paragraph.trim()}</p>
+                  ))}
+              </div>
+            </div>
+          )}
+          
+          <div className="space-y-3">
+            <div className="flex justify-between py-2 border-b border-zinc-800">
+              <span className="text-zinc-400">Property Type</span>
+              <span className="text-white">{property.propertyType || '—'}</span>
+            </div>
+            <div className="flex justify-between py-2 border-b border-zinc-800">
+              <span className="text-zinc-400">Year Built</span>
+              <span className="text-white">{property.yearBuilt || '—'}</span>
+            </div>
+            {property.subdivision && (
+              <div className="flex justify-between py-2 border-b border-zinc-800">
+                <span className="text-zinc-400">Subdivision</span>
+                <span className="text-white">{property.subdivision}</span>
+              </div>
+            )}
+            <div className="flex justify-between py-2 border-b border-zinc-800">
+              <span className="text-zinc-400">Days on Market</span>
+              <span className="text-white">{property.daysOnMarket ?? '—'}</span>
+            </div>
+            {property.percentOfList && property.percentOfList !== 'N/A' && (
+              <div className="flex justify-between py-2 border-b border-zinc-800">
+                <span className="text-zinc-400">% of List Price</span>
+                <span className="text-white">{property.percentOfList}%</span>
+              </div>
+            )}
+            {property.mlsNumber && (
+              <div className="flex justify-between py-2 border-b border-zinc-800">
+                <span className="text-zinc-400">MLS #</span>
+                <span className="text-white font-mono text-sm">{property.mlsNumber}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

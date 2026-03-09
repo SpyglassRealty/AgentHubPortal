@@ -1,0 +1,771 @@
+### Complete Fix: Spyglass Realty Only - Dashboard + Properties
+
+**Goal:** Both Dashboard and Properties sections should show ONLY Spyglass Realty data (Office ID: ACT1518371), not all Austin Metro listings.
+
+**Key Change:** Market Pulse stats AND listings are filtered to Spyglass Realty only.
+
+---
+
+## What Changes
+
+| Section | Before | After |
+|---------|--------|-------|
+| Dashboard - Market Pulse Label | "Austin Metro Area" | "Spyglass Realty" |
+| Dashboard - Market Pulse Stats | 19,936 Active (all Austin) | ~131 Active (Spyglass only) |
+| Dashboard - Listings | 19,936 (wrong) | ~131 (correct) |
+| Properties - Market Pulse Label | "Austin Metro Area" | "Spyglass Realty" |
+| Properties - Market Pulse Stats | 19,936 Active (all Austin) | ~131 Active (Spyglass only) |
+| Properties - Listings | All Austin | Spyglass only |
+
+---
+
+## PART 1: Office Configuration
+
+### Create `server/config/offices.ts`:
+```typescript
+// Spyglass Realty Office Configuration
+export const SPYGLASS_OFFICES = {
+  austin: {
+    officeId: 'ACT1518371',      // ✅ Correct filter value for Repliers API
+    boardOfficeId: 'ACT5220',    // Reference only
+    displayCode: '5220',
+    name: 'Spyglass Realty',
+    city: 'Austin',
+    address: '2130 Goodrich Ave, Austin, TX 78704',
+    mlsSource: 'ACTRIS',
+  },
+  // houston: { ... } // Add later
+};
+
+export type OfficeKey = keyof typeof SPYGLASS_OFFICES;
+
+export function getOfficeConfig(office: string = 'austin') {
+  return SPYGLASS_OFFICES[office as OfficeKey] || SPYGLASS_OFFICES.austin;
+}
+
+export const DEFAULT_OFFICE = SPYGLASS_OFFICES.austin;
+```
+
+---
+
+## PART 2: Update Market Pulse Stats API
+
+### Update `GET /api/market-pulse/stats` in `server/routes.ts`:
+```typescript
+import { DEFAULT_OFFICE, getOfficeConfig } from './config/offices';
+
+// GET /api/market-pulse/stats - Spyglass Realty stats only
+router.get('/api/market-pulse/stats', async (req, res) => {
+  try {
+    const office = req.query.office?.toString() || 'austin';
+    const officeConfig = getOfficeConfig(office);
+
+    if (!REPLIERS_API_KEY) {
+      return res.status(500).json({ error: 'Repliers not configured' });
+    }
+
+    console.log(`[Market Pulse] Fetching stats for ${officeConfig.name} (${officeConfig.officeId})`);
+
+    // Fetch counts for each status - FILTERED BY OFFICE
+    const statuses = [
+      { key: 'active', status: 'Active' },
+      { key: 'activeUnderContract', status: 'Active Under Contract' },
+      { key: 'pending', status: 'Pending' },
+    ];
+
+    const counts: Record<string, number> = {};
+
+    for (const { key, status } of statuses) {
+      const params = new URLSearchParams({
+        'OriginatingSystemName': 'ACTRIS',
+        'status': status,
+        'officeId': officeConfig.officeId,  // ✅ FILTER BY SPYGLASS
+        'limit': '1',
+      });
+
+      try {
+        const response = await fetch(`${REPLIERS_BASE_URL}/listings?${params}`, {
+          headers: {
+            'Authorization': `Bearer ${REPLIERS_API_KEY}`,
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          counts[key] = data.total || 0;
+          console.log(`[Market Pulse] ${officeConfig.name} ${status}: ${counts[key]}`);
+        } else {
+          counts[key] = 0;
+        }
+      } catch (err) {
+        console.error(`[Market Pulse] Error fetching ${status}:`, err);
+        counts[key] = 0;
+      }
+    }
+
+    // For Closed, only count last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const closedParams = new URLSearchParams({
+      'OriginatingSystemName': 'ACTRIS',
+      'status': 'Closed',
+      'officeId': officeConfig.officeId,  // ✅ FILTER BY SPYGLASS
+      'closeDateMin': thirtyDaysAgo.toISOString().split('T')[0],
+      'limit': '1',
+    });
+
+    try {
+      const closedResponse = await fetch(`${REPLIERS_BASE_URL}/listings?${closedParams}`, {
+        headers: {
+          'Authorization': `Bearer ${REPLIERS_API_KEY}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (closedResponse.ok) {
+        const closedData = await closedResponse.json();
+        counts['closed'] = closedData.total || 0;
+        console.log(`[Market Pulse] ${officeConfig.name} Closed (30d): ${counts['closed']}`);
+      } else {
+        counts['closed'] = 0;
+      }
+    } catch (err) {
+      console.error('[Market Pulse] Error fetching Closed:', err);
+      counts['closed'] = 0;
+    }
+
+    // Calculate total inventory
+    const totalInventory = counts['active'] + counts['activeUnderContract'] + counts['pending'];
+
+    console.log(`[Market Pulse] ${officeConfig.name} Total Inventory: ${totalInventory}`);
+
+    res.json({
+      office: {
+        id: officeConfig.officeId,
+        code: officeConfig.displayCode,
+        name: officeConfig.name,
+        city: officeConfig.city,
+      },
+      stats: {
+        active: counts['active'],
+        activeUnderContract: counts['activeUnderContract'],
+        pending: counts['pending'],
+        closed: counts['closed'],
+        totalInventory,
+      },
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[Market Pulse Stats] Error:', error);
+    res.status(500).json({ error: 'Failed to fetch market stats' });
+  }
+});
+```
+
+---
+
+## PART 3: Update Company Listings API
+
+### Update `GET /api/company-listings` in `server/routes.ts`:
+```typescript
+// GET /api/company-listings - Spyglass Realty listings with pagination & filters
+router.get('/api/company-listings', async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const office = req.query.office?.toString() || 'austin';
+    const officeConfig = getOfficeConfig(office);
+
+    // Pagination
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 24;
+    const offset = (page - 1) * limit;
+
+    // Status filter
+    const status = req.query.status?.toString() || 'Active';
+    
+    // Other filters
+    const city = req.query.city?.toString() || '';
+    const minPrice = req.query.minPrice ? parseInt(req.query.minPrice as string) : undefined;
+    const maxPrice = req.query.maxPrice ? parseInt(req.query.maxPrice as string) : undefined;
+    const minBeds = req.query.minBeds ? parseInt(req.query.minBeds as string) : undefined;
+    const minBaths = req.query.minBaths ? parseInt(req.query.minBaths as string) : undefined;
+    const minSqft = req.query.minSqft ? parseInt(req.query.minSqft as string) : undefined;
+    const maxSqft = req.query.maxSqft ? parseInt(req.query.maxSqft as string) : undefined;
+    const maxDom = req.query.maxDom ? parseInt(req.query.maxDom as string) : undefined;
+    const search = req.query.search?.toString() || '';
+    
+    // Sorting
+    const sortBy = req.query.sortBy?.toString() || 'listDate';
+    const sortOrder = req.query.sortOrder?.toString() || 'desc';
+
+    if (!REPLIERS_API_KEY) {
+      return res.status(500).json({ error: 'Repliers not configured' });
+    }
+
+    // Build Repliers API request
+    const params = new URLSearchParams({
+      'OriginatingSystemName': 'ACTRIS',
+      'officeId': officeConfig.officeId,  // ✅ ALWAYS FILTER BY SPYGLASS
+      'limit': limit.toString(),
+      'offset': offset.toString(),
+      'sortBy': sortBy,
+      'sortOrder': sortOrder,
+    });
+
+    // Add status filter
+    if (status && status !== 'all') {
+      const repliersStatus = status === 'ActiveUnderContract' ? 'Active Under Contract' : status;
+      params.append('status', repliersStatus);
+    }
+
+    // Add other filters
+    if (city) params.append('city', city);
+    if (minPrice !== undefined) params.append('minPrice', minPrice.toString());
+    if (maxPrice !== undefined) params.append('maxPrice', maxPrice.toString());
+    if (minBeds !== undefined) params.append('minBeds', minBeds.toString());
+    if (minBaths !== undefined) params.append('minBaths', minBaths.toString());
+    if (minSqft !== undefined) params.append('minLivingArea', minSqft.toString());
+    if (maxSqft !== undefined) params.append('maxLivingArea', maxSqft.toString());
+    if (maxDom !== undefined) params.append('maxDaysOnMarket', maxDom.toString());
+    if (search) params.append('search', search);
+
+    const repliersUrl = `${REPLIERS_BASE_URL}/listings?${params}`;
+    
+    console.log(`[Company Listings] Fetching ${officeConfig.name} page ${page}: ${repliersUrl}`);
+
+    const response = await fetch(repliersUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${REPLIERS_API_KEY}`,
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      console.error('[Company Listings] Repliers error:', response.status);
+      return res.status(response.status).json({ error: 'Failed to fetch from Repliers' });
+    }
+
+    const data = await response.json();
+
+    // Transform listings
+    const listings = (data.listings || data.data || []).map((listing: any) => {
+      const streetNumber = listing.address?.streetNumber || listing.StreetNumber || '';
+      const streetName = listing.address?.streetName || listing.StreetName || '';
+      const streetSuffix = listing.address?.streetSuffix || listing.StreetSuffix || '';
+      const cityName = listing.address?.city || listing.City || 'Austin';
+      const state = listing.address?.state || listing.StateOrProvince || 'TX';
+      const postalCode = listing.address?.postalCode || listing.PostalCode || '';
+      
+      const streetAddress = [streetNumber, streetName, streetSuffix].filter(Boolean).join(' ');
+      const fullAddress = `${streetAddress}, ${cityName}, ${state} ${postalCode}`.trim();
+
+      return {
+        id: listing.id || listing.listingId,
+        mlsNumber: listing.mlsNumber || listing.ListingId,
+        status: listing.status || 'Active',
+        listPrice: listing.listPrice || listing.ListPrice || 0,
+        closePrice: listing.closePrice || listing.ClosePrice,
+        listDate: listing.listDate || listing.ListDate,
+        closeDate: listing.closeDate || listing.CloseDate,
+        daysOnMarket: listing.simpleDaysOnMarket || listing.DaysOnMarket || 0,
+        address: {
+          streetNumber,
+          streetName,
+          streetSuffix,
+          city: cityName,
+          state,
+          postalCode,
+          full: fullAddress,
+        },
+        beds: listing.beds || listing.BedroomsTotal || 0,
+        baths: listing.baths || listing.BathroomsTotalDecimal || 0,
+        sqft: listing.livingArea || listing.LivingArea || 0,
+        photos: listing.photos || listing.Media?.map((m: any) => m.MediaURL) || [],
+        listAgentName: listing.agents?.[0]?.name || listing.listAgentName,
+        listAgentEmail: listing.agents?.[0]?.email,
+        brokerageName: listing.office?.brokerageName || 'Spyglass Realty',
+      };
+    });
+
+    // Calculate pagination info
+    const total = data.total || 0;
+    const totalPages = Math.ceil(total / limit);
+    const startIndex = total > 0 ? offset + 1 : 0;
+    const endIndex = Math.min(offset + listings.length, total);
+
+    console.log(`[Company Listings] ${officeConfig.name}: ${listings.length} of ${total} (page ${page}/${totalPages})`);
+
+    res.json({
+      listings,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        startIndex,
+        endIndex,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+      office: {
+        id: officeConfig.officeId,
+        code: officeConfig.displayCode,
+        name: officeConfig.name,
+      },
+      filters: {
+        status,
+        city,
+        minPrice,
+        maxPrice,
+        minBeds,
+        minBaths,
+        minSqft,
+        maxSqft,
+        maxDom,
+        search,
+      },
+      sortBy,
+      sortOrder,
+    });
+  } catch (error) {
+    console.error('[Company Listings] Error:', error);
+    res.status(500).json({ error: 'Failed to fetch listings' });
+  }
+});
+```
+
+---
+
+## PART 4: Update Dashboard Market Pulse Component
+
+### Update `client/src/components/dashboard/MarketPulseWithSpyglassListings.tsx`:
+
+**Key Changes:**
+1. Label: "Austin Metro Area" → "Spyglass Realty"
+2. Stats come from Spyglass-filtered API
+3. Total label: "Total Active" → "Total Inventory"
+```tsx
+import React, { useState, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { 
+  TrendingUp, Building2, Home, FileText, Clock, CheckCircle, 
+  ChevronLeft, ChevronRight, Bed, Bath, Square, X
+} from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { RefreshButton } from '@/components/ui/RefreshButton';
+
+export function MarketPulseWithSpyglassListings() {
+  const navigate = useNavigate();
+  const { isDark } = useTheme();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [selectedListing, setSelectedListing] = useState<any>(null);
+
+  // Fetch Spyglass Realty stats (filtered by office)
+  const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useQuery({
+    queryKey: ['market-pulse-stats', 'spyglass'],
+    queryFn: async () => {
+      const response = await fetch('/api/market-pulse/stats?office=austin');
+      if (!response.ok) throw new Error('Failed to fetch');
+      return response.json();
+    },
+    refetchInterval: 5 * 60 * 1000,
+  });
+
+  // Fetch Spyglass Realty active listings
+  const { data: listingsData, isLoading: listingsLoading, refetch: refetchListings } = useQuery({
+    queryKey: ['spyglass-listings'],
+    queryFn: async () => {
+      const response = await fetch('/api/company-listings?status=Active&limit=20');
+      if (!response.ok) throw new Error('Failed to fetch');
+      return response.json();
+    },
+    refetchInterval: 5 * 60 * 1000,
+  });
+
+  const officeInfo = statsData?.office || { name: 'Spyglass Realty' };
+  const stats = statsData?.stats || {
+    active: 0,
+    activeUnderContract: 0,
+    pending: 0,
+    closed: 0,
+    totalInventory: 0
+  };
+
+  const spyglassListings = listingsData?.listings || [];
+  const isLoading = statsLoading || listingsLoading;
+
+  // Calculate max for chart (use largest value)
+  const maxValue = Math.max(stats.active, stats.activeUnderContract, stats.pending, stats.closed, 1);
+
+  // Combined refresh
+  const handleRefresh = async () => {
+    await Promise.all([refetchStats(), refetchListings()]);
+  };
+
+  // Navigate to Properties with status filter
+  const handleStatusClick = (status: string) => {
+    navigate(`/properties?status=${encodeURIComponent(status)}`);
+  };
+
+  // Scroll functions
+  const scrollLeft = () => scrollRef.current?.scrollBy({ left: -240, behavior: 'smooth' });
+  const scrollRight = () => scrollRef.current?.scrollBy({ left: 240, behavior: 'smooth' });
+
+  // Theme classes
+  const cardBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+
+  // Status config
+  const statusConfig = [
+    { key: 'Active', label: 'Active', sublabel: 'On Market', value: stats.active, color: '#22C55E', textColor: 'text-green-600', bgColor: isDark ? 'bg-green-900/20' : 'bg-green-50', borderColor: 'border-green-200', icon: Home },
+    { key: 'ActiveUnderContract', label: 'Under Contract', sublabel: '', value: stats.activeUnderContract, color: '#3B82F6', textColor: 'text-blue-600', bgColor: isDark ? 'bg-blue-900/20' : 'bg-blue-50', borderColor: 'border-blue-200', icon: FileText },
+    { key: 'Pending', label: 'Pending', sublabel: 'Closing Soon', value: stats.pending, color: '#EAB308', textColor: 'text-yellow-600', bgColor: isDark ? 'bg-yellow-900/20' : 'bg-yellow-50', borderColor: 'border-yellow-200', icon: Clock },
+    { key: 'Closed', label: 'Closed (30d)', sublabel: 'Sales', value: stats.closed, color: '#9CA3AF', textColor: 'text-gray-600', bgColor: isDark ? 'bg-gray-700/50' : 'bg-gray-50', borderColor: 'border-gray-300', icon: CheckCircle },
+  ];
+
+  const formatPrice = (price: number) => {
+    if (price >= 1000000) {
+      return `$${(price / 1000000).toFixed(2)}M`;
+    }
+    return `$${(price / 1000).toFixed(0)}K`;
+  };
+
+  const formatPriceFull = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
+  return (
+    <div className={`${cardBg} rounded-xl border ${borderColor} p-4 md:p-6`}>
+      
+      {/* ======== MARKET PULSE HEADER ======== */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-[#EF4923]" />
+          <h2 className={`text-lg font-semibold ${textPrimary}`}>Market Pulse</h2>
+        </div>
+        <RefreshButton
+          onRefresh={handleRefresh}
+          lastManualRefresh={null}
+          lastAutoRefresh={null}
+          isLoading={isLoading}
+        />
+      </div>
+
+      {/* ✅ CHANGED: Now shows "Spyglass Realty" instead of "Austin Metro Area" */}
+      <p className={`text-sm ${textSecondary} mb-4`}>{officeInfo.name}</p>
+
+      {/* Loading State */}
+      {statsLoading && (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#EF4923]"></div>
+        </div>
+      )}
+
+      {!statsLoading && (
+        <>
+          {/* Bar Chart - Vertical Bars */}
+          <div className="mb-4">
+            <div className="relative h-36 flex items-end justify-around gap-3 px-2">
+              {/* Y-axis labels */}
+              <div className="absolute left-0 top-0 bottom-0 w-8 flex flex-col justify-between text-[10px] text-gray-400 py-1">
+                <span>{maxValue}</span>
+                <span>{Math.round(maxValue / 2)}</span>
+                <span>0</span>
+              </div>
+              
+              {/* Bars */}
+              <div className="flex-1 flex items-end justify-around gap-2 h-full ml-8">
+                {statusConfig.map((item) => {
+                  const heightPercent = maxValue > 0 ? (item.value / maxValue) * 100 : 0;
+                  
+                  return (
+                    <div
+                      key={item.key}
+                      className="flex flex-col items-center flex-1 h-full justify-end cursor-pointer group"
+                      onClick={() => handleStatusClick(item.key)}
+                    >
+                      <div
+                        className="w-full max-w-16 rounded-t-lg transition-all duration-200 group-hover:opacity-75 group-hover:scale-105"
+                        style={{
+                          height: `${Math.max(heightPercent, 3)}%`,
+                          backgroundColor: item.color,
+                          minHeight: '4px'
+                        }}
+                      />
+                      <p className={`text-[10px] mt-2 text-center ${textSecondary} group-hover:text-[#EF4923]`}>
+                        {item.label.replace(' (30d)', '')}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <p className={`text-xs text-center mt-2 ${textSecondary}`}>
+              Click any bar to view listings
+            </p>
+          </div>
+
+          {/* Stat Cards */}
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            {statusConfig.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={item.key}
+                  onClick={() => handleStatusClick(item.key)}
+                  className={`p-2.5 rounded-lg border cursor-pointer transition-all duration-200
+                    hover:shadow-md hover:scale-[1.02] active:scale-[0.98]
+                    ${item.bgColor} ${item.borderColor}
+                  `}
+                >
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <Icon className={`w-3.5 h-3.5 ${item.textColor}`} />
+                    <span className={`text-xs font-medium ${item.textColor}`}>{item.label}</span>
+                  </div>
+                  {item.sublabel && (
+                    <p className={`text-[10px] ${textSecondary}`}>{item.sublabel}</p>
+                  )}
+                  <p className={`text-lg font-bold ${item.textColor} text-right`}>
+                    {item.value.toLocaleString()}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ✅ CHANGED: "Total Inventory" instead of "Total Active" */}
+          <div className={`text-center mb-6`}>
+            <span className={`text-sm ${textSecondary}`}>Total Inventory: </span>
+            <span className={`font-bold ${textPrimary}`}>{stats.totalInventory.toLocaleString()}</span>
+          </div>
+        </>
+      )}
+
+      {/* ======== DIVIDER ======== */}
+      <hr className={`${borderColor} mb-6`} />
+
+      {/* ======== SPYGLASS LISTINGS SECTION ======== */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Building2 className="w-5 h-5 text-[#EF4923]" />
+          <div>
+            <p className={`text-sm font-semibold ${textPrimary}`}>{officeInfo.name} Listings</p>
+            <p className={`text-[11px] ${textSecondary}`}>
+              {listingsData?.pagination?.total || spyglassListings.length} Active
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => navigate('/properties?status=Active')}
+          className="text-xs text-[#EF4923] hover:underline font-medium"
+        >
+          View All →
+        </button>
+      </div>
+
+      {/* Listings loading state */}
+      {listingsLoading && (
+        <div className="flex items-center justify-center py-6">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#EF4923]"></div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!listingsLoading && spyglassListings.length === 0 && (
+        <div className={`text-center py-6 rounded-lg border-2 border-dashed ${borderColor}`}>
+          <Building2 className={`w-8 h-8 mx-auto mb-2 ${textSecondary}`} />
+          <p className={`text-sm font-medium ${textPrimary}`}>No active listings</p>
+          <p className={`text-xs ${textSecondary}`}>Check back later</p>
+        </div>
+      )}
+
+      {/* Listings horizontal scroll */}
+      {!listingsLoading && spyglassListings.length > 0 && (
+        <div className="relative">
+          {spyglassListings.length > 3 && (
+            <>
+              <button
+                onClick={scrollLeft}
+                className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full shadow-lg
+                  ${isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-white hover:bg-gray-50 text-gray-700 border'}
+                  hidden sm:flex items-center justify-center min-w-[44px] min-h-[44px]`}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={scrollRight}
+                className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full shadow-lg
+                  ${isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-white hover:bg-gray-50 text-gray-700 border'}
+                  hidden sm:flex items-center justify-center min-w-[44px] min-h-[44px]`}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </>
+          )}
+
+          <div
+            ref={scrollRef}
+            className="flex gap-3 overflow-x-auto pb-2 scroll-smooth"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+          >
+            {spyglassListings.map((listing: any) => (
+              <SpyglassListingCard
+                key={listing.id}
+                listing={listing}
+                isDark={isDark}
+                onClick={() => setSelectedListing(listing)}
+                formatPrice={formatPrice}
+              />
+            ))}
+          </div>
+
+          <p className={`text-[10px] text-center mt-1 sm:hidden ${textSecondary}`}>
+            ← Swipe to see more →
+          </p>
+        </div>
+      )}
+
+      {/* Listing Detail Modal */}
+      {selectedListing && (
+        <SpyglassListingModal
+          listing={selectedListing}
+          isDark={isDark}
+          onClose={() => setSelectedListing(null)}
+          formatPrice={formatPriceFull}
+        />
+      )}
+    </div>
+  );
+}
+
+// ... SpyglassListingCard and SpyglassListingModal components remain the same ...
+```
+
+---
+
+## PART 5: Update Properties Page
+
+### Update `client/src/pages/properties.tsx`:
+
+**Key Changes:**
+1. Market Pulse shows "Spyglass Realty" not "Austin Metro Area"
+2. Listings section shows "Spyglass Realty Listings"
+3. All data filtered by Spyglass office
+```tsx
+// In the component, update the labels:
+
+{/* Market Pulse Header */}
+<div className="flex items-center gap-2">
+  <TrendingUp className="w-5 h-5 text-[#EF4923]" />
+  <h2 className={`text-lg font-semibold ${textPrimary}`}>Market Pulse</h2>
+</div>
+
+{/* ✅ CHANGED: "Spyglass Realty" instead of "Austin Metro Area" */}
+<p className={`text-sm ${textSecondary} mb-4`}>Spyglass Realty</p>
+
+// ...
+
+{/* Listings Header */}
+<div className="flex items-center gap-2 mb-4">
+  <Building2 className="w-5 h-5 text-[#EF4923]" />
+  <div>
+    {/* ✅ CHANGED: "Spyglass Realty Listings" */}
+    <h2 className={`text-lg font-semibold ${textPrimary}`}>Spyglass Realty Listings</h2>
+    <p className={`text-sm ${textSecondary}`}>
+      {pagination.total.toLocaleString()} {filters.status !== 'all' ? filters.status.toLowerCase() : ''} listings
+    </p>
+  </div>
+</div>
+
+// ✅ CHANGED: Total label
+<div className={`text-center`}>
+  <span className={textSecondary}>Total Inventory: </span>
+  <span className={`font-bold ${textPrimary}`}>{stats.totalInventory.toLocaleString()}</span>
+</div>
+```
+
+---
+
+## Visual Summary - After All Changes
+
+### Dashboard:
+┌─────────────────────────────────────────────────────────────────────┐
+│  📈 Market Pulse                                      [↻ Refresh]  │
+│  Spyglass Realty                      ← ✅ CHANGED from Austin Metro│
+│                                                                     │
+│     ████                                                            │
+│     ████                                                            │
+│     ████   ██    ██                                                 │
+│     ████   ██    ██    █                                            │
+│    Active Under Pending Closed                                      │
+│                                                                     │
+│  🏠 Active: 131       📋 Under Contract: 12                        │
+│  ⏳ Pending: 8        ✓ Closed (30d): 15                           │
+│                                                                     │
+│  Total Inventory: 151                 ← ✅ CHANGED label            │
+│  ─────────────────────────────────────────────────────────────────  │
+│  🏢 Spyglass Realty Listings                          View All →   │
+│  131 Active                                                         │
+│  [Spyglass listings only...]                                        │
+└─────────────────────────────────────────────────────────────────────┘
+
+### Properties Page:
+┌─────────────────────────────────────────────────────────────────────┐
+│  📈 Market Pulse                                      [↻ Refresh]  │
+│  Spyglass Realty                      ← ✅ CHANGED from Austin Metro│
+│                                                                     │
+│  🏠 Active: 131       📋 Under Contract: 12                        │
+│  ⏳ Pending: 8        ✓ Closed (30d): 15                           │
+│  Total Inventory: 151                                               │
+│  ─────────────────────────────────────────────────────────────────  │
+│  🏢 Spyglass Realty Listings          ← ✅ CHANGED from Austin Metro│
+│  131 active listings                                                │
+│                                                                     │
+│  [Active] [Under Contract] [Pending] [Closed] [All]                │
+│                                                                     │
+│  Showing 1-24 of 131 results                                        │
+│  [Only Spyglass Realty listings...]                                 │
+└─────────────────────────────────────────────────────────────────────┘
+
+---
+
+## Testing Checklist
+
+### Dashboard
+- [ ] Market Pulse label shows "Spyglass Realty" (not "Austin Metro Area")
+- [ ] Active count is ~131 (not ~19,936)
+- [ ] Under Contract count is Spyglass only
+- [ ] Pending count is Spyglass only
+- [ ] Closed (30d) count is Spyglass only
+- [ ] Total Inventory is sum of Active + Under Contract + Pending
+- [ ] Bar chart shows Spyglass proportions
+- [ ] Listings section shows ~131 active
+- [ ] All listings are Spyglass Realty properties
+
+### Properties Page
+- [ ] Market Pulse label shows "Spyglass Realty"
+- [ ] Stats match Dashboard
+- [ ] Listings section shows "Spyglass Realty Listings"
+- [ ] Status tabs filter correctly (Active ~131, Under Contract ~12, etc.)
+- [ ] Pagination shows correct counts
+- [ ] "Showing 1-24 of 131" is accurate
+- [ ] All listings show Spyglass Realty as brokerage
+
+### API Verification
+- [ ] Console logs show "officeId: ACT1518371" in requests
+- [ ] Counts are much smaller than Austin Metro totals
+- [ ] All returned listings have brokerageName: "Spyglass Realty"

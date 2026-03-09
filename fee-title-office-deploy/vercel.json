@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "installCommand": "npm ci",
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "@vercel/node@20.8.0"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "outputDirectory": "dist/public"
+}

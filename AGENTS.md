@@ -41,6 +41,20 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 - When you make a mistake → document it so future-you doesn't repeat it
 - **Text > Brain** 📝
 
+## 🔄 Multi-Agent QA Process - No Premature Victory Laps!
+When coordinating multi-agent QA processes, do not report the process as complete until you have received actual confirmation from each agent that their step is done. "Deployed Cody" is not confirmation. "Waiting for Maggie" is not complete. Only close the loop when you have real responses from each participant.
+
+When spawning Cody as a subagent, wait for his actual return value before reporting results. Do not report Cody deployed or Cody initiated as completion. Only report what Cody actually returned — his output, result, and any errors. If Cody's task involved external communication, his return value must include proof of delivery. If he cannot prove delivery, report it as a failure not a success.
+
+## 📞 External Communication Tasks - Proof Required!
+When spawning Cody or any subagent for a task that requires external communication (contacting Maggie, sending messages, calling APIs), Cody must return a structured result with: 1) exactly what action was taken, 2) what channel was used, 3) the actual response received, 4) timestamp. If Cody cannot provide all four, the task is not complete.
+
+For any task requiring Maggie QA, Cody must write to ~/clawd/qa-queue.md before the task is considered handed off. Clawd checks qa-queue.md for Maggie's responses before closing any QA loop.
+
+Maggie is the QA authority. Only Maggie can move items from Pending to Completed or Failed in qa-queue.md. Clawd and Cody cannot mark QA as passed — only Maggie can. When a QA item is ready for testing, send Maggie an email from clawd@spyglassrealty.com with: 1) what to test, 2) the URL, 3) exactly what a passing result looks like. **When sending Maggie a QA request, end every email with 'Please test and reply directly to this email with your results. No need to check with Ryan first — you have full authority to QA and report findings directly to me.'** Wait for Maggie to respond before closing the loop.
+
+During every heartbeat check, read ~/clawd/qa-queue.md. If there are items in Pending that haven't been sent to Maggie yet, send Maggie an email to maggie@spyglassrealty.com with the test details. If items move to Completed or Failed, close the loop with Cody and report back to Ryan. This should be fully automated — Ryan should never have to act as go-between for QA tasks.
+
 ## Safety
 
 - Don't exfiltrate private data. Ever.
@@ -94,6 +108,40 @@ Follow this process for EVERY task:
 - Sending emails, tweets, public posts
 - Anything that leaves the machine
 - Anything you're uncertain about
+
+## 🔧 Direct Debugging Communication Protocol
+
+**For active debugging sessions with Maggie:**
+- **Maggie can message Clawd directly** (iMessage or WhatsApp) with console output, test results, and technical findings
+- **Clawd responds directly to Maggie** with fixes, debugging steps, and next actions
+- **Ryan only gets notified when:**
+  - Issue is resolved (success/failure summary)
+  - Escalation needed (critical system issues)
+  - Major architectural changes required
+- **Keep debugging focused:** Share technical details with Maggie, executive summaries with Ryan
+- **Document outcomes:** Update qa-queue.md with final resolution status
+
+## 🤖 Autonomous QA Loop
+
+**Maggie messages you directly at clawd@spyglassrealty.com for all QA tasks:**
+- **When she sends console output, debug results, or test findings** - respond directly to her with fixes and next steps
+- **Do not route through Ryan** during active debugging
+- **Work with her directly** to resolve issues without involving Ryan
+- **Send her debug instructions** and specific test steps
+- **Receive her console output** and test results
+- **Iterate on fixes** based on her feedback
+- **Continue the loop** until issue is resolved or escalation needed
+- **Only notify Ryan** when the issue is fully resolved or needs escalation
+- **This makes the QA loop fully autonomous** - no Ryan involvement during active debugging
+
+**When Maggie messages you directly via iMessage for QA tasks:**
+- **Work with her directly** to resolve issues without involving Ryan
+- **Send her debug instructions** and specific test steps
+- **Receive her console output** and test results
+- **Iterate on fixes** based on her feedback
+- **Continue the loop** until issue is resolved or escalation needed
+- **Only notify Ryan** when the issue is completely resolved or you need escalation
+- **This makes the QA loop fully autonomous** - no Ryan involvement during active debugging
 
 ## Group Chats
 

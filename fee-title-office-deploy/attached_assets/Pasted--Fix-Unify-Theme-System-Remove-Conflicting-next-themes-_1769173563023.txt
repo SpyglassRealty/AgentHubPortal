@@ -1,0 +1,328 @@
+### Fix: Unify Theme System - Remove Conflicting next-themes Usage
+
+**Root Cause Identified:**
+- Layout component uses `user?.theme` from API + manual `classList.toggle` ✅ (working - sidebar is dark)
+- Training page (and others) use `useTheme()` from `next-themes` ❌ (no ThemeProvider, returns undefined)
+
+**Solution:** Remove `next-themes` dependency and create a unified theme context that uses the Layout's existing theme system.
+
+**Mobile Optimization:** Ensure all changes work on iPad, iOS, and Android mobile web views.
+
+---
+
+## STEP 1: Create Unified Theme Context
+
+### Create `client/src/contexts/ThemeContext.tsx`:
+```tsx
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+
+type Theme = 'light' | 'dark' | 'system';
+
+interface ThemeContextType {
+  theme: Theme;
+  resolvedTheme: 'light' | 'dark';
+  isDark: boolean;
+  setTheme: (theme: Theme) => void;
+}
+
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
+interface ThemeProviderProps {
+  children: ReactNode;
+}
+
+export function ThemeProvider({ children }: ThemeProviderProps) {
+  const { user } = useAuth();
+  const [theme, setThemeState] = useState<Theme>('light');
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
+
+  // Sync with user preference from API
+  useEffect(() => {
+    if (user?.theme) {
+      setThemeState(user.theme as Theme);
+    }
+  }, [user?.theme]);
+
+  // Apply theme to document and resolve system preference
+  useEffect(() => {
+    const applyTheme = () => {
+      let resolved: 'light' | 'dark' = 'light';
+      
+      if (theme === 'system') {
+        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        resolved = isDark ? 'dark' : 'light';
+      } else {
+        resolved = theme === 'dark' ? 'dark' : 'light';
+      }
+      
+      // Apply to document
+      document.documentElement.classList.toggle('dark', resolved === 'dark');
+      setResolvedTheme(resolved);
+    };
+
+    applyTheme();
+
+    // Listen for system theme changes
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = () => applyTheme();
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
+    }
+  }, [theme]);
+
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme);
+    // Optionally save to API here
+  };
+
+  const value: ThemeContextType = {
+    theme,
+    resolvedTheme,
+    isDark: resolvedTheme === 'dark',
+    setTheme,
+  };
+
+  return (
+    <ThemeContext.Provider value={value}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+export function useTheme() {
+  const context = useContext(ThemeContext);
+  if (context === undefined) {
+    // Fallback for components outside provider (shouldn't happen)
+    console.warn('useTheme must be used within a ThemeProvider');
+    return {
+      theme: 'light' as Theme,
+      resolvedTheme: 'light' as const,
+      isDark: false,
+      setTheme: () => {},
+    };
+  }
+  return context;
+}
+```
+
+---
+
+## STEP 2: Wrap App with ThemeProvider
+
+### Update `client/src/App.tsx`:
+```tsx
+import { ThemeProvider } from '@/contexts/ThemeContext';
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        {/* ... rest of your app */}
+        <Router />
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+}
+```
+
+---
+
+## STEP 3: Update Layout Component
+
+### Update `client/src/components/layout.tsx`:
+
+Remove the manual theme handling since ThemeProvider now handles it:
+```tsx
+// REMOVE this useEffect from Layout:
+// React.useEffect(() => {
+//   const applyTheme = (theme: string) => {
+//     if (theme === "system") {
+//       const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+//       document.documentElement.classList.toggle("dark", isDark);
+//     } else {
+//       document.documentElement.classList.toggle("dark", theme === "dark");
+//     }
+//   };
+//   applyTheme(currentTheme);
+// }, [currentTheme]);
+
+// Instead, use the unified context:
+import { useTheme } from '@/contexts/ThemeContext';
+
+export function Layout({ children }) {
+  const { isDark } = useTheme();
+  
+  return (
+    <div className={`flex h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      <Sidebar />
+      <main className={`flex-1 overflow-auto ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+        {children}
+      </main>
+    </div>
+  );
+}
+```
+
+---
+
+## STEP 4: Update Training Page
+
+### Update `client/src/pages/training.tsx`:
+
+Replace the `next-themes` import with your unified context:
+```tsx
+// REMOVE THIS:
+// import { useTheme } from 'next-themes';
+// const { resolvedTheme } = useTheme();
+// const isDark = resolvedTheme === 'dark';
+
+// REPLACE WITH:
+import { useTheme } from '@/contexts/ThemeContext';
+
+export default function TrainingPage() {
+  const { isDark, resolvedTheme } = useTheme();
+  
+  // Now isDark will be correct!
+  const pageBg = isDark ? 'bg-gray-900' : 'bg-gray-50';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  // ... rest of theme classes
+```
+
+---
+
+## STEP 5: Update All Other Components Using next-themes
+
+Search for all files importing from `next-themes` and update them:
+```bash
+# Find all files using next-themes
+grep -r "from 'next-themes'" client/src/
+grep -r 'from "next-themes"' client/src/
+```
+
+For each file found, replace:
+```tsx
+// BEFORE:
+import { useTheme } from 'next-themes';
+const { resolvedTheme } = useTheme();
+const isDark = resolvedTheme === 'dark';
+
+// AFTER:
+import { useTheme } from '@/contexts/ThemeContext';
+const { isDark } = useTheme();
+```
+
+### Files likely needing updates:
+- `client/src/pages/dashboard.tsx`
+- `client/src/components/app-view.tsx`
+- `client/src/components/company-updates.tsx`
+- Any other component using `useTheme` from `next-themes`
+
+---
+
+## STEP 6: Update Theme Toggle (Settings or Header)
+
+If there's a theme toggle component, update it to use the new context:
+```tsx
+import { useTheme } from '@/contexts/ThemeContext';
+
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
+  
+  return (
+    <select 
+      value={theme} 
+      onChange={(e) => setTheme(e.target.value as 'light' | 'dark' | 'system')}
+      className="..."
+    >
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+      <option value="system">System</option>
+    </select>
+  );
+}
+```
+
+---
+
+## STEP 7: Optional - Remove next-themes Dependency
+
+Once all components are updated, you can remove the unused dependency:
+```bash
+npm uninstall next-themes
+# or
+yarn remove next-themes
+```
+
+---
+
+## Mobile Optimization Checklist
+
+Ensure all theme-related changes work on mobile:
+
+### Touch Interactions
+- [ ] Theme toggle works on touch devices
+- [ ] No hover-only interactions for theme switching
+
+### Safe Area
+- [ ] Dark backgrounds extend to safe areas on notched devices
+- [ ] No white gaps at top/bottom on iPhone
+
+### Performance
+- [ ] Theme switching is instant (no flash of wrong theme)
+- [ ] No layout shift when theme changes
+
+### Testing Devices
+- [ ] iPad (Safari)
+- [ ] iPhone (Safari)
+- [ ] Android Phone (Chrome)
+- [ ] Android Tablet (Chrome)
+
+---
+
+## Testing Checklist
+
+### Theme Context
+- [ ] ThemeProvider wraps the entire app
+- [ ] useTheme returns correct values
+- [ ] isDark is true when dark mode selected
+- [ ] isDark is false when light mode selected
+- [ ] System preference works correctly
+
+### Dark Mode Backgrounds
+- [ ] Training page: Full dark background (no white areas)
+- [ ] Dashboard: Full dark background
+- [ ] All pages: Consistent dark backgrounds
+- [ ] Sidebar matches main content darkness
+
+### Theme Persistence
+- [ ] Theme persists after page refresh
+- [ ] Theme syncs with user API preference
+- [ ] System theme updates when OS preference changes
+
+### Components Updated
+- [ ] Training page uses new useTheme
+- [ ] Dashboard uses new useTheme
+- [ ] All components using next-themes are updated
+- [ ] No console warnings about missing ThemeProvider
+
+### Visual Consistency
+- [ ] Light mode: All backgrounds are gray-50 or white
+- [ ] Dark mode: All backgrounds are gray-900 or gray-800
+- [ ] No mixed light/dark elements
+- [ ] Text is readable in both modes
+
+---
+
+## Summary of Changes
+
+| File | Change |
+|------|--------|
+| `contexts/ThemeContext.tsx` | NEW - Unified theme provider |
+| `App.tsx` | Wrap with ThemeProvider |
+| `components/layout.tsx` | Remove manual theme handling, use context |
+| `pages/training.tsx` | Replace next-themes with context |
+| `pages/dashboard.tsx` | Replace next-themes with context |
+| Other components | Replace next-themes imports |
+| `package.json` | Optional: remove next-themes |

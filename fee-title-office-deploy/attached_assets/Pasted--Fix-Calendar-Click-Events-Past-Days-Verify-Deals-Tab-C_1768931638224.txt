@@ -1,0 +1,119 @@
+### Fix Calendar: Click Events + Past Days + Verify Deals Tab
+
+**Client Feedback (Yvonne Valdez):**
+1. "Calendar works! I can't click on the day or open up the event for the day but can see something is there."
+2. "It's showing me previous days appointments but not allowing me to click on past days to remind myself of what I did."
+3. "I don't see a tab for Deals."
+
+---
+
+### Issue 1: Add Click-to-View Event Details
+
+When a user clicks on a calendar event, open a modal showing event details.
+
+**Add Event Click Handler:**
+```typescript
+const handleEventClick = (event) => {
+  setSelectedEvent(event);
+  setShowEventModal(true);
+};
+```
+
+**Event Detail Modal should show:**
+| Field | Source |
+|-------|--------|
+| Title | appointment.title |
+| Date & Time | appointment.start / appointment.end |
+| Type | appointment.type |
+| Location | appointment.location |
+| Contact Name | appointment.person?.name |
+| Contact Phone | appointment.person?.phone |
+| Contact Email | appointment.person?.email |
+| Notes | appointment.description |
+| Outcome | appointment.outcome |
+
+**Modal Design:**
+┌─────────────────────────────────────────────────────────┐
+│  Appointment Details                               [X]  │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  📅 Showing at 123 Main St                              │
+│                                                         │
+│  Date:     January 14, 2026                             │
+│  Time:     2:00 PM - 3:00 PM                            │
+│  Type:     Property Showing                             │
+│  Location: 123 Main St, Austin, TX 78701                │
+│                                                         │
+│  ─────────────────────────────────────────────────────  │
+│  Contact                                                │
+│  Name:     John Smith                                   │
+│  Phone:    (512) 555-1234                               │
+│  Email:    john@email.com                               │
+│                                                         │
+│  ─────────────────────────────────────────────────────  │
+│  Notes:                                                 │
+│  Buyer interested in 3+ bedrooms, budget $500k          │
+│                                                         │
+│  ┌─────────────────┐  ┌─────────────────┐               │
+│  │  View in FUB    │  │     Close       │               │
+│  └─────────────────┘  └─────────────────┘               │
+└─────────────────────────────────────────────────────────┘
+
+---
+
+### Issue 2: Allow Clicking Past Days
+
+Remove any restriction preventing clicks on past dates:
+```typescript
+// WRONG - prevents past date clicks
+const handleDayClick = (date) => {
+  if (date < new Date()) return; // Remove this
+  // ...
+};
+
+// CORRECT - allow all dates
+const handleDayClick = (date) => {
+  setSelectedDate(date);
+  // Show events for that day
+};
+```
+
+Users should be able to:
+- Click any day (past or future) to see that day's events
+- Click any event (past or future) to see details
+
+---
+
+### Issue 3: Verify Deals Tab Visibility
+
+Client reports: "I don't see a tab for Deals"
+
+**Check sidebar navigation:**
+```typescript
+// In sidebar component - ensure Reports/Deals is visible
+{
+  name: 'Reports',  // or 'Deals'
+  href: '/reports',
+  icon: ChartBarIcon,
+}
+```
+
+**Verify:**
+- Is the Reports/Deals link in the sidebar?
+- Is it conditionally hidden based on permissions?
+- Is the route `/reports` accessible?
+
+---
+
+### Files to Update
+- `client/src/pages/calendar.tsx` - Add event click handler, day click handler
+- `client/src/components/event-detail-modal.tsx` - Create if doesn't exist
+- `client/src/components/sidebar.tsx` - Verify Deals/Reports link
+
+### Success Criteria
+- [ ] Clicking any calendar event opens detail modal
+- [ ] Modal shows all appointment info (title, time, contact, notes)
+- [ ] Clicking past days works (shows events for that day)
+- [ ] Clicking past events works (opens detail modal)
+- [ ] Reports/Deals tab is visible in sidebar for all users
+- [ ] "View in FUB" button opens the appointment in Follow Up Boss

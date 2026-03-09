@@ -12,6 +12,12 @@ Things like:
 - Device nicknames
 - Anything environment-specific
 
+### Email
+- **Gmail Account:** clawd@spyglassrealty.com
+- **App Password:** Saved in `clawd-email-credentials.json` and `.email-credentials-backup.json`
+- **SMTP:** smtp.gmail.com:587 (STARTTLS)
+- **Created:** March 7, 2026 (replacing lost March 1 password)
+
 ### SSH
 - Maggie Mac Mini → 192.168.1.184, user: mangetransaction (key auth set up)
   - Hostname: manges-Mac-mini.lan / manges-Mac-mini.local
@@ -39,3 +45,10 @@ When Trisha adds tracking scripts, verify at:
 - API: https://missioncontrol-tjfm.onrender.com/api/global-scripts?position=head
 - Live sites: spyglassrealty.com & spyglass-idx.vercel.app
 - See: ~/clawd/memory/mission-control-tracking-scripts-process.md
+
+### Agent Contacts
+- **Maggie:** maggie@spyglassrealty.com 
+  - **Email:** For formal QA requests and documentation (use clawd@spyglassrealty.com as sender)
+  - **iMessage:** For direct debugging communication during active sessions
+  - **WhatsApp:** For direct debugging communication during active sessions  
+  - **Protocol:** Email for QA initiation, iMessage/WhatsApp for real-time debugging, email for final resolution

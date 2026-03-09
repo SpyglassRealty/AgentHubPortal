@@ -1,0 +1,640 @@
+Properties Section (Enhanced)
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│  🏢 Properties                                                                          │
+│  Access property data, listings, and market insights for the Austin Metro Area.         │
+│                                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────────────────┐│
+│  │  📈 Market Pulse                                              [↻ Refresh]          ││
+│  │  Austin Metro Area                                                                  ││
+│  │                                                                                     ││
+│  │       ┃                                                                             ││
+│  │   20k ┃  ████████                                                                   ││
+│  │   15k ┃  ████████                                                                   ││
+│  │   10k ┃  ████████                                                                   ││
+│  │    5k ┃  ████████    ████████      ████████                                         ││
+│  │     0 ┃  ████████    ████████      ████████      ─────────                          ││
+│  │       ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                        ││
+│  │          Active    Under Contract   Pending       Closed                            ││
+│  │         (click)      (click)        (click)       (click)                           ││
+│  │                                                                                     ││
+│  │  ┌─────────────────────┐  ┌─────────────────────┐                                   ││
+│  │  │ 🏠 Active           │  │ 📋 Under Contract   │                                   ││
+│  │  │ On Market   19,925  │  │                1,935│                                   ││
+│  │  └─────────────────────┘  └─────────────────────┘                                   ││
+│  │  ┌─────────────────────┐  ┌─────────────────────┐                                   ││
+│  │  │ ⏳ Pending          │  │ ✓ Closed (30d)      │                                   ││
+│  │  │ Closing Soon  2,655 │  │ Sales          272  │                                   ││
+│  │  └─────────────────────┘  └─────────────────────┘                                   ││
+│  │                                                                                     ││
+│  │                                          Total Active: 24,515                       ││
+│  └─────────────────────────────────────────────────────────────────────────────────────┘│
+│                                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────────────────┐│
+│  │  🏢 Company Listings                                          [↻ Refresh]          ││
+│  │  Spyglass Realty Austin Office (5220) • 12 Active Listings                          ││
+│  │                                                                                     ││
+│  │  [Active ▼] [Pending] [Closed] [All]                                                ││
+│  │                                                                                     ││
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐            ││
+│  │  │ [  PHOTO  ]  │  │ [  PHOTO  ]  │  │ [  PHOTO  ]  │  │ [  PHOTO  ]  │            ││
+│  │  │ [ACTIVE]     │  │ [ACTIVE]     │  │ [PENDING]    │  │ [ACTIVE]     │            ││
+│  │  │              │  │              │  │              │  │              │            ││
+│  │  │ $1,295,000   │  │ $875,000     │  │ $650,000     │  │ $1,100,000   │            ││
+│  │  │ 2401 Home... │  │ 512 Oak S... │  │ 789 Elm A... │  │ 1234 Pine... │            ││
+│  │  │ 🛏5 🛁2 📐2450│  │ 🛏4 🛁3 📐1850│  │ 🛏3 🛁2 📐1400│  │ 🛏4 🛁2 📐2100│            ││
+│  │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘            ││
+│  │                                                                                     ││
+│  │  ← Scroll for more →                                                               ││
+│  └─────────────────────────────────────────────────────────────────────────────────────┘│
+│                                                                                         │
+│  Property Apps & Tools                                                                  │
+│  ┌─────────────────────────┐  ┌─────────────────────────┐                              │
+│  │ 📋 Client Data Portal   │  │ 🤝 Jointly              │                              │
+│  │ Access and manage...    │  │ Collaborate with...     │                              │
+│  │ [Live]                  │  │ [Live]                  │                              │
+│  └─────────────────────────┘  └─────────────────────────┘                              │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+Dashboard - Market Pulse (Clickable Bars)
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│  Good morning, Daryl                                                                    │
+│  Welcome to Mission Control. What would you like to work on today?                      │
+│                                                                                         │
+│  ┌────────────────────────────────────────────┐  ┌────────────────────────────────────┐ │
+│  │  📈 Market Pulse              [↻ Refresh]  │  │  ✨ Action Items                   │ │
+│  │  Austin Metro Area                         │  │                                    │ │
+│  │                                            │  │       No action items right now    │ │
+│  │      ████                                  │  │                                    │ │
+│  │  20k ████                                  │  │  Check back later for personalized │ │
+│  │  15k ████                                  │  │  suggestions                       │ │
+│  │  10k ████                                  │  │                                    │ │
+│  │   5k ████  ████    ████                    │  │                                    │ │
+│  │    0 ████  ████    ████    ────            │  │                                    │ │
+│  │      Active Under  Pend   Closed           │  │                                    │ │
+│  │       ↑      ↑       ↑       ↑             │  │                                    │ │
+│  │    [CLICK TO GO TO PROPERTIES PAGE]        │  │                                    │ │
+│  │                                            │  │                                    │ │
+│  │  ┌──────────┐ ┌──────────┐                 │  │                                    │ │
+│  │  │🏠 Active │ │📋 Under  │                 │  │                                    │ │
+│  │  │  19,925  │ │Contract  │                 │  │                                    │ │
+│  │  └──────────┘ │  1,935   │                 │  │                                    │ │
+│  │  ┌──────────┐ └──────────┘                 │  │                                    │ │
+│  │  │⏳ Pending│ ┌──────────┐                 │  │                                    │ │
+│  │  │  2,655   │ │✓ Closed  │                 │  │                                    │ │
+│  │  └──────────┘ │   272    │                 │  │                                    │ │
+│  │               └──────────┘                 │  │                                    │ │
+│  │           Total Active: 24,515             │  │                                    │ │
+│  └────────────────────────────────────────────┘  └────────────────────────────────────┘ │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+Send this to Mission Control Replit:
+### Add Company Listings to Properties Section + Clickable Market Pulse Bars
+
+**Goals:**
+1. Add Company Listings widget to the Properties page (below Market Pulse)
+2. Make Market Pulse bar graph clickable - clicking any bar navigates to Properties page
+3. Apply clickable behavior to both Dashboard and Properties page Market Pulse widgets
+
+---
+
+## PART 1: Make Market Pulse Bars Clickable
+
+### Update Market Pulse Component (Dashboard & Properties)
+
+The bar chart should be interactive - clicking any bar navigates to the Properties page:
+```tsx
+import { useNavigate } from 'react-router-dom';
+
+function MarketPulseChart({ data, isOnDashboard = false }) {
+  const navigate = useNavigate();
+  const { isDark } = useTheme();
+  
+  const handleBarClick = (status: string) => {
+    // Navigate to Properties page with status filter
+    navigate(`/properties?status=${status.toLowerCase()}`);
+  };
+
+  // Bar colors
+  const barColors = {
+    active: '#22C55E',      // Green
+    underContract: '#3B82F6', // Blue
+    pending: '#EAB308',     // Yellow
+    closed: '#9CA3AF',      // Gray
+  };
+
+  return (
+    <div className="...">
+      {/* Chart Container */}
+      <div className="flex items-end gap-4 h-48 px-4">
+        {/* Active Bar */}
+        <div 
+          className="flex-1 flex flex-col items-center cursor-pointer group"
+          onClick={() => handleBarClick('active')}
+        >
+          <div 
+            className="w-full rounded-t-md transition-all duration-200 group-hover:opacity-80 group-hover:scale-105"
+            style={{ 
+              height: `${(data.active / data.maxValue) * 100}%`,
+              backgroundColor: barColors.active,
+              minHeight: '20px'
+            }}
+          />
+          <span className={`mt-2 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'} group-hover:text-[#EF4923]`}>
+            Active
+          </span>
+        </div>
+
+        {/* Under Contract Bar */}
+        <div 
+          className="flex-1 flex flex-col items-center cursor-pointer group"
+          onClick={() => handleBarClick('under-contract')}
+        >
+          <div 
+            className="w-full rounded-t-md transition-all duration-200 group-hover:opacity-80 group-hover:scale-105"
+            style={{ 
+              height: `${(data.underContract / data.maxValue) * 100}%`,
+              backgroundColor: barColors.underContract,
+              minHeight: '20px'
+            }}
+          />
+          <span className={`mt-2 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'} group-hover:text-[#EF4923]`}>
+            Under Contract
+          </span>
+        </div>
+
+        {/* Pending Bar */}
+        <div 
+          className="flex-1 flex flex-col items-center cursor-pointer group"
+          onClick={() => handleBarClick('pending')}
+        >
+          <div 
+            className="w-full rounded-t-md transition-all duration-200 group-hover:opacity-80 group-hover:scale-105"
+            style={{ 
+              height: `${(data.pending / data.maxValue) * 100}%`,
+              backgroundColor: barColors.pending,
+              minHeight: '20px'
+            }}
+          />
+          <span className={`mt-2 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'} group-hover:text-[#EF4923]`}>
+            Pending
+          </span>
+        </div>
+
+        {/* Closed Bar */}
+        <div 
+          className="flex-1 flex flex-col items-center cursor-pointer group"
+          onClick={() => handleBarClick('closed')}
+        >
+          <div 
+            className="w-full rounded-t-md transition-all duration-200 group-hover:opacity-80 group-hover:scale-105"
+            style={{ 
+              height: `${(data.closed / data.maxValue) * 100}%`,
+              backgroundColor: barColors.closed,
+              minHeight: '20px'
+            }}
+          />
+          <span className={`mt-2 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'} group-hover:text-[#EF4923]`}>
+            Closed
+          </span>
+        </div>
+      </div>
+
+      {/* Hover Hint - Only on Dashboard */}
+      {isOnDashboard && (
+        <p className={`text-xs text-center mt-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+          Click any bar to view listings
+        </p>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+## PART 2: Add Company Listings Widget to Properties Page
+
+### Update `client/src/pages/properties.tsx`:
+```tsx
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Building2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RefreshButton } from '@/components/ui/RefreshButton';
+import { useSyncStatus } from '@/hooks/useSyncStatus';
+
+export default function PropertiesPage() {
+  const { isDark } = useTheme();
+  const [listingFilter, setListingFilter] = useState<'active' | 'pending' | 'closed' | 'all'>('active');
+  const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+  
+  const { lastManualRefresh, lastAutoRefresh, isLoading: isSyncLoading, refresh } = useSyncStatus('company-listings');
+
+  // Fetch company listings
+  const { data: listingsData, isLoading: listingsLoading, refetch: refetchListings } = useQuery({
+    queryKey: ['company-listings', listingFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        officeCode: '5220',
+        status: listingFilter === 'all' ? '' : listingFilter,
+      });
+      const response = await fetch(`/api/company-listings?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch');
+      return response.json();
+    }
+  });
+
+  const listings = listingsData?.listings || [];
+
+  const handleRefreshListings = async () => {
+    await refresh(async () => {
+      await refetchListings();
+    });
+  };
+
+  // Horizontal scroll for listings
+  const scrollRef = useRef<HTMLDivElement>(null);
+  
+  const scrollLeft = () => {
+    scrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' });
+  };
+  
+  const scrollRight = () => {
+    scrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' });
+  };
+
+  // Theme classes
+  const cardBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+
+  return (
+    <div className={`min-h-screen p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Page Header */}
+      <div className="flex items-center gap-3 mb-2">
+        <Building2 className="w-8 h-8 text-[#EF4923]" />
+        <h1 className={`text-2xl font-bold ${textPrimary}`}>Properties</h1>
+      </div>
+      <p className={`mb-6 ${textSecondary}`}>
+        Access property data, listings, and market insights for the Austin Metro Area.
+      </p>
+
+      {/* Market Pulse Widget */}
+      <div className={`${cardBg} rounded-xl border ${borderColor} p-4 md:p-6 mb-6`}>
+        <MarketPulseWidget />
+      </div>
+
+      {/* ============================================ */}
+      {/* COMPANY LISTINGS WIDGET - NEW */}
+      {/* ============================================ */}
+      <div className={`${cardBg} rounded-xl border ${borderColor} p-4 md:p-6 mb-6`}>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3">
+            <Building2 className="w-6 h-6 text-[#EF4923]" />
+            <div>
+              <h2 className={`text-lg font-semibold ${textPrimary}`}>Company Listings</h2>
+              <p className={`text-sm ${textSecondary}`}>
+                Spyglass Realty Austin Office (5220) • {listings.length} listings
+              </p>
+            </div>
+          </div>
+          
+          <RefreshButton
+            onRefresh={handleRefreshListings}
+            lastManualRefresh={lastManualRefresh}
+            lastAutoRefresh={lastAutoRefresh}
+            isLoading={isSyncLoading}
+          />
+        </div>
+
+        {/* Filter Tabs */}
+        <div className={`flex gap-2 mb-4 p-1 rounded-lg inline-flex ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+          {(['active', 'pending', 'closed', 'all'] as const).map((status) => (
+            <button
+              key={status}
+              onClick={() => setListingFilter(status)}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium capitalize transition-all
+                ${listingFilter === status
+                  ? 'bg-[#EF4923] text-white'
+                  : isDark 
+                    ? 'text-gray-400 hover:text-white' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }
+              `}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+
+        {/* Loading State */}
+        {listingsLoading && (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#EF4923]"></div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!listingsLoading && listings.length === 0 && (
+          <div className={`text-center py-8 rounded-lg border-2 border-dashed ${borderColor}`}>
+            <Building2 className={`w-10 h-10 mx-auto mb-2 ${textSecondary}`} />
+            <p className={`font-medium ${textPrimary}`}>No {listingFilter} listings</p>
+            <p className={`text-sm ${textSecondary}`}>Check back later or try a different filter</p>
+          </div>
+        )}
+
+        {/* Listings Horizontal Scroll */}
+        {!listingsLoading && listings.length > 0 && (
+          <div className="relative">
+            {/* Scroll Left Button */}
+            <button
+              onClick={scrollLeft}
+              className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full shadow-lg
+                ${isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-white hover:bg-gray-50 text-gray-700'}
+                hidden md:flex items-center justify-center`}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+
+            {/* Listings Container */}
+            <div
+              ref={scrollRef}
+              className="flex gap-4 overflow-x-auto pb-4 px-1 scroll-smooth"
+              style={{ 
+                scrollbarWidth: 'none', 
+                msOverflowStyle: 'none',
+                WebkitOverflowScrolling: 'touch'
+              }}
+            >
+              {listings.map((listing: Listing) => (
+                <div 
+                  key={listing.id} 
+                  className="flex-shrink-0 w-64 sm:w-72"
+                >
+                  <ListingCard
+                    listing={listing}
+                    isDark={isDark}
+                    onClick={() => setSelectedListing(listing)}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Scroll Right Button */}
+            <button
+              onClick={scrollRight}
+              className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full shadow-lg
+                ${isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-white hover:bg-gray-50 text-gray-700'}
+                hidden md:flex items-center justify-center`}
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+
+            {/* Scroll Hint Mobile */}
+            <p className={`text-xs text-center mt-2 md:hidden ${textSecondary}`}>
+              ← Swipe to see more →
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Property Apps & Tools */}
+      <h2 className={`text-lg font-semibold mb-4 ${textPrimary}`}>Property Apps & Tools</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Client Data Portal Card */}
+        {/* Jointly Card */}
+      </div>
+
+      {/* Listing Detail Modal */}
+      {selectedListing && (
+        <ListingDetailModal
+          listing={selectedListing}
+          isDark={isDark}
+          onClose={() => setSelectedListing(null)}
+        />
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+## PART 3: Listing Card Component
+```tsx
+interface ListingCardProps {
+  listing: Listing;
+  isDark: boolean;
+  onClick: () => void;
+}
+
+function ListingCard({ listing, isDark, onClick }: ListingCardProps) {
+  const cardBg = isDark ? 'bg-gray-700' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDark ? 'border-gray-600' : 'border-gray-200';
+
+  const statusColors: Record<string, string> = {
+    active: 'bg-green-500',
+    pending: 'bg-yellow-500',
+    closed: 'bg-gray-500',
+    'under contract': 'bg-blue-500',
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
+  return (
+    <div
+      onClick={onClick}
+      className={`${cardBg} rounded-xl border ${borderColor} overflow-hidden cursor-pointer 
+        transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]`}
+    >
+      {/* Photo */}
+      <div className="relative aspect-[4/3] bg-gray-300">
+        {listing.photos?.[0] ? (
+          <img
+            src={listing.photos[0]}
+            alt={listing.address?.full}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Building2 className="w-10 h-10 text-gray-400" />
+          </div>
+        )}
+        
+        {/* Status Badge */}
+        <span className={`absolute top-2 left-2 px-2 py-0.5 rounded text-xs font-bold uppercase
+          ${statusColors[listing.status?.toLowerCase()] || 'bg-gray-500'} text-white`}>
+          {listing.status}
+        </span>
+        
+        {/* Photo Count */}
+        {listing.photos?.length > 1 && (
+          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/60 text-white text-xs">
+            1/{listing.photos.length}
+          </span>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="p-3">
+        <p className={`text-lg font-bold ${textPrimary}`}>
+          {formatPrice(listing.listPrice)}
+        </p>
+        <p className={`text-sm ${textSecondary} truncate mb-2`}>
+          {listing.address?.full}
+        </p>
+        <div className="flex items-center gap-3 text-sm">
+          <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <Bed className="w-4 h-4" /> {listing.beds}
+          </span>
+          <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <Bath className="w-4 h-4" /> {listing.baths}
+          </span>
+          <span className={`flex items-center gap-1 ${textSecondary}`}>
+            <Square className="w-4 h-4" /> {listing.livingArea?.toLocaleString()}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## PART 4: API Endpoint for Company Listings
+
+Add to `server/routes.ts` (if not already added):
+```typescript
+// GET /api/company-listings
+router.get('/api/company-listings', async (req, res) => {
+  try {
+    const officeCode = req.query.officeCode || '5220';
+    const status = req.query.status || 'active';
+
+    // Fetch from Repliers API
+    const params = new URLSearchParams({
+      'OriginatingSystemName': 'ACTRIS',
+      'ListOfficeKey': officeCode.toString(),
+      'limit': '50',
+      'sortBy': 'listDate',
+      'sortOrder': 'desc',
+    });
+
+    if (status && status !== 'all') {
+      params.append('status', status.toString());
+    }
+
+    const response = await fetch(`${REPLIERS_BASE_URL}/listings?${params}`, {
+      headers: {
+        'Authorization': `Bearer ${REPLIERS_API_KEY}`,
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Repliers API error');
+    }
+
+    const data = await response.json();
+
+    // Transform to internal format
+    const listings = (data.listings || []).map((listing: any) => ({
+      id: listing.id,
+      listingId: listing.listingId,
+      mlsNumber: listing.mlsNumber,
+      status: listing.status,
+      listPrice: listing.listPrice,
+      listDate: listing.listDate,
+      simpleDaysOnMarket: listing.simpleDaysOnMarket,
+      address: {
+        full: listing.address?.full,
+        streetNumber: listing.address?.streetNumber,
+        streetName: listing.address?.streetName,
+        city: listing.address?.city,
+        state: listing.address?.state,
+        postalCode: listing.address?.postalCode,
+      },
+      beds: listing.beds,
+      baths: listing.baths,
+      livingArea: listing.livingArea,
+      photos: listing.photos || [],
+      subdivision: listing.subdivision,
+      propertyType: listing.propertyType,
+    }));
+
+    res.json({ listings, total: listings.length });
+  } catch (error) {
+    console.error('[Company Listings] Error:', error);
+    res.status(500).json({ error: 'Failed to fetch listings' });
+  }
+});
+```
+
+---
+
+## 📱 Mobile Optimization
+
+**All changes must be optimized for iPad, iOS, and Android mobile web view:**
+
+| Device | Requirement |
+|--------|-------------|
+| iPad Safari | 2-3 cards visible, scroll arrows on hover |
+| iPhone Safari | 1-2 cards visible, swipe to scroll |
+| Android Chrome | Touch scroll with momentum |
+
+### Mobile Considerations:
+- Horizontal scroll with touch momentum
+- Swipe hint on mobile ("← Swipe to see more →")
+- Hide scroll arrows on mobile (touch only)
+- Cards maintain 44px+ touch targets
+- Modal full-screen on mobile
+
+---
+
+## Testing Checklist
+
+### Market Pulse Clickable Bars
+- [ ] Clicking Active bar navigates to Properties page
+- [ ] Clicking Under Contract bar navigates to Properties page
+- [ ] Clicking Pending bar navigates to Properties page
+- [ ] Clicking Closed bar navigates to Properties page
+- [ ] Hover effect shows on bars (scale + opacity change)
+- [ ] Cursor changes to pointer on hover
+- [ ] Works on Dashboard Market Pulse
+- [ ] Works on Properties page Market Pulse
+
+### Company Listings Widget
+- [ ] Displays in Properties page below Market Pulse
+- [ ] Shows listing count in header
+- [ ] Filter tabs work (Active/Pending/Closed/All)
+- [ ] Horizontal scroll works on desktop
+- [ ] Swipe scroll works on mobile
+- [ ] Scroll arrows appear on desktop
+- [ ] Cards show photo, status, price, address, stats
+- [ ] Clicking card opens detail modal
+- [ ] Refresh button works
+
+### Listing Detail Modal
+- [ ] Opens when card clicked
+- [ ] Shows all property details
+- [ ] Photo carousel works
+- [ ] Close button works
+- [ ] Click outside closes modal
+
+### Mobile
+- [ ] iPad: Full layout works
+- [ ] iPhone: Compact layout, full-screen modal
+- [ ] Android: Touch interactions work
