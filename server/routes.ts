@@ -9,6 +9,7 @@ import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema, agentP
 import { getGoogleCalendarEvents } from "./googleCalendarClient";
 import { extractPhotosFromRepliersList, debugPhotoFields } from "./lib/repliers-photo-utils";
 import { renderBlocks } from "./renderBlockRoutes";
+import multer from 'multer';
 
 // Enhanced address parsing for CMA search
 function parseAddress(fullAddress: string): { streetNumber?: string; streetName?: string; streetSuffix?: string; city?: string; state?: string; zip?: string } {
@@ -2795,7 +2796,6 @@ Respond with valid JSON in this exact format:
   });
 
   // POST /api/settings/resources/upload - multipart file upload
-  import multer from 'multer';
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
