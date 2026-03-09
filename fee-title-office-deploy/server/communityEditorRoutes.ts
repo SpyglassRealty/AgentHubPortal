@@ -366,7 +366,7 @@ export function registerCommunityEditorRoutes(app: Express) {
         return res.status(400).json({ message: "communityId is required" });
       }
 
-      const apiKey = process.env.IDX_GRID_API_KEY;
+      const apiKey = process.env.IDX_GRID_API_KEY || process.env.REPLIERS_API_KEY;
       if (!apiKey) {
         return res.status(503).json({ message: "Listings API not configured" });
       }
@@ -386,94 +386,185 @@ export function registerCommunityEditorRoutes(app: Express) {
         return res.status(400).json({ message: "Community does not have a valid polygon" });
       }
 
-      // Polygon is stored as [lng, lat][] — keep in that format for Repliers POST body
-      // Ensure polygon is closed (first point === last point)
-      const polyCoords = [...community.polygon];
-      const first = polyCoords[0];
-      const last = polyCoords[polyCoords.length - 1];
-      if (first[0] !== last[0] || first[1] !== last[1]) {
-        polyCoords.push(first);
-      }
+      // Import the proven Repliers API client
+      const { searchByPolygon } = await import("../lib/repliers-api.js");
 
-      // Build query params
+      // Build search filters
       const type = (req.query.type as string) || "Sale";
-      const searchClass = (req.query.class as string) || "residential";
-      const sort = (req.query.sort as string) || "createdOnDesc";
+      const sort = (req.query.sort as string) || "date-desc";
       const limit = Math.min(Math.max(1, parseInt((req.query.limit as string) || "12", 10)), 50);
       const page = Math.max(1, parseInt((req.query.page as string) || "1", 10));
 
       // Optional filters
-      const minPrice = req.query.minPrice as string;
-      const maxPrice = req.query.maxPrice as string;
-      const minBeds = req.query.minBeds as string;
-      const minBaths = req.query.minBaths as string;
+      const minPrice = req.query.minPrice ? parseInt(req.query.minPrice as string, 10) : undefined;
+      const maxPrice = req.query.maxPrice ? parseInt(req.query.maxPrice as string, 10) : undefined;
+      const minBeds = req.query.minBeds ? parseInt(req.query.minBeds as string, 10) : undefined;
+      const minBaths = req.query.minBaths ? parseInt(req.query.minBaths as string, 10) : undefined;
       const status = (req.query.status as string) || "Active";
 
-      const params = new URLSearchParams({
-        listings: "true",
-        type,
-        class: searchClass,
-        status: status === "Active" ? "A" : status,
-        sortBy: sort,
-        resultsPerPage: limit.toString(),
-        pageNum: page.toString(),
+      // Convert polygon format from [lng, lat] to the format expected by our API
+      const polygon: Array<[number, number]> = community.polygon as Array<[number, number]>;
+
+      console.log(`[Listings by Polygon] Fetching for community "${community.name}" (${polygon.length} pts) using proven API`);
+
+      // Use the proven searchByPolygon function
+      const results = await searchByPolygon(polygon, {
+        type: type as 'Sale' | 'Rent' | 'Sold',
+        status: [status],
+        minPrice,
+        maxPrice,
+        minBeds,
+        minBaths,
+        sort: sort as 'price-asc' | 'price-desc' | 'date-desc' | 'sqft-desc',
+        page,
+        pageSize: limit,
       });
 
-      if (minPrice) params.append("minPrice", minPrice);
-      if (maxPrice) params.append("maxPrice", maxPrice);
-      if (minBeds) params.append("minBeds", minBeds);
-      if (minBaths) params.append("minBaths", minBaths);
-
-      const url = `https://api.repliers.io/listings?${params.toString()}`;
-      console.log(`[Listings by Polygon] Fetching for community "${community.name}" (${polyCoords.length} pts) via POST`);
-
-      // Use POST with JSON body for polygon search (same format as CMA search)
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          "REPLIERS-API-KEY": apiKey,
-        },
-        body: JSON.stringify({ map: [polyCoords] }),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error(`[Listings by Polygon] Repliers API error ${response.status}:`, errText.substring(0, 500));
-        return res.status(response.status).json({ message: "Failed to fetch listings from MLS" });
-      }
-
-      const data = await response.json();
-      const listings = (data.listings || []).map((listing: any) => ({
+      // Transform to the expected response format for backwards compatibility
+      const listings = results.listings.map((listing) => ({
         mlsNumber: listing.mlsNumber,
-        listPrice: listing.listPrice,
-        address: listing.address?.unparsedAddress || listing.address?.streetName || "Address unavailable",
-        city: listing.address?.city || "",
-        state: listing.address?.state || "TX",
-        postalCode: listing.address?.postalCode || "",
-        bedrooms: listing.details?.numBedrooms || listing.details?.numBedroomsTotal || 0,
-        bathrooms: listing.details?.numBathrooms || listing.details?.numBathroomsFull || 0,
-        sqft: listing.details?.sqft || listing.details?.livingArea || 0,
-        photo: listing.images?.[0] || null,
-        photos: (listing.images || []).slice(0, 6),
-        status: listing.standardStatus || listing.status || "Active",
-        daysOnMarket: listing.daysOnMarket || 0,
-        yearBuilt: listing.details?.yearBuilt || null,
-        propertyType: listing.details?.propertyType || listing.type || "",
-        listDate: listing.listDate || null,
+        listPrice: listing.price,
+        address: listing.address.street,
+        city: listing.address.city,
+        state: listing.address.state,
+        postalCode: listing.address.zip,
+        bedrooms: listing.bedrooms,
+        bathrooms: listing.bathrooms,
+        sqft: listing.sqft,
+        photo: listing.photos[0] || null,
+        photos: listing.photos.slice(0, 6),
+        status: listing.status,
+        daysOnMarket: listing.daysOnMarket,
+        yearBuilt: listing.yearBuilt,
+        propertyType: listing.propertyType,
+        listDate: listing.listDate,
       }));
 
       res.json({
         listings,
-        count: data.count || listings.length,
-        page,
-        limit,
+        count: results.total,
+        page: results.page,
+        limit: results.pageSize,
         communityName: community.name,
       });
     } catch (error) {
       console.error("[Listings by Polygon] Error:", error);
       res.status(500).json({ message: "Failed to fetch listings" });
+    }
+  });
+
+  // ── GET /api/communities/:slug — spyglass-idx compatible community endpoint ──
+  // This endpoint matches the format that spyglass-idx IDX widgets expect
+  app.get("/api/communities/:slug", async (req: any, res) => {
+    try {
+      const { slug } = req.params;
+      const page = parseInt(req.query.page || '1', 10);
+      const pageSize = parseInt(req.query.pageSize || '20', 10);
+      const includeLiveData = req.query.live === 'true';
+
+      console.log(`[Community API] Fetching community: ${slug}, live: ${includeLiveData}`);
+
+      // Look up community by slug
+      const [community] = await db
+        .select({
+          id: communities.id,
+          name: communities.name,
+          slug: communities.slug,
+          county: communities.county,
+          polygon: communities.polygon,
+          centroid: communities.centroid,
+          published: communities.published,
+          description: communities.description,
+          featured: communities.featured,
+        })
+        .from(communities)
+        .where(eq(communities.slug, slug))
+        .limit(1);
+
+      if (!community) {
+        return res.status(404).json({ error: "Community not found" });
+      }
+
+      if (!community.polygon || community.polygon.length < 3) {
+        return res.status(400).json({ error: "Community does not have a valid polygon" });
+      }
+
+      console.log(`[Community API] Found community: ${community.name} with ${community.polygon.length} polygon points`);
+
+      // Import the proven Repliers API client
+      const { searchByPolygon } = await import("../lib/repliers-api.js");
+
+      // Convert polygon format from [lng, lat] to the format expected by our API
+      const polygon: Array<[number, number]> = community.polygon as Array<[number, number]>;
+
+      // Use the proven searchByPolygon function
+      const results = await searchByPolygon(polygon, {
+        type: 'Sale',
+        status: ['Active'],
+        page,
+        pageSize,
+      });
+
+      console.log(`[Community API] Found ${results.total} listings for ${community.name}`);
+
+      // Transform to spyglass-idx compatible format
+      const listings = results.listings.map((listing) => ({
+        id: listing.id,
+        mlsNumber: listing.mlsNumber,
+        address: listing.address,
+        price: listing.price,
+        bedrooms: listing.bedrooms,
+        bathrooms: listing.bathrooms,
+        sqft: listing.sqft,
+        lotSize: listing.lotSize,
+        yearBuilt: listing.yearBuilt,
+        propertyType: listing.propertyType,
+        status: listing.status,
+        daysOnMarket: listing.daysOnMarket,
+        photos: listing.photos,
+        description: listing.description,
+        coordinates: listing.coordinates,
+        listDate: listing.listDate,
+        updatedAt: listing.updatedAt,
+      }));
+
+      // Calculate basic stats
+      const prices = listings.map(l => l.price).filter(p => p > 0).sort((a, b) => a - b);
+      const sqftListings = listings.filter(l => l.sqft > 0);
+
+      const stats = {
+        activeListings: results.total,
+        medianPrice: prices.length > 0
+          ? prices[Math.floor(prices.length / 2)]
+          : 0,
+        avgPricePerSqft: sqftListings.length > 0
+          ? Math.round(sqftListings.reduce((sum, l) => sum + (l.price / l.sqft), 0) / sqftListings.length)
+          : 0,
+        avgDaysOnMarket: listings.length > 0
+          ? Math.round(listings.reduce((sum, l) => sum + (l.daysOnMarket || 0), 0) / listings.length)
+          : 0,
+      };
+
+      res.json({
+        community: {
+          name: community.name,
+          slug: community.slug,
+          county: community.county || 'Travis',
+          featured: community.featured || false,
+          polygon: community.polygon,
+          displayPolygon: community.polygon, // Use same polygon for display
+        },
+        listings,
+        stats,
+        total: results.total,
+        page: results.page,
+        pageSize: results.pageSize,
+        source: 'mission-control',
+      });
+
+    } catch (error) {
+      console.error(`[Community API] Error for ${req.params.slug}:`, error);
+      res.status(500).json({ error: "Failed to fetch community listings" });
     }
   });
 }
