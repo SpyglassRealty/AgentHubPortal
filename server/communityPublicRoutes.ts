@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { db } from "./db";
-import { communities } from "@shared/schema";
+import { communities, communityContentBlocks } from "@shared/schema";
 import { eq, ilike, and, or, desc, asc } from "drizzle-orm";
 
 /**
@@ -128,6 +128,16 @@ export function registerCommunityPublicRoutes(app: Express) {
         return res.status(404).json({ error: "Community not found" });
       }
 
+      // Fetch content blocks for this community
+      const contentBlocks = await db
+        .select()
+        .from(communityContentBlocks)
+        .where(and(
+          eq(communityContentBlocks.communityId, community.id),
+          eq(communityContentBlocks.isPublished, true)
+        ))
+        .orderBy(asc(communityContentBlocks.sortOrder));
+
       // Transform to IDX format
       const transformedCommunity = {
         name: community.name,
@@ -148,6 +158,18 @@ export function registerCommunityPublicRoutes(app: Express) {
         bestFor: community.bestFor || [],
         nearbyLandmarks: community.nearbyLandmarks || [],
         sections: community.sections || [],
+        // Add content blocks to the response
+        contentBlocks: contentBlocks.map(block => ({
+          id: block.id,
+          title: block.title,
+          content: block.content,
+          images: block.images,
+          videos: block.videos,
+          backgroundColor: block.backgroundColor,
+          mediaPosition: block.mediaPosition,
+          ctaButtons: block.ctaButtons,
+          sortOrder: block.sortOrder,
+        })),
       };
 
       res.json({
