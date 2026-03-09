@@ -58,7 +58,7 @@ interface MulticamJob {
 
 // ── Storage ──────────────────────────────────────────────
 
-const DATA_DIR = path.resolve(__dirname, "../data");
+const DATA_DIR = path.resolve(new URL('.', import.meta.url).pathname, "../data");
 const JOBS_FILE = path.join(DATA_DIR, "multicam-jobs.json");
 const UPLOADS_DIR = path.join(DATA_DIR, "multicam-uploads");
 

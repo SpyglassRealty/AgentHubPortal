@@ -2795,7 +2795,7 @@ Respond with valid JSON in this exact format:
   });
 
   // POST /api/settings/resources/upload - multipart file upload
-  const multer = require('multer');
+  import multer from 'multer';
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
