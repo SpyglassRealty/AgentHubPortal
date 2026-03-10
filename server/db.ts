@@ -92,6 +92,9 @@ async function runDirectMigrations() {
     // Uploads table for image storage
     await createUploadsTable();
     
+    // Community Content Blocks table (migration 0014)
+    await createCommunityContentBlocksTable();
+    
   } catch (error) {
     console.error("[Database] Direct migration error:", error);
     throw error;
@@ -1071,6 +1074,83 @@ async function createUploadsTable() {
     console.log("[Database] Uploads table created/verified successfully");
   } catch (error) {
     console.error("[Database] Error creating uploads table:", error);
+    // Do not throw - table might already exist
+  }
+}
+
+// Community Content Blocks table (migration 0014)
+async function createCommunityContentBlocksTable() {
+  try {
+    console.log("[Database] Creating community_content_blocks table...");
+    
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS community_content_blocks (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        community_id INTEGER NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
+        title VARCHAR(255),
+        content TEXT,
+        
+        -- Media configuration (JSON arrays)
+        images JSONB DEFAULT '[]'::jsonb,
+        videos JSONB DEFAULT '[]'::jsonb,
+        
+        -- Layout configuration
+        background_color VARCHAR(20) DEFAULT 'white',
+        media_position VARCHAR(10) DEFAULT 'left',
+        
+        -- Call-to-action configuration (JSON array)
+        cta_buttons JSONB DEFAULT '[]'::jsonb,
+        
+        -- Organization and publishing
+        sort_order INTEGER DEFAULT 0,
+        is_published BOOLEAN DEFAULT true,
+        
+        -- Timestamps
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create indexes for performance
+    const indexes = [
+      'CREATE INDEX IF NOT EXISTS idx_community_content_blocks_community_id ON community_content_blocks(community_id)',
+      'CREATE INDEX IF NOT EXISTS idx_community_content_blocks_sort_order ON community_content_blocks(sort_order)',
+      'CREATE INDEX IF NOT EXISTS idx_community_content_blocks_published ON community_content_blocks(is_published)',
+      'CREATE INDEX IF NOT EXISTS idx_community_content_blocks_community_published ON community_content_blocks(community_id, is_published)',
+    ];
+
+    for (const idx of indexes) {
+      try { 
+        await pool.query(idx); 
+      } catch (e) { 
+        console.log(`[Database] Index creation note: ${e.message}`); 
+      }
+    }
+
+    // Add trigger to update updated_at timestamp
+    await pool.query(`
+      CREATE OR REPLACE FUNCTION update_community_content_blocks_updated_at()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        NEW.updated_at = CURRENT_TIMESTAMP;
+        RETURN NEW;
+      END;
+      $$ language 'plpgsql'
+    `);
+
+    await pool.query(`
+      DROP TRIGGER IF EXISTS update_community_content_blocks_updated_at ON community_content_blocks
+    `);
+
+    await pool.query(`
+      CREATE TRIGGER update_community_content_blocks_updated_at
+        BEFORE UPDATE ON community_content_blocks
+        FOR EACH ROW EXECUTE PROCEDURE update_community_content_blocks_updated_at()
+    `);
+
+    console.log("[Database] Community content blocks table created/verified successfully");
+  } catch (error) {
+    console.error("[Database] Error creating community_content_blocks table:", error);
     // Do not throw - table might already exist
   }
 }

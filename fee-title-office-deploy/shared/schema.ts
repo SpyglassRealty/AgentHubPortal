@@ -905,6 +905,33 @@ export const communities = pgTable("communities", {
 export type Community = typeof communities.$inferSelect;
 export type InsertCommunity = typeof communities.$inferInsert;
 
+// ── Community Content Blocks ────────────────────────────────────
+export const communityContentBlocks = pgTable("community_content_blocks", {
+  id: serial("id").primaryKey(),
+  communityId: integer("community_id").notNull().references(() => communities.id, { onDelete: "cascade" }),
+  blockType: varchar("block_type", { length: 50 }).notNull().default('split'), // 'split', 'text', 'image', etc.
+  title: varchar("title", { length: 255 }),
+  content: text("content"), // HTML content
+  imageUrl: varchar("image_url", { length: 500 }),
+  videoUrl: varchar("video_url", { length: 500 }),
+  ctaText: varchar("cta_text", { length: 100 }),
+  ctaUrl: varchar("cta_url", { length: 500 }),
+  imagePosition: varchar("image_position", { length: 10 }).default('right'), // 'left' | 'right'
+  backgroundColor: varchar("background_color", { length: 20 }).default('white'), // 'white' | 'light' | 'dark'
+  sortOrder: integer("sort_order").notNull().default(0),
+  published: boolean("published").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by").references(() => users.id),
+}, (table) => [
+  index("idx_community_content_blocks_community_id").on(table.communityId),
+  index("idx_community_content_blocks_sort_order").on(table.sortOrder),
+  index("idx_community_content_blocks_published").on(table.published),
+]);
+
+export type CommunityContentBlock = typeof communityContentBlocks.$inferSelect;
+export type InsertCommunityContentBlock = typeof communityContentBlocks.$inferInsert;
+
 // Site Content table — stores homepage section content as JSON blobs
 export const siteContent = pgTable("site_content", {
   id: serial("id").primaryKey(),
@@ -1536,7 +1563,7 @@ export const callDutySlots = pgTable("call_duty_slots", {
   shiftType: varchar("shift_type").notNull(), // 'morning' | 'midday' | 'evening'
   startTime: varchar("start_time").notNull(), // '08:00' | '12:00' | '16:00'
   endTime: varchar("end_time").notNull(),     // '12:00' | '16:00' | '20:00'
-  maxSignups: integer("max_signups").notNull().default(3),
+  maxSignups: integer("max_signups").notNull().default(1),
   isActive: boolean("is_active").default(true),
   googleCalendarEventId: varchar("google_calendar_event_id"),
   createdBy: varchar("created_by").references(() => users.id),
@@ -1558,7 +1585,6 @@ export const callDutySignups = pgTable("call_duty_signups", {
   status: varchar("status").default("active"), // 'active' | 'cancelled'
   signedUpAt: timestamp("signed_up_at").defaultNow(),
   cancelledAt: timestamp("cancelled_at"),
-  cancellationReason: text("cancellation_reason"), // Task 6: Required reason for all cancellations
 }, (table) => [
   uniqueIndex("idx_call_duty_signups_slot_user").on(table.slotId, table.userId),
   index("idx_call_duty_signups_user").on(table.userId),
@@ -1568,42 +1594,6 @@ export const callDutySignups = pgTable("call_duty_signups", {
 
 export type CallDutySignup = typeof callDutySignups.$inferSelect;
 export type InsertCallDutySignup = typeof callDutySignups.$inferInsert;
-
-export const callDutyHolidays = pgTable("call_duty_holidays", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull(), // 'New Year\'s Day', 'Independence Day', etc.
-  date: date("date").notNull(), // Holiday date
-  isRecurring: boolean("is_recurring").default(false), // Annual holidays
-  createdBy: varchar("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  uniqueIndex("idx_call_duty_holidays_date").on(table.date),
-  index("idx_call_duty_holidays_recurring").on(table.isRecurring),
-]);
-
-export type CallDutyHoliday = typeof callDutyHolidays.$inferSelect;
-export type InsertCallDutyHoliday = typeof callDutyHolidays.$inferInsert;
-
-export const callDutyWaitlist = pgTable("call_duty_waitlist", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  slotId: varchar("slot_id").notNull().references(() => callDutySlots.id),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  position: integer("position").notNull(), // 1, 2, 3, etc. (1 = first in line)
-  status: varchar("status").default("waiting"), // 'waiting' | 'notified' | 'expired'
-  notifiedAt: timestamp("notified_at"),
-  expiresAt: timestamp("expires_at"), // Notification expires after X hours
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => [
-  uniqueIndex("idx_call_duty_waitlist_slot_user").on(table.slotId, table.userId),
-  index("idx_call_duty_waitlist_slot").on(table.slotId),
-  index("idx_call_duty_waitlist_user").on(table.userId),
-  index("idx_call_duty_waitlist_status").on(table.status),
-  index("idx_call_duty_waitlist_position").on(table.position),
-]);
-
-export type CallDutyWaitlist = typeof callDutyWaitlist.$inferSelect;
-export type InsertCallDutyWaitlist = typeof callDutyWaitlist.$inferInsert;
 
 // =====================================================
 // IDX Site Lead Capture (Backup when FUB fails)
@@ -1668,43 +1658,4 @@ export const submitIdxLeadSchema = z.object({
 });
 
 export type SubmitIdxLeadInput = z.infer<typeof submitIdxLeadSchema>;
-
-// ── Community Content Blocks (Drag & Drop System) ─────────────────────────────
-export const communityContentBlocks = pgTable("community_content_blocks", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  communityId: integer("community_id").notNull().references(() => communities.id, { onDelete: 'cascade' }),
-  title: varchar("title", { length: 255 }),
-  content: text("content"),
-  
-  // Media configuration
-  images: jsonb("images").$type<string[]>().default([]), // array of image URLs
-  videos: jsonb("videos").$type<string[]>().default([]), // array of video URLs
-  
-  // Layout configuration
-  backgroundColor: varchar("background_color", { length: 20 }).default("white"), // white, light, dark
-  mediaPosition: varchar("media_position", { length: 10 }).default("left"), // left, right
-  
-  // Call-to-action configuration
-  ctaButtons: jsonb("cta_buttons").$type<Array<{
-    text: string;
-    url: string;
-    style?: string; // primary, secondary, etc.
-  }>>().default([]),
-  
-  // Organization and publishing
-  sortOrder: integer("sort_order").default(0),
-  isPublished: boolean("is_published").default(true),
-  
-  // Timestamps
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  index("idx_community_content_blocks_community_id").on(table.communityId),
-  index("idx_community_content_blocks_sort_order").on(table.sortOrder),
-  index("idx_community_content_blocks_published").on(table.isPublished),
-  index("idx_community_content_blocks_community_published").on(table.communityId, table.isPublished),
-]);
-
-export type CommunityContentBlock = typeof communityContentBlocks.$inferSelect;
-export type InsertCommunityContentBlock = typeof communityContentBlocks.$inferInsert;
 

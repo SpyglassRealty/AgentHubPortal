@@ -361,7 +361,7 @@ export const blockRegistry: WidgetDefinition[] = [
 
   // ── Core Pages ──────────────────────────────────
   {
-    type: 'hero',
+    type: 'core-hero',
     label: 'Core Hero',
     icon: '🎯',
     category: 'Core Pages',
@@ -426,24 +426,7 @@ export const blockRegistry: WidgetDefinition[] = [
     },
   },
   {
-    type: 'idx-two-column',
-    label: 'IDX Two Column',
-    icon: '⬜⬜',
-    category: 'Real Estate',
-    defaultProps: {
-      imageUrl: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa',
-      heading: "Your Homeownership Dream Starts Here",
-      content: '<p>Your content goes here. Describe your services, features, or tell your story.</p>',
-      primaryButtonText: 'Get Started',
-      primaryButtonUrl: '#',
-      secondaryButtonText: 'Learn More',
-      secondaryButtonUrl: '#',
-      reverse: false,
-      background: 'white',
-    },
-  },
-  {
-    type: 'cards',
+    type: 'core-cards',
     label: 'Core Cards Grid',
     icon: '🎴',
     category: 'Core Pages',
@@ -459,7 +442,7 @@ export const blockRegistry: WidgetDefinition[] = [
     },
   },
   {
-    type: 'testimonial',
+    type: 'core-testimonial',
     label: 'Core Testimonials',
     icon: '⭐',
     category: 'Core Pages',
@@ -474,7 +457,7 @@ export const blockRegistry: WidgetDefinition[] = [
     },
   },
   {
-    type: 'text',
+    type: 'core-text',
     label: 'Core Text Section',
     icon: '📄',
     category: 'Core Pages',

@@ -5,6 +5,8 @@ import crypto from 'crypto'; // Built-in Node module
 const ALLOWED_BLOCK_TYPES = [
   'core-hero',
   'core-split',
+  'core-split-left',
+  'core-split-right',
   'core-cards',
   'core-testimonials',
   'core-text',
@@ -30,6 +32,103 @@ setInterval(() => {
   }
 }, 60 * 1000); // Clean every minute
 
+// Video utility functions
+const extractVideoThumbnail = (videoUrl: string): { thumbnailUrl: string; embedUrl: string; isVideo: boolean } => {
+  if (!videoUrl) return { thumbnailUrl: '', embedUrl: '', isVideo: false };
+  
+  // YouTube video detection
+  const youtubeMatch = videoUrl.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+  if (youtubeMatch) {
+    const videoId = youtubeMatch[1];
+    return {
+      thumbnailUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+      embedUrl: `https://www.youtube.com/embed/${videoId}`,
+      isVideo: true
+    };
+  }
+  
+  // Vimeo video detection
+  const vimeoMatch = videoUrl.match(/(?:https?:\/\/)?(?:www\.)?vimeo\.com\/(\d+)/);
+  if (vimeoMatch) {
+    const videoId = vimeoMatch[1];
+    return {
+      thumbnailUrl: `https://vumbnail.com/${videoId}.jpg`, // Third-party Vimeo thumbnail service
+      embedUrl: `https://player.vimeo.com/video/${videoId}`,
+      isVideo: true
+    };
+  }
+  
+  // Direct video file detection
+  const videoExtensions = /\.(mp4|webm|ogg|mov|avi)(\?.*)?$/i;
+  if (videoExtensions.test(videoUrl)) {
+    return {
+      thumbnailUrl: '', // No thumbnail for direct videos, will show play button
+      embedUrl: videoUrl,
+      isVideo: true
+    };
+  }
+  
+  return { thumbnailUrl: '', embedUrl: '', isVideo: false };
+};
+
+const createVideoThumbnailHtml = (videoUrl: string, content: any): string => {
+  const videoData = extractVideoThumbnail(videoUrl);
+  
+  if (!videoData.isVideo) {
+    // Not a video, fallback to regular image
+    return content.image ? `
+      <div style="flex: 1; padding: 2rem;">
+        <img src="${content.image}" alt="" style="width: 100%; height: auto; border-radius: 0.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+      </div>
+    ` : '';
+  }
+  
+  // Video thumbnail with play button overlay
+  const thumbnailStyle = videoData.thumbnailUrl 
+    ? `background-image: url('${videoData.thumbnailUrl}'); background-size: cover; background-position: center;`
+    : 'background-color: #1a1a1a;';
+  
+  return `
+    <div style="flex: 1; padding: 2rem;">
+      <div 
+        onclick="this.innerHTML='<iframe src=&quot;${videoData.embedUrl}&quot; style=&quot;width: 100%; height: 300px; border: none; border-radius: 0.5rem;&quot; frameborder=&quot;0&quot; allowfullscreen></iframe>'"
+        style="
+          position: relative;
+          width: 100%;
+          height: 300px;
+          ${thumbnailStyle}
+          border-radius: 0.5rem;
+          cursor: pointer;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        "
+      >
+        <div style="
+          width: 80px;
+          height: 80px;
+          background-color: rgba(255,255,255,0.9);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background-color 0.3s;
+        ">
+          <div style="
+            width: 0;
+            height: 0;
+            border-left: 25px solid #2563eb;
+            border-top: 15px solid transparent;
+            border-bottom: 15px solid transparent;
+            margin-left: 5px;
+          "></div>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
 // Block rendering functions
 const renderCoreHero = (content: any): string => {
   const { title, subtitle, backgroundImage, ctaText, ctaLink } = content;
@@ -46,7 +145,7 @@ const renderCoreHero = (content: any): string => {
 };
 
 const renderCoreSplit = (content: any): string => {
-  const { heading, body, image, imagePosition = 'right', ctaText, ctaLink } = content;
+  const { heading, body, image, videoUrl, imagePosition = 'right', ctaText, ctaLink } = content;
   
   const textContent = `
     <div style="flex: 1; padding: 2rem;">
@@ -56,16 +155,86 @@ const renderCoreSplit = (content: any): string => {
     </div>
   `;
   
-  const imageContent = image ? `
-    <div style="flex: 1; padding: 2rem;">
-      <img src="${image}" alt="" style="width: 100%; height: auto; border-radius: 0.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
-    </div>
-  ` : '';
+  // Priority: video > image > nothing
+  let mediaContent = '';
+  if (videoUrl) {
+    mediaContent = createVideoThumbnailHtml(videoUrl, content);
+  } else if (image) {
+    mediaContent = `
+      <div style="flex: 1; padding: 2rem;">
+        <img src="${image}" alt="" style="width: 100%; height: auto; border-radius: 0.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+      </div>
+    `;
+  }
   
   return `
     <section style="padding: 4rem 2rem; background-color: white;">
       <div style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 3rem; flex-wrap: wrap;">
-        ${imagePosition === 'left' ? imageContent + textContent : textContent + imageContent}
+        ${imagePosition === 'left' ? mediaContent + textContent : textContent + mediaContent}
+      </div>
+    </section>
+  `;
+};
+
+const renderCoreSplitLeft = (content: any): string => {
+  const { heading, body, image, videoUrl, ctaText, ctaLink } = content;
+  
+  const textContent = `
+    <div style="flex: 1; padding: 2rem;">
+      ${heading ? `<h2 style="font-size: 2.5rem; font-weight: bold; margin-bottom: 1rem; color: #1a1a1a;">${heading}</h2>` : ''}
+      ${body ? `<div style="font-size: 1.125rem; line-height: 1.7; color: #4a5568; margin-bottom: 1.5rem;">${body}</div>` : ''}
+      ${ctaText && ctaLink ? `<a href="${ctaLink}" style="display: inline-block; padding: 0.75rem 1.5rem; background-color: #2563eb; color: white; text-decoration: none; border-radius: 0.375rem; font-weight: 600;">${ctaText}</a>` : ''}
+    </div>
+  `;
+  
+  // Priority: video > image > nothing
+  let mediaContent = '';
+  if (videoUrl) {
+    mediaContent = createVideoThumbnailHtml(videoUrl, content);
+  } else if (image) {
+    mediaContent = `
+      <div style="flex: 1; padding: 2rem;">
+        <img src="${image}" alt="" style="width: 100%; height: auto; border-radius: 0.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+      </div>
+    `;
+  }
+  
+  return `
+    <section style="padding: 4rem 2rem; background-color: white;">
+      <div style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 3rem; flex-wrap: wrap;">
+        ${mediaContent + textContent}
+      </div>
+    </section>
+  `;
+};
+
+const renderCoreSplitRight = (content: any): string => {
+  const { heading, body, image, videoUrl, ctaText, ctaLink } = content;
+  
+  const textContent = `
+    <div style="flex: 1; padding: 2rem;">
+      ${heading ? `<h2 style="font-size: 2.5rem; font-weight: bold; margin-bottom: 1rem; color: #1a1a1a;">${heading}</h2>` : ''}
+      ${body ? `<div style="font-size: 1.125rem; line-height: 1.7; color: #4a5568; margin-bottom: 1.5rem;">${body}</div>` : ''}
+      ${ctaText && ctaLink ? `<a href="${ctaLink}" style="display: inline-block; padding: 0.75rem 1.5rem; background-color: #2563eb; color: white; text-decoration: none; border-radius: 0.375rem; font-weight: 600;">${ctaText}</a>` : ''}
+    </div>
+  `;
+  
+  // Priority: video > image > nothing
+  let mediaContent = '';
+  if (videoUrl) {
+    mediaContent = createVideoThumbnailHtml(videoUrl, content);
+  } else if (image) {
+    mediaContent = `
+      <div style="flex: 1; padding: 2rem;">
+        <img src="${image}" alt="" style="width: 100%; height: auto; border-radius: 0.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+      </div>
+    `;
+  }
+  
+  return `
+    <section style="padding: 4rem 2rem; background-color: white;">
+      <div style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 3rem; flex-wrap: wrap;">
+        ${textContent + mediaContent}
       </div>
     </section>
   `;
@@ -170,6 +339,12 @@ const renderBlock = (block: any): { type: string; html: string } => {
       break;
     case 'core-split':
       html = renderCoreSplit(block.content || {});
+      break;
+    case 'core-split-left':
+      html = renderCoreSplitLeft(block.content || {});
+      break;
+    case 'core-split-right':
+      html = renderCoreSplitRight(block.content || {});
       break;
     case 'core-cards':
       html = renderCoreCards(block.content || {});

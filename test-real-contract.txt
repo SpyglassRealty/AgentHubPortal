@@ -1,0 +1,23 @@
+TEXAS RESIDENTIAL PURCHASE AGREEMENT
+
+Purchase Price: $750,000
+Buyer: John Smith
+Co-Buyer: Jane Smith  
+Property: 5908 Bull Creek Rd, Austin, TX 78756
+City: Austin
+ZIP: 78756
+MLS Number: 12345678
+Closing Date: 2026-03-25
+Earnest Money: $15,000
+Option Period: 10 days
+Option Fee: $500
+Title Company: First Texas Title
+Survey: new survey required
+Down Payment: $150,000
+Loan Amount: $600,000
+Loan Type: Conventional
+Home Warranty: Yes, paid by seller
+Special Provisions: Seller to provide home warranty and repair fence
+TPFA Max Interest Rate: 7.5%
+TPFA Approval Days: 21 days
+Seller Concessions: $5,000

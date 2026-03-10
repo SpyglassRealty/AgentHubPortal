@@ -10,7 +10,7 @@ import { DrawingCanvas, type DrawingCanvasHandle } from '@/components/cma-presen
 import { WIDGETS } from '@/components/cma-presentation/constants/widgets';
 import { Loader2 } from 'lucide-react';
 import { useRef } from 'react';
-import type { Transaction, Cma, AgentProfile } from '@shared/schema';
+import type { Cma, AgentProfile } from '@shared/schema';
 
 // Error Boundary Component
 class CMAErrorBoundary extends React.Component<

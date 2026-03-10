@@ -39,6 +39,9 @@ import {
   ChevronRight,
   Loader2,
   AlertCircle,
+  Upload,
+  FileSpreadsheet,
+  Download,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────
@@ -303,6 +306,311 @@ function RedirectFormDialog({ redirect, isOpen, onClose, onSuccess }: RedirectFo
   );
 }
 
+// ── Bulk Upload Dialog ─────────────────────────────────
+
+interface BulkUploadDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function BulkUploadDialog({ isOpen, onClose, onSuccess }: BulkUploadDialogProps) {
+  const [uploadMethod, setUploadMethod] = useState<'file' | 'sheets'>('file');
+  const [file, setFile] = useState<File | null>(null);
+  const [googleSheetsUrl, setGoogleSheetsUrl] = useState('');
+  const [sheetName, setSheetName] = useState('Sheet1');
+  const [range, setRange] = useState('A:B');
+  const [isUploading, setIsUploading] = useState(false);
+  const [results, setResults] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  // Reset state when dialog opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      setFile(null);
+      setGoogleSheetsUrl('');
+      setSheetName('Sheet1');
+      setRange('A:B');
+      setResults(null);
+      setError(null);
+    }
+  }, [isOpen]);
+
+  const handleFileUpload = async () => {
+    if (!file) return;
+
+    setIsUploading(true);
+    setError(null);
+    setResults(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/admin/redirects/bulk-upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Upload failed');
+      }
+
+      const result = await response.json();
+      setResults(result);
+      
+      toast({
+        title: 'Bulk Upload Complete',
+        description: `${result.results.created} redirects created, ${result.results.skipped} skipped`,
+      });
+
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleGoogleSheetsImport = async () => {
+    if (!googleSheetsUrl) return;
+
+    setIsUploading(true);
+    setError(null);
+    setResults(null);
+
+    try {
+      const response = await fetch('/api/admin/redirects/google-sheets-import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          spreadsheetUrl: googleSheetsUrl,
+          sheetName,
+          range,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Import failed');
+      }
+
+      const result = await response.json();
+      setResults(result);
+      
+      toast({
+        title: 'Google Sheets Import Complete',
+        description: `${result.results.created} redirects created, ${result.results.skipped} skipped`,
+      });
+
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Import failed');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const downloadTemplate = () => {
+    const csvContent = "old,new\n/old-page,/new-page\n/another-old-page,https://external-site.com/page";
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'redirect-template.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Bulk Upload Redirects</DialogTitle>
+          <DialogDescription>
+            Upload multiple redirects from a CSV/Excel file or Google Sheets
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          {/* Method Selection */}
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant={uploadMethod === 'file' ? 'default' : 'outline'}
+              onClick={() => setUploadMethod('file')}
+              className="flex-1"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              File Upload
+            </Button>
+            <Button
+              type="button"
+              variant={uploadMethod === 'sheets' ? 'default' : 'outline'}
+              onClick={() => setUploadMethod('sheets')}
+              className="flex-1"
+            >
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Google Sheets
+            </Button>
+          </div>
+
+          {/* File Upload Method */}
+          {uploadMethod === 'file' && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="file">CSV or Excel File</Label>
+                <Input
+                  id="file"
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  disabled={isUploading}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Accepts CSV, XLSX, or XLS files. Must have 'old' and 'new' columns.
+                </p>
+              </div>
+
+              <div className="bg-muted/50 p-3 rounded text-sm">
+                <p className="font-medium mb-2">Expected Format:</p>
+                <div className="font-mono bg-background p-2 rounded border">
+                  old,new<br />
+                  /old-page,/new-page<br />
+                  /another-old-page,https://external-site.com/page
+                </div>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  onClick={downloadTemplate}
+                  className="h-auto p-0 mt-2"
+                >
+                  <Download className="h-3 w-3 mr-1" />
+                  Download Template
+                </Button>
+              </div>
+
+              <Button
+                onClick={handleFileUpload}
+                disabled={!file || isUploading}
+                className="w-full"
+              >
+                {isUploading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Upload Redirects
+              </Button>
+            </div>
+          )}
+
+          {/* Google Sheets Method */}
+          {uploadMethod === 'sheets' && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="sheetsUrl">Google Sheets URL</Label>
+                <Input
+                  id="sheetsUrl"
+                  value={googleSheetsUrl}
+                  onChange={(e) => setGoogleSheetsUrl(e.target.value)}
+                  placeholder="https://docs.google.com/spreadsheets/d/..."
+                  disabled={isUploading}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Make sure the sheet is publicly viewable or shared with view access
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="sheetName">Sheet Name</Label>
+                  <Input
+                    id="sheetName"
+                    value={sheetName}
+                    onChange={(e) => setSheetName(e.target.value)}
+                    placeholder="Sheet1"
+                    disabled={isUploading}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="range">Range</Label>
+                  <Input
+                    id="range"
+                    value={range}
+                    onChange={(e) => setRange(e.target.value)}
+                    placeholder="A:B"
+                    disabled={isUploading}
+                  />
+                </div>
+              </div>
+
+              <div className="bg-muted/50 p-3 rounded text-sm">
+                <p className="font-medium mb-2">Required Columns:</p>
+                <ul className="space-y-1">
+                  <li>• <strong>old</strong> - Source URL (must start with /)</li>
+                  <li>• <strong>new</strong> - Destination URL</li>
+                </ul>
+              </div>
+
+              <Button
+                onClick={handleGoogleSheetsImport}
+                disabled={!googleSheetsUrl || isUploading}
+                className="w-full"
+              >
+                {isUploading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Import from Google Sheets
+              </Button>
+            </div>
+          )}
+
+          {/* Error Display */}
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded">
+              <AlertCircle className="h-4 w-4" />
+              {error}
+            </div>
+          )}
+
+          {/* Results Display */}
+          {results && (
+            <div className="space-y-4">
+              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded p-4">
+                <h4 className="font-medium text-green-900 dark:text-green-100 mb-2">
+                  Upload Complete
+                </h4>
+                <div className="text-sm text-green-800 dark:text-green-200 space-y-1">
+                  <p>✅ {results.results.created} redirects created</p>
+                  <p>⏭️ {results.results.skipped} rows skipped</p>
+                  <p>📝 {results.results.total} total rows processed</p>
+                </div>
+              </div>
+
+              {results.results.errors.length > 0 && (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded p-4">
+                  <h4 className="font-medium text-yellow-900 dark:text-yellow-100 mb-2">
+                    Issues Found ({results.results.errors.length})
+                  </h4>
+                  <div className="text-sm text-yellow-800 dark:text-yellow-200 max-h-32 overflow-y-auto">
+                    {results.results.errors.map((error: string, i: number) => (
+                      <p key={i}>• {error}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Button onClick={onClose} className="w-full">
+                Done
+              </Button>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Main Component ─────────────────────────────────────
 
 export default function RedirectManager() {
@@ -312,6 +620,7 @@ export default function RedirectManager() {
   const [page, setPage] = useState(1);
   const [selectedRedirect, setSelectedRedirect] = useState<Redirect | undefined>();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const { toast } = useToast();
 
   const { data, isLoading, error, refetch } = useRedirects(search, filter, page);
@@ -403,10 +712,16 @@ export default function RedirectManager() {
               Manage URL redirects for SEO and site maintenance
             </p>
           </div>
-          <Button onClick={openCreateDialog}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Redirect
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Bulk Upload
+            </Button>
+            <Button onClick={openCreateDialog}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Redirect
+            </Button>
+          </div>
         </div>
 
         {/* ── Filters ────────────────────────────────── */}
@@ -595,6 +910,13 @@ export default function RedirectManager() {
           redirect={selectedRedirect}
           isOpen={isFormOpen}
           onClose={() => setIsFormOpen(false)}
+          onSuccess={refetch}
+        />
+
+        {/* ── Bulk Upload Dialog ────────────────────── */}
+        <BulkUploadDialog
+          isOpen={isBulkUploadOpen}
+          onClose={() => setIsBulkUploadOpen(false)}
           onSuccess={refetch}
         />
       </div>

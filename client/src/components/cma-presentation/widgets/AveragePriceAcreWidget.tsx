@@ -173,7 +173,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
       <div className="mt-1.5 space-y-0.5 text-xs">
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Price:</span>
-          <span className="font-medium">{formatFullPrice(data.closePrice || data.listPrice || 0)}</span>
+          <span className="font-medium">{formatFullPrice(data.soldPrice || data.listPrice || 0)}</span>
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Acres:</span>
@@ -277,7 +277,7 @@ export function AveragePriceAcreWidget({
       })
       .map(p => {
         const acres = getAcres(p);
-        const price = p.closePrice || p.listPrice || 0; // Match sidebar logic exactly
+        const price = p.soldPrice || p.listPrice || 0; // Match sidebar logic exactly
         // Always calculate fresh price per acre from current data (don't use stale p.pricePerAcre)
         const pricePerAcre = acres > 0 && price > 0 ? Math.round(price / acres) : 0;
         
@@ -316,7 +316,7 @@ export function AveragePriceAcreWidget({
     if (!subjectProperty) return null;
     const acres = getAcres(subjectProperty);
     if (!acres || acres <= 0) return null;
-    const price = subjectProperty.closePrice || subjectProperty.listPrice || (avgPricePerAcre * acres);
+    const price = subjectProperty.soldPrice || subjectProperty.listPrice || (avgPricePerAcre * acres);
     // Always calculate fresh price per acre from current data
     const pricePerAcre = price > 0 && acres > 0 ? Math.round(price / acres) : 0;
     return {

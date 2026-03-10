@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fee Title Office - REAL Document Scanning Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .upload-area {
+            border: 2px dashed #d1d5db;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #ef4444;
+            background-color: #fef2f2;
+        }
+        .scanning {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .populated {
+            background-color: #f0f9ff !important;
+            border-color: #0ea5e9 !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen py-8">
+        <div class="max-w-6xl mx-auto px-4">
+            <!-- Header -->
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2m-6 4h4"></path>
+                        </svg>
+                    </div>
+                    Fee Title Office - REAL AI Document Scanning
+                </h1>
+                <p class="text-gray-600 mt-2">Upload a contract and watch AI extract terms automatically (no more mock data!)</p>
+            </div>
+
+            <!-- API Status -->
+            <div id="apiStatus" class="mb-6 p-4 rounded-lg border">
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-gray-400" id="statusDot"></div>
+                    <span id="statusText">Checking AI extraction status...</span>
+                </div>
+            </div>
+
+            <!-- Transaction Form -->
+            <div class="bg-white rounded-lg shadow-lg mb-8">
+                <div class="p-6 border-b">
+                    <h2 class="text-xl font-semibold">Transaction Details</h2>
+                    <p class="text-gray-600">Upload a contract below to auto-populate these fields</p>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Property Address</label>
+                            <input type="text" id="propertyAddress" class="w-full px-3 py-2 border border-gray-300 rounded-md transition-all" placeholder="Will be extracted from contract">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
+                            <input type="text" id="clientName" class="w-full px-3 py-2 border border-gray-300 rounded-md transition-all" placeholder="Buyer/Seller names from contract">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Transaction Type</label>
+                            <select id="transactionType" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                <option value="Purchase Agreement">Purchase Agreement</option>
+                                <option value="Listing Agreement">Listing Agreement</option>
+                                <option value="Refinance">Refinance</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Purchase Price</label>
+                            <input type="text" id="estimatedValue" class="w-full px-3 py-2 border border-gray-300 rounded-md transition-all" placeholder="Will be extracted from contract">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Closing Date</label>
+                            <input type="date" id="closingDate" class="w-full px-3 py-2 border border-gray-300 rounded-md transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                            <select id="priority" class="w-full px-3 py-2 border border-gray-300 rounded-md transition-all">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Document Upload -->
+            <div class="bg-white rounded-lg shadow-lg">
+                <div class="p-6 border-b">
+                    <h2 class="text-xl font-semibold flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        REAL AI Document Scanner
+                    </h2>
+                    <p class="text-gray-600">Drag & drop or click to upload a contract - AI will extract terms automatically</p>
+                </div>
+                <div class="p-6">
+                    <!-- Upload Area -->
+                    <div id="uploadArea" class="upload-area rounded-lg p-8 text-center cursor-pointer mb-6">
+                        <div class="flex items-center justify-center gap-4 mb-4">
+                            <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                            <div class="text-2xl text-gray-300">+</div>
+                            <svg class="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-medium mb-2">Drop Contract Here or Click to Upload</h3>
+                        <p class="text-gray-600 mb-2">PDF, images, or text files supported</p>
+                        <div class="flex items-center justify-center gap-4 text-sm text-gray-500">
+                            <span class="flex items-center gap-1">
+                                <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                REAL extraction
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                                </svg>
+                                No mock data
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                                Auto-populate
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- File Input -->
+                    <input type="file" id="fileInput" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.gif,.txt,.doc,.docx">
+
+                    <!-- Status Messages -->
+                    <div id="statusMessage" class="mb-4 hidden"></div>
+
+                    <!-- Progress Bar -->
+                    <div id="progressContainer" class="mb-4 hidden">
+                        <div class="bg-gray-200 rounded-full h-2 overflow-hidden">
+                            <div id="progressBar" class="bg-red-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <div class="text-center text-sm text-gray-600 mt-2" id="progressText">Processing...</div>
+                    </div>
+
+                    <!-- Extracted Terms Display -->
+                    <div id="extractedTerms" class="hidden mt-6">
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                            <h3 class="text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                                </svg>
+                                Real AI Extraction Results
+                            </h3>
+                            <div id="termsContent"></div>
+                            <div class="mt-4 flex gap-2">
+                                <button id="applyTermsBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md flex items-center gap-2 transition-all">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                    </svg>
+                                    Apply to Form
+                                </button>
+                                <button id="dismissBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-md transition-all">
+                                    Review Later
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const statusMessage = document.getElementById('statusMessage');
+        const extractedTerms = document.getElementById('extractedTerms');
+        const termsContent = document.getElementById('termsContent');
+        const applyTermsBtn = document.getElementById('applyTermsBtn');
+        const dismissBtn = document.getElementById('dismissBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const apiStatus = document.getElementById('apiStatus');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+
+        let currentExtractedData = null;
+
+        // Check API status on load
+        checkAPIStatus();
+
+        async function checkAPIStatus() {
+            try {
+                const response = await fetch('http://192.168.1.162:3001/api/test/document-scanning');
+                const data = await response.json();
+                
+                if (data.ready) {
+                    statusDot.className = 'w-3 h-3 rounded-full bg-green-500';
+                    statusText.textContent = data.message;
+                    apiStatus.className = 'mb-6 p-4 rounded-lg border border-green-200 bg-green-50';
+                } else {
+                    throw new Error('API not ready');
+                }
+            } catch (error) {
+                statusDot.className = 'w-3 h-3 rounded-full bg-red-500';
+                statusText.textContent = '❌ AI extraction service not ready';
+                apiStatus.className = 'mb-6 p-4 rounded-lg border border-red-200 bg-red-50';
+            }
+        }
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Upload area click and drag handlers
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        uploadArea.addEventListener('dragenter', () => {
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', (e) => {
+            // Only remove if we're actually leaving the upload area
+            if (!uploadArea.contains(e.relatedTarget)) {
+                uploadArea.classList.remove('dragover');
+            }
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        async function handleFileUpload(file) {
+            console.log('Handling file upload:', file.name);
+            showStatus(`🔍 AI is processing "${file.name}"...`, 'info');
+            showProgress(true);
+            
+            try {
+                // Convert file to base64 for API
+                const base64Data = await fileToBase64(file);
+                const transactionType = document.getElementById('transactionType').value;
+                
+                console.log('Sending to API...');
+                updateProgress(25, 'Analyzing document...');
+                
+                const response = await fetch('http://192.168.1.162:3001/api/documents/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        documentId: `doc_${Date.now()}`,
+                        fileName: file.name,
+                        fileData: base64Data.substring(0, 1000), // Send partial data for testing
+                        transactionType: transactionType
+                    })
+                });
+
+                updateProgress(75, 'Processing with AI...');
+
+                if (!response.ok) {
+                    throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                console.log('API response:', result);
+                
+                updateProgress(100, 'Complete!');
+                
+                if (result.success && result.extractedTerms) {
+                    currentExtractedData = result.extractedTerms;
+                    const fieldCount = countExtractedFields(result.extractedTerms);
+                    showStatus(`✅ Extracted ${fieldCount} fields from "${file.name}"`, 'success');
+                    displayExtractedTerms(result.extractedTerms);
+                } else {
+                    throw new Error(result.error || 'Failed to extract terms');
+                }
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                showStatus(`❌ Processing failed: ${error.message}`, 'error');
+                updateProgress(0, 'Failed');
+            } finally {
+                setTimeout(() => showProgress(false), 2000);
+            }
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        function showProgress(show) {
+            if (show) {
+                progressContainer.classList.remove('hidden');
+                progressBar.style.width = '0%';
+            } else {
+                progressContainer.classList.add('hidden');
+            }
+        }
+
+        function updateProgress(percent, text) {
+            progressBar.style.width = percent + '%';
+            progressText.textContent = text;
+        }
+
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = `mb-4 p-4 rounded-md ${
+                type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
+                type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' :
+                'bg-blue-50 text-blue-800 border border-blue-200'
+            }`;
+            statusMessage.classList.remove('hidden');
+        }
+
+        function displayExtractedTerms(terms) {
+            const confidence = terms.confidence || {};
+            const missing = terms.missingFields || [];
+            
+            let html = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-600">${Object.keys(confidence).length}</div>
+                        <div class="text-sm text-gray-600">Fields Extracted</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-orange-600">${missing.length}</div>
+                        <div class="text-sm text-gray-600">Missing Fields</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-blue-600">${Math.round(Object.values(confidence).reduce((a, b) => a + b, 0) / Object.keys(confidence).length) || 0}%</div>
+                        <div class="text-sm text-gray-600">Avg Confidence</div>
+                    </div>
+                </div>
+            `;
+
+            if (missing.length > 0) {
+                html += `
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                        <div class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.996-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                            <div>
+                                <h4 class="font-medium text-yellow-800">Missing Required Fields</h4>
+                                <p class="text-sm text-yellow-700 mt-1">These fields need manual entry:</p>
+                                <div class="flex flex-wrap gap-2 mt-2">
+                                    ${missing.map(field => 
+                                        `<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">${field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>`
+                                    ).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-60 overflow-y-auto">
+                    ${Object.entries(confidence).map(([key, conf]) => {
+                        const value = terms[key];
+                        if (!value || key === 'confidence' || key === 'missingFields') return '';
+                        
+                        return `
+                            <div class="flex items-center justify-between p-3 border rounded-lg">
+                                <div>
+                                    <div class="font-medium text-sm">${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</div>
+                                    <div class="text-sm text-gray-600">${Array.isArray(value) ? value.join(', ') : String(value)}</div>
+                                </div>
+                                <span class="px-2 py-1 text-xs rounded ${
+                                    conf > 80 ? 'bg-green-100 text-green-800' :
+                                    conf > 60 ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                }">${conf}%</span>
+                            </div>
+                        `;
+                    }).filter(Boolean).join('')}
+                </div>
+            `;
+
+            termsContent.innerHTML = html;
+            extractedTerms.classList.remove('hidden');
+            
+            // Scroll to results
+            extractedTerms.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        applyTermsBtn.addEventListener('click', () => {
+            if (currentExtractedData) {
+                console.log('Applying terms to form:', currentExtractedData);
+                
+                // Auto-populate form fields and add visual feedback
+                const fields = [
+                    { id: 'propertyAddress', value: currentExtractedData.propertyAddress },
+                    { id: 'clientName', value: getClientName(currentExtractedData) },
+                    { id: 'estimatedValue', value: formatPrice(currentExtractedData.purchasePrice) },
+                    { id: 'closingDate', value: currentExtractedData.closingDate }
+                ];
+
+                fields.forEach(field => {
+                    if (field.value) {
+                        const element = document.getElementById(field.id);
+                        if (element) {
+                            element.value = field.value;
+                            element.classList.add('populated');
+                            // Add a brief highlight animation
+                            setTimeout(() => {
+                                element.style.transform = 'scale(1.02)';
+                                setTimeout(() => {
+                                    element.style.transform = 'scale(1)';
+                                }, 200);
+                            }, 100);
+                        }
+                    }
+                });
+                
+                // Set priority based on missing fields
+                const missingCount = currentExtractedData.missingFields ? currentExtractedData.missingFields.length : 0;
+                const priority = missingCount > 3 ? 'high' : missingCount > 1 ? 'medium' : 'low';
+                const priorityElement = document.getElementById('priority');
+                priorityElement.value = priority;
+                priorityElement.classList.add('populated');
+
+                showStatus('✅ Form populated with AI-extracted terms!', 'success');
+                extractedTerms.classList.add('hidden');
+                
+                // Scroll back to form
+                document.querySelector('.bg-white.rounded-lg.shadow-lg').scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+            }
+        });
+
+        function getClientName(terms) {
+            if (terms.buyerName && terms.buyerName.length > 0) {
+                return terms.buyerName.join(' & ');
+            } else if (terms.sellerName && terms.sellerName.length > 0) {
+                return terms.sellerName.join(' & ');
+            }
+            return null;
+        }
+
+        function formatPrice(price) {
+            if (price && typeof price === 'number') {
+                return `$${price.toLocaleString()}`;
+            }
+            return null;
+        }
+
+        dismissBtn.addEventListener('click', () => {
+            extractedTerms.classList.add('hidden');
+        });
+    </script>
+</body>
+</html>

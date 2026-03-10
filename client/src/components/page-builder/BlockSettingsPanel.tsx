@@ -809,6 +809,13 @@ export function BlockSettingsPanel({ block, onUpdate, onClose }: BlockSettingsPa
             <Field label="Image Alt Text">
               <Input value={props.imageAlt || ''} onChange={e => update('imageAlt', e.target.value)} />
             </Field>
+            <Field label="Video URL (YouTube, Vimeo, or direct link)">
+              <Input 
+                value={props.videoUrl || ''} 
+                onChange={e => update('videoUrl', e.target.value)}
+                placeholder="https://youtube.com/watch?v=..."
+              />
+            </Field>
             <Field label="Heading">
               <Input value={props.heading || ''} onChange={e => update('heading', e.target.value)} />
             </Field>
@@ -831,10 +838,110 @@ export function BlockSettingsPanel({ block, onUpdate, onClose }: BlockSettingsPa
               <Select value={props.reverse ? 'true' : 'false'} onValueChange={v => update('reverse', v === 'true')}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="false">Image Left</SelectItem>
-                  <SelectItem value="true">Image Right</SelectItem>
+                  <SelectItem value="false">Media Left</SelectItem>
+                  <SelectItem value="true">Media Right</SelectItem>
                 </SelectContent>
               </Select>
+            </Field>
+            <Field label="Background">
+              <Select value={props.background || 'white'} onValueChange={v => update('background', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="white">White</SelectItem>
+                  <SelectItem value="light">Light Gray</SelectItem>
+                  <SelectItem value="dark">Dark</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </>
+        );
+
+      case 'core-split-left':
+        return (
+          <>
+            <ImageUpload 
+              value={props.imageUrl || ''} 
+              onChange={(url) => update('imageUrl', url)} 
+              label="Image"
+              className="mb-4"
+            />
+            <Field label="Image Alt Text">
+              <Input value={props.imageAlt || ''} onChange={e => update('imageAlt', e.target.value)} />
+            </Field>
+            <Field label="Video URL (YouTube, Vimeo, or direct link)">
+              <Input 
+                value={props.videoUrl || ''} 
+                onChange={e => update('videoUrl', e.target.value)}
+                placeholder="https://youtube.com/watch?v=..."
+              />
+            </Field>
+            <Field label="Heading">
+              <Input value={props.heading || ''} onChange={e => update('heading', e.target.value)} />
+            </Field>
+            <Field label="Content">
+              <Textarea value={props.content || ''} onChange={e => update('content', e.target.value)} rows={4} />
+            </Field>
+            <Field label="Primary Button Text">
+              <Input value={props.primaryButtonText || ''} onChange={e => update('primaryButtonText', e.target.value)} />
+            </Field>
+            <Field label="Primary Button URL">
+              <Input value={props.primaryButtonUrl || '#'} onChange={e => update('primaryButtonUrl', e.target.value)} />
+            </Field>
+            <Field label="Secondary Button Text">
+              <Input value={props.secondaryButtonText || ''} onChange={e => update('secondaryButtonText', e.target.value)} />
+            </Field>
+            <Field label="Secondary Button URL">
+              <Input value={props.secondaryButtonUrl || '#'} onChange={e => update('secondaryButtonUrl', e.target.value)} />
+            </Field>
+            <Field label="Background">
+              <Select value={props.background || 'white'} onValueChange={v => update('background', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="white">White</SelectItem>
+                  <SelectItem value="light">Light Gray</SelectItem>
+                  <SelectItem value="dark">Dark</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </>
+        );
+
+      case 'core-split-right':
+        return (
+          <>
+            <ImageUpload 
+              value={props.imageUrl || ''} 
+              onChange={(url) => update('imageUrl', url)} 
+              label="Image"
+              className="mb-4"
+            />
+            <Field label="Image Alt Text">
+              <Input value={props.imageAlt || ''} onChange={e => update('imageAlt', e.target.value)} />
+            </Field>
+            <Field label="Video URL (YouTube, Vimeo, or direct link)">
+              <Input 
+                value={props.videoUrl || ''} 
+                onChange={e => update('videoUrl', e.target.value)}
+                placeholder="https://youtube.com/watch?v=..."
+              />
+            </Field>
+            <Field label="Heading">
+              <Input value={props.heading || ''} onChange={e => update('heading', e.target.value)} />
+            </Field>
+            <Field label="Content">
+              <Textarea value={props.content || ''} onChange={e => update('content', e.target.value)} rows={4} />
+            </Field>
+            <Field label="Primary Button Text">
+              <Input value={props.primaryButtonText || ''} onChange={e => update('primaryButtonText', e.target.value)} />
+            </Field>
+            <Field label="Primary Button URL">
+              <Input value={props.primaryButtonUrl || '#'} onChange={e => update('primaryButtonUrl', e.target.value)} />
+            </Field>
+            <Field label="Secondary Button Text">
+              <Input value={props.secondaryButtonText || ''} onChange={e => update('secondaryButtonText', e.target.value)} />
+            </Field>
+            <Field label="Secondary Button URL">
+              <Input value={props.secondaryButtonUrl || '#'} onChange={e => update('secondaryButtonUrl', e.target.value)} />
             </Field>
             <Field label="Background">
               <Select value={props.background || 'white'} onValueChange={v => update('background', v)}>

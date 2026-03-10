@@ -56,7 +56,7 @@ function CmaPresentationRedirect() {
   const [, routeParams] = useRoute("/cma/:id/presentation");
   const [, setLocation] = useLocation();
   
-  if (routeParams?.id) {
+  if (routeParams && routeParams.id) {
     setLocation(`/cma/${routeParams.id}/cma-presentation`);
   }
   
