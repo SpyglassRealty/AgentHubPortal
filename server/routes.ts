@@ -5964,6 +5964,23 @@ Respond with valid JSON in this exact format:
       res.status(500).json({ error: error.message });
     }
   });
+
+  // Get individual IDX lead by ID
+  app.get('/api/admin/idx-leads/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const lead = await storage.getIdxLeadById(id);
+      
+      if (!lead) {
+        return res.status(404).json({ error: 'Lead not found' });
+      }
+      
+      res.json(lead);
+    } catch (error) {
+      console.error('[Admin API] Get IDX lead by ID error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
   
   // Admin endpoint to update lead status
   app.put('/api/admin/idx-leads/:id', isAuthenticated, isAdmin, async (req: any, res) => {
