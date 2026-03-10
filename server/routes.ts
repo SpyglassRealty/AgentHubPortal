@@ -6123,7 +6123,8 @@ Respond with valid JSON in this exact format:
   app.patch('/api/users/:id/role', isAuthenticated, async (req: any, res) => {
     try {
       // Check if caller is developer role
-      if (req.user.role !== 'developer') {
+      const caller = await storage.getUser(req.user.claims?.sub || req.user.id);
+      if (!caller || caller.role !== 'developer') {
         return res.status(403).json({ error: 'Only developer role can change user roles' });
       }
 
