@@ -116,7 +116,7 @@ export function registerCommunityContentBlocksRoutes(app: Express) {
         .from(communityContentBlocks)
         .where(
           and(
-            eq(communityContentBlocks.id, parseInt(blockId)),
+            eq(communityContentBlocks.id, blockId),
             eq(communityContentBlocks.communityId, parseInt(communityId))
           )
         )
@@ -158,7 +158,7 @@ export function registerCommunityContentBlocksRoutes(app: Express) {
         .set(updateData)
         .where(
           and(
-            eq(communityContentBlocks.id, parseInt(blockId)),
+            eq(communityContentBlocks.id, blockId),
             eq(communityContentBlocks.communityId, parseInt(communityId))
           )
         )
@@ -182,7 +182,7 @@ export function registerCommunityContentBlocksRoutes(app: Express) {
         .from(communityContentBlocks)
         .where(
           and(
-            eq(communityContentBlocks.id, parseInt(blockId)),
+            eq(communityContentBlocks.id, blockId),
             eq(communityContentBlocks.communityId, parseInt(communityId))
           )
         )
@@ -196,7 +196,7 @@ export function registerCommunityContentBlocksRoutes(app: Express) {
         .delete(communityContentBlocks)
         .where(
           and(
-            eq(communityContentBlocks.id, parseInt(blockId)),
+            eq(communityContentBlocks.id, blockId),
             eq(communityContentBlocks.communityId, parseInt(communityId))
           )
         );
@@ -225,7 +225,7 @@ export function registerCommunityContentBlocksRoutes(app: Express) {
           .set({ sortOrder: index })
           .where(
             and(
-              eq(communityContentBlocks.id, parseInt(blockId)),
+              eq(communityContentBlocks.id, blockId),
               eq(communityContentBlocks.communityId, parseInt(communityId))
             )
           )
