@@ -554,8 +554,12 @@ export default function CallDutyPage() {
   }
 
   function handleSignUp(slotId: string) {
-    // Call mutation directly - let it handle warnings
-    signUpMutation.mutate({ slotId });
+    // Show confirmation dialog first
+    setConfirmAction({
+      type: "signup",
+      slotId,
+      label: getSlotLabel(slotId),
+    });
   }
 
   function handleCancel(slotId: string) {
@@ -620,6 +624,7 @@ export default function CallDutyPage() {
   function handleConfirm() {
     if (!confirmAction) return;
     if (confirmAction.type === "signup" && confirmAction.slotId) {
+      // Call mutation directly - let it handle warnings after confirmation
       signUpMutation.mutate({ slotId: confirmAction.slotId });
     } else if (confirmAction.type === "cancel" && confirmAction.slotId) {
       cancelMutation.mutate({ slotId: confirmAction.slotId });
@@ -1319,7 +1324,7 @@ export default function CallDutyPage() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction?.type === "signup"
-                ? `Are you sure you want to sign up for ${confirmAction.label}?`
+                ? `Confirm signup for ${confirmAction.label}?`
                 : confirmAction?.type === "cancel"
                 ? `Are you sure you want to cancel your signup for ${confirmAction?.label}?`
                 : confirmAction?.type === "delete_holiday"
@@ -1354,7 +1359,9 @@ export default function CallDutyPage() {
             )}
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogCancel>
+              {confirmAction?.type === "signup" ? "Cancel" : "Go Back"}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirm}
               disabled={
@@ -1370,7 +1377,7 @@ export default function CallDutyPage() {
               }
             >
               {confirmAction?.type === "signup" 
-                ? "Sign Up" 
+                ? "Confirm" 
                 : confirmAction?.type === "cancel"
                 ? "Cancel Shift"
                 : confirmAction?.type === "delete_holiday"
