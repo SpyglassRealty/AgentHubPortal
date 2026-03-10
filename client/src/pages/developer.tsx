@@ -40,6 +40,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +50,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -90,6 +98,8 @@ import {
   BarChart3,
   TrendingUp,
   TrendingDown,
+  MoreHorizontal,
+  User2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -125,6 +135,7 @@ interface User {
   first_name?: string;
   last_name?: string;
   is_super_admin?: boolean;
+  role?: 'developer' | 'admin' | 'agent';
   created_at: string;
   activity_count: number;
   last_activity?: string;
@@ -234,6 +245,7 @@ function DeveloperPage() {
   });
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteMakeSuperAdmin, setInviteMakeSuperAdmin] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
 
   // Loading state
   if (isLoading) {
@@ -376,6 +388,28 @@ function DeveloperPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/developer/users"] });
       toast({ title: "User super admin status updated successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateUserRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: 'developer' | 'admin' | 'agent' }) => {
+      const res = await fetch(`/api/users/${userId}/role`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to update user role");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/developer/users"] });
+      toast({ title: "User role updated successfully" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -929,134 +963,138 @@ function DeveloperPage() {
 
           {/* Tab 3: User Management */}
           <TabsContent value="users" className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4">
               <div>
-                <h3 className="text-lg font-semibold">User Management</h3>
-                <p className="text-sm text-muted-foreground">Manage user roles and permissions across the platform</p>
+                <h3 className="text-2xl font-bold">Team Members</h3>
+                <p className="text-sm text-muted-foreground">Manage user accounts, roles, and access</p>
               </div>
-              <Dialog open={inviteUserOpen} onOpenChange={setInviteUserOpen}>
-                <DialogTrigger asChild>
-                  <Button className="flex items-center gap-2">
-                    <UserPlus className="h-4 w-4" />
-                    Add Co-Developer
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add Co-Developer</DialogTitle>
-                    <DialogDescription>
-                      Invite a user to become a co-developer
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="invite_email">Email Address</Label>
-                      <Input
-                        id="invite_email"
-                        type="email"
-                        placeholder="user@spyglassrealty.com"
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                      />
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="make_super_admin"
-                        checked={inviteMakeSuperAdmin}
-                        onCheckedChange={(checked) => setInviteMakeSuperAdmin(checked === true)}
-                      />
-                      <Label htmlFor="make_super_admin" className="text-sm">
-                        Grant super admin privileges
-                      </Label>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      onClick={() => inviteUserMutation.mutate({ 
-                        email: inviteEmail, 
-                        makeSuperAdmin: inviteMakeSuperAdmin 
-                      })}
-                      disabled={!inviteEmail || inviteUserMutation.isPending}
-                    >
-                      {inviteUserMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <UserPlus className="h-4 w-4 mr-2" />
-                      )}
-                      Invite
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              
+              {/* Search Bar */}
+              <div className="relative max-w-md">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or email..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
             </div>
 
             {/* Users Table */}
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-0">
                 {usersLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-6 w-6 animate-spin" />
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {usersData?.users?.map((user) => (
-                      <Card key={user.id} className="p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-full bg-[#EF4923] flex items-center justify-center">
-                            <User className="h-5 w-5 text-white" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-medium text-sm truncate">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Last Login</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {usersData?.users
+                        ?.filter((user) => 
+                          userSearch === "" || 
+                          user.email.toLowerCase().includes(userSearch.toLowerCase()) ||
+                          (user.first_name && user.last_name && 
+                            `${user.first_name} ${user.last_name}`.toLowerCase().includes(userSearch.toLowerCase()))
+                        )
+                        ?.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback className="bg-[#EF4923] text-white text-sm">
+                                  {user.first_name && user.last_name 
+                                    ? `${user.first_name[0]}${user.last_name[0]}`
+                                    : user.email.substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="font-medium">
                                 {user.first_name && user.last_name 
                                   ? `${user.first_name} ${user.last_name}` 
-                                  : user.email}
+                                  : user.email.split('@')[0]}
                               </span>
-                              {user.is_super_admin && (
-                                <Badge variant="outline" className="text-xs">Admin</Badge>
-                              )}
                             </div>
-                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                            
-                            <div className="mt-3">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-xs">Super Admin</Label>
-                                <Button
-                                  variant={user.is_super_admin ? "default" : "outline"}
-                                  size="sm"
-                                  onClick={() => updateUserSuperAdminMutation.mutate({ 
-                                    userId: user.id, 
-                                    isSuperAdmin: !user.is_super_admin 
-                                  })}
-                                  disabled={updateUserSuperAdminMutation.isPending}
-                                  className="h-6 px-2 text-xs"
-                                >
-                                  {user.is_super_admin ? "Yes" : "No"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                              Active
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="flex items-center gap-1">
+                              {user.role === 'developer' ? (
+                                <>
+                                  <Code className="h-3 w-3" />
+                                  Developer
+                                </>
+                              ) : user.role === 'admin' ? (
+                                <>
+                                  <Shield className="h-3 w-3" />
+                                  Admin
+                                </>
+                              ) : (
+                                <>
+                                  <User2 className="h-3 w-3" />
+                                  Agent
+                                </>
+                              )}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {user.last_activity 
+                              ? formatDistanceToNow(new Date(user.last_activity), { addSuffix: true })
+                              : 'Never'
+                            }
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreHorizontal className="h-4 w-4" />
                                 </Button>
-                              </div>
-                            </div>
-                            
-                            <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                              <div className="flex justify-between">
-                                <span>Activity:</span>
-                                <span>{user.activity_count} actions</span>
-                              </div>
-                              {user.last_activity && (
-                                <div className="flex justify-between">
-                                  <span>Last seen:</span>
-                                  <span>{formatDistanceToNow(new Date(user.last_activity), { addSuffix: true })}</span>
-                                </div>
-                              )}
-                              <div className="flex justify-between">
-                                <span>Joined:</span>
-                                <span>{formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Change Role</DropdownMenuLabel>
+                                <DropdownMenuItem 
+                                  onClick={() => updateUserRoleMutation.mutate({ userId: user.id, role: 'developer' })}
+                                  disabled={user.role === 'developer' || updateUserRoleMutation.isPending}
+                                >
+                                  <Code className="h-4 w-4 mr-2" />
+                                  Developer
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => updateUserRoleMutation.mutate({ userId: user.id, role: 'admin' })}
+                                  disabled={user.role === 'admin' || updateUserRoleMutation.isPending}
+                                >
+                                  <Shield className="h-4 w-4 mr-2" />
+                                  Admin
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => updateUserRoleMutation.mutate({ userId: user.id, role: 'agent' })}
+                                  disabled={user.role === 'agent' || updateUserRoleMutation.isPending}
+                                >
+                                  <User2 className="h-4 w-4 mr-2" />
+                                  Agent
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 )}
               </CardContent>
             </Card>
