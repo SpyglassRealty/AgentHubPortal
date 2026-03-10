@@ -5933,6 +5933,67 @@ Respond with valid JSON in this exact format:
     }
   });
   
+  // Debug endpoint to check current user permissions
+  app.get('/api/debug/user-permissions', isAuthenticated, async (req: any, res) => {
+    try {
+      const sessionUserId = req.user?.claims?.sub;
+      const email = req.user?.claims?.email;
+      let user = await storage.getUser(sessionUserId);
+      if (!user && email) {
+        user = await storage.getUserByEmail(email);
+      }
+      
+      res.json({
+        sessionUserId,
+        email,
+        user: user ? {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          isSuperAdmin: user.isSuperAdmin,
+          role: user.role
+        } : null
+      });
+    } catch (error) {
+      console.error('[Debug] User permissions check error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Temporary endpoint to set current user as super admin (for Trisha)
+  app.post('/api/debug/make-me-admin', isAuthenticated, async (req: any, res) => {
+    try {
+      const sessionUserId = req.user?.claims?.sub;
+      const email = req.user?.claims?.email;
+      let user = await storage.getUser(sessionUserId);
+      if (!user && email) {
+        user = await storage.getUserByEmail(email);
+      }
+      
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      // Set as super admin
+      const updatedUser = await storage.updateUser(user.id, { isSuperAdmin: true });
+      
+      console.log(`[Debug] Set user ${user.email} as super admin`);
+      
+      res.json({
+        success: true,
+        user: {
+          id: updatedUser?.id,
+          email: updatedUser?.email,
+          isSuperAdmin: updatedUser?.isSuperAdmin
+        }
+      });
+    } catch (error) {
+      console.error('[Debug] Make admin error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Admin endpoint to view leads
   app.get('/api/admin/idx-leads', isAuthenticated, async (req: any, res) => {
     // Check for super admin access
@@ -5942,8 +6003,24 @@ Respond with valid JSON in this exact format:
     if (!user && email) {
       user = await storage.getUserByEmail(email);
     }
+    
+    // Log debug info
+    console.log('[IDX Leads API] User check:', {
+      sessionUserId,
+      email,
+      userFound: !!user,
+      isSuperAdmin: user?.isSuperAdmin
+    });
+    
     if (!user?.isSuperAdmin) {
-      return res.status(403).json({ error: 'Admin access required' });
+      return res.status(403).json({ 
+        error: 'Admin access required',
+        debug: {
+          userFound: !!user,
+          isSuperAdmin: user?.isSuperAdmin,
+          userEmail: user?.email
+        }
+      });
     }
     try {
       const { 
