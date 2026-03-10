@@ -6089,6 +6089,40 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // PATCH /api/users/:id/role - Update user role (developer only)
+  app.patch('/api/users/:id/role', isAuthenticated, async (req: any, res) => {
+    try {
+      // Check if caller is developer role
+      if (req.user.role !== 'developer') {
+        return res.status(403).json({ error: 'Only developer role can change user roles' });
+      }
+
+      const { id } = req.params;
+      const { role } = req.body;
+
+      // Validate role
+      if (!role || !['developer', 'admin', 'agent'].includes(role)) {
+        return res.status(400).json({ error: 'Invalid role. Must be developer, admin, or agent' });
+      }
+
+      // Update user role in database
+      const updatedUser = await storage.updateUserRole(id, role);
+      
+      // Log the action
+      await storage.logActivity(
+        req.user.id,
+        'update_user_role',
+        { targetUserId: id, newRole: role },
+        req.user.email
+      );
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('[API] Update user role error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Server-side block rendering endpoint
   app.post('/api/render-blocks', renderBlocks);
 
