@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -36,6 +37,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [desktopSearchOpen, setDesktopSearchOpen] = React.useState(false);
   const [mobileSearchPaletteOpen, setMobileSearchPaletteOpen] = React.useState(false);
   const { user } = useAuth();
+  const { isDeveloper, isAdmin } = useUserRole();
   const queryClient = useQueryClient();
 
   const { data: notificationsData } = useQuery<{ notifications: Notification[]; unreadCount: number }>({
@@ -127,7 +129,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </div>
 
       <div className="flex-1 px-3 py-6 space-y-1">
-        {navItems.map((item) => {
+        {navItems.filter((item) => {
+          // Hide Developer page from non-developer users
+          if (item.href === "/developer" && !isDeveloper) return false;
+          // Hide Settings and Admin pages from agent-role users
+          if ((item.href === "/settings" || item.href === "/admin") && !isAdmin) return false;
+          return true;
+        }).map((item) => {
           const isActive = location === item.href;
           const itemId = item.href.replace("/", "") || "home";
           return (
