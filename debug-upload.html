@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Upload Test</title>
+</head>
+<body>
+    <h1>Debug Upload Test</h1>
+    <input type="file" id="testFile" accept=".pdf,.txt">
+    <div id="output"></div>
+    
+    <script>
+        console.log('🚀 Debug upload test loaded');
+        
+        const fileInput = document.getElementById('testFile');
+        const output = document.getElementById('output');
+        
+        fileInput.addEventListener('change', async (e) => {
+            console.log('📁 File selected:', e.target.files[0]);
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            output.innerHTML = `<p>Processing ${file.name}...</p>`;
+            
+            try {
+                // Convert to base64
+                const base64 = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.readAsDataURL(file);
+                });
+                
+                console.log('📄 Base64 length:', base64.length);
+                
+                // Test API call
+                const response = await fetch('http://192.168.1.162:3001/api/documents/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        documentId: `doc_${Date.now()}`,
+                        fileName: file.name,
+                        fileData: base64,
+                        transactionType: 'purchase'
+                    })
+                });
+                
+                console.log('🌐 Response status:', response.status);
+                const result = await response.json();
+                console.log('📊 API result:', result);
+                
+                output.innerHTML = `
+                    <p>✅ Upload successful!</p>
+                    <p>Status: ${response.status}</p>
+                    <p>Success: ${result.success}</p>
+                    <p>Fields: ${result.extractedTerms ? Object.keys(result.extractedTerms).length : 0}</p>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+                
+            } catch (error) {
+                console.error('❌ Upload failed:', error);
+                output.innerHTML = `<p>❌ Error: ${error.message}</p>`;
+            }
+        });
+    </script>
+</body>
+</html>

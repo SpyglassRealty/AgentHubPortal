@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fee Title Office - Texas Contract Extraction</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .upload-area {
+            border: 2px dashed #d1d5db;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #ef4444;
+            background-color: #fef2f2;
+        }
+        .scanning {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .populated {
+            background-color: #f0f9ff !important;
+            border-color: #0ea5e9 !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen py-8">
+        <div class="max-w-6xl mx-auto px-4">
+            <!-- Header -->
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2m-6 4h4"></path>
+                        </svg>
+                    </div>
+                    Fee Title Office - Texas Contract Extraction
+                </h1>
+                <p class="text-gray-600 mt-2">Upload a Texas residential purchase contract and extract 20+ fields automatically</p>
+            </div>
+
+            <!-- API Status -->
+            <div id="apiStatus" class="mb-6 p-4 rounded-lg border">
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-gray-400" id="statusDot"></div>
+                    <span class="text-sm" id="statusText">Checking API status...</span>
+                </div>
+            </div>
+
+            <!-- Status Message -->
+            <div id="statusMessage" class="hidden mb-6 p-4 rounded-lg"></div>
+
+            <!-- Form -->
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">Transaction Details</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Property Address</label>
+                        <input type="text" id="propertyAddress" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Will be extracted from contract">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Transaction Type</label>
+                        <select id="transactionType" class="w-full p-2 border border-gray-300 rounded-md">
+                            <option value="Purchase Agreement">Purchase Agreement</option>
+                            <option value="Listing Agreement">Listing Agreement</option>
+                            <option value="Refinance">Refinance</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
+                        <input type="text" id="clientName" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Will be extracted from contract">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Purchase Price</label>
+                        <input type="text" id="estimatedValue" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Will be extracted from contract">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Closing Date</label>
+                        <input type="date" id="closingDate" class="w-full p-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                        <select id="priority" class="w-full p-2 border border-gray-300 rounded-md">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Document Scanner -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Texas Contract Scanner
+                    </h3>
+                    <p class="text-sm text-gray-600 mb-3">Drag & drop or click to upload a contract - AI will extract terms automatically</p>
+                    
+                    <div class="upload-area relative p-8 rounded-lg text-center cursor-pointer" id="uploadArea">
+                        <svg class="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <p class="text-lg font-medium text-gray-700 mb-2" id="uploadText">Drop Contract Here or Click to Upload</p>
+                        <p class="text-sm text-gray-500">PDF, images, or text files supported</p>
+                        <input type="file" id="fileInput" class="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.png,.jpg,.jpeg,.gif,.txt">
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="hidden mt-4" id="progressContainer">
+                        <div class="bg-gray-200 rounded-full h-2">
+                            <div class="bg-red-500 h-2 rounded-full transition-all duration-300" id="progressBar" style="width: 0%"></div>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-1" id="progressText">Processing...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Extracted Terms Modal -->
+            <div id="extractedTerms" class="hidden bg-white rounded-lg shadow-lg p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Texas Contract Terms Extracted</h3>
+                    <button id="dismissBtn" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div id="termsContent"></div>
+                
+                <div class="flex gap-3 mt-6">
+                    <button id="applyTermsBtn" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors">
+                        Apply to Form
+                    </button>
+                    <button id="reviewLaterBtn" class="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                        Review Later
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadText = document.getElementById('uploadText');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const statusMessage = document.getElementById('statusMessage');
+        const extractedTerms = document.getElementById('extractedTerms');
+        const termsContent = document.getElementById('termsContent');
+        const applyTermsBtn = document.getElementById('applyTermsBtn');
+        const reviewLaterBtn = document.getElementById('reviewLaterBtn');
+        const dismissBtn = document.getElementById('dismissBtn');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        
+        let currentExtractedData = null;
+
+        // Check API status on load
+        checkAPIStatus();
+
+        async function checkAPIStatus() {
+            try {
+                const response = await fetch('http://192.168.1.162:3001/api/test/document-scanning');
+                const data = await response.json();
+                
+                if (data.ready) {
+                    statusDot.className = 'w-3 h-3 rounded-full bg-green-500';
+                    statusText.textContent = data.message;
+                } else {
+                    statusDot.className = 'w-3 h-3 rounded-full bg-red-500';
+                    statusText.textContent = 'API not ready';
+                }
+            } catch (error) {
+                statusDot.className = 'w-3 h-3 rounded-full bg-red-500';
+                statusText.textContent = 'Cannot connect to extraction service';
+            }
+        }
+
+        // Upload area interactions
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', handleDrop);
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                processFile(e.target.files[0]);
+            }
+        });
+
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        }
+
+        async function processFile(file) {
+            if (file.size > 50 * 1024 * 1024) {
+                showStatus('❌ File too large (max 50MB)', 'error');
+                return;
+            }
+
+            uploadText.textContent = file.name;
+            progressContainer.classList.remove('hidden');
+            
+            try {
+                // Convert file to base64 for API
+                const base64Data = await fileToBase64(file);
+                const transactionType = document.getElementById('transactionType').value;
+                
+                console.log('Sending to Texas contract extraction API...');
+                updateProgress(25, 'Analyzing Texas contract...');
+                
+                const response = await fetch('http://192.168.1.162:3001/api/documents/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        documentId: `doc_${Date.now()}`,
+                        fileName: file.name,
+                        fileData: base64Data.substring(0, 1000), // Send partial data for testing
+                        transactionType: transactionType
+                    })
+                });
+
+                updateProgress(75, 'Processing contract terms...');
+                const result = await response.json();
+                console.log('API Response:', result);
+                
+                updateProgress(100, 'Complete!');
+                
+                if (result.success && result.extractedTerms) {
+                    currentExtractedData = result.extractedTerms;
+                    const fieldCount = countExtractedFields(result.extractedTerms);
+                    showStatus(`✅ Extracted ${fieldCount} fields from "${file.name}"`, 'success');
+                    displayExtractedTerms(result.extractedTerms);
+                } else {
+                    throw new Error(result.error || 'Failed to extract terms');
+                }
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                showStatus(`❌ Processing failed: ${error.message}`, 'error');
+                updateProgress(0, 'Failed');
+            } finally {
+                setTimeout(() => {
+                    progressContainer.classList.add('hidden');
+                    uploadText.textContent = 'Drop Contract Here or Click to Upload';
+                    fileInput.value = '';
+                }, 2000);
+            }
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        function updateProgress(percent, text) {
+            progressBar.style.width = `${percent}%`;
+            progressText.textContent = text;
+        }
+
+        function showStatus(message, type = 'info') {
+            statusMessage.textContent = message;
+            statusMessage.className = `mb-6 p-4 rounded-lg ${
+                type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
+                type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' :
+                'bg-blue-50 text-blue-800 border border-blue-200'
+            }`;
+            statusMessage.classList.remove('hidden');
+        }
+
+        function countExtractedFields(terms) {
+            let count = 0;
+            
+            // Count fields in buyer section
+            if (terms.buyer) {
+                Object.values(terms.buyer).forEach(value => {
+                    if (value && value !== '') count++;
+                });
+            }
+            
+            // Count fields in property section
+            if (terms.property) {
+                Object.values(terms.property).forEach(value => {
+                    if (value && value !== '') count++;
+                });
+            }
+            
+            // Count fields in terms section
+            if (terms.terms) {
+                Object.values(terms.terms).forEach(value => {
+                    if (value && value !== '' && value !== 0) count++;
+                });
+            }
+            
+            // Count fields in financing section
+            if (terms.financing) {
+                Object.entries(terms.financing).forEach(([key, value]) => {
+                    if (key === 'tpfa' && value) {
+                        Object.values(value).forEach(tpfaValue => {
+                            if (tpfaValue && tpfaValue !== '' && tpfaValue !== 0) count++;
+                        });
+                    } else if (value && value !== '' && value !== 0) {
+                        count++;
+                    }
+                });
+            }
+            
+            return count;
+        }
+
+        function displayExtractedTerms(terms) {
+            const fieldCount = countExtractedFields(terms);
+            const flags = terms.flags || [];
+            const missingCount = terms.flags ? terms.flags.filter(f => f.includes('missing') || f.includes('required')).length : 0;
+            
+            let html = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-600">${fieldCount}</div>
+                        <div class="text-sm text-gray-600">Fields Extracted</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-orange-600">${missingCount}</div>
+                        <div class="text-sm text-gray-600">Missing Fields</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-blue-600">${fieldCount > 0 ? Math.round((fieldCount / (fieldCount + missingCount)) * 100) : 0}%</div>
+                        <div class="text-sm text-gray-600">Completeness</div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    ${renderSection('Buyer Information', terms.buyer)}
+                    ${renderSection('Property Details', terms.property)}
+                    ${renderSection('Contract Terms', terms.terms)}
+                    ${renderSection('Financing Details', terms.financing)}
+                    ${terms.addenda && terms.addenda.length > 0 ? `
+                        <div class="p-4 border rounded-lg">
+                            <h4 class="font-semibold text-sm mb-2">Addenda Detected</h4>
+                            <div class="text-sm text-gray-600">${terms.addenda.join(', ')}</div>
+                        </div>
+                    ` : ''}
+                    ${flags.length > 0 ? `
+                        <div class="p-4 border rounded-lg bg-yellow-50">
+                            <h4 class="font-semibold text-sm mb-2">Extraction Notes</h4>
+                            <div class="space-y-1">
+                                ${flags.map(flag => `<div class="text-sm text-yellow-800">⚠️ ${flag}</div>`).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            termsContent.innerHTML = html;
+            extractedTerms.classList.remove('hidden');
+            
+            // Scroll to results
+            extractedTerms.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function renderSection(title, data) {
+            if (!data) return '';
+            
+            const fields = Object.entries(data).filter(([key, value]) => value && value !== '' && value !== 0);
+            if (fields.length === 0) return '';
+            
+            return `
+                <div class="p-4 border rounded-lg">
+                    <h4 class="font-semibold text-sm mb-3">${title}</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        ${fields.map(([key, value]) => `
+                            <div>
+                                <div class="font-medium text-xs text-gray-500 uppercase">${key.replace(/([A-Z])/g, ' $1').trim()}</div>
+                                <div class="text-sm">${formatValue(value)}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function formatValue(value) {
+            if (typeof value === 'number' && value > 1000) {
+                return `$${value.toLocaleString()}`;
+            } else if (typeof value === 'boolean') {
+                return value ? 'Yes' : 'No';
+            } else if (Array.isArray(value)) {
+                return value.join(', ');
+            } else if (typeof value === 'object') {
+                return Object.entries(value).map(([k, v]) => `${k}: ${v}`).join(', ');
+            }
+            return String(value);
+        }
+
+        applyTermsBtn.addEventListener('click', () => {
+            if (currentExtractedData) {
+                console.log('Applying terms to form:', currentExtractedData);
+                
+                // Auto-populate form fields
+                const fields = [
+                    { id: 'propertyAddress', value: currentExtractedData.property?.address },
+                    { id: 'clientName', value: getClientName(currentExtractedData) },
+                    { id: 'estimatedValue', value: formatPrice(currentExtractedData.terms?.purchasePrice) },
+                    { id: 'closingDate', value: currentExtractedData.terms?.closingDate }
+                ];
+
+                fields.forEach(field => {
+                    if (field.value) {
+                        const element = document.getElementById(field.id);
+                        if (element) {
+                            element.value = field.value;
+                            element.classList.add('populated');
+                            // Add a brief highlight animation
+                            setTimeout(() => {
+                                element.style.transform = 'scale(1.02)';
+                                setTimeout(() => {
+                                    element.style.transform = 'scale(1)';
+                                }, 200);
+                            }, 100);
+                        }
+                    }
+                });
+                
+                // Set priority based on completeness
+                const fieldCount = countExtractedFields(currentExtractedData);
+                const priority = fieldCount > 15 ? 'low' : fieldCount > 8 ? 'medium' : 'high';
+                const priorityElement = document.getElementById('priority');
+                priorityElement.value = priority;
+                priorityElement.classList.add('populated');
+
+                showStatus('✅ Form populated with extracted contract terms!', 'success');
+                extractedTerms.classList.add('hidden');
+                
+                // Scroll back to form
+                document.querySelector('.bg-white.rounded-lg.shadow-lg').scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+            }
+        });
+
+        function getClientName(terms) {
+            if (terms.buyer && terms.buyer.fullName) {
+                return terms.buyer.fullName;
+            }
+            return null;
+        }
+
+        function formatPrice(price) {
+            if (price && typeof price === 'number') {
+                return `$${price.toLocaleString()}`;
+            }
+            return null;
+        }
+
+        reviewLaterBtn.addEventListener('click', () => {
+            extractedTerms.classList.add('hidden');
+        });
+
+        dismissBtn.addEventListener('click', () => {
+            extractedTerms.classList.add('hidden');
+        });
+    </script>
+</body>
+</html>

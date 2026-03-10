@@ -1,0 +1,8 @@
+Purchase Price: ,000
+Buyer: John Smith
+Property: 5908 Bull Creek Rd, Austin, TX 78756
+Closing Date: 2026-03-25
+Earnest Money: ,000
+Option Period: 10 days
+Option Fee: 
+Title Company: First Texas Title

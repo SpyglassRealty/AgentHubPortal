@@ -1,0 +1,390 @@
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ImageUpload } from "@/components/editor/ImageUpload";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Plus,
+  Trash2,
+  GripVertical,
+  Eye,
+  EyeOff,
+  Image as ImageIcon,
+  Video,
+  Type,
+  Link,
+} from "lucide-react";
+
+export interface ContentBlock {
+  id: number;
+  communityId: number;
+  blockType: string;
+  title: string;
+  content: string;
+  imageUrl: string;
+  videoUrl: string;
+  ctaText: string;
+  ctaUrl: string;
+  imagePosition: 'left' | 'right';
+  backgroundColor: 'white' | 'light' | 'dark';
+  sortOrder: number;
+  published: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface ContentBlocksEditorProps {
+  communityId: number;
+  onSave?: () => void;
+}
+
+export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditorProps) {
+  const [blocks, setBlocks] = useState<ContentBlock[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  // ── Fetch blocks ──────────────────────────────
+  useEffect(() => {
+    fetchBlocks();
+  }, [communityId]);
+
+  const fetchBlocks = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/admin/communities/${communityId}/content-blocks`);
+      if (response.ok) {
+        const data = await response.json();
+        setBlocks(data.blocks || []);
+      }
+    } catch (error) {
+      console.error('Error fetching content blocks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Add new block ──────────────────────────────
+  const addBlock = async (blockType: string = 'split') => {
+    try {
+      setSaving(true);
+      const response = await fetch(`/api/admin/communities/${communityId}/content-blocks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blockType,
+          title: 'New Section',
+          content: '<p>Your content goes here...</p>',
+          imagePosition: 'right',
+          backgroundColor: 'white',
+          sortOrder: blocks.length,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBlocks([...blocks, data.block]);
+        toast({ title: 'Block added', description: 'New content block created.' });
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to add block.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── Update block ──────────────────────────────
+  const updateBlock = async (blockId: number, updates: Partial<ContentBlock>) => {
+    try {
+      const response = await fetch(`/api/admin/communities/${communityId}/content-blocks/${blockId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBlocks(blocks.map(block => 
+          block.id === blockId ? { ...block, ...data.block } : block
+        ));
+      }
+    } catch (error) {
+      console.error('Error updating block:', error);
+    }
+  };
+
+  // ── Delete block ──────────────────────────────
+  const deleteBlock = async (blockId: number) => {
+    if (!confirm('Are you sure you want to delete this block?')) return;
+
+    try {
+      const response = await fetch(`/api/admin/communities/${communityId}/content-blocks/${blockId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setBlocks(blocks.filter(block => block.id !== blockId));
+        toast({ title: 'Block deleted', description: 'Content block removed.' });
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to delete block.', variant: 'destructive' });
+    }
+  };
+
+  // ── Reorder blocks ──────────────────────────────
+  const moveBlock = (fromIndex: number, toIndex: number) => {
+    const newBlocks = [...blocks];
+    const [moved] = newBlocks.splice(fromIndex, 1);
+    newBlocks.splice(toIndex, 0, moved);
+    
+    // Update sort order
+    const reorderedBlocks = newBlocks.map((block, index) => ({
+      ...block,
+      sortOrder: index
+    }));
+    
+    setBlocks(reorderedBlocks);
+    
+    // Save new order to backend
+    const blockIds = reorderedBlocks.map(block => block.id);
+    fetch(`/api/admin/communities/${communityId}/content-blocks/reorder`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ blockIds }),
+    }).catch(error => console.error('Error reordering blocks:', error));
+  };
+
+  if (loading) {
+    return <div className="p-4">Loading content blocks...</div>;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Type className="h-5 w-5" />
+              Content Blocks
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Drag-and-drop content sections with images, videos, and text
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => addBlock('split')}
+              size="sm"
+              disabled={saving}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add Block
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {blocks.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Type className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No content blocks yet</p>
+            <p className="text-sm">Add your first block to get started</p>
+          </div>
+        ) : (
+          blocks.map((block, index) => (
+            <ContentBlockEditor
+              key={block.id}
+              block={block}
+              index={index}
+              totalBlocks={blocks.length}
+              onUpdate={(updates) => updateBlock(block.id, updates)}
+              onDelete={() => deleteBlock(block.id)}
+              onMoveUp={() => index > 0 && moveBlock(index, index - 1)}
+              onMoveDown={() => index < blocks.length - 1 && moveBlock(index, index + 1)}
+            />
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Individual Block Editor ──────────────────────────────
+interface ContentBlockEditorProps {
+  block: ContentBlock;
+  index: number;
+  totalBlocks: number;
+  onUpdate: (updates: Partial<ContentBlock>) => void;
+  onDelete: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}
+
+function ContentBlockEditor({ 
+  block, 
+  index, 
+  totalBlocks, 
+  onUpdate, 
+  onDelete, 
+  onMoveUp, 
+  onMoveDown 
+}: ContentBlockEditorProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div className="border rounded-lg p-4 space-y-3 bg-card">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
+          <div>
+            <h4 className="font-medium">{block.title || 'Untitled Block'}</h4>
+            <p className="text-sm text-muted-foreground">
+              {block.blockType === 'split' ? 'Split Layout' : 'Content Block'} 
+              {block.imageUrl && ' • Image'}
+              {block.videoUrl && ' • Video'}
+            </p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onUpdate({ published: !block.published })}
+            className="h-8 w-8 p-0"
+          >
+            {block.published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          </Button>
+          
+          {index > 0 && (
+            <Button variant="ghost" size="sm" onClick={onMoveUp} className="h-8 w-8 p-0">
+              ↑
+            </Button>
+          )}
+          {index < totalBlocks - 1 && (
+            <Button variant="ghost" size="sm" onClick={onMoveDown} className="h-8 w-8 p-0">
+              ↓
+            </Button>
+          )}
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="h-8 px-3"
+          >
+            {isExpanded ? 'Collapse' : 'Edit'}
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onDelete}
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Expanded Edit Form */}
+      {isExpanded && (
+        <div className="space-y-4 pt-4 border-t">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Title</Label>
+              <Input
+                value={block.title}
+                onChange={(e) => onUpdate({ title: e.target.value })}
+                placeholder="Section title..."
+              />
+            </div>
+            <div>
+              <Label>Background</Label>
+              <Select value={block.backgroundColor} onValueChange={(value: any) => onUpdate({ backgroundColor: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="white">White</SelectItem>
+                  <SelectItem value="light">Light Gray</SelectItem>
+                  <SelectItem value="dark">Dark</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <Label>Content</Label>
+            <RichTextEditor
+              value={block.content}
+              onChange={(value) => onUpdate({ content: value })}
+              placeholder="Enter your content..."
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="flex items-center gap-2">
+                <ImageIcon className="h-4 w-4" />
+                Image
+              </Label>
+              <ImageUpload
+                value={block.imageUrl}
+                onChange={(url) => onUpdate({ imageUrl: url })}
+              />
+            </div>
+            <div>
+              <Label className="flex items-center gap-2">
+                <Video className="h-4 w-4" />
+                Video URL
+              </Label>
+              <Input
+                value={block.videoUrl}
+                onChange={(e) => onUpdate({ videoUrl: e.target.value })}
+                placeholder="YouTube, Vimeo, or direct video URL..."
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <Label>Media Position</Label>
+              <Select value={block.imagePosition} onValueChange={(value: any) => onUpdate({ imagePosition: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="left">Left</SelectItem>
+                  <SelectItem value="right">Right</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>CTA Button Text</Label>
+              <Input
+                value={block.ctaText}
+                onChange={(e) => onUpdate({ ctaText: e.target.value })}
+                placeholder="Get Started"
+              />
+            </div>
+            <div>
+              <Label>CTA Button URL</Label>
+              <Input
+                value={block.ctaUrl}
+                onChange={(e) => onUpdate({ ctaUrl: e.target.value })}
+                placeholder="/contact"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
