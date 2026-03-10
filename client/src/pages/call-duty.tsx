@@ -183,6 +183,9 @@ export default function CallDutyPage() {
   // Admin/Agent view toggle state (UI only)
   const [viewMode, setViewMode] = useState<'admin' | 'agent'>('admin');
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'schedule' | 'my-shifts' | 'unfilled' | 'reports' | 'holidays'>('schedule');
+
   // Date range strings for API
   const startDate = format(weekStart, "yyyy-MM-dd");
   const endDate = format(weekEnd, "yyyy-MM-dd");
@@ -723,17 +726,84 @@ export default function CallDutyPage() {
         {isAdmin && (
           <div className="flex justify-end">
             <Button
-              variant="outline"
-              onClick={() => setViewMode(viewMode === 'admin' ? 'agent' : 'admin')}
-              className="min-w-[44px] min-h-[44px]"
+              variant="default"
+              onClick={() => {
+                const next = viewMode === 'admin' ? 'agent' : 'admin';
+                setViewMode(next);
+                if (next === 'agent' && ['unfilled', 'reports', 'holidays'].includes(activeTab)) {
+                  setActiveTab('schedule');
+                }
+              }}
+              className="min-w-[44px] min-h-[44px] bg-[#EF4923] hover:bg-[#EF4923]/90"
             >
               {viewMode === 'admin' ? 'Switch to Agent View' : 'Switch to Admin View'}
             </Button>
           </div>
         )}
 
-        {/* Calendar */}
-        <Card>
+        {/* Tab Navigation */}
+        <div className="sticky top-0 z-10 bg-background border-b">
+          <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden min-h-[44px]" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <button
+              onClick={() => setActiveTab('schedule')}
+              className={`flex-shrink-0 px-4 py-2 text-sm font-medium border-b-2 min-h-[44px] flex items-center ${
+                activeTab === 'schedule'
+                  ? 'border-[#EF4923] text-[#EF4923] bg-[#EF4923]/5'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300'
+              }`}
+            >
+              Schedule
+            </button>
+            <button
+              onClick={() => setActiveTab('my-shifts')}
+              className={`flex-shrink-0 px-4 py-2 text-sm font-medium border-b-2 min-h-[44px] flex items-center ${
+                activeTab === 'my-shifts'
+                  ? 'border-[#EF4923] text-[#EF4923] bg-[#EF4923]/5'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300'
+              }`}
+            >
+              My Shifts
+            </button>
+            {isAdmin && viewMode === 'admin' && (
+              <>
+                <button
+                  onClick={() => setActiveTab('unfilled')}
+                  className={`flex-shrink-0 px-4 py-2 text-sm font-medium border-b-2 min-h-[44px] flex items-center ${
+                    activeTab === 'unfilled'
+                      ? 'border-[#EF4923] text-[#EF4923] bg-[#EF4923]/5'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300'
+                  }`}
+                >
+                  Unfilled
+                </button>
+                <button
+                  onClick={() => setActiveTab('reports')}
+                  className={`flex-shrink-0 px-4 py-2 text-sm font-medium border-b-2 min-h-[44px] flex items-center ${
+                    activeTab === 'reports'
+                      ? 'border-[#EF4923] text-[#EF4923] bg-[#EF4923]/5'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300'
+                  }`}
+                >
+                  Reports
+                </button>
+                <button
+                  onClick={() => setActiveTab('holidays')}
+                  className={`flex-shrink-0 px-4 py-2 text-sm font-medium border-b-2 min-h-[44px] flex items-center ${
+                    activeTab === 'holidays'
+                      ? 'border-[#EF4923] text-[#EF4923] bg-[#EF4923]/5'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300'
+                  }`}
+                >
+                  Holidays
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'schedule' && (
+          <Card>
           <CardContent className="p-4 md:p-6">
             {slotsLoading ? (
               <div className="space-y-4">
@@ -761,17 +831,12 @@ export default function CallDutyPage() {
               />
             )}
           </CardContent>
-        </Card>
+          </Card>
+        )}
 
-        {/* My Shifts sidebar */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-[#EF4923]" />
-              My Upcoming Shifts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        {activeTab === 'my-shifts' && (
+          <Card>
+            <CardContent className="p-4 md:p-6">
             {myShiftsLoading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
@@ -780,7 +845,7 @@ export default function CallDutyPage() {
               </div>
             ) : myShifts.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">
-                No upcoming shifts. Sign up from the calendar above!
+                No upcoming shifts. Sign up from the Schedule tab!
               </p>
             ) : (
               <div className="space-y-2">
@@ -817,36 +882,12 @@ export default function CallDutyPage() {
               </div>
             )}
           </CardContent>
-        </Card>
+          </Card>
+        )}
 
-        {/* Unfilled Slots View - Admin/Developer Only */}
-        {isAdmin && viewMode === 'admin' && (
+        {activeTab === 'unfilled' && isAdmin && viewMode === 'admin' && (
           <Card>
-            <Collapsible open={unfilledSlotsOpen} onOpenChange={setUnfilledSlotsOpen}>
-              <CardHeader className="pb-3">
-                <CollapsibleTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-between p-0 h-auto hover:bg-transparent"
-                  >
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-amber-500" />
-                      Unfilled Slots
-                      {unfilledSlots.length > 0 && (
-                        <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200">
-                          {unfilledSlots.length}
-                        </Badge>
-                      )}
-                    </CardTitle>
-                    <ChevronDown className={`h-4 w-4 transition-transform ${unfilledSlotsOpen ? "rotate-180" : ""}`} />
-                  </Button>
-                </CollapsibleTrigger>
-                <p className="text-sm text-muted-foreground text-left">
-                  Current week's shifts needing more agents
-                </p>
-              </CardHeader>
-              <CollapsibleContent>
-                <CardContent>
+            <CardContent className="p-4 md:p-6">
                   {unfilledSlotsLoading ? (
                     <div className="space-y-2">
                       {[1, 2, 3].map((i) => (
@@ -920,31 +961,18 @@ export default function CallDutyPage() {
                       ))}
                     </div>
                   )}
-                </CardContent>
-              </CollapsibleContent>
-            </Collapsible>
+            </CardContent>
           </Card>
         )}
 
-        {/* Holiday Management - Admin/Developer Only */}
-        {isAdmin && viewMode === 'admin' && (
+        {activeTab === 'holidays' && isAdmin && viewMode === 'admin' && (
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Settings className="h-4 w-4 text-[#EF4923]" />
-                Holiday Management
-              </CardTitle>
+            <CardContent className="space-y-6">
               <p className="text-sm text-muted-foreground">
                 Manage holidays and skip days. Slots will not be created on these dates.
               </p>
-            </CardHeader>
-            <CardContent className="space-y-6">
               {/* Add Holiday Form */}
               <div className="space-y-4">
-                <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Holiday
-                </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="holiday-name" className="text-xs font-medium">
@@ -996,10 +1024,6 @@ export default function CallDutyPage() {
 
               {/* Holidays List */}
               <div className="space-y-4">
-                <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4" />
-                  Current Holidays
-                </h4>
                 {holidaysLoading ? (
                   <div className="space-y-2">
                     {[1, 2, 3].map((i) => (
@@ -1057,19 +1081,12 @@ export default function CallDutyPage() {
           </Card>
         )}
 
-        {/* Reports Section - Admin/Developer Only */}
-        {isAdmin && viewMode === 'admin' && (
+        {activeTab === 'reports' && isAdmin && viewMode === 'admin' && (
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-[#EF4923]" />
-                Call Duty Reports
-              </CardTitle>
+            <CardContent className="space-y-6">
               <p className="text-sm text-muted-foreground">
                 Coverage statistics, agent activity, and shift history for accountability tracking.
               </p>
-            </CardHeader>
-            <CardContent className="space-y-6">
               {/* Reports Toggle */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
