@@ -107,9 +107,35 @@ export function FeeitleOfficeModal({ open, onOpenChange, transactionId }: Feeitl
     priority: "medium",
     estimated_value: "",
   });
+  const [saveStatus, setSaveStatus] = useState<'saving' | 'saved' | 'error'>('saved');
+
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [customTasks, setCustomTasks] = useState<any[]>([]);
-  const queryClient = useQueryClient();
+  useEffect(() => {
+    const saveData = () => {
+      setSaveStatus('saving');
+      localStorage.setItem('transactionData', JSON.stringify(newTransactionData));
+      // Simulate API call
+      setTimeout(() => {
+        setSaveStatus('saved');
+        toast({ title: 'Autosaved!', description: 'Your progress has been saved.' });
+      }, 1000);
+    };
+
+    const autosaveInterval = setInterval(() => {
+      saveData();
+    }, 30000);
+
+    return () => clearInterval(autosaveInterval);
+  }, [newTransactionData]);
+
+  useEffect(() => {
+    const storedData = localStorage.getItem('transactionData');
+    if (storedData) {
+      setNewTransactionData(JSON.parse(storedData));
+      toast({ title: 'Data Restored!', description: 'Your previous progress has been restored.' });
+    }
+  }, []);
 
   // Mock data for existing transaction
   const mockTransactionData = {
@@ -225,6 +251,7 @@ export function FeeitleOfficeModal({ open, onOpenChange, transactionId }: Feeitl
                 </p>
               </div>
             </div>
+            {saveStatus === 'saving' && <Badge variant="secondary">Saving...</Badge>}
             <div className="flex items-center gap-2">
               <Badge variant={isEditing ? "default" : "secondary"}>
                 {isEditing ? displayData.status : "Draft"}
@@ -597,7 +624,7 @@ export function FeeitleOfficeModal({ open, onOpenChange, transactionId }: Feeitl
               <TabsContent value="compliance" className="mt-0">
                 <ComplianceChecklistComponent
                   transactionId={transactionId || 'new'}
-                  transactionType={isEditing ? displayData.transaction_type : newTransactionData.transaction_type}
+                  transactionType={isEditing ? displayData.transaction_type : "Residential Closing"}
                   state="Texas"
                 />
               </TabsContent>

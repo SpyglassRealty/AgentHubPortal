@@ -795,8 +795,35 @@ export function DocumentManager({ transactionId, transactionType, onTermsExtract
                 </Card>
               </div>
 
+              {/* Document Type Suggestion */}
+              {scanResults.extractedTerms.documentTypeSuggestion && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-blue-800">Document Type Suggestion</h4>
+                      <p className="text-sm text-blue-700 mt-1">
+                        {scanResults.extractedTerms.documentTypeSuggestion}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Missing Fields Alert */}
-              {scanResults.extractedTerms.missingFields.length > 0 && (
+              {scanResults.extractedTerms.missingFieldsAlert && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-yellow-800">Missing Required Fields</h4>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        {scanResults.extractedTerms.missingFieldsAlert}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                   <div className="flex items-start gap-3">
                     <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />

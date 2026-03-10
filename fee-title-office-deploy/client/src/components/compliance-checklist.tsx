@@ -481,11 +481,7 @@ export function ComplianceChecklistComponent({ transactionId, transactionType, s
                         Details
                       </Button>
                       {item.documents && (
-                        <Button variant="outline" size="sm">
-                          <FileText className="h-4 w-4 mr-1" />
-                          Docs
-                        </Button>
-                      )}
+                        <Button variant=\"outline\" size=\"sm\">\n                          <FileText className=\"h-4 w-4 mr-1\" />\n                          Docs\n                        </Button>\n                      )}\n                      <input\n                        type=\"file\"\n                        id={`upload-${item.id}`}\n                        style={{ display: 'none' }}\n                        onChange={(e) => {\n                          if (e.target.files && e.target.files[0]) {\n                            const file = e.target.files[0];\n                            // Handle file upload logic here\n                            console.log(\`Uploaded file: \${file.name}\`);\n                            alert(\`Uploaded file: \${file.name}\`);\n                          }\n                        }}\n                      />\n                      <Label htmlFor={`upload-${item.id}`} className=\"cursor-pointer\">\n                        <Button variant=\"outline\" size=\"sm\">\n                          <Upload className=\"h-4 w-4 mr-1\" />\n                          Upload\n                        </Button>\n                      </Label>
                     </div>
                   </div>
                 </div>
@@ -495,11 +491,16 @@ export function ComplianceChecklistComponent({ transactionId, transactionType, s
                 <div className="text-center py-12">
                   <Shield className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                   <h3 className="text-lg font-medium mb-2">No items found</h3>
+                  {transactionType === 'Residential Closing' &&
+                    !filteredItems.find(item => item.task === 'Title Commitment') && (
+                      <p className="text-gray-600">
+                        Still need: Title Commitment. <a href="#" className="text-blue-500">Try contacting the title company for the commitment.</a>
+                      </p>
+                  )}
                   <p className="text-gray-600">
-                    {searchQuery || selectedCategory !== 'all' 
-                      ? 'Try adjusting your search or filter criteria' 
-                      : 'All compliance items are up to date'
-                    }
+                    {searchQuery || selectedCategory !== 'all'
+                      ? 'Try adjusting your search or filter criteria'
+                      : 'All compliance items are up to date'}
                   </p>
                 </div>
               )}

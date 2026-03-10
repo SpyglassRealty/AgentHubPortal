@@ -237,7 +237,97 @@ export const TEXAS_PURCHASE_COMPLIANCE: ComplianceChecklist = {
   ]
 };
 
-export const TEXAS_LISTING_COMPLIANCE: ComplianceChecklist = {
+export const TEXAS_RESIDENTIAL_CLOSING_COMPLIANCE: ComplianceChecklist = {
+  id: 'tx-residential-closing-2026',
+  name: 'Texas Residential Closing Compliance',
+  transactionType: 'Residential Closing',
+  state: 'Texas',
+  version: '2026.1',
+  lastUpdated: '2026-03-01',
+  items: [
+    {
+      id: 'closing-1',
+      category: 'Closing Documents',
+      task: 'Title Commitment',
+      description: 'Review and approve the title commitment.',
+      required: true,
+      completed: false,
+      priority: 'critical',
+      documents: ['Title Commitment']
+    },
+    {
+      id: 'closing-2',
+      category: 'Closing Documents',
+      task: 'Survey',
+      description: 'Obtain and review the property survey.',
+      required: true,
+      completed: false,
+      priority: 'critical',
+      documents: ['Survey']
+    },
+    {
+      id: 'closing-3',
+      category: 'Closing Documents',
+      task: 'Inspection Reports',
+      description: 'Review all inspection reports for issues.',
+      required: false,
+      completed: false,
+      priority: 'medium',
+      documents: ['Inspection Reports']
+    },
+    {
+      id: 'closing-4',
+      category: 'Closing Documents',
+      task: 'Appraisal',
+      description: 'Obtain and review the property appraisal.',
+      required: true,
+      completed: false,
+      priority: 'high',
+      documents: ['Appraisal']
+    },
+    {
+      id: 'closing-5',
+      category: 'Closing Documents',
+      task: 'Insurance Binder',
+      description: 'Verify insurance binder is in place.',
+      required: true,
+      completed: false,
+      priority: 'high',
+      documents: ['Insurance Binder']
+    },
+    {
+      id: 'closing-6',
+      category: 'Closing Documents',
+      task: 'HOA Documents',
+      description: 'Obtain and review HOA documents, if applicable.',
+      required: false,
+      completed: false,
+      priority: 'medium',
+      documents: ['HOA Documents']
+    },
+    {
+      id: 'closing-7',
+      category: 'Closing Documents',
+      task: 'Deed Restrictions',
+      description: 'Review deed restrictions and covenants.',
+      required: true,
+      completed: false,
+      priority: 'high',
+      documents: ['Deed Restrictions']
+    },
+    {
+      id: 'closing-8',
+      category: 'Closing Documents',
+      task: 'Loan Documents',
+      description: 'Review and approve all loan documents.',
+      required: true,
+      completed: false,
+      priority: 'critical',
+      documents: ['Loan Documents']
+    }
+  ]
+};
+
   id: 'tx-listing-2026',
   name: 'Texas Listing Agreement Compliance',
   transactionType: 'Listing Agreement',
@@ -402,6 +492,8 @@ export function getComplianceChecklistByType(transactionType: string, state: str
         return TEXAS_PURCHASE_COMPLIANCE;
       case 'Listing Agreement':
         return TEXAS_LISTING_COMPLIANCE;
+      case 'Residential Closing':
+        return TEXAS_RESIDENTIAL_CLOSING_COMPLIANCE;
       default:
         return null;
     }

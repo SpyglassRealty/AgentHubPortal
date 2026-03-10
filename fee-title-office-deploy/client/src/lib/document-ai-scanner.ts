@@ -115,7 +115,17 @@ export class DocumentAIScanner {
       }
 
       const result = await response.json();
-      
+
+      let documentTypeSuggestion = null;
+      if (result.extractedTerms.documentType) {
+        documentTypeSuggestion = `This looks like a ${result.extractedTerms.documentType} - upload to the ${result.extractedTerms.documentType} section.`;
+      }
+
+      result.extractedTerms.documentTypeSuggestion = documentTypeSuggestion;
+      result.extractedTerms.missingFieldsAlert = result.extractedTerms.missingFields.length > 0
+        ? `Missing fields: ${result.extractedTerms.missingFields.join(', ')}`
+        : null;
+
       return {
         success: true,
         extractedTerms: result.extractedTerms,
