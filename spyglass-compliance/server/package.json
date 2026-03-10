@@ -1,0 +1,42 @@
+{
+  "name": "spyglass-compliance-server",
+  "version": "1.0.0",
+  "description": "Backend API for Spyglass Compliance",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "generate": "npx prisma generate",
+    "migrate": "npx prisma migrate dev",
+    "studio": "npx prisma studio",
+    "seed:test": "tsx scripts/create-test-user.ts",
+    "test:users": "tsx scripts/test-user-management.ts",
+    "test:deals": "tsx scripts/test-deal-creation.ts",
+    "test:documents": "tsx scripts/test-document-upload.ts",
+    "test:compliance": "tsx scripts/test-compliance-review.ts"
+  },
+  "dependencies": {
+    "express": "^4.21.1",
+    "express-session": "^1.18.1",
+    "bcrypt": "^5.1.1",
+    "multer": "^1.4.5-lts.1",
+    "pdfkit": "^0.14.0",
+    "axios": "^1.7.9",
+    "@prisma/client": "^5.7.0",
+    "cors": "^2.8.5",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@types/express": "^5.0.0",
+    "@types/express-session": "^1.18.0",
+    "@types/bcrypt": "^5.0.2",
+    "@types/multer": "^2.0.0",
+    "@types/uuid": "^10.0.0",
+    "prisma": "^5.7.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
