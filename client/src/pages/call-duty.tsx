@@ -180,6 +180,9 @@ export default function CallDutyPage() {
   // Check if user has admin/developer role
   const isAdmin = user?.role === 'admin' || user?.role === 'developer';
 
+  // Admin/Agent view toggle state (UI only)
+  const [viewMode, setViewMode] = useState<'admin' | 'agent'>('admin');
+
   // Date range strings for API
   const startDate = format(weekStart, "yyyy-MM-dd");
   const endDate = format(weekEnd, "yyyy-MM-dd");
@@ -716,6 +719,19 @@ export default function CallDutyPage() {
           </div>
         </div>
 
+        {/* Admin/Agent View Toggle - Admin/Developer Only */}
+        {isAdmin && (
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setViewMode(viewMode === 'admin' ? 'agent' : 'admin')}
+              className="min-w-[44px] min-h-[44px]"
+            >
+              {viewMode === 'admin' ? 'Switch to Agent View' : 'Switch to Admin View'}
+            </Button>
+          </div>
+        )}
+
         {/* Calendar */}
         <Card>
           <CardContent className="p-4 md:p-6">
@@ -738,7 +754,7 @@ export default function CallDutyPage() {
                 onCancel={handleCancel}
                 onJoinWaitlist={handleJoinWaitlist}
                 isLoading={isMutating}
-                isAdmin={isAdmin}
+                isAdmin={isAdmin && viewMode === 'admin'}
                 availableUsers={availableUsers}
                 onAssignAgent={handleAssignAgent}
                 onRemoveAgent={handleRemoveAgent}
@@ -804,7 +820,7 @@ export default function CallDutyPage() {
         </Card>
 
         {/* Unfilled Slots View - Admin/Developer Only */}
-        {isAdmin && (
+        {isAdmin && viewMode === 'admin' && (
           <Card>
             <Collapsible open={unfilledSlotsOpen} onOpenChange={setUnfilledSlotsOpen}>
               <CardHeader className="pb-3">
@@ -911,7 +927,7 @@ export default function CallDutyPage() {
         )}
 
         {/* Holiday Management - Admin/Developer Only */}
-        {isAdmin && (
+        {isAdmin && viewMode === 'admin' && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -1042,7 +1058,7 @@ export default function CallDutyPage() {
         )}
 
         {/* Reports Section - Admin/Developer Only */}
-        {isAdmin && (
+        {isAdmin && viewMode === 'admin' && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
