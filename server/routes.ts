@@ -5934,7 +5934,17 @@ Respond with valid JSON in this exact format:
   });
   
   // Admin endpoint to view leads
-  app.get('/api/admin/idx-leads', isAuthenticated, isAdmin, async (req: any, res) => {
+  app.get('/api/admin/idx-leads', isAuthenticated, async (req: any, res) => {
+    // Check for super admin access
+    const sessionUserId = req.user?.claims?.sub;
+    const email = req.user?.claims?.email;
+    let user = await storage.getUser(sessionUserId);
+    if (!user && email) {
+      user = await storage.getUserByEmail(email);
+    }
+    if (!user?.isSuperAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
     try {
       const { 
         status, 
@@ -5966,7 +5976,17 @@ Respond with valid JSON in this exact format:
   });
 
   // Get individual IDX lead by ID
-  app.get('/api/admin/idx-leads/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+  app.get('/api/admin/idx-leads/:id', isAuthenticated, async (req: any, res) => {
+    // Check for super admin access
+    const sessionUserId = req.user?.claims?.sub;
+    const email = req.user?.claims?.email;
+    let user = await storage.getUser(sessionUserId);
+    if (!user && email) {
+      user = await storage.getUserByEmail(email);
+    }
+    if (!user?.isSuperAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
     try {
       const { id } = req.params;
       const lead = await storage.getIdxLeadById(id);
@@ -5983,7 +6003,17 @@ Respond with valid JSON in this exact format:
   });
   
   // Admin endpoint to update lead status
-  app.put('/api/admin/idx-leads/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+  app.put('/api/admin/idx-leads/:id', isAuthenticated, async (req: any, res) => {
+    // Check for super admin access
+    const sessionUserId = req.user?.claims?.sub;
+    const email = req.user?.claims?.email;
+    let user = await storage.getUser(sessionUserId);
+    if (!user && email) {
+      user = await storage.getUserByEmail(email);
+    }
+    if (!user?.isSuperAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
     try {
       const { id } = req.params;
       const updates = req.body;
