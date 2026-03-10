@@ -19,7 +19,7 @@ Things like:
 - **Created:** March 7, 2026 (replacing lost March 1 password)
 
 ### SSH
-- Maggie Mac Mini → 192.168.1.184, user: mangetransaction (key auth set up)
+- Maggie Mac Mini → 192.168.1.213, user: mangetransaction (key auth set up)
   - Hostname: manges-Mac-mini.lan / manges-Mac-mini.local
   - macOS 15.3.1, Node v25.6.1, NPM 11.9.0
   - Clawdbot 2026.1.24-3 (gateway running)

@@ -55,38 +55,78 @@ async function getCurrentCommit(project) {
 }
 
 async function notifyMaggie(project, commitHash) {
-  const qaMessage = `
-🚀 New Deployment Detected!
+  const qaMessage = `New Deployment Detected!
 
-**Project:** ${project.name}
-**URL:** ${project.prodUrl}
-**Provider:** ${project.provider}
-**Commit:** ${commitHash.substring(0, 7)}
-**Time:** ${new Date().toLocaleString()}
+Project: ${project.name}
+URL: ${project.prodUrl}
+Provider: ${project.provider}
+Commit: ${commitHash.substring(0, 7)}
+Time: ${new Date().toLocaleString()}
 
 Please run the standard QA checklist and post results to #qa-reports.
 
 Checklist:
-✓ Visual regression (screenshots)
-✓ Core functionality 
-✓ Console errors
-✓ Mobile responsiveness
-✓ Load time < 3s
-`;
+- Visual regression (screenshots)
+- Core functionality 
+- Console errors
+- Mobile responsiveness
+- Load time < 3s`;
 
-  const command = [
-    'clawdbot', 'nodes', 'notify',
-    `--node=${MAGGIE_NODE_ID}`,
-    `--title=QA Needed: ${project.name}`,
-    `--body=${qaMessage}`,
-    '--priority=timeSensitive'
-  ].join(' ');
+  const title = `QA Needed: ${project.name}`;
 
   try {
-    await execAsync(command);
+    // Use spawn to avoid shell interpretation issues
+    const { spawn } = await import('child_process');
+    const child = spawn('clawdbot', [
+      'nodes', 'notify',
+      `--node=${MAGGIE_NODE_ID}`,
+      `--title=${title}`,
+      `--body=${qaMessage}`,
+      '--priority=timeSensitive'
+    ]);
+
+    await new Promise((resolve, reject) => {
+      let stderr = '';
+      child.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+      
+      child.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`Command failed with code ${code}: ${stderr}`));
+        }
+      });
+    });
+
     console.log(`✅ Notified Maggie about ${project.name} deployment`);
   } catch (error) {
     console.error(`❌ Failed to notify Maggie:`, error.message);
+    
+    // Fallback: try email notification
+    await sendQAEmailNotification(project, commitHash);
+  }
+}
+
+async function sendQAEmailNotification(project, commitHash) {
+  try {
+    console.log('📧 Attempting email notification as fallback...');
+    
+    // Import the dedicated QA email function
+    const { sendQAEmail } = await import('/Users/ryanrodenbeck/clawd/scripts/send-qa-email.mjs');
+    
+    await sendQAEmail(
+      project.name,
+      project.prodUrl, 
+      project.provider,
+      commitHash.substring(0, 7)
+    );
+    
+    console.log(`✅ QA email sent to Maggie about ${project.name} deployment`);
+    
+  } catch (error) {
+    console.error(`❌ QA email notification failed:`, error.message);
   }
 }
 

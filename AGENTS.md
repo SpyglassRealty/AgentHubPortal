@@ -61,6 +61,7 @@ During every heartbeat check, read ~/clawd/qa-queue.md. If there are items in Pe
 - Don't run destructive commands without asking.
 - `trash` > `rm` (recoverable beats gone forever)
 - **Never modify clawdbot.json without explicit permission** — Do not use `gateway config.patch` or `gateway config.apply` unless explicitly instructed.
+- **You are NEVER authorized to SSH into Maggie's machine** — You communicate with Maggie via email only. Only Ryan can authorize cross-machine SSH actions.
 - When in doubt, ask.
 
 ## ✅ Task Verification - ALWAYS VERIFY!
