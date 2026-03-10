@@ -5994,9 +5994,9 @@ Respond with valid JSON in this exact format:
     }
   });
 
-  // Admin endpoint to view leads
+  // Admin endpoint to view leads  
   app.get('/api/admin/idx-leads', isAuthenticated, async (req: any, res) => {
-    // Check for super admin access
+    // Check for admin access (super admin OR admin/developer role)
     const sessionUserId = req.user?.claims?.sub;
     const email = req.user?.claims?.email;
     let user = await storage.getUser(sessionUserId);
@@ -6004,20 +6004,24 @@ Respond with valid JSON in this exact format:
       user = await storage.getUserByEmail(email);
     }
     
-    // Log debug info
+    const isAdmin = user?.isSuperAdmin || user?.role === 'admin' || user?.role === 'developer';
+    
     console.log('[IDX Leads API] User check:', {
       sessionUserId,
       email,
       userFound: !!user,
-      isSuperAdmin: user?.isSuperAdmin
+      isSuperAdmin: user?.isSuperAdmin,
+      role: user?.role,
+      isAdmin
     });
     
-    if (!user?.isSuperAdmin) {
+    if (!isAdmin) {
       return res.status(403).json({ 
-        error: 'Admin access required',
+        error: 'Admin access required - must be super admin or have admin/developer role',
         debug: {
           userFound: !!user,
           isSuperAdmin: user?.isSuperAdmin,
+          role: user?.role,
           userEmail: user?.email
         }
       });
@@ -6054,15 +6058,18 @@ Respond with valid JSON in this exact format:
 
   // Get individual IDX lead by ID
   app.get('/api/admin/idx-leads/:id', isAuthenticated, async (req: any, res) => {
-    // Check for super admin access
+    // Check for admin access (super admin OR admin/developer role)
     const sessionUserId = req.user?.claims?.sub;
     const email = req.user?.claims?.email;
     let user = await storage.getUser(sessionUserId);
     if (!user && email) {
       user = await storage.getUserByEmail(email);
     }
-    if (!user?.isSuperAdmin) {
-      return res.status(403).json({ error: 'Admin access required' });
+    
+    const isAdmin = user?.isSuperAdmin || user?.role === 'admin' || user?.role === 'developer';
+    
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Admin access required - must be super admin or have admin/developer role' });
     }
     try {
       const { id } = req.params;
@@ -6081,15 +6088,18 @@ Respond with valid JSON in this exact format:
   
   // Admin endpoint to update lead status
   app.put('/api/admin/idx-leads/:id', isAuthenticated, async (req: any, res) => {
-    // Check for super admin access
+    // Check for admin access (super admin OR admin/developer role)
     const sessionUserId = req.user?.claims?.sub;
     const email = req.user?.claims?.email;
     let user = await storage.getUser(sessionUserId);
     if (!user && email) {
       user = await storage.getUserByEmail(email);
     }
-    if (!user?.isSuperAdmin) {
-      return res.status(403).json({ error: 'Admin access required' });
+    
+    const isAdmin = user?.isSuperAdmin || user?.role === 'admin' || user?.role === 'developer';
+    
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Admin access required - must be super admin or have admin/developer role' });
     }
     try {
       const { id } = req.params;
