@@ -1,8 +1,11 @@
 import type { Express } from "express";
 import multer from 'multer';
 import OpenAI from 'openai';
-import pdf from 'pdf-parse';
+import { createRequire } from 'module';
 import { createWorker } from 'tesseract.js';
+
+const require = createRequire(import.meta.url);
+const pdf = require('pdf-parse');
 
 interface DocumentScanRequest {
   documentId: string;
