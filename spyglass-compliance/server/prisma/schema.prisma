@@ -1,0 +1,211 @@
+// Spyglass Compliance Database Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String  @id @default(uuid())
+  email        String  @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         Role    @default(agent)
+  phone        String?
+  trecLicense  String?
+  slackUserId  String?
+  isActive     Boolean @default(true)
+  createdAt    DateTime @default(now())
+  
+  // Relations
+  deals         Deal[]
+  reviewedItems ComplianceItem[] @relation("ReviewedBy")
+  documents     Document[]
+  cdas          CDA[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+enum Role {
+  agent
+  admin
+  super_admin
+}
+
+model Deal {
+  id               String     @id @default(uuid())
+  dealNumber       String     @unique // SPY-2026-XXXX, auto-generated
+  dealType         DealType
+  status           DealStatus @default(submitted)
+  agentId          String
+  agent            User       @relation(fields: [agentId], references: [id])
+  
+  // Property Info
+  propertyAddress  String
+  city             String
+  state            String     @default("TX")
+  zip              String
+  mlsNumber        String?
+  
+  // Financial Info
+  listPrice        Decimal?
+  salePrice        Decimal?
+  leasePrice       Decimal?
+  commissionPct    Decimal?
+  commissionAmount Decimal?
+  referralFeePct   Decimal?
+  referralSource   String?
+  leadSource       LeadSource?
+  
+  // Dates
+  closingDate      DateTime?
+  contractDate     DateTime?
+  optionExpiryDate DateTime?
+  
+  // Contract Details
+  earnestMoney     Decimal?
+  optionFee        Decimal?
+  titleCompany     String?
+  lenderName       String?
+  
+  // Parties
+  buyerName        String?
+  sellerName       String?
+  tenantName       String?
+  
+  // External Links
+  jointlyDealUrl   String?
+  
+  // Notes
+  notes            String?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  // Relations
+  complianceItems  ComplianceItem[]
+  documents        Document[]
+  cda              CDA?
+  auditLogs        AuditLog[]
+
+  @@map("deals")
+}
+
+enum DealType {
+  listing
+  buyer_rep
+  lease
+}
+
+enum DealStatus {
+  draft
+  submitted
+  in_review
+  changes_requested
+  approved
+  closed
+  cancelled
+}
+
+enum LeadSource {
+  soi
+  company_lead_no_ref
+  company_lead_with_ref
+  zillow_flex
+  other
+}
+
+model ComplianceItem {
+  id             String           @id @default(uuid())
+  dealId         String
+  deal           Deal             @relation(fields: [dealId], references: [id])
+  documentType   String           // e.g. 'listing_agreement', 'purchase_contract'
+  label          String
+  required       Boolean          @default(true)
+  status         ComplianceStatus @default(pending)
+  rejectionReason String?
+  reviewedById   String?
+  reviewedBy     User?            @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt     DateTime?
+  createdAt      DateTime         @default(now())
+  
+  // Relations
+  documents      Document[]
+
+  @@map("compliance_items")
+}
+
+enum ComplianceStatus {
+  pending
+  uploaded
+  approved
+  rejected
+  waived
+}
+
+model Document {
+  id               String          @id @default(uuid())
+  dealId           String
+  deal             Deal            @relation(fields: [dealId], references: [id])
+  complianceItemId String?
+  complianceItem   ComplianceItem? @relation(fields: [complianceItemId], references: [id])
+  uploadedById     String
+  uploadedBy       User            @relation(fields: [uploadedById], references: [id])
+  
+  filename         String
+  filePath         String
+  fileSize         Int
+  mimeType         String
+  version          Int             @default(1)
+  createdAt        DateTime        @default(now())
+
+  @@map("documents")
+}
+
+model CDA {
+  id                String    @id @default(uuid())
+  dealId            String    @unique
+  deal              Deal      @relation(fields: [dealId], references: [id])
+  generatedById     String
+  generatedBy       User      @relation(fields: [generatedById], references: [id])
+  generatedAt       DateTime  @default(now())
+  
+  // Commission Breakdown
+  grossCommission   Decimal
+  referralFee       Decimal   @default(0)
+  referralSource    String?
+  transactionFee    Decimal
+  spyglasSplitPct   Decimal
+  spyglassAmount    Decimal
+  agentAmount       Decimal
+  
+  pdfPath           String?
+  notes             String?
+  status            CDAStatus @default(draft)
+
+  @@map("cdas")
+}
+
+enum CDAStatus {
+  draft
+  sent
+  acknowledged
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  dealId    String?
+  deal      Deal?    @relation(fields: [dealId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}
