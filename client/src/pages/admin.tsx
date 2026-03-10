@@ -26,6 +26,8 @@ import LandingPageEditorPage from "./admin/LandingPageEditor";
 import RedirectsListPage from "./admin/RedirectsList";
 import GlobalScriptsListPage from "./admin/GlobalScriptsList";
 import SavedSearchDashboard from "./admin/SavedSearchDashboard";
+import FormSubmissionsPage from "./admin/FormSubmissions";
+import FormSubmissionDetailPage from "./admin/FormSubmissionDetail";
 const PolygonManagerPage = lazy(() => import("./admin/PolygonManager"));
 import MulticamEditorPage from "./admin/MulticamEditor";
 import AdminBeaconPage from "./admin-beacon";
@@ -78,6 +80,7 @@ import {
   Search,
   MapPin,
   Film,
+  Mail,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -440,6 +443,7 @@ export default function AdminPage() {
     {
       title: "PEOPLE",
       items: [
+        { name: "Form Submissions", href: "/admin/form-submissions", icon: Mail },
         { name: "Agents", href: "/admin/agents", icon: Users },
         { name: "Saved Searches", href: "/admin/saved-searches", icon: Search },
         { name: "Testimonials", href: "/admin/testimonials", icon: MessageSquare },
@@ -622,6 +626,8 @@ export default function AdminPage() {
               <Route path="/admin/blog/posts/:slug" component={BlogPostEditorPage} />
               <Route path="/admin/blog/posts" component={BlogPostListPage} />
               <Route path="/admin/blog/categories" component={BlogCategoryListPage} />
+              <Route path="/admin/form-submissions/:id" component={FormSubmissionDetailPage} />
+              <Route path="/admin/form-submissions" component={FormSubmissionsPage} />
               <Route path="/admin/agents/:id" component={AgentEditorPage} />
               <Route path="/admin/agents" component={AgentListPage} />
               <Route path="/admin/pages/blog/new" component={BlogPageEditorPage} />
