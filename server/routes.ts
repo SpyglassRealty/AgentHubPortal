@@ -5933,8 +5933,99 @@ Respond with valid JSON in this exact format:
     }
   });
   
-  // Admin endpoint to view leads
-  app.get('/api/admin/idx-leads', isAuthenticated, isAdmin, async (req: any, res) => {
+  // Debug endpoint to check current user permissions
+  app.get('/api/debug/user-permissions', isAuthenticated, async (req: any, res) => {
+    try {
+      const sessionUserId = req.user?.claims?.sub;
+      const email = req.user?.claims?.email;
+      let user = await storage.getUser(sessionUserId);
+      if (!user && email) {
+        user = await storage.getUserByEmail(email);
+      }
+      
+      res.json({
+        sessionUserId,
+        email,
+        user: user ? {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          isSuperAdmin: user.isSuperAdmin,
+          role: user.role
+        } : null
+      });
+    } catch (error) {
+      console.error('[Debug] User permissions check error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Temporary endpoint to set current user as super admin (for Trisha)
+  app.post('/api/debug/make-me-admin', isAuthenticated, async (req: any, res) => {
+    try {
+      const sessionUserId = req.user?.claims?.sub;
+      const email = req.user?.claims?.email;
+      let user = await storage.getUser(sessionUserId);
+      if (!user && email) {
+        user = await storage.getUserByEmail(email);
+      }
+      
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      // Set as super admin
+      const updatedUser = await storage.updateUser(user.id, { isSuperAdmin: true });
+      
+      console.log(`[Debug] Set user ${user.email} as super admin`);
+      
+      res.json({
+        success: true,
+        user: {
+          id: updatedUser?.id,
+          email: updatedUser?.email,
+          isSuperAdmin: updatedUser?.isSuperAdmin
+        }
+      });
+    } catch (error) {
+      console.error('[Debug] Make admin error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin endpoint to view leads  
+  app.get('/api/admin/idx-leads', isAuthenticated, async (req: any, res) => {
+    // Check for admin access (super admin OR admin/developer role)
+    const sessionUserId = req.user?.claims?.sub;
+    const email = req.user?.claims?.email;
+    let user = await storage.getUser(sessionUserId);
+    if (!user && email) {
+      user = await storage.getUserByEmail(email);
+    }
+    
+    const isAdmin = user?.isSuperAdmin || user?.role === 'admin' || user?.role === 'developer';
+    
+    console.log('[IDX Leads API] User check:', {
+      sessionUserId,
+      email,
+      userFound: !!user,
+      isSuperAdmin: user?.isSuperAdmin,
+      role: user?.role,
+      isAdmin
+    });
+    
+    if (!isAdmin) {
+      return res.status(403).json({ 
+        error: 'Admin access required - must be super admin or have admin/developer role',
+        debug: {
+          userFound: !!user,
+          isSuperAdmin: user?.isSuperAdmin,
+          role: user?.role,
+          userEmail: user?.email
+        }
+      });
+    }
     try {
       const { 
         status, 
@@ -5964,9 +6055,52 @@ Respond with valid JSON in this exact format:
       res.status(500).json({ error: error.message });
     }
   });
+
+  // Get individual IDX lead by ID
+  app.get('/api/admin/idx-leads/:id', isAuthenticated, async (req: any, res) => {
+    // Check for admin access (super admin OR admin/developer role)
+    const sessionUserId = req.user?.claims?.sub;
+    const email = req.user?.claims?.email;
+    let user = await storage.getUser(sessionUserId);
+    if (!user && email) {
+      user = await storage.getUserByEmail(email);
+    }
+    
+    const isAdmin = user?.isSuperAdmin || user?.role === 'admin' || user?.role === 'developer';
+    
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Admin access required - must be super admin or have admin/developer role' });
+    }
+    try {
+      const { id } = req.params;
+      const lead = await storage.getIdxLeadById(id);
+      
+      if (!lead) {
+        return res.status(404).json({ error: 'Lead not found' });
+      }
+      
+      res.json(lead);
+    } catch (error) {
+      console.error('[Admin API] Get IDX lead by ID error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
   
   // Admin endpoint to update lead status
-  app.put('/api/admin/idx-leads/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+  app.put('/api/admin/idx-leads/:id', isAuthenticated, async (req: any, res) => {
+    // Check for admin access (super admin OR admin/developer role)
+    const sessionUserId = req.user?.claims?.sub;
+    const email = req.user?.claims?.email;
+    let user = await storage.getUser(sessionUserId);
+    if (!user && email) {
+      user = await storage.getUserByEmail(email);
+    }
+    
+    const isAdmin = user?.isSuperAdmin || user?.role === 'admin' || user?.role === 'developer';
+    
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Admin access required - must be super admin or have admin/developer role' });
+    }
     try {
       const { id } = req.params;
       const updates = req.body;
@@ -6068,6 +6202,42 @@ Respond with valid JSON in this exact format:
       }
     } catch (error) {
       console.error('[Admin API] Sync IDX lead to FUB error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/users/:id/role - Update user role (developer only)
+  app.patch('/api/users/:id/role', isAuthenticated, async (req: any, res) => {
+    try {
+      // Check if caller is developer role
+      const callerEmail = req.user.claims?.email || req.user.email;
+      const caller = callerEmail ? await storage.getUserByEmail(callerEmail) : null;
+      if (!caller || caller.role !== 'developer') {
+        return res.status(403).json({ error: 'Only developer role can change user roles' });
+      }
+
+      const { id } = req.params;
+      const { role } = req.body;
+
+      // Validate role
+      if (!role || !['developer', 'admin', 'agent'].includes(role)) {
+        return res.status(400).json({ error: 'Invalid role. Must be developer, admin, or agent' });
+      }
+
+      // Update user role in database
+      const updatedUser = await storage.updateUserRole(id, role);
+      
+      // Log the action
+      await storage.logActivity(
+        req.user.id,
+        'update_user_role',
+        { targetUserId: id, newRole: role },
+        req.user.email
+      );
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('[API] Update user role error:', error);
       res.status(500).json({ error: error.message });
     }
   });

@@ -293,7 +293,7 @@ export function setupDeveloperRoutes(app: Express) {
   app.get("/api/developer/users", async (req, res) => {
     try {
       const usersResult = await db.execute(sql`
-        SELECT id, email, first_name, last_name, is_super_admin, created_at, updated_at,
+        SELECT id, email, first_name, last_name, is_super_admin, role, created_at, updated_at,
                (SELECT COUNT(*) FROM developer_activity_logs WHERE user_id = users.id) as activity_count,
                (SELECT MAX(created_at) FROM developer_activity_logs WHERE user_id = users.id) as last_activity
         FROM users 
