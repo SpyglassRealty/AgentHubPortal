@@ -285,7 +285,7 @@ function DeveloperPage() {
   const [inviteMakeSuperAdmin, setInviteMakeSuperAdmin] = useState(false);
   const [userSearch, setUserSearch] = useState("");
 
-  // Route guard: developer only
+  // Route guard: admin or developer only
   React.useEffect(() => {
     if (!isLoading && user && !userRole.isDeveloper) {
       setLocation('/');
@@ -1114,13 +1114,15 @@ function DeveloperPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Change Role</DropdownMenuLabel>
-                                <DropdownMenuItem 
-                                  onClick={() => updateUserRoleMutation.mutate({ userId: user.id, role: 'developer' })}
-                                  disabled={user.role === 'developer' || updateUserRoleMutation.isPending}
-                                >
-                                  <Code className="h-4 w-4 mr-2" />
-                                  Developer
-                                </DropdownMenuItem>
+                                {userRole.isDeveloper && (
+                                  <DropdownMenuItem 
+                                    onClick={() => updateUserRoleMutation.mutate({ userId: user.id, role: 'developer' })}
+                                    disabled={user.role === 'developer' || updateUserRoleMutation.isPending}
+                                  >
+                                    <Code className="h-4 w-4 mr-2" />
+                                    Developer
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem 
                                   onClick={() => updateUserRoleMutation.mutate({ userId: user.id, role: 'admin' })}
                                   disabled={user.role === 'admin' || updateUserRoleMutation.isPending}
