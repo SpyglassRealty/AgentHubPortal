@@ -22,7 +22,7 @@ const CALL_DUTY_CALENDAR_ID = 'c_efca76ba29cbe0b028fc4951141ce67d9abefc25ab5e1ab
  * The shared Call Duty calendar requires domain-wide delegation with a
  * domain user context — the service account alone returns 404.
  */
-const CALENDAR_IMPERSONATE_USER = 'ryan@spyglassrealty.com';
+const CALENDAR_IMPERSONATE_USER = process.env.GOOGLE_CALENDAR_IMPERSONATE_USER || 'john@spyglassrealty.com';
 
 /**
  * Get an authenticated Calendar API client with write scope.
