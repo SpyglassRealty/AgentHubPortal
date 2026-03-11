@@ -5994,6 +5994,79 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // Temporary endpoint to initialize idx_leads table
+  app.post('/api/debug/init-idx-leads-table', isAuthenticated, async (req: any, res) => {
+    try {
+      const sessionUserId = req.user?.claims?.sub;
+      const email = req.user?.claims?.email;
+      let user = await storage.getUser(sessionUserId);
+      if (!user && email) {
+        user = await storage.getUserByEmail(email);
+      }
+      
+      const isAdmin = user?.isSuperAdmin || user?.role === 'admin' || user?.role === 'developer';
+      if (!isAdmin) {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
+      
+      // Create the idx_leads table
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS idx_leads (
+          id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+          
+          -- Contact info
+          name VARCHAR NOT NULL,
+          email VARCHAR NOT NULL,
+          phone VARCHAR,
+          message TEXT,
+          
+          -- Form metadata
+          form_type VARCHAR NOT NULL, -- 'contact' | 'showing' | 'info'
+          source VARCHAR DEFAULT 'spyglass-idx',
+          
+          -- Property info (for showing requests)
+          listing_address VARCHAR,
+          mls_number VARCHAR,
+          community_name VARCHAR,
+          preferred_date VARCHAR,
+          preferred_time VARCHAR,
+          
+          -- Status tracking
+          status VARCHAR DEFAULT 'new', -- 'new' | 'contacted' | 'qualified' | 'archived'
+          notes TEXT,
+          assigned_to VARCHAR REFERENCES users(id),
+          
+          -- FUB sync status
+          fub_person_id INTEGER,
+          fub_sync_error TEXT,
+          fub_sync_attempts INTEGER DEFAULT 0,
+          
+          -- Timestamps
+          submitted_at TIMESTAMP DEFAULT NOW(),
+          contacted_at TIMESTAMP,
+          archived_at TIMESTAMP
+        )
+      `);
+
+      // Create indexes for performance
+      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_idx_leads_email ON idx_leads(email)`);
+      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_idx_leads_status ON idx_leads(status)`);
+      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_idx_leads_submitted ON idx_leads(submitted_at DESC)`);
+      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_idx_leads_assigned ON idx_leads(assigned_to)`);
+      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_idx_leads_mls ON idx_leads(mls_number) WHERE mls_number IS NOT NULL`);
+      
+      console.log(`[Debug] Created idx_leads table for user ${user.email}`);
+      
+      res.json({
+        success: true,
+        message: 'idx_leads table created successfully'
+      });
+    } catch (error) {
+      console.error('[Debug] Create table error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Admin endpoint to view leads  
   app.get('/api/admin/idx-leads', isAuthenticated, async (req: any, res) => {
     // Check for admin access (super admin OR admin/developer role)
