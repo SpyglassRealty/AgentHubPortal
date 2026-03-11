@@ -104,6 +104,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import { formatDistanceToNow } from "date-fns";
 import {
   LineChart,
@@ -252,6 +253,7 @@ function DeveloperPage() {
   const userRole = useUserRole();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   
   // View As state - only available to developers
   const [viewAsRole, setViewAsRole] = useState<'developer' | 'admin' | 'agent' | null>(null);
@@ -283,52 +285,16 @@ function DeveloperPage() {
   const [inviteMakeSuperAdmin, setInviteMakeSuperAdmin] = useState(false);
   const [userSearch, setUserSearch] = useState("");
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <Layout>
-        <div className="max-w-2xl mx-auto py-12 text-center">
-          <Loader2 className="h-8 w-8 mx-auto animate-spin mb-4" />
-          <h1 className="text-xl font-medium mb-2">Loading Developer Dashboard...</h1>
-          <p className="text-muted-foreground">Checking permissions...</p>
-        </div>
-      </Layout>
-    );
-  }
+  // Route guard: developer only
+  React.useEffect(() => {
+    if (!isLoading && user && !userRole.isDeveloper) {
+      setLocation('/');
+    }
+  }, [isLoading, user, userRole.isDeveloper, setLocation]);
 
-  // Debug info for troubleshooting
-  console.log("Developer page - User data:", user);
-  console.log("Developer page - Is super admin:", user?.isSuperAdmin);
-
-  // Access control check - allow super admins and developers, show debug info for others
-  if (!user) {
-    return (
-      <Layout>
-        <div className="max-w-2xl mx-auto py-12 text-center">
-          <Shield className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Not Authenticated</h1>
-          <p className="text-muted-foreground">Please log in to access the developer dashboard.</p>
-        </div>
-      </Layout>
-    );
-  }
-
-  // Hardcoded developer check until role migration is complete
-  if (!user || (user.email !== 'daryl@spyglassrealty.com' && !user.isSuperAdmin)) {
-    return (
-      <Layout>
-        <div className="max-w-2xl mx-auto py-12 text-center">
-          <Shield className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
-          <p className="text-muted-foreground">You need developer privileges to access this page.</p>
-          <div className="mt-4 text-xs text-muted-foreground">
-            <p>Is super admin: {user?.isSuperAdmin ? 'yes' : 'no'}</p>
-            <p>Email: {user?.email}</p>
-            <p>Expected: daryl@spyglassrealty.com or super admin</p>
-          </div>
-        </div>
-      </Layout>
-    );
+  // Show nothing while loading or redirecting
+  if (isLoading || !user || !userRole.isDeveloper) {
+    return null;
   }
 
   // Data queries with error handling

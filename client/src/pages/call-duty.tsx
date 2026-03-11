@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, addWeeks, subWeeks, startOfWeek, endOfWeek, addDays } from "date-fns";
 import Layout from "@/components/layout";
@@ -14,6 +14,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useLocation } from "wouter";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -130,7 +132,21 @@ function formatTimeRange(start: string, end: string): string {
 export default function CallDutyPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  const userRole = useUserRole();
+  const [, setLocation] = useLocation();
+
+  // Route guard: admin or developer only
+  React.useEffect(() => {
+    if (!isLoading && user && !userRole.isAdmin) {
+      setLocation('/');
+    }
+  }, [isLoading, user, userRole.isAdmin, setLocation]);
+
+  // Show nothing while loading or redirecting
+  if (isLoading || !user || !userRole.isAdmin) {
+    return null;
+  }
 
   // Week navigation — start on Monday
   const [weekStart, setWeekStart] = useState(() =>
