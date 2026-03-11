@@ -322,20 +322,20 @@ export default function SettingsPage() {
   const [linkForm, setLinkForm] = useState({ title: "", url: "" });
   
   const queryClient = useQueryClient();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const userRole = useUserRole();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
   // Route guard: admin or developer only
   React.useEffect(() => {
-    if (!isLoading && user && !userRole.isAdmin) {
+    if (!isAuthLoading && user && !userRole.isAdmin) {
       setLocation('/');
     }
-  }, [isLoading, user, userRole.isAdmin, setLocation]);
+  }, [isAuthLoading, user, userRole.isAdmin, setLocation]);
 
   // Show nothing while loading or redirecting
-  if (isLoading || !user || !userRole.isAdmin) {
+  if (isAuthLoading || !user || !userRole.isAdmin) {
     return null;
   }
   const searchString = useSearch();
