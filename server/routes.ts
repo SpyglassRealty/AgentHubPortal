@@ -6279,14 +6279,14 @@ Respond with valid JSON in this exact format:
     }
   });
 
-  // PATCH /api/users/:id/role - Update user role (developer only)
+  // PATCH /api/users/:id/role - Update user role (developer and admin)
   app.patch('/api/users/:id/role', isAuthenticated, async (req: any, res) => {
     try {
-      // Check if caller is developer role
+      // Check if caller is developer or admin role
       const callerEmail = req.user.claims?.email || req.user.email;
       const caller = callerEmail ? await storage.getUserByEmail(callerEmail) : null;
-      if (!caller || caller.role !== 'developer') {
-        return res.status(403).json({ error: 'Only developer role can change user roles' });
+      if (!caller || (caller.role !== 'developer' && caller.role !== 'admin')) {
+        return res.status(403).json({ error: 'Only developer or admin role can change user roles' });
       }
 
       const { id } = req.params;
@@ -6295,6 +6295,11 @@ Respond with valid JSON in this exact format:
       // Validate role
       if (!role || !['developer', 'admin', 'agent'].includes(role)) {
         return res.status(400).json({ error: 'Invalid role. Must be developer, admin, or agent' });
+      }
+
+      // Admin role restriction: cannot set developer role
+      if (caller.role === 'admin' && role === 'developer') {
+        return res.status(403).json({ error: 'Admin users cannot assign developer role. Only developers can assign developer role.' });
       }
 
       // Update user role in database
