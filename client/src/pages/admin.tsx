@@ -63,6 +63,7 @@ import {
   BarChart3,
   FileBarChart,
   LogIn,
+  LogOut,
   Clock,
   UserCheck,
   Code,
@@ -496,15 +497,17 @@ export default function AdminPage() {
       <div className={`${sidebarExpanded ? 'w-64' : 'w-16'} transition-all duration-300 bg-[#1a1a2e] flex flex-col shadow-lg`}>
         {/* Logo/Brand */}
         <div className="p-4 border-b border-gray-700">
-          <div className="flex items-center gap-3">
-            <Shield className="h-8 w-8 text-[#EF4923] flex-shrink-0" />
-            {sidebarExpanded && (
-              <div>
-                <h2 className="font-bold text-white">Spyglass Admin</h2>
-                <p className="text-xs text-gray-400">Content Management</p>
-              </div>
-            )}
-          </div>
+          <Link href="/">
+            <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+              <Shield className="h-8 w-8 text-[#EF4923] flex-shrink-0" />
+              {sidebarExpanded && (
+                <div>
+                  <h2 className="font-bold text-white">Spyglass Admin</h2>
+                  <p className="text-xs text-gray-400">Content Management</p>
+                </div>
+              )}
+            </div>
+          </Link>
         </div>
 
         {/* Navigation Groups */}
@@ -573,6 +576,15 @@ export default function AdminPage() {
                   </div>
                   <div className="text-gray-400 text-xs">Administrator</div>
                 </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-gray-700">
+                <a 
+                  href="/api/logout" 
+                  className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </a>
               </div>
             </div>
           )}
