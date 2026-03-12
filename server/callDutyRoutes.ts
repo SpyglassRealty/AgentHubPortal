@@ -997,11 +997,15 @@ router.post("/slots/:slotId/assign", isAuthenticated, async (req: any, res) => {
     if (!isAdmin) return;
 
     const { slotId } = req.params;
-    const { userId } = req.body;
+    const { userId, name, email } = req.body;
 
-    // Validation
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
+    // Validation - must have either userId or both name/email
+    if (!userId && (!name || !email)) {
+      return res.status(400).json({ message: "Either userId or both name and email are required" });
+    }
+
+    if (userId && (name || email)) {
+      return res.status(400).json({ message: "Cannot specify both userId and name/email - choose one assignment method" });
     }
 
     // Verify slot exists and is active
@@ -1014,30 +1018,66 @@ router.post("/slots/:slotId/assign", isAuthenticated, async (req: any, res) => {
       return res.status(404).json({ message: "Shift slot not found or inactive" });
     }
 
-    // Verify user exists
-    const [targetUser] = await db
-      .select({ id: users.id, email: users.email, firstName: users.firstName, lastName: users.lastName })
-      .from(users)
-      .where(eq(users.id, userId));
+    let targetUser = null;
+    let assignmentEmail = null;
+    let agentName = "";
 
-    if (!targetUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (userId) {
+      // Regular user assignment flow
+      const [user] = await db
+        .select({ id: users.id, email: users.email, firstName: users.firstName, lastName: users.lastName })
+        .from(users)
+        .where(eq(users.id, userId));
 
-    // Check if user already signed up for this slot (active)
-    const [existingSignup] = await db
-      .select()
-      .from(callDutySignups)
-      .where(
-        and(
-          eq(callDutySignups.slotId, slotId),
-          eq(callDutySignups.userId, userId),
-          eq(callDutySignups.status, "active")
-        )
-      );
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
 
-    if (existingSignup) {
-      return res.status(409).json({ message: "Agent is already signed up for this shift" });
+      targetUser = user;
+      assignmentEmail = user.email;
+      agentName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email || "Agent";
+
+      // Check if user already signed up for this slot (active)
+      const [existingSignup] = await db
+        .select()
+        .from(callDutySignups)
+        .where(
+          and(
+            eq(callDutySignups.slotId, slotId),
+            eq(callDutySignups.userId, userId),
+            eq(callDutySignups.status, "active")
+          )
+        );
+
+      if (existingSignup) {
+        return res.status(409).json({ message: "Agent is already signed up for this shift" });
+      }
+    } else {
+      // Force-assign by email flow
+      assignmentEmail = email.trim();
+      agentName = name.trim();
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(assignmentEmail)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      // Check if email already assigned to this slot (active)
+      const [existingSignup] = await db
+        .select()
+        .from(callDutySignups)
+        .where(
+          and(
+            eq(callDutySignups.slotId, slotId),
+            eq(callDutySignups.assignedEmail, assignmentEmail),
+            eq(callDutySignups.status, "active")
+          )
+        );
+
+      if (existingSignup) {
+        return res.status(409).json({ message: "This email is already assigned to this shift" });
+      }
     }
 
     // Check if slot is full
@@ -1056,23 +1096,34 @@ router.post("/slots/:slotId/assign", isAuthenticated, async (req: any, res) => {
     }
 
     // Create the assignment (signup)
+    const signupValues: any = {
+      slotId,
+      status: "active"
+    };
+
+    if (userId) {
+      signupValues.userId = userId;
+    } else {
+      signupValues.assignedName = name.trim();
+      signupValues.assignedEmail = assignmentEmail;
+    }
+
     const [signup] = await db
       .insert(callDutySignups)
-      .values({ slotId, userId })
+      .values(signupValues)
       .returning();
 
-    // Google Calendar: ensure event exists, then add agent as attendee
-    if (targetUser.email) {
+    // Google Calendar: ensure event exists, then add attendee
+    if (assignmentEmail) {
       const eventId = await ensureCalendarEvent(slot);
       if (eventId) {
-        await addCallDutyAttendee(eventId, targetUser.email);
+        await addCallDutyAttendee(eventId, assignmentEmail);
         // Register calendar watch for RSVP notifications
         await registerEventWatch(eventId, slotId);
       }
     }
 
     // Slack notification (fire-and-forget)
-    const agentName = `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || targetUser.email || "An agent";
     notifyCallDutySlack("signup", agentName, slot);
 
     res.status(201).json(signup);

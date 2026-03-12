@@ -157,11 +157,13 @@ export default function CallDutyPage() {
 
   // Confirmation dialog state
   const [confirmAction, setConfirmAction] = useState<{
-    type: "signup" | "cancel" | "delete_holiday" | "assign_agent" | "remove_agent" | "join_waitlist" | "signup_warning" | "cancel_warning" | "cancel_reason" | "admin_remove_reason";
+    type: "signup" | "cancel" | "delete_holiday" | "assign_agent" | "assign_by_email" | "remove_agent" | "join_waitlist" | "signup_warning" | "cancel_warning" | "cancel_reason" | "admin_remove_reason";
     slotId?: string;
     holidayId?: string;
     signupId?: string;
     userId?: string;
+    assignName?: string;
+    assignEmail?: string;
     label: string;
     cancellationReason?: string;
   } | null>(null);
@@ -476,12 +478,13 @@ export default function CallDutyPage() {
 
   // Assign agent mutation (admin only)
   const assignAgentMutation = useMutation({
-    mutationFn: async ({ slotId, userId }: { slotId: string; userId: string }) => {
+    mutationFn: async ({ slotId, userId, name, email }: { slotId: string; userId?: string; name?: string; email?: string }) => {
+      const body = userId ? { userId } : { name, email };
       const res = await fetch(`/api/call-duty/slots/${slotId}/assign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -624,6 +627,19 @@ export default function CallDutyPage() {
     });
   }
 
+  function handleAssignByEmail(slotId: string, name: string, email: string) {
+    const slot = slots.find(s => s.id === slotId);
+    const slotLabel = slot ? `${formatShiftLabel(slot.shiftType)} (${formatTimeRange(slot.startTime, slot.endTime)}) on ${format(new Date(slot.date + "T00:00:00"), "EEE, MMM d")}` : "this shift";
+    
+    setConfirmAction({
+      type: "assign_by_email",
+      slotId,
+      assignName: name,
+      assignEmail: email,
+      label: `${name} (${email}) to ${slotLabel}`,
+    });
+  }
+
   function handleRemoveAgent(slotId: string, signupId: string, agentName: string) {
     // First show cancellation reason dialog for admin removal
     setConfirmAction({
@@ -654,6 +670,8 @@ export default function CallDutyPage() {
       deleteHolidayMutation.mutate(confirmAction.holidayId);
     } else if (confirmAction.type === "assign_agent" && confirmAction.slotId && confirmAction.userId) {
       assignAgentMutation.mutate({ slotId: confirmAction.slotId, userId: confirmAction.userId });
+    } else if (confirmAction.type === "assign_by_email" && confirmAction.slotId && confirmAction.assignName && confirmAction.assignEmail) {
+      assignAgentMutation.mutate({ slotId: confirmAction.slotId, name: confirmAction.assignName, email: confirmAction.assignEmail });
     } else if (confirmAction.type === "remove_agent" && confirmAction.slotId && confirmAction.signupId) {
       removeAgentMutation.mutate({ slotId: confirmAction.slotId, signupId: confirmAction.signupId });
     } else if (confirmAction.type === "join_waitlist" && confirmAction.slotId) {
@@ -843,6 +861,7 @@ export default function CallDutyPage() {
                 isAdmin={isAdmin && viewMode === 'admin'}
                 availableUsers={availableUsers}
                 onAssignAgent={handleAssignAgent}
+                onAssignByEmail={handleAssignByEmail}
                 onRemoveAgent={handleRemoveAgent}
               />
             )}
@@ -1359,6 +1378,8 @@ export default function CallDutyPage() {
                 ? "Delete Holiday"
                 : confirmAction?.type === "assign_agent"
                 ? "Assign Agent"
+                : confirmAction?.type === "assign_by_email"
+                ? "Assign by Email"
                 : confirmAction?.type === "remove_agent"
                 ? "Remove Agent"
                 : confirmAction?.type === "signup_warning"
@@ -1379,6 +1400,8 @@ export default function CallDutyPage() {
                 : confirmAction?.type === "delete_holiday"
                 ? `Are you sure you want to delete "${confirmAction?.label}"? This action cannot be undone.`
                 : confirmAction?.type === "assign_agent"
+                ? `Are you sure you want to assign ${confirmAction.label}?`
+                : confirmAction?.type === "assign_by_email"
                 ? `Are you sure you want to assign ${confirmAction.label}?`
                 : confirmAction?.type === "remove_agent"
                 ? `Are you sure you want to remove ${confirmAction?.label}?`
@@ -1433,6 +1456,8 @@ export default function CallDutyPage() {
                 ? "Delete Holiday"
                 : confirmAction?.type === "assign_agent"
                 ? "Assign Agent"
+                : confirmAction?.type === "assign_by_email"
+                ? "Assign by Email"
                 : confirmAction?.type === "remove_agent"
                 ? "Remove Agent"
                 : confirmAction?.type === "signup_warning"
