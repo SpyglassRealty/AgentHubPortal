@@ -422,7 +422,7 @@ export default function AdminPage() {
       title: "TOOLS",
       items: [
         { name: "Dashboard", href: "/admin", icon: Home, active: location === "/admin" },
-        { name: "Dashboards", href: "/admin/dashboards", icon: BarChart3 },
+        { name: "Agent Hub Portal", href: "/admin/dashboards", icon: BarChart3 },
         { name: "Beacon", href: "/admin/beacon", icon: Activity },
         { name: "Site Editor", href: "/admin/site-editor", icon: PenTool },
         { name: "Multicam Editor", href: "/admin/multicam-editor", icon: Film },
