@@ -627,17 +627,21 @@ export default function CallDutyPage() {
     });
   }
 
-  function handleAssignByEmail(slotId: string, name: string, email: string) {
-    const slot = slots.find(s => s.id === slotId);
-    const slotLabel = slot ? `${formatShiftLabel(slot.shiftType)} (${formatTimeRange(slot.startTime, slot.endTime)}) on ${format(new Date(slot.date + "T00:00:00"), "EEE, MMM d")}` : "this shift";
-    
-    setConfirmAction({
-      type: "assign_by_email",
-      slotId,
-      assignName: name,
-      assignEmail: email,
-      label: `${name} (${email}) to ${slotLabel}`,
-    });
+  function handleAssignByEmail(slotId: string, email: string) {
+    // Find user by email from availableUsers
+    const user = availableUsers.find(u => u.email === email);
+    if (user) {
+      // Use existing assign agent flow if user found
+      handleAssignAgent(slotId, user.id);
+    } else {
+      // Show error if user not found
+      toast({ 
+        title: "User not found", 
+        description: `No user found with email: ${email}`, 
+        variant: "destructive" 
+      });
+    }
+  }
   }
 
   function handleRemoveAgent(slotId: string, signupId: string, agentName: string) {
@@ -860,6 +864,7 @@ export default function CallDutyPage() {
                 isLoading={isMutating}
                 isAdmin={isAdmin && viewMode === 'admin'}
                 availableUsers={availableUsers}
+                usersLoading={usersLoading}
                 onAssignAgent={handleAssignAgent}
                 onAssignByEmail={handleAssignByEmail}
                 onRemoveAgent={handleRemoveAgent}
