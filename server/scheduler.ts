@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { refreshAndCacheMarketPulse, ensureFreshMarketPulseData } from './marketPulseService';
+import { renewExpiringCalendarWatches } from './callDutyRoutes';
 
 export function initializeScheduler(): void {
   console.log('[Scheduler] Initializing scheduled tasks...');
@@ -30,7 +31,21 @@ export function initializeScheduler(): void {
     timezone: 'America/Chicago'
   });
   
+  // Daily renewal of expiring Google Calendar watches at 5:00 AM Central
+  cron.schedule('0 5 * * *', async () => {
+    console.log('[Scheduler] Running daily Calendar watch renewal (5:00 AM Central)...');
+    try {
+      await renewExpiringCalendarWatches();
+      console.log('[Scheduler] Daily Calendar watch renewal completed successfully');
+    } catch (error) {
+      console.error('[Scheduler] Daily Calendar watch renewal failed:', error);
+    }
+  }, {
+    timezone: 'America/Chicago'
+  });
+  
   console.log('[Scheduler] Market Pulse refresh scheduled: hourly + daily at 6:00 AM Central');
+  console.log('[Scheduler] Calendar watch renewal scheduled: daily at 5:00 AM Central');
 }
 
 export async function runStartupTasks(): Promise<void> {
