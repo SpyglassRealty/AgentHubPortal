@@ -347,9 +347,9 @@ export default function ShiftSlot({
                   {/* Autocomplete suggestion list */}
                   {unassignedUsers.length > 0 && (
                     <div className="relative">
-                      {((searchTerm.trim() && filteredUsers.length > 0) || (!searchTerm.trim() && unassignedUsers.length > 0)) && (
+                      {searchTerm.length >= 3 && filteredUsers.length > 0 && (
                         <div className="absolute top-0 left-0 right-0 z-10 bg-background border rounded-md shadow-lg max-h-32 overflow-y-auto">
-                          {(searchTerm.trim() ? filteredUsers : unassignedUsers).map((user) => {
+                          {filteredUsers.map((user) => {
                             const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
                             return (
                               <button
@@ -376,8 +376,8 @@ export default function ShiftSlot({
                     </div>
                   )}
                   
-                  {/* Fallback when search term entered but no agents match OR no unassigned users */}
-                  {((searchTerm.trim() && filteredUsers.length === 0) || unassignedUsers.length === 0) && (
+                  {/* Fallback when search term entered but no agents match */}
+                  {searchTerm.length >= 3 && filteredUsers.length === 0 && (
                     <Button
                       variant="ghost"
                       size="sm"
