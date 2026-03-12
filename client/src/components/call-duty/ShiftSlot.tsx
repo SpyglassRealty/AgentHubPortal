@@ -198,8 +198,8 @@ export default function ShiftSlot({
             return (
               <div key={signup.id} className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <Avatar className="h-6 w-6 flex-shrink-0">
-                    <AvatarImage src={signup.profileImageUrl || undefined} />
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarImage src={signup.fubAvatarUrl || signup.profileImageUrl || undefined} />
                     <AvatarFallback className="text-[10px] bg-muted">
                       {getInitials(signup.firstName, signup.lastName)}
                     </AvatarFallback>
