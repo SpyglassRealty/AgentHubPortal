@@ -27,6 +27,7 @@ interface ShiftCalendarProps {
   isAdmin?: boolean;
   availableUsers?: AvailableUser[];
   onAssignAgent?: (slotId: string, userId: string) => void;
+  onAssignByEmail?: (slotId: string, name: string, email: string) => void;
   onRemoveAgent?: (slotId: string, signupId: string, agentName: string) => void;
 }
 
@@ -40,6 +41,7 @@ export default function ShiftCalendar({
   isAdmin,
   availableUsers,
   onAssignAgent,
+  onAssignByEmail,
   onRemoveAgent,
 }: ShiftCalendarProps) {
   // Build 7-day array from weekStart (Monday)
@@ -123,6 +125,7 @@ export default function ShiftCalendar({
                   isAdmin={isAdmin}
                   availableUsers={availableUsers}
                   onAssignAgent={onAssignAgent}
+                  onAssignByEmail={onAssignByEmail}
                   onRemoveAgent={onRemoveAgent}
                 />
               );
