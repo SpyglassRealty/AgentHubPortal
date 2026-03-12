@@ -382,7 +382,7 @@ export default function ShiftSlot({
                       variant="ghost"
                       size="sm"
                       className="w-full h-7 text-xs text-blue-700 hover:text-blue-700 hover:bg-blue-100 border border-blue-200 dark:text-blue-400 dark:hover:bg-blue-950"
-                      onClick={() => setShowEmailAssign(true)}
+                      onClick={() => { setShowEmailAssign(true); setAssignEmail(searchTerm.trim()); }}
                       disabled={isLoading}
                     >
                       <Mail className="h-3 w-3 mr-1" />
