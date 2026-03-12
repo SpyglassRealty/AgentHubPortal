@@ -91,23 +91,63 @@ function getUserName(req: any): string {
 }
 
 /**
+ * Format date for Slack notifications (e.g. "Thu, Mar 12")
+ */
+function formatSlackDate(dateStr: string): string {
+  const date = new Date(dateStr + "T00:00:00");
+  return date.toLocaleDateString("en-US", { 
+    weekday: "short", 
+    month: "short", 
+    day: "numeric" 
+  });
+}
+
+/**
+ * Format shift label for Slack notifications (e.g. "Morning (8:00 AM - 12:00 PM)")
+ */
+function formatShiftLabel(shiftType: string, startTime: string, endTime: string): string {
+  const label = SHIFT_TYPE_LABELS[shiftType] || shiftType;
+  return `${label} (${startTime} - ${endTime})`;
+}
+
+/**
  * Fire-and-forget Slack notification for Call Duty events.
  */
 function notifyCallDutySlack(
-  action: "signup" | "cancel",
+  action: "self_signup" | "admin_assign" | "force_assign" | "self_cancel" | "admin_remove",
   agentName: string,
   slot: { date: string; shiftType: string; startTime: string; endTime: string },
-  cancellationReason?: string,
+  options?: {
+    adminName?: string;
+    agentEmail?: string;
+    cancellationReason?: string;
+  }
 ): void {
-  const label = SHIFT_TYPE_LABELS[slot.shiftType] || slot.shiftType;
-  const emoji = action === "signup" ? "✅" : "❌";
-  const verb = action === "signup" ? "signed up for" : "cancelled";
-
-  let text = `${emoji} *${agentName}* ${verb} *${label} Shift* on *${slot.date}* (${slot.startTime}–${slot.endTime})`;
+  const shift = formatShiftLabel(slot.shiftType, slot.startTime, slot.endTime);
+  const dayDate = formatSlackDate(slot.date);
   
-  // Task 6: Include cancellation reason in Slack notifications
-  if (action === "cancel" && cancellationReason) {
-    text += `. Reason: ${cancellationReason}`;
+  let text = "";
+  
+  switch (action) {
+    case "self_signup":
+      text = `${agentName} signed up for the ${shift} on ${dayDate}.`;
+      break;
+      
+    case "admin_assign":
+      text = `${agentName} was assigned to the ${shift} on ${dayDate} by ${options?.adminName || "Admin"}.`;
+      break;
+      
+    case "force_assign":
+      text = `${agentName} (${options?.agentEmail}) was force-assigned to the ${shift} on ${dayDate} by ${options?.adminName || "Admin"}. _(External assignment — calendar invite sent to email, no Slack account.)_`;
+      break;
+      
+    case "self_cancel":
+      text = `${agentName} cancelled their ${shift} on ${dayDate}. Reason: ${options?.cancellationReason || "No reason provided"}`;
+      break;
+      
+    case "admin_remove":
+      text = `${agentName} was removed from the ${shift} on ${dayDate} by ${options?.adminName || "Admin"}. Reason: ${options?.cancellationReason || "No reason provided"}`;
+      break;
   }
 
   // Fire-and-forget — don't await
@@ -448,7 +488,7 @@ router.post("/slots/:slotId/signup", isAuthenticated, async (req: any, res) => {
     }
 
     // Slack notification (fire-and-forget)
-    notifyCallDutySlack("signup", getUserName(req), slot);
+    notifyCallDutySlack("self_signup", getUserName(req), slot);
 
     res.status(201).json(signup);
   } catch (error: any) {
@@ -543,7 +583,9 @@ router.delete("/slots/:slotId/signup", isAuthenticated, async (req: any, res) =>
 
     // Slack notification (fire-and-forget)
     if (slot) {
-      notifyCallDutySlack("cancel", getUserName(req), slot, cancellationReason.trim());
+      notifyCallDutySlack("self_cancel", getUserName(req), slot, {
+        cancellationReason: cancellationReason.trim()
+      });
     }
 
     // Check waitlist and notify first person if a spot opened up
@@ -1124,7 +1166,17 @@ router.post("/slots/:slotId/assign", isAuthenticated, async (req: any, res) => {
     }
 
     // Slack notification (fire-and-forget)
-    notifyCallDutySlack("signup", agentName, slot);
+    const adminName = getUserName(req);
+    if (userId) {
+      // Regular admin assignment (existing user)
+      notifyCallDutySlack("admin_assign", agentName, slot, { adminName });
+    } else {
+      // Force assignment (external email)
+      notifyCallDutySlack("force_assign", agentName, slot, { 
+        adminName, 
+        agentEmail: assignmentEmail 
+      });
+    }
 
     res.status(201).json(signup);
   } catch (error: any) {
@@ -1209,7 +1261,10 @@ router.delete("/slots/:slotId/signups/:signupId", isAuthenticated, async (req: a
     // Slack notification (fire-and-forget)
     if (slot && targetUser) {
       const agentName = `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || targetUser.email || "An agent";
-      notifyCallDutySlack("cancel", agentName, slot, cancellationReason.trim());
+      notifyCallDutySlack("admin_remove", agentName, slot, {
+        adminName: getUserName(req),
+        cancellationReason: cancellationReason.trim()
+      });
     }
 
     res.json(cancelled);
