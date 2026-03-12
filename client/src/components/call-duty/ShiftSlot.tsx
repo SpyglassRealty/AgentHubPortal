@@ -340,8 +340,38 @@ export default function ShiftSlot({
                     />
                   </div>
 
-                  {/* Agent dropdown */}
-                  {filteredUsers.length > 0 ? (
+                  {/* Agent dropdown - show when no search term */}
+                  {!searchTerm.trim() && unassignedUsers.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      <Users className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                      <Select onValueChange={handleAssignAgent} disabled={isLoading}>
+                        <SelectTrigger className="h-7 text-xs border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 flex-1">
+                          <SelectValue placeholder="Assign Agent" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {unassignedUsers.map((user) => {
+                            const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
+                            return (
+                              <SelectItem key={user.id} value={user.id} className="text-xs">
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-4 w-4">
+                                    <AvatarImage src={user.profileImageUrl || undefined} />
+                                    <AvatarFallback className="text-[8px] bg-muted">
+                                      {getInitials(user.firstName, user.lastName)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="truncate">{userName}</span>
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  
+                  {/* Search results dropdown - show when search term matches users */}
+                  {searchTerm.trim() && filteredUsers.length > 0 && (
                     <div className="flex items-center gap-1">
                       <Users className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                       <Select onValueChange={handleAssignAgent} disabled={isLoading}>
@@ -368,8 +398,10 @@ export default function ShiftSlot({
                         </SelectContent>
                       </Select>
                     </div>
-                  ) : (
-                    /* Fallback when no agents match search */
+                  )}
+                  
+                  {/* Fallback when search term entered but no agents match */}
+                  {searchTerm.trim() && filteredUsers.length === 0 && (
                     <Button
                       variant="ghost"
                       size="sm"
