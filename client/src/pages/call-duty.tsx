@@ -642,7 +642,6 @@ export default function CallDutyPage() {
       });
     }
   }
-  }
 
   function handleRemoveAgent(slotId: string, signupId: string, agentName: string) {
     // First show cancellation reason dialog for admin removal
