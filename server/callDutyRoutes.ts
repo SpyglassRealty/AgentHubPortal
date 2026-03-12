@@ -17,6 +17,8 @@ import {
   createCallDutyCalendarEvent,
   addCallDutyAttendee,
   removeCallDutyAttendee,
+  registerEventWatch,
+  getCalendarEventAttendees,
 } from "./googleCalendarClient";
 import { sendSlackMessage } from "./slackNotify";
 import { generateSlotsForWeek } from "./slotGenerationService";
@@ -440,6 +442,8 @@ router.post("/slots/:slotId/signup", isAuthenticated, async (req: any, res) => {
       const eventId = await ensureCalendarEvent(slot);
       if (eventId) {
         await addCallDutyAttendee(eventId, agentEmail);
+        // Register calendar watch for RSVP notifications
+        await registerEventWatch(eventId, slotId);
       }
     }
 
@@ -1062,6 +1066,8 @@ router.post("/slots/:slotId/assign", isAuthenticated, async (req: any, res) => {
       const eventId = await ensureCalendarEvent(slot);
       if (eventId) {
         await addCallDutyAttendee(eventId, targetUser.email);
+        // Register calendar watch for RSVP notifications
+        await registerEventWatch(eventId, slotId);
       }
     }
 
@@ -1429,5 +1435,204 @@ router.get("/reports", isAuthenticated, async (req: any, res) => {
     res.status(500).json({ message: "Failed to generate reports" });
   }
 });
+
+// ── Google Calendar RSVP Webhook Handler ────────────────────────────────
+
+/**
+ * POST /calendar-webhook
+ * Webhook handler for Google Calendar push notifications.
+ * Processes RSVP status changes and posts Slack notifications.
+ */
+router.post("/calendar-webhook", async (req: any, res) => {
+  try {
+    // Always return 200 immediately to prevent Google retries
+    res.status(200).send("OK");
+
+    const resourceState = req.headers['x-goog-resource-state'];
+    const channelId = req.headers['x-goog-channel-id'];
+    const resourceId = req.headers['x-goog-resource-id'];
+
+    console.log(`[Calendar Webhook] Received notification: state=${resourceState}, channelId=${channelId}, resourceId=${resourceId}`);
+
+    // Only process 'exists' events (skip 'sync')
+    if (resourceState !== 'exists') {
+      console.log(`[Calendar Webhook] Ignoring ${resourceState} event`);
+      return;
+    }
+
+    if (!channelId || !resourceId) {
+      console.log("[Calendar Webhook] Missing required headers");
+      return;
+    }
+
+    // Find the watch registration
+    const watchResult = await db.execute(sql`
+      SELECT slot_id FROM calendar_watches 
+      WHERE watch_id = ${channelId} AND resource_id = ${resourceId}
+    `);
+
+    if (watchResult.rows.length === 0) {
+      console.log(`[Calendar Webhook] No watch found for channelId ${channelId}`);
+      return;
+    }
+
+    const slotId = (watchResult.rows[0] as any).slot_id;
+
+    // Get the slot and its Google Calendar event ID
+    const slotResult = await db.execute(sql`
+      SELECT google_calendar_event_id, date, shift_type, start_time, end_time
+      FROM call_duty_slots WHERE id = ${slotId}
+    `);
+
+    if (slotResult.rows.length === 0) {
+      console.log(`[Calendar Webhook] Slot ${slotId} not found`);
+      return;
+    }
+
+    const slot = slotResult.rows[0] as any;
+    const eventId = slot.google_calendar_event_id;
+
+    if (!eventId) {
+      console.log(`[Calendar Webhook] No Google Calendar event ID for slot ${slotId}`);
+      return;
+    }
+
+    // Fetch the event attendees from Google Calendar
+    const attendees = await getCalendarEventAttendees(eventId);
+    console.log(`[Calendar Webhook] Event has ${attendees.length} attendees`);
+
+    // Process each attendee's response status
+    for (const attendee of attendees) {
+      if (!attendee.email || !attendee.responseStatus) continue;
+
+      const email = attendee.email;
+      const currentStatus = attendee.responseStatus;
+
+      // Get the last known status for this attendee
+      const lastStatusResult = await db.execute(sql`
+        SELECT last_response_status FROM calendar_watch_attendees 
+        WHERE slot_id = ${slotId} AND attendee_email = ${email}
+      `);
+
+      const lastStatus = lastStatusResult.rows.length > 0 
+        ? (lastStatusResult.rows[0] as any).last_response_status 
+        : null;
+
+      // Only notify if status has changed
+      if (lastStatus !== currentStatus) {
+        console.log(`[Calendar Webhook] Status change for ${email}: ${lastStatus} → ${currentStatus}`);
+
+        // Get the attendee's name (first name + last name from database)
+        const userResult = await db.execute(sql`
+          SELECT first_name, last_name FROM users WHERE email = ${email}
+        `);
+
+        const userName = userResult.rows.length > 0 
+          ? `${(userResult.rows[0] as any).first_name || ''} ${(userResult.rows[0] as any).last_name || ''}`.trim() || email.split('@')[0]
+          : email.split('@')[0];
+
+        // Format the date and shift info
+        const shiftLabel = SHIFT_TYPE_LABELS[slot.shift_type] || slot.shift_type;
+        const dateObj = new Date(slot.date + 'T00:00:00');
+        const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+        const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+        // Generate Slack message based on response status
+        let slackMessage = '';
+        if (currentStatus === 'accepted') {
+          slackMessage = `✅ *${userName}* accepted the *${shiftLabel}* on *${dayName}, ${formattedDate}*.`;
+        } else if (currentStatus === 'declined') {
+          slackMessage = `❌ *${userName}* declined the *${shiftLabel}* on *${dayName}, ${formattedDate}*. Admin may need to fill this slot.`;
+        } else if (currentStatus === 'tentative') {
+          slackMessage = `❓ *${userName}* marked Maybe for the *${shiftLabel}* on *${dayName}, ${formattedDate}*.`;
+        }
+
+        if (slackMessage) {
+          console.log(`[Calendar Webhook] Posting to Slack: ${slackMessage}`);
+          
+          // Fire-and-forget Slack notification
+          sendSlackMessage(CALL_DUTY_SLACK_CHANNEL_ID, slackMessage).catch((error) => {
+            console.error("[Calendar Webhook] Failed to send Slack notification:", error);
+          });
+        }
+
+        // Update the stored status
+        await db.execute(sql`
+          INSERT INTO calendar_watch_attendees (slot_id, attendee_email, last_response_status, updated_at)
+          VALUES (${slotId}, ${email}, ${currentStatus}, NOW())
+          ON CONFLICT (slot_id, attendee_email)
+          DO UPDATE SET last_response_status = ${currentStatus}, updated_at = NOW()
+        `);
+      }
+    }
+
+  } catch (error: any) {
+    console.error("[Calendar Webhook] Error processing webhook:", error);
+    // Don't re-throw - always return 200 to Google
+  }
+});
+
+// ── Watch Renewal Functions ──────────────────────────────────────────────
+
+/**
+ * Renew expiring calendar watches (called by cron job).
+ * Re-registers watches that expire within 24 hours.
+ */
+export async function renewExpiringCalendarWatches(): Promise<void> {
+  try {
+    console.log("[Calendar Watch Renewal] Checking for expiring watches...");
+
+    // Find watches expiring within 24 hours
+    const expiringWatchesResult = await db.execute(sql`
+      SELECT cw.watch_id, cw.slot_id, cs.google_calendar_event_id
+      FROM calendar_watches cw
+      JOIN call_duty_slots cs ON cw.slot_id = cs.id
+      WHERE cw.expires_at < NOW() + INTERVAL '24 hours'
+      AND cs.date + cs.start_time::time > NOW()
+    `);
+
+    const expiringWatches = expiringWatchesResult.rows as any[];
+
+    if (expiringWatches.length === 0) {
+      console.log("[Calendar Watch Renewal] No expiring watches found");
+      return;
+    }
+
+    console.log(`[Calendar Watch Renewal] Found ${expiringWatches.length} expiring watches`);
+
+    // Re-register each expiring watch
+    for (const watch of expiringWatches) {
+      const { slot_id, google_calendar_event_id } = watch;
+
+      if (google_calendar_event_id) {
+        console.log(`[Calendar Watch Renewal] Renewing watch for slot ${slot_id}`);
+        
+        // Remove old watch record
+        await db.execute(sql`DELETE FROM calendar_watches WHERE slot_id = ${slot_id}`);
+        
+        // Register new watch
+        const success = await registerEventWatch(google_calendar_event_id, slot_id);
+        if (success) {
+          console.log(`[Calendar Watch Renewal] Successfully renewed watch for slot ${slot_id}`);
+        } else {
+          console.error(`[Calendar Watch Renewal] Failed to renew watch for slot ${slot_id}`);
+        }
+      }
+    }
+
+    // Clean up watches for slots that have already passed
+    await db.execute(sql`
+      DELETE FROM calendar_watches 
+      WHERE slot_id IN (
+        SELECT cs.id FROM call_duty_slots cs 
+        WHERE cs.date + cs.start_time::time < NOW()
+      )
+    `);
+
+    console.log("[Calendar Watch Renewal] Watch renewal complete");
+  } catch (error: any) {
+    console.error("[Calendar Watch Renewal] Error renewing watches:", error);
+  }
+}
 
 export default router;

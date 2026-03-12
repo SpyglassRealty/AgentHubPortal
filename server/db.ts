@@ -95,6 +95,9 @@ async function runDirectMigrations() {
     // Community Content Blocks table (migration 0014)
     await createCommunityContentBlocksTable();
     
+    // Calendar Watch tables for Google Calendar RSVP notifications (Phase 3d)
+    await createCalendarWatchTables();
+    
   } catch (error) {
     console.error("[Database] Direct migration error:", error);
     throw error;
@@ -1151,6 +1154,58 @@ async function createCommunityContentBlocksTable() {
     console.log("[Database] Community content blocks table created/verified successfully");
   } catch (error) {
     console.error("[Database] Error creating community_content_blocks table:", error);
+    // Do not throw - table might already exist
+  }
+}
+
+// Calendar Watch tables for Google Calendar RSVP → Slack notifications (Phase 3d)
+async function createCalendarWatchTables() {
+  try {
+    console.log("[Database] Creating calendar watch tables...");
+    
+    // Main watch registrations table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS calendar_watches (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        watch_id TEXT NOT NULL,
+        resource_id TEXT NOT NULL,
+        slot_id VARCHAR NOT NULL REFERENCES call_duty_slots(id) ON DELETE CASCADE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    
+    // Attendee response status tracking table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS calendar_watch_attendees (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        slot_id VARCHAR NOT NULL REFERENCES call_duty_slots(id) ON DELETE CASCADE,
+        attendee_email TEXT NOT NULL,
+        last_response_status TEXT,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    // Create indexes for performance
+    const indexes = [
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_calendar_watches_watch_id ON calendar_watches(watch_id)',
+      'CREATE INDEX IF NOT EXISTS idx_calendar_watches_slot_id ON calendar_watches(slot_id)',
+      'CREATE INDEX IF NOT EXISTS idx_calendar_watches_expires_at ON calendar_watches(expires_at)',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_calendar_watch_attendees_slot_email ON calendar_watch_attendees(slot_id, attendee_email)',
+      'CREATE INDEX IF NOT EXISTS idx_calendar_watch_attendees_slot_id ON calendar_watch_attendees(slot_id)',
+    ];
+
+    for (const idx of indexes) {
+      try { 
+        await pool.query(idx); 
+      } catch (e) { 
+        console.log(`[Database] Index creation note: ${e.message}`); 
+      }
+    }
+
+    console.log("[Database] Calendar watch tables created/verified successfully");
+  } catch (error) {
+    console.error("[Database] Error creating calendar watch tables:", error);
     // Do not throw - table might already exist
   }
 }
