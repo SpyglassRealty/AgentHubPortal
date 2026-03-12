@@ -304,7 +304,7 @@ export default function ShiftSlot({
               disabled={isLoading}
             >
               <UserPlus className="h-3 w-3 mr-1" />
-              Sign Up
+              Sign Me Up
             </Button>
           ) : (
             <div className="space-y-1">

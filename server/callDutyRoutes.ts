@@ -494,6 +494,12 @@ router.post("/slots/:slotId/signup", isAuthenticated, async (req: any, res) => {
     res.status(201).json(signup);
   } catch (error: any) {
     console.error("[Call Duty] Error signing up:", error);
+    
+    // Handle duplicate signup constraint violation
+    if (error.code === '23505' || error.constraint === 'idx_call_duty_signups_slot_user') {
+      return res.status(409).json({ message: "You're already signed up for this shift." });
+    }
+    
     res.status(500).json({ message: "Failed to sign up for shift" });
   }
 });
