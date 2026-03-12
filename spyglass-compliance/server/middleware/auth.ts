@@ -8,6 +8,11 @@ import bcrypt from 'bcrypt';
 import { prisma } from '../index.js';
 import { User, Role } from '@prisma/client';
 
+// Helper to properly cast user from request
+function getTypedUser(reqUser: any): User {
+  return reqUser as User;
+}
+
 // Types are defined in ../types/session.d.ts
 
 export interface AuthenticatedUser {
@@ -59,7 +64,8 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     });
   }
   
-  if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'super_admin')) {
+  const user = getTypedUser(req.user);
+  if (!req.user || (user.role !== 'admin' && user.role !== 'super_admin')) {
     return res.status(403).json({
       error: 'Insufficient permissions',
       message: 'Admin access required'
@@ -80,7 +86,8 @@ export function requireSuperAdmin(req: Request, res: Response, next: NextFunctio
     });
   }
   
-  if (!req.user || req.user.role !== 'super_admin') {
+  const user = getTypedUser(req.user);
+  if (!req.user || user.role !== 'super_admin') {
     return res.status(403).json({
       error: 'Insufficient permissions',
       message: 'Super admin access required'
@@ -131,13 +138,14 @@ export function requireOwnershipOrAdmin(getUserId: (req: Request) => string) {
     }
     
     // Admins can access everything
-    if (req.user.role === 'admin' || req.user.role === 'super_admin') {
+    const user = getTypedUser(req.user);
+    if (user.role === 'admin' || user.role === 'super_admin') {
       return next();
     }
     
     // Check if user owns the resource
     const resourceUserId = getUserId(req);
-    if (req.user.id !== resourceUserId) {
+    if (user.id !== resourceUserId) {
       return res.status(403).json({
         error: 'Access denied',
         message: 'You can only access your own resources'

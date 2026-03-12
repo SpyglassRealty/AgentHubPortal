@@ -1,0 +1,115 @@
+{
+  "date": "2026-03-12",
+  "campaign": "Contrarian Brokerage Growth",
+  "totalPitches": 11,
+  "journalists": [
+    {
+      "name": "Ali Juell",
+      "publication": "Austin Business Journal",
+      "tier": "A",
+      "email": "ali.juell@bizjournals.com",
+      "emailSent": "Y",
+      "subjectLine": "Your 'fell flat' piece + contrarian growth story",
+      "personalizationNote": "Referenced her January piece on Austin's flat housing market",
+      "messageId": "adec7a21-523c-e7b7-9326-6d7e339dcc72@spyglassrealty.com"
+    },
+    {
+      "name": "Shonda Novak",
+      "publication": "Austin American-Statesman",
+      "tier": "A",
+      "email": "snovak@statesman.com",
+      "emailSent": "Y",
+      "subjectLine": "Affordable housing battles + contrarian brokerage growth",
+      "personalizationNote": "Referenced her affordable housing battle coverage",
+      "messageId": "1cf4c62f-28ae-a349-c484-6305ae8b1bb2@spyglassrealty.com"
+    },
+    {
+      "name": "Sarah Wheeler",
+      "publication": "HousingWire",
+      "tier": "A",
+      "email": "sarah.wheeler@housingwire.com",
+      "emailSent": "Y",
+      "subjectLine": "Austin prices stay high + contrarian growth",
+      "personalizationNote": "Referenced her 'Why Austin home prices remain stubbornly high' piece",
+      "messageId": "f2329cd6-1db8-6951-fbc1-c7e11e53be8c@spyglassrealty.com"
+    },
+    {
+      "name": "Andrea Brambila",
+      "publication": "Inman News",
+      "tier": "A",
+      "email": "andrea.brambila@inman.com",
+      "emailSent": "Y",
+      "subjectLine": "Your luxury analysis + contrarian recruiting strategy",
+      "personalizationNote": "Referenced her award-winning luxury market analysis work",
+      "messageId": "5b9780d7-69c1-2129-d1f3-76bf1e17ed7c@spyglassrealty.com"
+    },
+    {
+      "name": "Jim Dalrymple II",
+      "publication": "Inman News",
+      "tier": "A",
+      "email": "jim.dalrymple@inman.com",
+      "emailSent": "Y",
+      "subjectLine": "Redfin retreat piece + tech-driven recruiting growth",
+      "personalizationNote": "Referenced his pieces on Redfin retreat and tech vision",
+      "messageId": "9520006c-39f0-ccdb-3054-f87c6cd3d8ab@spyglassrealty.com"
+    },
+    {
+      "name": "Hannah Norton",
+      "publication": "Community Impact",
+      "tier": "B",
+      "email": "hannah.norton@communityimpact.com",
+      "emailSent": "Y",
+      "subjectLine": "Central Austin sales up + contrarian growth",
+      "personalizationNote": "Referenced her January piece on Central Austin home sales increase",
+      "messageId": "5a7f9ba0-b823-357a-104b-5e3342d2847a@spyglassrealty.com"
+    },
+    {
+      "name": "Kelsey Sanchez",
+      "publication": "KVUE",
+      "tier": "B",
+      "email": "kelsey.sanchez@kvue.com",
+      "emailSent": "Y",
+      "subjectLine": "Realtor optimism piece + contrarian Boomtown story",
+      "personalizationNote": "Referenced her Growth Forum realtor optimism coverage, connected to Boomtown series",
+      "messageId": "c8517f1c-8a2f-6ea3-23cf-e751e535dc13@spyglassrealty.com"
+    },
+    {
+      "name": "Taylor Alanis",
+      "publication": "KXAN",
+      "tier": "B",
+      "email": "taylor.alanis@kxan.com",
+      "emailSent": "Y",
+      "subjectLine": "Elgin housing hottest + contrarian brokerage investigation",
+      "personalizationNote": "Referenced her investigative piece on Elgin as hottest housing market",
+      "messageId": "243eb6aa-f3fa-8648-78e6-aff60ed4ad63@spyglassrealty.com"
+    },
+    {
+      "name": "Marc Mullins",
+      "publication": "KVUE",
+      "tier": "B",
+      "email": "marc.mullins@kvue.com",
+      "emailSent": "Y",
+      "subjectLine": "Fresh Central Texas eyes + contrarian growth story",
+      "personalizationNote": "Highlighted his Emmy background and fresh perspective on Central Texas",
+      "messageId": "d6041f81-cb98-714b-6367-498cd5f42c48@spyglassrealty.com"
+    },
+    {
+      "name": "Hannah Rucker",
+      "publication": "KVUE",
+      "tier": "C",
+      "email": "hannah.rucker@kvue.com",
+      "emailSent": "Y",
+      "subjectLine": "Perfect Daybreak Austin business story",
+      "personalizationNote": "Positioned as positive Austin business story for morning programming",
+      "messageId": "04fea4d0-4da2-cfc9-b1c0-ee60e63aee73@spyglassrealty.com"
+    }
+  ],
+  "summary": {
+    "aTier": 5,
+    "bTier": 4,
+    "cTier": 1,
+    "totalSent": 11,
+    "keyTargets": ["Austin Business Journal", "Austin American-Statesman", "HousingWire", "Inman News", "KVUE", "KXAN", "Community Impact"],
+    "mainAngles": ["Contrarian growth", "Tech-driven recruiting", "Market uncertainty opportunity", "Local Austin business success"]
+  }
+}

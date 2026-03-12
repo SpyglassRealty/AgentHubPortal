@@ -17,7 +17,7 @@ const execAsync = promisify(exec);
  * @param {string} transactionType - Type of transaction (optional)
  * @returns {Promise<Object>} Extracted contract terms
  */
-async function extractTexasContractTerms(fileName, fileData, transactionType) {
+async function extractTexasContractTerms(fileName: string, fileData: string, transactionType?: string) {
   // Step 1: Save file data to temp file
   const tempFilePath = `/tmp/contract_${Date.now()}.pdf`;
   const buffer = Buffer.from(fileData, 'base64');
@@ -52,7 +52,7 @@ async function extractTexasContractTerms(fileName, fileData, transactionType) {
     }
     
     // Fallback to intelligent extraction
-    console.log(`[Texas Contract] pdftotext failed (${error.message}), using fallback extraction`);
+    console.log(`[Texas Contract] pdftotext failed (${error instanceof Error ? error.message : 'unknown error'}), using fallback extraction`);
     console.log(`[Texas Contract] Note: pdftotext is available at ${process.env.PATH ? process.env.PATH.split(':').find(p => require('fs').existsSync(p + '/pdftotext')) : 'unknown'}/pdftotext`);
     return await extractWithoutPdftotext(fileName, fileData, transactionType);
   }
@@ -63,9 +63,9 @@ async function extractTexasContractTerms(fileName, fileData, transactionType) {
  * @param {string} rawText - Raw text extracted from PDF
  * @returns {Object} Structured contract data
  */
-function parseTexasContractTerms(rawText) {
+function parseTexasContractTerms(rawText: string) {
   const text = rawText.toLowerCase();
-  const flags = [];
+  const flags: string[] = [];
   
   // Initialize Texas contract structure
   const contractTerms = {
@@ -223,7 +223,7 @@ function parseTexasContractTerms(rawText) {
   if (/addendum|addenda|attachment/i.test(rawText)) {
     const addendaMatches = rawText.match(/(addendum\s+[A-Z]|addenda\s+[A-Z]|attachment\s+\d+)/gi);
     if (addendaMatches) {
-      contractTerms.addenda = addendaMatches;
+      contractTerms.addenda = Array.from(addendaMatches);
     }
   }
   
@@ -246,7 +246,7 @@ function parseTexasContractTerms(rawText) {
  * @param {string} transactionType - Type of transaction
  * @returns {Promise<Object>} Mock contract terms for testing
  */
-async function extractWithoutPdftotext(fileName, fileData, transactionType) {
+async function extractWithoutPdftotext(fileName: string, fileData: string, transactionType?: string) {
   const filename = fileName.toLowerCase();
   
   // Initialize Texas contract structure with fallback data
@@ -303,7 +303,7 @@ async function extractWithoutPdftotext(fileName, fileData, transactionType) {
  * @param {Object} contractTerms - Extracted contract terms
  * @returns {Object} Completeness metrics
  */
-function calculateTexasContractCompleteness(contractTerms) {
+function calculateTexasContractCompleteness(contractTerms: any) {
   const requiredFields = [
     'buyer.fullName',
     'property.address', 
@@ -331,7 +331,7 @@ function calculateTexasContractCompleteness(contractTerms) {
   
   let filledRequired = 0;
   let filledOptional = 0;
-  const missingRequired = [];
+  const missingRequired: string[] = [];
   
   // Check required fields
   requiredFields.forEach(fieldPath => {
@@ -372,8 +372,8 @@ function calculateTexasContractCompleteness(contractTerms) {
  * @param {string} path - Dot notation path (e.g., 'buyer.fullName')
  * @returns {any} Value at path or null
  */
-function getNestedValue(obj, path) {
-  return path.split('.').reduce((current, key) => {
+function getNestedValue(obj: any, path: string) {
+  return path.split('.').reduce((current: any, key: string) => {
     return current && current[key] !== undefined ? current[key] : null;
   }, obj);
 }

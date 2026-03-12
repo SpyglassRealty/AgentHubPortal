@@ -1,0 +1,11 @@
+Subject: QA Request: Verify Pulse Real-time Data Deployment
+
+Hi Maggie,
+
+Could you please verify the successful deployment of the Pulse real-time data improvements? The POST and GET endpoints for `/api/admin/refresh-pulse` are returning errors, so it seems the deployment might have failed or the routes are not configured correctly.
+
+What to test: Pulse real-time data vs static data
+URLs: Production Pulse pages for zip codes 78701-78704
+Expected results: Current inventory counts matching live MLS data, current dates
+
+Please test and reply directly to this email with your results. No need to check with Ryan first — you have full authority to QA and report findings directly to me.

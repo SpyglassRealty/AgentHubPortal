@@ -1,8 +1,11 @@
+import React, { useState, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, X, User, UserMinus, Users } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { UserPlus, X, User, UserMinus, Users, Search, Mail } from "lucide-react";
 
 export interface SlotSignup {
   id: string;
@@ -59,6 +62,7 @@ interface ShiftSlotProps {
   isAdmin?: boolean;
   availableUsers?: AvailableUser[];
   onAssignAgent?: (slotId: string, userId: string) => void;
+  onAssignByEmail?: (slotId: string, name: string, email: string) => void;
   onRemoveAgent?: (slotId: string, signupId: string, agentName: string) => void;
 }
 
@@ -95,18 +99,47 @@ export default function ShiftSlot({
   isAdmin = false,
   availableUsers = [],
   onAssignAgent,
+  onAssignByEmail,
   onRemoveAgent
 }: ShiftSlotProps) {
   const isPast = new Date(`${slot.date}T${slot.startTime}:00`) < new Date();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showEmailAssign, setShowEmailAssign] = useState(false);
+  const [assignName, setAssignName] = useState("");
+  const [assignEmail, setAssignEmail] = useState("");
   
   // Filter available users to exclude those already signed up for this slot
   const unassignedUsers = availableUsers.filter(user => 
     !slot.signups.some(signup => signup.userId === user.id)
   );
 
+  // Filter users by search term
+  const filteredUsers = useMemo(() => {
+    if (!searchTerm.trim()) return unassignedUsers;
+    
+    const term = searchTerm.toLowerCase();
+    return unassignedUsers.filter(user => {
+      const firstName = (user.firstName || "").toLowerCase();
+      const lastName = (user.lastName || "").toLowerCase();
+      const email = user.email.toLowerCase();
+      return firstName.includes(term) || lastName.includes(term) || email.includes(term);
+    });
+  }, [unassignedUsers, searchTerm]);
+
   const handleAssignAgent = (userId: string) => {
     if (onAssignAgent) {
       onAssignAgent(slot.id, userId);
+    }
+  };
+
+  const handleAssignByEmail = () => {
+    if (onAssignByEmail && assignName.trim() && assignEmail.trim()) {
+      onAssignByEmail(slot.id, assignName.trim(), assignEmail.trim());
+      // Reset form
+      setAssignName("");
+      setAssignEmail("");
+      setShowEmailAssign(false);
+      setSearchTerm("");
     }
   };
 
@@ -291,32 +324,115 @@ export default function ShiftSlot({
           )}
           
           {/* Admin actions */}
-          {isAdmin && !slot.isFull && unassignedUsers.length > 0 && (
-            <div className="flex items-center gap-1">
-              <Users className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-              <Select onValueChange={handleAssignAgent} disabled={isLoading}>
-                <SelectTrigger className="h-7 text-xs border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 flex-1">
-                  <SelectValue placeholder="Assign Agent" />
-                </SelectTrigger>
-                <SelectContent>
-                  {unassignedUsers.map((user) => {
-                    const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
-                    return (
-                      <SelectItem key={user.id} value={user.id} className="text-xs">
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-4 w-4">
-                            <AvatarImage src={user.profileImageUrl || undefined} />
-                            <AvatarFallback className="text-[8px] bg-muted">
-                              {getInitials(user.firstName, user.lastName)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="truncate">{userName}</span>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+          {isAdmin && !slot.isFull && (
+            <div className="space-y-2">
+              {!showEmailAssign && (
+                <>
+                  {/* Search box */}
+                  <div className="flex items-center gap-1">
+                    <Search className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                    <Input
+                      placeholder="Search agents..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="h-7 text-xs flex-1"
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  {/* Agent dropdown */}
+                  {filteredUsers.length > 0 ? (
+                    <div className="flex items-center gap-1">
+                      <Users className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                      <Select onValueChange={handleAssignAgent} disabled={isLoading}>
+                        <SelectTrigger className="h-7 text-xs border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 flex-1">
+                          <SelectValue placeholder="Assign Agent" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredUsers.map((user) => {
+                            const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
+                            return (
+                              <SelectItem key={user.id} value={user.id} className="text-xs">
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-4 w-4">
+                                    <AvatarImage src={user.profileImageUrl || undefined} />
+                                    <AvatarFallback className="text-[8px] bg-muted">
+                                      {getInitials(user.firstName, user.lastName)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="truncate">{userName}</span>
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    /* Fallback when no agents match search */
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full h-7 text-xs text-blue-700 hover:text-blue-700 hover:bg-blue-100 border border-blue-200 dark:text-blue-400 dark:hover:bg-blue-950"
+                      onClick={() => setShowEmailAssign(true)}
+                      disabled={isLoading}
+                    >
+                      <Mail className="h-3 w-3 mr-1" />
+                      Assign by email instead
+                    </Button>
+                  )}
+                </>
+              )}
+
+              {/* Email assignment form */}
+              {showEmailAssign && (
+                <div className="space-y-2 p-2 border rounded-md bg-blue-50/50 dark:bg-blue-950/30">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Name</Label>
+                    <Input
+                      placeholder="Agent name"
+                      value={assignName}
+                      onChange={(e) => setAssignName(e.target.value)}
+                      className="h-7 text-xs"
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Email</Label>
+                    <Input
+                      type="email"
+                      placeholder="agent@email.com"
+                      value={assignEmail}
+                      onChange={(e) => setAssignEmail(e.target.value)}
+                      className="h-7 text-xs"
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      className="h-6 text-xs flex-1"
+                      onClick={handleAssignByEmail}
+                      disabled={isLoading || !assignName.trim() || !assignEmail.trim()}
+                    >
+                      Assign
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-xs"
+                      onClick={() => {
+                        setShowEmailAssign(false);
+                        setAssignName("");
+                        setAssignEmail("");
+                      }}
+                      disabled={isLoading}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

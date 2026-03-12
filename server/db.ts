@@ -98,6 +98,9 @@ async function runDirectMigrations() {
     // Calendar Watch tables for Google Calendar RSVP notifications (Phase 3d)
     await createCalendarWatchTables();
     
+    // Call Duty Force-Assign enhancements (Phase 3a)
+    await addCallDutyForceAssignColumns();
+    
   } catch (error) {
     console.error("[Database] Direct migration error:", error);
     throw error;
@@ -1207,5 +1210,30 @@ async function createCalendarWatchTables() {
   } catch (error) {
     console.error("[Database] Error creating calendar watch tables:", error);
     // Do not throw - table might already exist
+  }
+}
+
+// Call Duty Force-Assign enhancements (Phase 3a)
+async function addCallDutyForceAssignColumns() {
+  try {
+    console.log("[Database] Adding Call Duty force-assign columns...");
+    
+    // Add assigned_name and assigned_email columns to call_duty_signups
+    await pool.query(`
+      ALTER TABLE call_duty_signups 
+      ADD COLUMN IF NOT EXISTS assigned_name TEXT,
+      ADD COLUMN IF NOT EXISTS assigned_email TEXT
+    `);
+
+    // Make user_id nullable to support force-assign (external users)
+    await pool.query(`
+      ALTER TABLE call_duty_signups 
+      ALTER COLUMN user_id DROP NOT NULL
+    `);
+
+    console.log("[Database] Call Duty force-assign columns added successfully");
+  } catch (error) {
+    console.error("[Database] Error adding force-assign columns:", error);
+    // Do not throw - columns might already exist
   }
 }
