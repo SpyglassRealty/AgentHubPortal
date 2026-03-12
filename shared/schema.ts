@@ -40,6 +40,7 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   fubUserId: integer("fub_user_id"),
   fubPictureUrl: varchar("fub_picture_url"),
+  fubAvatarUrl: varchar("fub_avatar_url"),
   rezenYentaId: varchar("rezen_yenta_id"),
   isSuperAdmin: boolean("is_super_admin").default(false),
   role: varchar("role").default("agent"), // 'developer', 'admin', 'agent', 'viewer'

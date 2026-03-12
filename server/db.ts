@@ -101,6 +101,9 @@ async function runDirectMigrations() {
     // Call Duty Force-Assign enhancements (Phase 3a)
     await addCallDutyForceAssignColumns();
     
+    // FUB Avatar URL column for shift slot avatars (Phase 3c)
+    await addFubAvatarUrlColumn();
+    
   } catch (error) {
     console.error("[Database] Direct migration error:", error);
     throw error;
@@ -1235,5 +1238,23 @@ async function addCallDutyForceAssignColumns() {
   } catch (error) {
     console.error("[Database] Error adding force-assign columns:", error);
     // Do not throw - columns might already exist
+  }
+}
+
+// FUB Avatar URL column for shift slot avatars (Phase 3c)
+async function addFubAvatarUrlColumn() {
+  try {
+    console.log("[Database] Adding FUB avatar URL column...");
+    
+    // Add fub_avatar_url column to users table
+    await pool.query(`
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS fub_avatar_url TEXT
+    `);
+
+    console.log("[Database] FUB avatar URL column added successfully");
+  } catch (error) {
+    console.error("[Database] Error adding FUB avatar URL column:", error);
+    // Do not throw - column might already exist
   }
 }

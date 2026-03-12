@@ -66,6 +66,7 @@ export interface IStorage {
   updateUser(id: string, data: Partial<{ isSuperAdmin: boolean }>): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserFubId(userId: string, fubUserId: number, fubPictureUrl?: string): Promise<User | undefined>;
+  updateUserFubAvatarUrl(userId: string, fubAvatarUrl: string | null): Promise<User | undefined>;
   updateUserRezenYentaId(userId: string, rezenYentaId: string | null): Promise<User | undefined>;
   
   getAgentProfile(userId: string): Promise<AgentProfile | undefined>;
@@ -298,6 +299,15 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .update(users)
       .set(setData)
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async updateUserFubAvatarUrl(userId: string, fubAvatarUrl: string | null): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ fubAvatarUrl, updatedAt: new Date() })
       .where(eq(users.id, userId))
       .returning();
     return user;

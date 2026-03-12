@@ -271,6 +271,7 @@ router.get("/slots", isAuthenticated, async (req: any, res) => {
         firstName: users.firstName,
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
+        fubAvatarUrl: users.fubAvatarUrl,
       })
       .from(callDutySignups)
       .innerJoin(users, eq(callDutySignups.userId, users.id))

@@ -313,6 +313,16 @@ export async function registerRoutes(
                 console.warn('[Auth] fub_picture_url write failed, falling back to ID-only:', (colErr as Error).message);
                 updated = await storage.updateUserFubId(user.id, fubUser.id);
               }
+              
+              // Also sync the FUB avatar URL for shift slot avatars (Phase 3c)
+              if (fubUser.pictureUrl) {
+                try {
+                  await storage.updateUserFubAvatarUrl(user.id, fubUser.pictureUrl);
+                } catch (avatarErr) {
+                  console.warn('[Auth] fub_avatar_url write failed:', (avatarErr as Error).message);
+                }
+              }
+              
               if (updated) user = updated;
               console.log(`[Auth] Auto-linked FUB user ID ${fubUser.id} to user ${user.id} (${user.email}), pictureUrl: ${fubUser.pictureUrl || 'none'}`);
             } else {
@@ -360,6 +370,16 @@ export async function registerRoutes(
       }
 
       await storage.updateUserFubId(targetUser.id, fubUser.id);
+      
+      // Also sync the FUB avatar URL for shift slot avatars (Phase 3c)
+      if (fubUser.pictureUrl) {
+        try {
+          await storage.updateUserFubAvatarUrl(targetUser.id, fubUser.pictureUrl);
+        } catch (avatarErr) {
+          console.warn('[Auth] fub_avatar_url write failed during manual link:', (avatarErr as Error).message);
+        }
+      }
+      
       console.log(`[Auth] Manually linked FUB user ID ${fubUser.id} to user ${targetUser.id} (${searchEmail})`);
       
       res.json({ success: true, fubUserId: fubUser.id, fubName: fubUser.name });
