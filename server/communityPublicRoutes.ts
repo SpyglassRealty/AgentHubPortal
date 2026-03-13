@@ -211,6 +211,7 @@ export function registerCommunityPublicRoutes(app: Express) {
             locationType: 'polygon' as const,
             polygon: communityData.polygon,
             displayPolygon: communityData.displayPolygon,
+            sections: communityData.sections || [],
             featured: communityData.featured || false,
             published: true, // Auto-publish synced communities
             updatedBy: 'system-sync',
@@ -227,6 +228,7 @@ export function registerCommunityPublicRoutes(app: Express) {
                 county: dbCommunity.county,
                 polygon: dbCommunity.polygon,
                 displayPolygon: dbCommunity.displayPolygon,
+                sections: dbCommunity.sections,
                 featured: dbCommunity.featured,
                 updatedAt: new Date(),
                 updatedBy: 'system-sync',
