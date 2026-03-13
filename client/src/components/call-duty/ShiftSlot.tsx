@@ -2,7 +2,6 @@ import React, { useState, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserPlus, X, User, UserMinus, Users, Search, Mail } from "lucide-react";
@@ -130,6 +129,11 @@ export default function ShiftSlot({
     if (onAssignAgent) {
       onAssignAgent(slot.id, userId);
     }
+  };
+
+  const handleSelectUser = (userId: string) => {
+    handleAssignAgent(userId);
+    setSearchTerm("");
   };
 
   const handleAssignByEmail = () => {
@@ -300,7 +304,7 @@ export default function ShiftSlot({
               disabled={isLoading}
             >
               <UserPlus className="h-3 w-3 mr-1" />
-              Sign Up
+              Sign Me Up
             </Button>
           ) : (
             <div className="space-y-1">
@@ -340,41 +344,45 @@ export default function ShiftSlot({
                     />
                   </div>
 
-                  {/* Agent dropdown */}
-                  {filteredUsers.length > 0 ? (
-                    <div className="flex items-center gap-1">
-                      <Users className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                      <Select onValueChange={handleAssignAgent} disabled={isLoading}>
-                        <SelectTrigger className="h-7 text-xs border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 flex-1">
-                          <SelectValue placeholder="Assign Agent" />
-                        </SelectTrigger>
-                        <SelectContent>
+                  {/* Autocomplete suggestion list */}
+                  {unassignedUsers.length > 0 && (
+                    <div className="relative">
+                      {searchTerm.length >= 3 && filteredUsers.length > 0 && (
+                        <div className="absolute top-0 left-0 right-0 z-10 bg-background border rounded-md shadow-lg max-h-32 overflow-y-auto">
                           {filteredUsers.map((user) => {
                             const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
                             return (
-                              <SelectItem key={user.id} value={user.id} className="text-xs">
-                                <div className="flex items-center gap-2">
-                                  <Avatar className="h-4 w-4">
-                                    <AvatarImage src={user.profileImageUrl || undefined} />
-                                    <AvatarFallback className="text-[8px] bg-muted">
-                                      {getInitials(user.firstName, user.lastName)}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <span className="truncate">{userName}</span>
+                              <button
+                                key={user.id}
+                                onClick={() => handleSelectUser(user.id)}
+                                disabled={isLoading}
+                                className="w-full flex items-center gap-2 p-2 text-left hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <Avatar className="h-8 w-8 flex-shrink-0">
+                                  <AvatarImage src={user.profileImageUrl || undefined} />
+                                  <AvatarFallback className="text-xs bg-muted">
+                                    {getInitials(user.firstName, user.lastName)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col items-start min-w-0 flex-1">
+                                  <span className="truncate font-medium text-sm">{userName}</span>
+                                  <span className="truncate text-muted-foreground text-xs">{user.email}</span>
                                 </div>
-                              </SelectItem>
+                              </button>
                             );
                           })}
-                        </SelectContent>
-                      </Select>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    /* Fallback when no agents match search */
+                  )}
+                  
+                  {/* Fallback when search term entered but no agents match */}
+                  {searchTerm.length >= 3 && filteredUsers.length === 0 && (
                     <Button
                       variant="ghost"
                       size="sm"
                       className="w-full h-7 text-xs text-blue-700 hover:text-blue-700 hover:bg-blue-100 border border-blue-200 dark:text-blue-400 dark:hover:bg-blue-950"
-                      onClick={() => setShowEmailAssign(true)}
+                      onClick={() => { setShowEmailAssign(true); setAssignEmail(searchTerm.trim()); }}
                       disabled={isLoading}
                     >
                       <Mail className="h-3 w-3 mr-1" />

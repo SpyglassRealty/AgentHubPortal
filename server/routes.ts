@@ -342,6 +342,26 @@ export async function registerRoutes(
     }
   });
 
+  // Get all users (admin/developer only)
+  app.get('/api/auth/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      
+      // Check if user is admin or developer
+      const isAdmin = user.role === 'admin' || user.role === 'developer' || user.isSuperAdmin;
+      if (!isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
   // Manual FUB account linking - admin can link any user, users can re-link themselves
   app.post('/api/auth/link-fub', isAuthenticated, async (req: any, res) => {
     try {

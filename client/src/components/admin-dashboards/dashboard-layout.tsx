@@ -94,7 +94,7 @@ export function DashboardLayout({
   const sections = Array.from(new Set(navItems.map((item) => item.section)));
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="flex h-full overflow-hidden">
       {/* Sidebar */}
       <aside
         className={cn(

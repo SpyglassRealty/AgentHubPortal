@@ -1555,11 +1555,13 @@ export type InsertCallDutySlot = typeof callDutySlots.$inferInsert;
 export const callDutySignups = pgTable("call_duty_signups", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   slotId: varchar("slot_id").notNull().references(() => callDutySlots.id),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: varchar("user_id").references(() => users.id),
   status: varchar("status").default("active"), // 'active' | 'cancelled'
   signedUpAt: timestamp("signed_up_at").defaultNow(),
   cancelledAt: timestamp("cancelled_at"),
   cancellationReason: text("cancellation_reason"), // Task 6: Required reason for all cancellations
+  assignedName: varchar("assigned_name"),
+  assignedEmail: varchar("assigned_email"),
 }, (table) => [
   uniqueIndex("idx_call_duty_signups_slot_user").on(table.slotId, table.userId),
   index("idx_call_duty_signups_user").on(table.userId),

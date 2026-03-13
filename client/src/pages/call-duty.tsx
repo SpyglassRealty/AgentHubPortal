@@ -162,8 +162,8 @@ export default function CallDutyPage() {
     holidayId?: string;
     signupId?: string;
     userId?: string;
-    assignName?: string;
-    assignEmail?: string;
+    name?: string;
+    email?: string;
     label: string;
     cancellationReason?: string;
   } | null>(null);
@@ -634,8 +634,8 @@ export default function CallDutyPage() {
     setConfirmAction({
       type: "assign_by_email",
       slotId,
-      assignName: name,
-      assignEmail: email,
+      name: name,
+      email: email,
       label: `${name} (${email}) to ${slotLabel}`,
     });
   }
@@ -670,8 +670,8 @@ export default function CallDutyPage() {
       deleteHolidayMutation.mutate(confirmAction.holidayId);
     } else if (confirmAction.type === "assign_agent" && confirmAction.slotId && confirmAction.userId) {
       assignAgentMutation.mutate({ slotId: confirmAction.slotId, userId: confirmAction.userId });
-    } else if (confirmAction.type === "assign_by_email" && confirmAction.slotId && confirmAction.assignName && confirmAction.assignEmail) {
-      assignAgentMutation.mutate({ slotId: confirmAction.slotId, name: confirmAction.assignName, email: confirmAction.assignEmail });
+    } else if (confirmAction.type === "assign_by_email" && confirmAction.slotId && confirmAction.name && confirmAction.email) {
+      assignAgentMutation.mutate({ slotId: confirmAction.slotId, name: confirmAction.name, email: confirmAction.email });
     } else if (confirmAction.type === "remove_agent" && confirmAction.slotId && confirmAction.signupId) {
       removeAgentMutation.mutate({ slotId: confirmAction.slotId, signupId: confirmAction.signupId });
     } else if (confirmAction.type === "join_waitlist" && confirmAction.slotId) {
@@ -860,6 +860,7 @@ export default function CallDutyPage() {
                 isLoading={isMutating}
                 isAdmin={isAdmin && viewMode === 'admin'}
                 availableUsers={availableUsers}
+                usersLoading={usersLoading}
                 onAssignAgent={handleAssignAgent}
                 onAssignByEmail={handleAssignByEmail}
                 onRemoveAgent={handleRemoveAgent}

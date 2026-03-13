@@ -268,13 +268,15 @@ router.get("/slots", isAuthenticated, async (req: any, res) => {
         userId: callDutySignups.userId,
         status: callDutySignups.status,
         signedUpAt: callDutySignups.signedUpAt,
+        assignedName: callDutySignups.assignedName,
+        assignedEmail: callDutySignups.assignedEmail,
         firstName: users.firstName,
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
         fubAvatarUrl: users.fubAvatarUrl,
       })
       .from(callDutySignups)
-      .innerJoin(users, eq(callDutySignups.userId, users.id))
+      .leftJoin(users, eq(callDutySignups.userId, users.id))
       .where(
         and(
           sql`${callDutySignups.slotId} IN (${sql.join(slotIds.map(id => sql`${id}`), sql`, `)})`,
@@ -343,9 +345,9 @@ router.get("/slots", isAuthenticated, async (req: any, res) => {
         signups: slotSignups.map((s) => ({
           id: s.id,
           userId: s.userId,
-          firstName: s.firstName,
-          lastName: s.lastName,
-          profileImageUrl: s.profileImageUrl,
+          firstName: s.userId ? s.firstName : s.assignedName?.split(' ')[0] || null,
+          lastName: s.userId ? s.lastName : s.assignedName?.split(' ').slice(1).join(' ') || null,
+          profileImageUrl: s.userId ? s.profileImageUrl : null,
           signedUpAt: s.signedUpAt,
         })),
         waitlist: slotWaitlist.map((w) => ({
@@ -494,6 +496,12 @@ router.post("/slots/:slotId/signup", isAuthenticated, async (req: any, res) => {
     res.status(201).json(signup);
   } catch (error: any) {
     console.error("[Call Duty] Error signing up:", error);
+    
+    // Handle duplicate signup constraint violation
+    if (error.code === '23505' || error.constraint === 'idx_call_duty_signups_slot_user') {
+      return res.status(409).json({ message: "You're already signed up for this shift." });
+    }
+    
     res.status(500).json({ message: "Failed to sign up for shift" });
   }
 });
@@ -823,12 +831,14 @@ router.get("/unfilled-slots", isAuthenticated, async (req: any, res) => {
         userId: callDutySignups.userId,
         status: callDutySignups.status,
         signedUpAt: callDutySignups.signedUpAt,
+        assignedName: callDutySignups.assignedName,
+        assignedEmail: callDutySignups.assignedEmail,
         firstName: users.firstName,
         lastName: users.lastName,
         email: users.email,
       })
       .from(callDutySignups)
-      .innerJoin(users, eq(callDutySignups.userId, users.id))
+      .leftJoin(users, eq(callDutySignups.userId, users.id))
       .where(
         and(
           sql`${callDutySignups.slotId} IN (${sql.join(slotIds.map(id => sql`${id}`), sql`, `)})`,
@@ -856,9 +866,9 @@ router.get("/unfilled-slots", isAuthenticated, async (req: any, res) => {
           signups: slotSignups.map((s) => ({
             id: s.id,
             userId: s.userId,
-            firstName: s.firstName,
-            lastName: s.lastName,
-            email: s.email,
+            firstName: s.userId ? s.firstName : s.assignedName?.split(' ')[0] || null,
+            lastName: s.userId ? s.lastName : s.assignedName?.split(' ').slice(1).join(' ') || null,
+            email: s.userId ? s.email : s.assignedEmail,
             signedUpAt: s.signedUpAt,
           })),
         };
