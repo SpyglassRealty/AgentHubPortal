@@ -510,6 +510,26 @@ export default function AdminPage() {
           </Link>
         </div>
 
+        {/* Back to Mission Control Banner */}
+        <a href="/" style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          background: 'rgba(239,73,35,0.10)',
+          borderTop: '0.5px solid rgba(239,73,35,0.25)',
+          borderBottom: '0.5px solid rgba(239,73,35,0.25)',
+          padding: '6px 12px',
+          textDecoration: 'none'
+        }}>
+          <ChevronLeft style={{ width: '12px', height: '12px', color: '#EF4923', flexShrink: 0 }} />
+          {sidebarExpanded && (
+            <span style={{ color: '#EF4923', fontSize: '11px', fontWeight: 500, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
+              Back to Mission Control
+            </span>
+          )}
+        </a>
+
         {/* Navigation Groups */}
         <div className="flex-1 overflow-y-auto py-6">
           {navigationSections.map((section, sectionIndex) => (
