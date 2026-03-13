@@ -63,6 +63,7 @@ import {
   BarChart3,
   FileBarChart,
   LogIn,
+  LogOut,
   Clock,
   UserCheck,
   Code,
@@ -83,6 +84,7 @@ import {
   Mail,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useToast } from "@/hooks/use-toast";
 
 // ── Types ──────────────────────────────────────────
@@ -287,6 +289,7 @@ function DashboardContent({ statsLoading, allUsers }: { statsLoading: boolean; a
 // ── Main Component ──────────────────────────────────────
 export default function AdminPage() {
   const { user } = useAuth();
+  const { isAdmin } = useUserRole();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [location] = useLocation();
@@ -403,6 +406,18 @@ export default function AdminPage() {
     );
   }
 
+  // ── Dashboard RBAC Guard ──
+  const isDashboardRoute = location.startsWith('/admin/dashboards');
+  if (isDashboardRoute && !isAdmin) {
+    return (
+      <div className="max-w-2xl mx-auto py-12 text-center">
+        <Shield className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+        <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
+        <p className="text-gray-600">You need administrator or developer privileges to access the Business Dashboard.</p>
+      </div>
+    );
+  }
+
   // Determine which apps are hidden based on DB data (with fallback to static definition)
   const isAppHidden = (app: AppDefinition): boolean => {
     if (hiddenMap[app.id] !== undefined) return hiddenMap[app.id];
@@ -422,7 +437,7 @@ export default function AdminPage() {
       title: "TOOLS",
       items: [
         { name: "Dashboard", href: "/admin", icon: Home, active: location === "/admin" },
-        { name: "Dashboards", href: "/admin/dashboards", icon: BarChart3 },
+        { name: "Business Dashboard", href: "/admin/dashboards", icon: BarChart3 },
         { name: "Beacon", href: "/admin/beacon", icon: Activity },
         { name: "Site Editor", href: "/admin/site-editor", icon: PenTool },
         { name: "Multicam Editor", href: "/admin/multicam-editor", icon: Film },
@@ -482,16 +497,38 @@ export default function AdminPage() {
       <div className={`${sidebarExpanded ? 'w-64' : 'w-16'} transition-all duration-300 bg-[#1a1a2e] flex flex-col shadow-lg`}>
         {/* Logo/Brand */}
         <div className="p-4 border-b border-gray-700">
-          <div className="flex items-center gap-3">
-            <Shield className="h-8 w-8 text-[#EF4923] flex-shrink-0" />
-            {sidebarExpanded && (
-              <div>
-                <h2 className="font-bold text-white">Spyglass Admin</h2>
-                <p className="text-xs text-gray-400">Content Management</p>
-              </div>
-            )}
-          </div>
+          <Link href="/">
+            <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+              <Shield className="h-8 w-8 text-[#EF4923] flex-shrink-0" />
+              {sidebarExpanded && (
+                <div>
+                  <h2 className="font-bold text-white">Spyglass Admin</h2>
+                  <p className="text-xs text-gray-400">Content Management</p>
+                </div>
+              )}
+            </div>
+          </Link>
         </div>
+
+        {/* Back to Mission Control Banner */}
+        <a href="/" style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          background: 'rgba(239,73,35,0.10)',
+          borderTop: '0.5px solid rgba(239,73,35,0.25)',
+          borderBottom: '0.5px solid rgba(239,73,35,0.25)',
+          padding: '6px 12px',
+          textDecoration: 'none'
+        }}>
+          <ChevronLeft style={{ width: '12px', height: '12px', color: '#EF4923', flexShrink: 0 }} />
+          {sidebarExpanded && (
+            <span style={{ color: '#EF4923', fontSize: '11px', fontWeight: 500, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
+              Back to Mission Control
+            </span>
+          )}
+        </a>
 
         {/* Navigation Groups */}
         <div className="flex-1 overflow-y-auto py-6">
@@ -560,6 +597,15 @@ export default function AdminPage() {
                   <div className="text-gray-400 text-xs">Administrator</div>
                 </div>
               </div>
+              <div className="mt-3 pt-3 border-t border-gray-700">
+                <a 
+                  href="/api/logout" 
+                  className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </a>
+              </div>
             </div>
           )}
           <Button
@@ -605,60 +651,67 @@ export default function AdminPage() {
 
         {/* Content Area - Shows different components based on route */}
         <div className="flex-1 overflow-y-auto">
-          <div className="p-6">
-            <Switch>
-              {/* Sub-routes */}
-              <Route path="/admin/site-editor" component={() => <SiteEditorContent />} />
-              <Route path="/admin/beacon" component={AdminBeaconPage} />
-              <Route path="/admin/settings" component={AdminSettingsPage} />
-              <Route path="/admin/polygons">
-                {() => (
-                  <Suspense fallback={<div className="flex items-center justify-center py-20">Loading Polygon Manager...</div>}>
-                    <PolygonManagerPage />
-                  </Suspense>
-                )}
-              </Route>
-              <Route path="/admin/communities/:slug" component={CommunityEditorPage} />
-              <Route path="/admin/communities" component={CommunityListPage} />
-              <Route path="/admin/redirects" component={RedirectsListPage} />
-              <Route path="/admin/global-scripts" component={GlobalScriptsListPage} />
-              <Route path="/admin/blog/import" component={BlogImportPage} />
-              <Route path="/admin/blog/posts/:slug" component={BlogPostEditorPage} />
-              <Route path="/admin/blog/posts" component={BlogPostListPage} />
-              <Route path="/admin/blog/categories" component={BlogCategoryListPage} />
-              <Route path="/admin/form-submissions/:id" component={FormSubmissionDetailPage} />
-              <Route path="/admin/form-submissions" component={FormSubmissionsPage} />
-              <Route path="/admin/agents/:id" component={AgentEditorPage} />
-              <Route path="/admin/agents" component={AgentListPage} />
-              <Route path="/admin/pages/blog/new" component={BlogPageEditorPage} />
-              <Route path="/admin/pages/blog/:id/edit" component={BlogPageEditorPage} />
-              <Route path="/admin/pages/community/new" component={CommunityPageEditorPage} />
-              <Route path="/admin/pages/community/:id/edit" component={CommunityPageEditorPage} />
-              <Route path="/admin/core/import" component={CoreImportPage} />
-              <Route path="/admin/pages/core/new" component={CorePageEditorPage} />
-              <Route path="/admin/pages/core/:id/edit" component={CorePageEditorPage} />
-              <Route path="/admin/pages/new" component={PageEditorPage} />
-              <Route path="/admin/pages/:id/edit" component={PageEditorPage} />
-              <Route path="/admin/pages" component={PagesListPage} />
-              <Route path="/admin/landing-pages/:id" component={LandingPageEditorPage} />
-              <Route path="/admin/landing-pages" component={LandingPageListPage} />
-              <Route path="/admin/multicam-editor" component={MulticamEditorPage} />
-              <Route path="/admin/saved-searches" component={SavedSearchDashboard} />
-              <Route path="/admin/testimonials/sources" component={ReviewSourceManagerPage} />
-              <Route path="/admin/testimonials/:id" component={TestimonialEditorPage} />
-              <Route path="/admin/testimonials" component={TestimonialListPage} />
-              <Route path="/admin/dashboards/*" component={AdminDashboardsRouter} />
-              <Route path="/admin/dashboards" component={AdminDashboardsRouter} />
-              
-              {/* Default dashboard content */}
-              <Route path="/admin">
-                <DashboardContent 
-                  statsLoading={statsLoading} 
-                  allUsers={allUsers} 
-                />
-              </Route>
-            </Switch>
-          </div>
+          <Switch>
+            {/* Dashboard routes - full-bleed without padding */}
+            <Route path="/admin/dashboards/*" component={AdminDashboardsRouter} />
+            <Route path="/admin/dashboards" component={AdminDashboardsRouter} />
+            
+            {/* Other admin routes with padding */}
+            <Route>
+              <div className="p-6">
+                <Switch>
+                  {/* Sub-routes */}
+                  <Route path="/admin/site-editor" component={() => <SiteEditorContent />} />
+                  <Route path="/admin/beacon" component={AdminBeaconPage} />
+                  <Route path="/admin/settings" component={AdminSettingsPage} />
+                  <Route path="/admin/polygons">
+                    {() => (
+                      <Suspense fallback={<div className="flex items-center justify-center py-20">Loading Polygon Manager...</div>}>
+                        <PolygonManagerPage />
+                      </Suspense>
+                    )}
+                  </Route>
+                  <Route path="/admin/communities/:slug" component={CommunityEditorPage} />
+                  <Route path="/admin/communities" component={CommunityListPage} />
+                  <Route path="/admin/redirects" component={RedirectsListPage} />
+                  <Route path="/admin/global-scripts" component={GlobalScriptsListPage} />
+                  <Route path="/admin/blog/import" component={BlogImportPage} />
+                  <Route path="/admin/blog/posts/:slug" component={BlogPostEditorPage} />
+                  <Route path="/admin/blog/posts" component={BlogPostListPage} />
+                  <Route path="/admin/blog/categories" component={BlogCategoryListPage} />
+                  <Route path="/admin/form-submissions/:id" component={FormSubmissionDetailPage} />
+                  <Route path="/admin/form-submissions" component={FormSubmissionsPage} />
+                  <Route path="/admin/agents/:id" component={AgentEditorPage} />
+                  <Route path="/admin/agents" component={AgentListPage} />
+                  <Route path="/admin/pages/blog/new" component={BlogPageEditorPage} />
+                  <Route path="/admin/pages/blog/:id/edit" component={BlogPageEditorPage} />
+                  <Route path="/admin/pages/community/new" component={CommunityPageEditorPage} />
+                  <Route path="/admin/pages/community/:id/edit" component={CommunityPageEditorPage} />
+                  <Route path="/admin/core/import" component={CoreImportPage} />
+                  <Route path="/admin/pages/core/new" component={CorePageEditorPage} />
+                  <Route path="/admin/pages/core/:id/edit" component={CorePageEditorPage} />
+                  <Route path="/admin/pages/new" component={PageEditorPage} />
+                  <Route path="/admin/pages/:id/edit" component={PageEditorPage} />
+                  <Route path="/admin/pages" component={PagesListPage} />
+                  <Route path="/admin/landing-pages/:id" component={LandingPageEditorPage} />
+                  <Route path="/admin/landing-pages" component={LandingPageListPage} />
+                  <Route path="/admin/multicam-editor" component={MulticamEditorPage} />
+                  <Route path="/admin/saved-searches" component={SavedSearchDashboard} />
+                  <Route path="/admin/testimonials/sources" component={ReviewSourceManagerPage} />
+                  <Route path="/admin/testimonials/:id" component={TestimonialEditorPage} />
+                  <Route path="/admin/testimonials" component={TestimonialListPage} />
+                  
+                  {/* Default dashboard content */}
+                  <Route path="/admin">
+                    <DashboardContent 
+                      statsLoading={statsLoading} 
+                      allUsers={allUsers} 
+                    />
+                  </Route>
+                </Switch>
+              </div>
+            </Route>
+          </Switch>
         </div>
       </div>
     </div>
