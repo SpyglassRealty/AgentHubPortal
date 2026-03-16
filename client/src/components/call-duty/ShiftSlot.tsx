@@ -335,6 +335,7 @@ export default function ShiftSlot({
           {isAdmin && !slot.isFull && (
             <div className="space-y-2">
               {/* Search box */}
+                  {/* ⚠️ CRITICAL: The "Assign by email instead" button MUST remain inside this searchContainerRef div. DO NOT move it outside. The click-outside handler on document mousedown clears searchTerm when it detects a click outside this ref. If the button is outside, mousedown clears searchTerm before onClick fires, making the button vanish on click. This was a hard-fought bug fix (Mar 16 2026). The emailAssignDialog Dialog in call-duty.tsx handles the actual form — it uses a Radix portal and renders at document.body level, so it cannot be clipped by any parent overflow. */}
                   <div className="relative" ref={searchContainerRef}>
                     <div className="flex items-center gap-1">
                       <Search className="h-3 w-3 text-muted-foreground flex-shrink-0" />
