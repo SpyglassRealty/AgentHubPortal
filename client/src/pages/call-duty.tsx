@@ -27,6 +27,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -167,6 +174,10 @@ export default function CallDutyPage() {
     label: string;
     cancellationReason?: string;
   } | null>(null);
+
+  const [emailAssignDialog, setEmailAssignDialog] = useState<{ slotId: string; prefillEmail: string } | null>(null);
+  const [emailAssignName, setEmailAssignName] = useState("");
+  const [emailAssignEmail, setEmailAssignEmail] = useState("");
 
   // Cancellation reason input state
   const [cancellationReason, setCancellationReason] = useState("");
@@ -855,7 +866,11 @@ export default function CallDutyPage() {
                 availableUsers={availableUsers}
                 usersLoading={usersLoading}
                 onAssignAgent={handleAssignAgent}
-                onAssignByEmail={handleAssignByEmail}
+                onAssignByEmail={(slotId, _name, prefillEmail) => {
+                  setEmailAssignName("");
+                  setEmailAssignEmail(prefillEmail);
+                  setEmailAssignDialog({ slotId, prefillEmail });
+                }}
                 onRemoveAgent={handleRemoveAgent}
               />
             )}
@@ -1493,6 +1508,65 @@ export default function CallDutyPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      <Dialog open={!!emailAssignDialog} onOpenChange={(open) => {
+        if (!open) {
+          setEmailAssignDialog(null);
+          setEmailAssignName("");
+          setEmailAssignEmail("");
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign by Email</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="email-assign-name">Name</Label>
+              <Input 
+                id="email-assign-name" 
+                placeholder="Agent name" 
+                value={emailAssignName} 
+                onChange={(e) => setEmailAssignName(e.target.value)} 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email-assign-email">Email</Label>
+              <Input 
+                id="email-assign-email" 
+                type="email" 
+                placeholder="agent@email.com" 
+                value={emailAssignEmail} 
+                onChange={(e) => setEmailAssignEmail(e.target.value)} 
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setEmailAssignDialog(null);
+              setEmailAssignName("");
+              setEmailAssignEmail("");
+            }}>Cancel</Button>
+            <Button 
+              disabled={!emailAssignName.trim() || !emailAssignEmail.trim()}
+              onClick={() => {
+                if (emailAssignDialog && emailAssignName.trim() && emailAssignEmail.trim()) {
+                  assignAgentMutation.mutate({ 
+                    slotId: emailAssignDialog.slotId, 
+                    name: emailAssignName.trim(), 
+                    email: emailAssignEmail.trim() 
+                  });
+                  setEmailAssignDialog(null);
+                  setEmailAssignName("");
+                  setEmailAssignEmail("");
+                }
+              }}
+            >
+              Assign
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
