@@ -365,7 +365,7 @@ export default function ShiftSlot({
                     </div>
 
                     {/* Agent suggestions dropdown - show all unassigned users, filtered by search */}
-                    {unassignedUsers.length > 0 && (
+                    {searchTerm.length >= 3 && filteredUsers.length > 0 && (
                       <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-background border rounded-md shadow-lg max-h-32 overflow-y-auto">
                         {filteredUsers.map((user) => {
                           const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
