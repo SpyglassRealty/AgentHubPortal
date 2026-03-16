@@ -151,6 +151,10 @@ export default function ShiftSlot({
     setSearchTerm("");
   };
 
+  const handleAssignByEmail = () => {
+    onAssignByEmail?.(slot.id, "", searchTerm.trim());
+  };
+
   const handleRemoveAgent = (signupId: string, agentName: string) => {
     if (onRemoveAgent) {
       onRemoveAgent(slot.id, signupId, agentName);
@@ -359,7 +363,7 @@ export default function ShiftSlot({
                               disabled={isLoading}
                               className="w-full flex items-center gap-2 p-2 text-xs hover:bg-muted/50 disabled:opacity-50 first:rounded-t-md last:rounded-b-md"
                             >
-                              <Avatar className="h-4 w-4 flex-shrink-0">
+                              <Avatar className="h-6 w-6 flex-shrink-0">
                                 <AvatarImage src={user.profileImageUrl || undefined} />
                                 <AvatarFallback className="text-[8px] bg-muted">
                                   {getInitials(user.firstName, user.lastName)}
@@ -414,7 +418,7 @@ export default function ShiftSlot({
                       variant="ghost"
                       size="sm"
                       className="w-full h-7 text-xs text-blue-700 hover:text-blue-700 hover:bg-blue-100 border border-blue-200 dark:text-blue-400 dark:hover:bg-blue-950"
-                      onClick={() => onAssignByEmail?.(slot.id, "", searchTerm.trim())}
+                      onClick={handleAssignByEmail}
                       disabled={isLoading}
                     >
                       <Mail className="h-3 w-3 mr-1" />
