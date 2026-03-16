@@ -6,7 +6,7 @@
   "scripts": {
     "dev:client": "vite dev --port 5000",
     "dev": "NODE_ENV=development tsx server/index.ts",
-    "build": "npm install && npx prisma generate --schema=server/prisma/schema.prisma && npm run client:build && npm run server:build",
+    "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "db:push": "drizzle-kit push",
@@ -94,7 +94,7 @@
     "nanoid": "^5.1.6",
     "next-themes": "^0.4.6",
     "node-cron": "^4.2.1",
-    "nodemailer": "^8.0.1",
+    "nodemailer": "^8.0.2",
     "openai": "^6.16.0",
     "openid-client": "^6.8.1",
     "p-limit": "^7.2.0",

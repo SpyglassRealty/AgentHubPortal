@@ -1,8 +1,9 @@
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, X, User, UserMinus, Users } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { UserPlus, X, User, UserMinus, Users, Search, Mail } from "lucide-react";
 
 export interface SlotSignup {
   id: string;
@@ -58,7 +59,9 @@ interface ShiftSlotProps {
   // Admin props
   isAdmin?: boolean;
   availableUsers?: AvailableUser[];
+  usersLoading?: boolean;
   onAssignAgent?: (slotId: string, userId: string) => void;
+  onAssignByEmail?: (slotId: string, name: string, email: string) => void;
   onRemoveAgent?: (slotId: string, signupId: string, agentName: string) => void;
 }
 
@@ -94,20 +97,58 @@ export default function ShiftSlot({
   isLoading,
   isAdmin = false,
   availableUsers = [],
+  usersLoading = false,
   onAssignAgent,
+  onAssignByEmail,
   onRemoveAgent
 }: ShiftSlotProps) {
   const isPast = new Date(`${slot.date}T${slot.startTime}:00`) < new Date();
+  const [searchTerm, setSearchTerm] = useState("");
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Close search when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node) && searchTerm.trim()) {
+        setSearchTerm("");
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [searchTerm]);
   
   // Filter available users to exclude those already signed up for this slot
   const unassignedUsers = availableUsers.filter(user => 
     !slot.signups.some(signup => signup.userId === user.id)
   );
 
+  // Filter users by search term
+  const filteredUsers = useMemo(() => {
+    if (!searchTerm.trim()) return unassignedUsers;
+    
+    const term = searchTerm.toLowerCase();
+    return unassignedUsers.filter(user => {
+      const firstName = (user.firstName || "").toLowerCase();
+      const lastName = (user.lastName || "").toLowerCase();
+      const email = user.email.toLowerCase();
+      return firstName.includes(term) || lastName.includes(term) || email.includes(term);
+    });
+  }, [unassignedUsers, searchTerm]);
+
   const handleAssignAgent = (userId: string) => {
     if (onAssignAgent) {
       onAssignAgent(slot.id, userId);
+      // Clear search term to close autocomplete dropdown
+      setSearchTerm("");
     }
+  };
+
+  const handleSelectUser = (userId: string) => {
+    handleAssignAgent(userId);
+    setSearchTerm("");
   };
 
   const handleRemoveAgent = (signupId: string, agentName: string) => {
@@ -165,8 +206,8 @@ export default function ShiftSlot({
             return (
               <div key={signup.id} className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <Avatar className="h-6 w-6 flex-shrink-0">
-                    <AvatarImage src={signup.profileImageUrl || undefined} />
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarImage src={signup.fubAvatarUrl || signup.profileImageUrl || undefined} />
                     <AvatarFallback className="text-[10px] bg-muted">
                       {getInitials(signup.firstName, signup.lastName)}
                     </AvatarFallback>
@@ -267,7 +308,7 @@ export default function ShiftSlot({
               disabled={isLoading}
             >
               <UserPlus className="h-3 w-3 mr-1" />
-              Sign Up
+              Sign Me Up
             </Button>
           ) : (
             <div className="space-y-1">
@@ -291,32 +332,69 @@ export default function ShiftSlot({
           )}
           
           {/* Admin actions */}
-          {isAdmin && !slot.isFull && unassignedUsers.length > 0 && (
-            <div className="flex items-center gap-1">
-              <Users className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-              <Select onValueChange={handleAssignAgent} disabled={isLoading}>
-                <SelectTrigger className="h-7 text-xs border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 flex-1">
-                  <SelectValue placeholder="Assign Agent" />
-                </SelectTrigger>
-                <SelectContent>
-                  {unassignedUsers.map((user) => {
-                    const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
-                    return (
-                      <SelectItem key={user.id} value={user.id} className="text-xs">
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-4 w-4">
-                            <AvatarImage src={user.profileImageUrl || undefined} />
-                            <AvatarFallback className="text-[8px] bg-muted">
-                              {getInitials(user.firstName, user.lastName)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="truncate">{userName}</span>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+          {isAdmin && !slot.isFull && (
+            <div className="space-y-2">
+              {/* Search box */}
+                  <div className="relative" ref={searchContainerRef}>
+                    <div className="flex items-center gap-1">
+                      <Search className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                      <Input
+                        placeholder="Search agents..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="h-7 text-xs flex-1"
+                        disabled={isLoading}
+                      />
+                    </div>
+
+                    {/* Agent suggestions dropdown - show all unassigned users, filtered by search */}
+                    {searchTerm.length >= 3 && filteredUsers.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-background border rounded-md shadow-lg max-h-32 overflow-y-auto">
+                        {filteredUsers.map((user) => {
+                          const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
+                          return (
+                            <button
+                              key={user.id}
+                              onClick={() => handleAssignAgent(user.id)}
+                              disabled={isLoading}
+                              className="w-full flex items-center gap-2 p-2 text-xs hover:bg-muted/50 disabled:opacity-50 first:rounded-t-md last:rounded-b-md"
+                            >
+                              <Avatar className="h-4 w-4 flex-shrink-0">
+                                <AvatarImage src={user.profileImageUrl || undefined} />
+                                <AvatarFallback className="text-[8px] bg-muted">
+                                  {getInitials(user.firstName, user.lastName)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex flex-col items-start min-w-0 flex-1">
+                                <span className="truncate font-medium">{userName}</span>
+                                <span className="truncate text-muted-foreground text-[10px]">{user.email}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Email assignment button - show when no users available or search yields no results */}
+                    {!usersLoading && (unassignedUsers.length === 0 || (searchTerm.length >= 3 && filteredUsers.length === 0)) && (
+                      <div className="mt-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full h-7 text-xs text-blue-700 hover:text-blue-700 hover:bg-blue-100 border border-blue-200 dark:text-blue-400 dark:hover:bg-blue-950"
+                          onClick={() => onAssignByEmail?.(slot.id, "", searchTerm.trim())}
+                          disabled={isLoading}
+                        >
+                          <Mail className="h-3 w-3 mr-1" />
+                          Assign by email instead
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+              {/* Removed duplicate autocomplete section - already handled inside searchContainerRef above */}
+
+              {/* Inline form removed - using Dialog in call-duty.tsx instead */}
             </div>
           )}
         </div>

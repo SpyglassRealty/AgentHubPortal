@@ -26,7 +26,9 @@ interface ShiftCalendarProps {
   // Admin props
   isAdmin?: boolean;
   availableUsers?: AvailableUser[];
+  usersLoading?: boolean;
   onAssignAgent?: (slotId: string, userId: string) => void;
+  onAssignByEmail?: (slotId: string, name: string, email: string) => void;
   onRemoveAgent?: (slotId: string, signupId: string, agentName: string) => void;
 }
 
@@ -39,7 +41,9 @@ export default function ShiftCalendar({
   isLoading,
   isAdmin,
   availableUsers,
+  usersLoading,
   onAssignAgent,
+  onAssignByEmail,
   onRemoveAgent,
 }: ShiftCalendarProps) {
   // Build 7-day array from weekStart (Monday)
@@ -57,7 +61,7 @@ export default function ShiftCalendar({
   }, [slots]);
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto pb-40">
       <div className="min-w-[700px]">
         {/* Day headers */}
         <div className="grid grid-cols-[100px_repeat(7,1fr)] gap-2 mb-2">
@@ -122,7 +126,9 @@ export default function ShiftCalendar({
                   isLoading={isLoading}
                   isAdmin={isAdmin}
                   availableUsers={availableUsers}
+                  usersLoading={usersLoading}
                   onAssignAgent={onAssignAgent}
+                  onAssignByEmail={onAssignByEmail}
                   onRemoveAgent={onRemoveAgent}
                 />
               );

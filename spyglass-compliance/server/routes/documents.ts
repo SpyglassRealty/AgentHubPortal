@@ -10,6 +10,12 @@ import {
   requireAdmin,
   requireOwnershipOrAdmin
 } from '../middleware/auth.js';
+import { User } from '@prisma/client';
+
+// Helper to properly cast user from request
+function getTypedUser(reqUser: any): User {
+  return reqUser as User;
+}
 import { 
   uploadSingle,
   uploadMultiple,
@@ -30,7 +36,7 @@ const router = Router();
  */
 router.post('/upload/:dealId', requireAuth, uploadMultiple, handleUploadError, async (req: Request, res: Response) => {
   try {
-    const { dealId } = req.params;
+    const dealId = req.params.dealId as string;
     const { complianceItemId, description, extractContract } = req.body;
     const files = req.files as Express.Multer.File[];
 
@@ -61,7 +67,7 @@ router.post('/upload/:dealId', requireAuth, uploadMultiple, handleUploadError, a
     }
 
     // Check access (agents can only upload to their deals)
-    if (req.user?.role === 'agent' && deal.agentId !== req.user.id) {
+    if (getTypedUser(req.user).role === 'agent' && deal.agentId !== req.user.id) {
       files.forEach(file => deleteFile(file.path));
       return res.status(403).json({
         error: 'Access denied',
@@ -97,7 +103,7 @@ router.post('/upload/:dealId', requireAuth, uploadMultiple, handleUploadError, a
           id: uuidv4(),
           dealId,
           complianceItemId: complianceItemId || null,
-          uploadedById: req.user!.id,
+          uploadedById: getTypedUser(req.user).id,
           filename: file.originalname,
           filePath: file.path,
           fileSize: file.size,
@@ -150,7 +156,7 @@ router.post('/upload/:dealId', requireAuth, uploadMultiple, handleUploadError, a
     // Create audit log
     await prisma.auditLog.create({
       data: {
-        userId: req.user!.id,
+        userId: getTypedUser(req.user).id,
         dealId,
         action: 'documents_uploaded',
         details: {
@@ -163,7 +169,7 @@ router.post('/upload/:dealId', requireAuth, uploadMultiple, handleUploadError, a
       }
     });
 
-    console.log(`✅ Documents uploaded: ${files.length} files for deal ${deal.dealNumber} by ${req.user?.email}`);
+    console.log(`✅ Documents uploaded: ${files.length} files for deal ${deal.dealNumber} by ${getTypedUser(req.user).email}`);
 
     res.status(201).json({
       success: true,
@@ -200,7 +206,7 @@ router.post('/upload/:dealId', requireAuth, uploadMultiple, handleUploadError, a
  */
 router.get('/deal/:dealId', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { dealId } = req.params;
+    const dealId = req.params.dealId as string;
 
     // Verify deal exists and user has access
     const deal = await prisma.deal.findUnique({
@@ -220,7 +226,7 @@ router.get('/deal/:dealId', requireAuth, async (req: Request, res: Response) => 
     }
 
     // Check access
-    if (req.user?.role === 'agent' && deal.agentId !== req.user.id) {
+    if (getTypedUser(req.user).role === 'agent' && deal.agentId !== req.user.id) {
       return res.status(403).json({
         error: 'Access denied',
         message: 'You can only view documents for your own deals'
@@ -281,7 +287,7 @@ router.get('/deal/:dealId', requireAuth, async (req: Request, res: Response) => 
  */
 router.get('/:id/download', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const document = await prisma.document.findUnique({
       where: { id },
@@ -304,7 +310,7 @@ router.get('/:id/download', requireAuth, async (req: Request, res: Response) => 
     }
 
     // Check access
-    if (req.user?.role === 'agent' && document.deal.agentId !== req.user.id) {
+    if (getTypedUser(req.user).role === 'agent' && document.deal.agentId !== req.user.id) {
       return res.status(403).json({
         error: 'Access denied',
         message: 'You can only download documents from your own deals'
@@ -322,7 +328,7 @@ router.get('/:id/download', requireAuth, async (req: Request, res: Response) => 
     // Create audit log for download
     await prisma.auditLog.create({
       data: {
-        userId: req.user!.id,
+        userId: getTypedUser(req.user).id,
         dealId: document.deal.id,
         action: 'document_downloaded',
         details: {
@@ -334,7 +340,7 @@ router.get('/:id/download', requireAuth, async (req: Request, res: Response) => 
       }
     });
 
-    console.log(`📥 Document downloaded: ${document.filename} from deal ${document.deal.dealNumber} by ${req.user?.email}`);
+    console.log(`📥 Document downloaded: ${document.filename} from deal ${document.deal.dealNumber} by ${getTypedUser(req.user).email}`);
 
     // Set appropriate headers
     res.setHeader('Content-Disposition', `attachment; filename="${document.filename}"`);
@@ -360,7 +366,7 @@ router.get('/:id/download', requireAuth, async (req: Request, res: Response) => 
  */
 router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const document = await prisma.document.findUnique({
       where: { id },
@@ -390,7 +396,7 @@ router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
     }
 
     // Check access (agents can only delete from their deals, admins can delete any)
-    if (req.user?.role === 'agent' && document.deal.agentId !== req.user.id) {
+    if (getTypedUser(req.user).role === 'agent' && document.deal.agentId !== req.user.id) {
       return res.status(403).json({
         error: 'Access denied',
         message: 'You can only delete documents from your own deals'
@@ -424,7 +430,7 @@ router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
     // Create audit log
     await prisma.auditLog.create({
       data: {
-        userId: req.user!.id,
+        userId: getTypedUser(req.user).id,
         dealId: document.deal.id,
         action: 'document_deleted',
         details: {
@@ -436,7 +442,7 @@ router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
       }
     });
 
-    console.log(`🗑️ Document deleted: ${document.filename} from deal ${document.deal.dealNumber} by ${req.user?.email}`);
+    console.log(`🗑️ Document deleted: ${document.filename} from deal ${document.deal.dealNumber} by ${getTypedUser(req.user).email}`);
 
     res.json({
       success: true,
@@ -485,7 +491,7 @@ router.post('/scan', requireAuth, uploadSingle, handleUploadError, async (req: R
       // Clean up temp file
       deleteFile(file.path);
 
-      console.log(`🔍 Contract scanned: ${file.originalname} by ${req.user?.email}`);
+      console.log(`🔍 Contract scanned: ${file.originalname} by ${getTypedUser(req.user).email}`);
 
       res.json({
         success: true,
@@ -525,7 +531,7 @@ router.post('/scan', requireAuth, uploadSingle, handleUploadError, async (req: R
 router.get('/stats', requireAuth, async (req: Request, res: Response) => {
   try {
     const dealFilter: any = {};
-    if (req.user?.role === 'agent') {
+    if (getTypedUser(req.user).role === 'agent') {
       dealFilter.agentId = req.user.id;
     }
 

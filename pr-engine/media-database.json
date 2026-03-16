@@ -1,0 +1,199 @@
+{
+  "lastUpdated": "2026-03-11",
+  "journalists": [
+    {
+      "id": "ali-juell-abj",
+      "name": "Ali Juell",
+      "publication": "Austin Business Journal",
+      "email": null,
+      "twitter": null,
+      "beat": "Residential Real Estate & Affordability",
+      "tier": "A",
+      "notes": "New dedicated residential real estate reporter (started Jan 2026). Covers Central Texas housing market, luxury housing, new developments.",
+      "recentArticles": [
+        "Austin's luxury housing market shows 'strong momentum' for 2026",
+        "MA Partners to develop over 900 Bastrop County home lots", 
+        "As expected, Austin's housing market fell flat in January"
+      ],
+      "lastUpdated": "2026-03-11"
+    },
+    {
+      "id": "shonda-novak-statesman",
+      "name": "Shonda Novak",
+      "publication": "Austin American-Statesman",
+      "email": null,
+      "twitter": null,
+      "beat": "Residential & Commercial Real Estate",
+      "tier": "A",
+      "notes": "Veteran real estate reporter, covers growth and development in Central Texas. Active with NAREE (National Association of Real Estate Editors).",
+      "recentArticles": [
+        "Another affordable housing battle erupts, this one in Northwest Austin",
+        "Emma Stone is selling Austin home: Unfinished Tarrytown house hits market for $26.5M",
+        "No hammer and nails needed: 3D-printed homes coming to Austin's Mueller community"
+      ],
+      "lastUpdated": "2026-03-11"
+    },
+    {
+      "id": "hannah-norton-ci",
+      "name": "Hannah Norton",
+      "publication": "Community Impact",
+      "email": null,
+      "twitter": null,
+      "beat": "Real Estate & Development",
+      "tier": "B",
+      "notes": "Covers Austin-area real estate for Community Impact, focuses on local market data and new developments.",
+      "recentArticles": [
+        "More Central Austin homes sold in January 2026 compared to January 2025",
+        "Crestline at Brushy Creek to bring luxury homes and amenities to Cedar Park",
+        "Unlock MLS shares key Austin-area housing market takeaways for 2025"
+      ],
+      "lastUpdated": "2026-03-11"
+    },
+    {
+      "id": "sarah-wheeler-hw",
+      "name": "Sarah Wheeler",
+      "publication": "HousingWire",
+      "email": null,
+      "twitter": "@swheelerHW",
+      "beat": "Editor in Chief - National Real Estate",
+      "tier": "A",
+      "notes": "Editor in Chief at HousingWire (12+ years). Covers national real estate trends, has written about Austin market. Based in Dallas-Fort Worth area.",
+      "recentArticles": [
+        "Why Austin home prices remain stubbornly high",
+        "What's Next for the Texas Housing Market? 2025 Trends",
+        "Barrier to entry: builders' first challenge is to work through a glut"
+      ],
+      "lastUpdated": "2026-03-11"
+    },
+    {
+      "id": "andrea-brambila-inman",
+      "name": "Andrea Brambila",
+      "publication": "Inman News",
+      "email": null,
+      "twitter": null,
+      "beat": "Deputy Editor - National Real Estate",
+      "tier": "A",
+      "notes": "Deputy Editor at Inman News. Award-winning journalist (NAREE Gold Award winner). Covers luxury real estate, market trends.",
+      "recentArticles": [
+        "To succeed in luxury real estate, know your audience",
+        "Various luxury market analysis pieces",
+        "Market trend reporting"
+      ],
+      "lastUpdated": "2026-03-11"
+    },
+    {
+      "id": "jim-dalrymple-inman",
+      "name": "Jim Dalrymple II",
+      "publication": "Inman News",
+      "email": null,
+      "twitter": "@dalrymple",
+      "beat": "Interim Editorial Director - Real Estate Technology",
+      "tier": "A",
+      "notes": "Interim Editorial Director at Inman. Covers real estate technology, market analysis. Previously at BuzzFeed News. Based in Salt Lake City.",
+      "recentArticles": [
+        "Zillow removing CoStar-owned Matterport tours escalates portal wars",
+        "Redfin reported that both buyers and sellers are in retreat",
+        "Leaders envision more tech, more change and perhaps a mixed recovery"
+      ],
+      "lastUpdated": "2026-03-11"
+    },
+    {
+      "id": "kelsey-sanchez-kvue",
+      "name": "Kelsey Sanchez",
+      "publication": "KVUE",
+      "email": null,
+      "twitter": null,
+      "beat": "General Reporter",
+      "tier": "B",
+      "notes": "Reporter at KVUE Austin. Station has 'Boomtown' series covering Austin growth and affordability issues.",
+      "recentArticles": [
+        "Austin realtors at Central Texas Growth Forum express optimism",
+        "Various local Austin news coverage",
+        "Growth and development stories"
+      ],
+      "lastUpdated": "2026-03-11"
+    },
+    {
+      "id": "daranesha-herron-kvue",
+      "name": "Daranesha Herron",
+      "publication": "KVUE",
+      "email": null,
+      "twitter": null,
+      "beat": "Reporter",
+      "tier": "B",
+      "notes": "Reporter at KVUE Austin. Part of team covering local business and growth stories.",
+      "recentArticles": [],
+      "lastUpdated": "2026-03-11"
+    },
+    {
+      "id": "marc-mullins-kvue",
+      "name": "Marc Mullins",
+      "publication": "KVUE",
+      "email": null,
+      "twitter": null,
+      "beat": "Emmy Award-winning Reporter",
+      "tier": "B",
+      "notes": "25+ years experience, Emmy Award-winning journalist. Recent arrival to Central Texas from Central Indiana.",
+      "recentArticles": [],
+      "lastUpdated": "2026-03-11"
+    },
+    {
+      "id": "hannah-rucker-kvue",
+      "name": "Hannah Rucker",
+      "publication": "KVUE",
+      "email": null,
+      "twitter": null,
+      "beat": "Daybreak Anchor (4:30-7 AM)",
+      "tier": "C",
+      "notes": "Native Texan, morning show anchor. Could cover business/real estate stories during morning programming.",
+      "recentArticles": [],
+      "lastUpdated": "2026-03-11"
+    },
+    {
+      "id": "taylor-alanis-kxan",
+      "name": "Taylor Alanis",
+      "publication": "KXAN",
+      "email": null,
+      "twitter": null,
+      "beat": "Multimedia Journalist - KXAN Investigates",
+      "tier": "B",
+      "notes": "Texas native, joined KXAN Investigates in September 2025. Part of largest investigative unit in Central Texas.",
+      "recentArticles": [
+        "The Austin metro's hottest housing market: Elgin",
+        "Austin Board of Realtors economist predicts 2025's housing market",
+        "Various investigative pieces"
+      ],
+      "lastUpdated": "2026-03-11"
+    }
+  ],
+  "publicationNotes": {
+    "Austin Business Journal": "Leading local business publication. Ali Juell is dedicated residential RE reporter (new position created Jan 2026).",
+    "Austin American-Statesman": "Major daily newspaper. Shonda Novak is veteran real estate reporter with NAREE connections.",
+    "Community Impact": "Hyperlocal publication with ~2M distribution across Austin metro. Multiple edition coverage.",
+    "Inman News": "Leading national real estate industry publication. Key for brokerage and tech stories.",
+    "HousingWire": "National housing industry publication. Covers market trends and technology.",
+    "KVUE": "ABC affiliate, has 'Boomtown' series on Austin growth. 75+ journalists on staff.",
+    "KXAN": "NBC affiliate with largest investigative unit in Central Texas (9 journalists).",
+    "The Real Deal Texas": "Commercial real estate focus, need more research on current staff.",
+    "Austin Monthly": "Lifestyle publication, need research on real estate coverage.",
+    "FOX 7": "Need research on current business/real estate reporters.",
+    "KEYE": "CBS affiliate, need research on current staff."
+  },
+  "researchNotes": {
+    "nextSteps": [
+      "Research FOX 7 Austin business/real estate reporters",
+      "Research KEYE CBS Austin news team", 
+      "Find current staff at The Real Deal Texas",
+      "Research Austin Monthly real estate coverage",
+      "Look for email addresses and additional contact info",
+      "Research other Community Impact reporters across Austin editions"
+    ],
+    "targetStoryAngles": [
+      "Austin brokerage growth and recruiting",
+      "Real estate technology and innovation",
+      "Market trends and data analysis", 
+      "Agent recruiting and retention",
+      "Commercial real estate development"
+    ]
+  }
+}

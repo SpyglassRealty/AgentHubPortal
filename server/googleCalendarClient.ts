@@ -7,6 +7,9 @@
 
 import { google } from 'googleapis';
 import { getGoogleCredentials } from './googleCredentials';
+import { db } from './db';
+import { sql } from 'drizzle-orm';
+import crypto from 'crypto';
 
 import type { GoogleCalendarEvent } from '@shared/schema';
 
@@ -22,7 +25,7 @@ const CALL_DUTY_CALENDAR_ID = 'c_efca76ba29cbe0b028fc4951141ce67d9abefc25ab5e1ab
  * The shared Call Duty calendar requires domain-wide delegation with a
  * domain user context — the service account alone returns 404.
  */
-const CALENDAR_IMPERSONATE_USER = 'ryan@spyglassrealty.com';
+const CALENDAR_IMPERSONATE_USER = process.env.GOOGLE_CALENDAR_IMPERSONATE_USER || 'john@spyglassrealty.com';
 
 /**
  * Get an authenticated Calendar API client with write scope.
@@ -264,6 +267,68 @@ export async function removeCallDutyAttendee(
     return true;
   } catch (error: any) {
     console.error(`[Call Duty Calendar] Failed to remove ${agentEmail} from ${eventId}:`, error.message);
+    return false;
+  }
+}
+
+/**
+ * Get attendees for a Call Duty Calendar event.
+ * Uses centralized auth and calendar configuration.
+ */
+export async function getCalendarEventAttendees(eventId: string): Promise<any[]> {
+  try {
+    const calendar = getCalendarWriteClient();
+    
+    const eventResponse = await calendar.events.get({
+      calendarId: CALL_DUTY_CALENDAR_ID,
+      eventId,
+    });
+
+    return eventResponse.data.attendees || [];
+  } catch (error: any) {
+    console.error(`[Calendar Event] Failed to get attendees for event ${eventId}:`, error.message);
+    return [];
+  }
+}
+
+/**
+ * Register a Google Calendar watch for RSVP notifications on a Call Duty event.
+ * Creates a push notification webhook that triggers when attendees accept/decline.
+ */
+export async function registerEventWatch(
+  eventId: string,
+  slotId: string,
+): Promise<boolean> {
+  try {
+    const calendar = getCalendarWriteClient();
+    const watchId = crypto.randomUUID();
+    const webhookUrl = 'https://missioncontrol-tjfm.onrender.com/api/call-duty/calendar-webhook';
+
+    console.log(`[Calendar Watch] Registering watch for event ${eventId}, slot ${slotId}, watchId ${watchId}`);
+
+    const response = await calendar.events.watch({
+      calendarId: CALL_DUTY_CALENDAR_ID,
+      eventId,
+      requestBody: {
+        id: watchId,
+        type: 'web_hook',
+        address: webhookUrl,
+      },
+    });
+
+    const resourceId = response.data.resourceId;
+    const expiration = response.data.expiration ? new Date(parseInt(response.data.expiration)) : new Date(Date.now() + 24 * 60 * 60 * 1000); // Default to 24 hours
+
+    // Store watch registration in database
+    await db.execute(sql`
+      INSERT INTO calendar_watches (watch_id, resource_id, slot_id, expires_at)
+      VALUES (${watchId}, ${resourceId}, ${slotId}, ${expiration})
+    `);
+
+    console.log(`[Calendar Watch] Successfully registered watch ${watchId} for slot ${slotId}, expires at ${expiration}`);
+    return true;
+  } catch (error: any) {
+    console.error(`[Calendar Watch] Failed to register watch for event ${eventId}, slot ${slotId}:`, error.message);
     return false;
   }
 }

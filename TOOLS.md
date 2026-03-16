@@ -48,7 +48,15 @@ When Trisha adds tracking scripts, verify at:
 
 ### Agent Contacts
 - **Maggie:** maggie@spyglassrealty.com 
+  - **Slack:** U0AEXBXSA8P (but may not see mentions reliably)
   - **Email:** For formal QA requests and documentation (use clawd@spyglassrealty.com as sender)
   - **iMessage:** For direct debugging communication during active sessions
   - **WhatsApp:** For direct debugging communication during active sessions  
   - **Protocol:** Email for QA initiation, iMessage/WhatsApp for real-time debugging, email for final resolution
+
+### HOSTING MAP (CRITICAL)
+- **Mission Control (AgentHubPortal)** → **Render**: `missioncontrol-tjfm.onrender.com`
+  - Pulse, Call Duty, CMA, Developer Dashboard, Admin
+- **Spyglass IDX site** → **Vercel**: `spyglass-idx.vercel.app`  
+  - Community pages, listing search, blog
+- **SEPARATE apps, SEPARATE repos, SEPARATE hosting platforms**

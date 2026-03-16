@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, addWeeks, subWeeks, startOfWeek, endOfWeek, addDays } from "date-fns";
 import Layout from "@/components/layout";
@@ -14,6 +14,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useLocation } from "wouter";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +26,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Collapsible,
   CollapsibleContent,
@@ -130,7 +139,21 @@ function formatTimeRange(start: string, end: string): string {
 export default function CallDutyPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  const userRole = useUserRole();
+  const [, setLocation] = useLocation();
+
+  // Route guard: admin or developer only
+  React.useEffect(() => {
+    if (!isLoading && user && !userRole.isAdmin) {
+      setLocation('/');
+    }
+  }, [isLoading, user, userRole.isAdmin, setLocation]);
+
+  // Show nothing while loading or redirecting
+  if (isLoading || !user || !userRole.isAdmin) {
+    return null;
+  }
 
   // Week navigation — start on Monday
   const [weekStart, setWeekStart] = useState(() =>
@@ -141,14 +164,20 @@ export default function CallDutyPage() {
 
   // Confirmation dialog state
   const [confirmAction, setConfirmAction] = useState<{
-    type: "signup" | "cancel" | "delete_holiday" | "assign_agent" | "remove_agent" | "join_waitlist" | "signup_warning" | "cancel_warning" | "cancel_reason" | "admin_remove_reason";
+    type: "signup" | "cancel" | "delete_holiday" | "assign_agent" | "assign_by_email" | "remove_agent" | "join_waitlist" | "signup_warning" | "cancel_warning" | "cancel_reason" | "admin_remove_reason";
     slotId?: string;
     holidayId?: string;
     signupId?: string;
     userId?: string;
+    name?: string;
+    email?: string;
     label: string;
     cancellationReason?: string;
   } | null>(null);
+
+  const [emailAssignDialog, setEmailAssignDialog] = useState<{ slotId: string; prefillEmail: string } | null>(null);
+  const [emailAssignName, setEmailAssignName] = useState("");
+  const [emailAssignEmail, setEmailAssignEmail] = useState("");
 
   // Cancellation reason input state
   const [cancellationReason, setCancellationReason] = useState("");
@@ -460,12 +489,13 @@ export default function CallDutyPage() {
 
   // Assign agent mutation (admin only)
   const assignAgentMutation = useMutation({
-    mutationFn: async ({ slotId, userId }: { slotId: string; userId: string }) => {
+    mutationFn: async ({ slotId, userId, name, email }: { slotId: string; userId?: string; name?: string; email?: string }) => {
+      const body = userId ? { userId } : { name, email };
       const res = await fetch(`/api/call-duty/slots/${slotId}/assign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -608,6 +638,12 @@ export default function CallDutyPage() {
     });
   }
 
+  function handleAssignByEmail(slotId: string, name: string, email: string) {
+    if (name.trim() && email.trim()) {
+      assignAgentMutation.mutate({ slotId, name: name.trim(), email: email.trim() });
+    }
+  }
+
   function handleRemoveAgent(slotId: string, signupId: string, agentName: string) {
     // First show cancellation reason dialog for admin removal
     setConfirmAction({
@@ -638,6 +674,8 @@ export default function CallDutyPage() {
       deleteHolidayMutation.mutate(confirmAction.holidayId);
     } else if (confirmAction.type === "assign_agent" && confirmAction.slotId && confirmAction.userId) {
       assignAgentMutation.mutate({ slotId: confirmAction.slotId, userId: confirmAction.userId });
+    } else if (confirmAction.type === "assign_by_email" && confirmAction.slotId && confirmAction.name && confirmAction.email) {
+      assignAgentMutation.mutate({ slotId: confirmAction.slotId, name: confirmAction.name, email: confirmAction.email });
     } else if (confirmAction.type === "remove_agent" && confirmAction.slotId && confirmAction.signupId) {
       removeAgentMutation.mutate({ slotId: confirmAction.slotId, signupId: confirmAction.signupId });
     } else if (confirmAction.type === "join_waitlist" && confirmAction.slotId) {
@@ -677,7 +715,7 @@ export default function CallDutyPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-6 min-w-0 overflow-x-hidden">
         {/* Page header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -826,7 +864,13 @@ export default function CallDutyPage() {
                 isLoading={isMutating}
                 isAdmin={isAdmin && viewMode === 'admin'}
                 availableUsers={availableUsers}
+                usersLoading={usersLoading}
                 onAssignAgent={handleAssignAgent}
+                onAssignByEmail={(slotId, _name, prefillEmail) => {
+                  setEmailAssignName("");
+                  setEmailAssignEmail(prefillEmail);
+                  setEmailAssignDialog({ slotId, prefillEmail });
+                }}
                 onRemoveAgent={handleRemoveAgent}
               />
             )}
@@ -1343,6 +1387,8 @@ export default function CallDutyPage() {
                 ? "Delete Holiday"
                 : confirmAction?.type === "assign_agent"
                 ? "Assign Agent"
+                : confirmAction?.type === "assign_by_email"
+                ? "Assign by Email"
                 : confirmAction?.type === "remove_agent"
                 ? "Remove Agent"
                 : confirmAction?.type === "signup_warning"
@@ -1364,6 +1410,8 @@ export default function CallDutyPage() {
                 ? `Are you sure you want to delete "${confirmAction?.label}"? This action cannot be undone.`
                 : confirmAction?.type === "assign_agent"
                 ? `Are you sure you want to assign ${confirmAction.label}?`
+                : confirmAction?.type === "assign_by_email"
+                ? `Are you sure you want to assign ${confirmAction.label}?`
                 : confirmAction?.type === "remove_agent"
                 ? `Are you sure you want to remove ${confirmAction?.label}?`
                 : confirmAction?.type === "signup_warning" || confirmAction?.type === "cancel_warning"
@@ -1374,6 +1422,30 @@ export default function CallDutyPage() {
                 ? `Please provide a reason for removing this agent:`
                 : `Are you sure you want to join the waitlist for ${confirmAction?.label}? You'll be notified if a spot opens up.`}
             </AlertDialogDescription>
+            
+            {confirmAction?.type === "assign_by_email" && (
+              <div className="space-y-3 mt-3">
+                <div className="space-y-1">
+                  <Label htmlFor="confirm-assign-name">Name</Label>
+                  <Input 
+                    id="confirm-assign-name" 
+                    placeholder="Agent name" 
+                    value={confirmAction.name || ""} 
+                    onChange={(e) => setConfirmAction({...confirmAction, name: e.target.value})} 
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="confirm-assign-email">Email</Label>
+                  <Input 
+                    id="confirm-assign-email" 
+                    type="email" 
+                    placeholder="agent@email.com" 
+                    value={confirmAction.email || ""} 
+                    onChange={(e) => setConfirmAction({...confirmAction, email: e.target.value})} 
+                  />
+                </div>
+              </div>
+            )}
             
             {/* Cancellation reason input */}
             {(confirmAction?.type === "cancel_reason" || confirmAction?.type === "admin_remove_reason") && (
@@ -1400,6 +1472,8 @@ export default function CallDutyPage() {
               disabled={
                 (confirmAction?.type === "cancel_reason" || confirmAction?.type === "admin_remove_reason") 
                 && !cancellationReason.trim()
+                || confirmAction?.type === "assign_by_email" 
+                && (!confirmAction.name?.trim() || !confirmAction.email?.trim())
               }
               className={
                 confirmAction?.type === "cancel" || confirmAction?.type === "delete_holiday" || confirmAction?.type === "remove_agent" || confirmAction?.type === "cancel_reason" || confirmAction?.type === "admin_remove_reason"
@@ -1417,6 +1491,8 @@ export default function CallDutyPage() {
                 ? "Delete Holiday"
                 : confirmAction?.type === "assign_agent"
                 ? "Assign Agent"
+                : confirmAction?.type === "assign_by_email"
+                ? "Assign by Email"
                 : confirmAction?.type === "remove_agent"
                 ? "Remove Agent"
                 : confirmAction?.type === "signup_warning"
@@ -1432,6 +1508,65 @@ export default function CallDutyPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      <Dialog open={!!emailAssignDialog} onOpenChange={(open) => {
+        if (!open) {
+          setEmailAssignDialog(null);
+          setEmailAssignName("");
+          setEmailAssignEmail("");
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign by Email</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="email-assign-name">Name</Label>
+              <Input 
+                id="email-assign-name" 
+                placeholder="Agent name" 
+                value={emailAssignName} 
+                onChange={(e) => setEmailAssignName(e.target.value)} 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email-assign-email">Email</Label>
+              <Input 
+                id="email-assign-email" 
+                type="email" 
+                placeholder="agent@email.com" 
+                value={emailAssignEmail} 
+                onChange={(e) => setEmailAssignEmail(e.target.value)} 
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setEmailAssignDialog(null);
+              setEmailAssignName("");
+              setEmailAssignEmail("");
+            }}>Cancel</Button>
+            <Button 
+              disabled={!emailAssignName.trim() || !emailAssignEmail.trim()}
+              onClick={() => {
+                if (emailAssignDialog && emailAssignName.trim() && emailAssignEmail.trim()) {
+                  assignAgentMutation.mutate({ 
+                    slotId: emailAssignDialog.slotId, 
+                    name: emailAssignName.trim(), 
+                    email: emailAssignEmail.trim() 
+                  });
+                  setEmailAssignDialog(null);
+                  setEmailAssignName("");
+                  setEmailAssignEmail("");
+                }
+              }}
+            >
+              Assign
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

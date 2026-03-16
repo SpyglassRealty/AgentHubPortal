@@ -313,6 +313,16 @@ export async function registerRoutes(
                 console.warn('[Auth] fub_picture_url write failed, falling back to ID-only:', (colErr as Error).message);
                 updated = await storage.updateUserFubId(user.id, fubUser.id);
               }
+              
+              // Also sync the FUB avatar URL for shift slot avatars (Phase 3c)
+              if (fubUser.pictureUrl) {
+                try {
+                  await storage.updateUserFubAvatarUrl(user.id, fubUser.pictureUrl);
+                } catch (avatarErr) {
+                  console.warn('[Auth] fub_avatar_url write failed:', (avatarErr as Error).message);
+                }
+              }
+              
               if (updated) user = updated;
               console.log(`[Auth] Auto-linked FUB user ID ${fubUser.id} to user ${user.id} (${user.email}), pictureUrl: ${fubUser.pictureUrl || 'none'}`);
             } else {
@@ -329,6 +339,25 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Get all users for admin assignment purposes (call duty, etc.)
+  app.get('/api/auth/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      
+      // Only admin/developer can list all users
+      if (!user.isSuperAdmin && user.role !== 'admin' && user.role !== 'developer') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
     }
   });
 
@@ -360,6 +389,16 @@ export async function registerRoutes(
       }
 
       await storage.updateUserFubId(targetUser.id, fubUser.id);
+      
+      // Also sync the FUB avatar URL for shift slot avatars (Phase 3c)
+      if (fubUser.pictureUrl) {
+        try {
+          await storage.updateUserFubAvatarUrl(targetUser.id, fubUser.pictureUrl);
+        } catch (avatarErr) {
+          console.warn('[Auth] fub_avatar_url write failed during manual link:', (avatarErr as Error).message);
+        }
+      }
+      
       console.log(`[Auth] Manually linked FUB user ID ${fubUser.id} to user ${targetUser.id} (${searchEmail})`);
       
       res.json({ success: true, fubUserId: fubUser.id, fubName: fubUser.name });
@@ -6279,14 +6318,14 @@ Respond with valid JSON in this exact format:
     }
   });
 
-  // PATCH /api/users/:id/role - Update user role (developer only)
+  // PATCH /api/users/:id/role - Update user role (developer and admin)
   app.patch('/api/users/:id/role', isAuthenticated, async (req: any, res) => {
     try {
-      // Check if caller is developer role
+      // Check if caller is developer or admin role
       const callerEmail = req.user.claims?.email || req.user.email;
       const caller = callerEmail ? await storage.getUserByEmail(callerEmail) : null;
-      if (!caller || caller.role !== 'developer') {
-        return res.status(403).json({ error: 'Only developer role can change user roles' });
+      if (!caller || (caller.role !== 'developer' && caller.role !== 'admin')) {
+        return res.status(403).json({ error: 'Only developer or admin role can change user roles' });
       }
 
       const { id } = req.params;
@@ -6295,6 +6334,11 @@ Respond with valid JSON in this exact format:
       // Validate role
       if (!role || !['developer', 'admin', 'agent'].includes(role)) {
         return res.status(400).json({ error: 'Invalid role. Must be developer, admin, or agent' });
+      }
+
+      // Admin role restriction: cannot set developer role
+      if (caller.role === 'admin' && role === 'developer') {
+        return res.status(403).json({ error: 'Admin users cannot assign developer role. Only developers can assign developer role.' });
       }
 
       // Update user role in database

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, createContext, useContext } from "react";
 
 class DeveloperErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -102,7 +102,9 @@ import {
   User2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import { formatDistanceToNow } from "date-fns";
 import {
   LineChart,
@@ -215,10 +217,46 @@ const statusColors: Record<string, string> = {
   committed: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
 };
 
+// View As Context for Developer QA
+interface ViewAsContextType {
+  viewAsRole: 'developer' | 'admin' | 'agent' | null;
+  setViewAsRole: (role: 'developer' | 'admin' | 'agent' | null) => void;
+}
+
+const ViewAsContext = createContext<ViewAsContextType | null>(null);
+
+export function useViewAsRole() {
+  const context = useContext(ViewAsContext);
+  const { user } = useAuth();
+  
+  // If in ViewAs context and override is active, use override role
+  if (context && context.viewAsRole) {
+    const role = context.viewAsRole;
+    return {
+      isDeveloper: role === 'developer',
+      isAdmin: role === 'admin' || role === 'developer',
+      isAgent: role === 'agent',
+    };
+  }
+  
+  // Otherwise use normal role logic
+  const role = user?.role || 'agent';
+  return {
+    isDeveloper: role === 'developer',
+    isAdmin: role === 'admin' || role === 'developer', 
+    isAgent: role === 'agent',
+  };
+}
+
 function DeveloperPage() {
   const { user, isLoading } = useAuth();
+  const userRole = useUserRole();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+  
+  // View As state - only available to developers
+  const [viewAsRole, setViewAsRole] = useState<'developer' | 'admin' | 'agent' | null>(null);
   
   // State
   const [activeTab, setActiveTab] = useState("activity");
@@ -247,52 +285,16 @@ function DeveloperPage() {
   const [inviteMakeSuperAdmin, setInviteMakeSuperAdmin] = useState(false);
   const [userSearch, setUserSearch] = useState("");
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <Layout>
-        <div className="max-w-2xl mx-auto py-12 text-center">
-          <Loader2 className="h-8 w-8 mx-auto animate-spin mb-4" />
-          <h1 className="text-xl font-medium mb-2">Loading Developer Dashboard...</h1>
-          <p className="text-muted-foreground">Checking permissions...</p>
-        </div>
-      </Layout>
-    );
-  }
+  // Route guard: admin or developer only
+  React.useEffect(() => {
+    if (!isLoading && user && !userRole.isDeveloper) {
+      setLocation('/');
+    }
+  }, [isLoading, user, userRole.isDeveloper, setLocation]);
 
-  // Debug info for troubleshooting
-  console.log("Developer page - User data:", user);
-  console.log("Developer page - Is super admin:", user?.isSuperAdmin);
-
-  // Access control check - allow super admins and developers, show debug info for others
-  if (!user) {
-    return (
-      <Layout>
-        <div className="max-w-2xl mx-auto py-12 text-center">
-          <Shield className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Not Authenticated</h1>
-          <p className="text-muted-foreground">Please log in to access the developer dashboard.</p>
-        </div>
-      </Layout>
-    );
-  }
-
-  // Hardcoded developer check until role migration is complete
-  if (!user || (user.email !== 'daryl@spyglassrealty.com' && !user.isSuperAdmin)) {
-    return (
-      <Layout>
-        <div className="max-w-2xl mx-auto py-12 text-center">
-          <Shield className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
-          <p className="text-muted-foreground">You need developer privileges to access this page.</p>
-          <div className="mt-4 text-xs text-muted-foreground">
-            <p>Is super admin: {user?.isSuperAdmin ? 'yes' : 'no'}</p>
-            <p>Email: {user?.email}</p>
-            <p>Expected: daryl@spyglassrealty.com or super admin</p>
-          </div>
-        </div>
-      </Layout>
-    );
+  // Show nothing while loading or redirecting
+  if (isLoading || !user || !userRole.isDeveloper) {
+    return null;
   }
 
   // Data queries with error handling
@@ -503,17 +505,62 @@ function DeveloperPage() {
   }, [systemHealth?.integrations]);
 
   return (
-    <Layout>
-      <div className="max-w-7xl mx-auto space-y-6">
+    <ViewAsContext.Provider value={{ viewAsRole, setViewAsRole }}>
+      <Layout>
+        <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-display font-bold flex items-center gap-3">
-            <Code className="h-8 w-8 text-[#EF4923]" />
-            Developer Dashboard
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Comprehensive development tools, activity monitoring, and system management
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-display font-bold flex items-center gap-3">
+                <Code className="h-8 w-8 text-[#EF4923]" />
+                Developer Dashboard
+              </h1>
+              <p className="text-muted-foreground mt-2">
+                Comprehensive development tools, activity monitoring, and system management
+              </p>
+            </div>
+            
+            {/* View As Control - Developer only */}
+            {userRole.isDeveloper && (
+              <div className="flex items-center gap-3">
+                <Label htmlFor="viewAs" className="text-sm font-medium">View As:</Label>
+                <Select
+                  value={viewAsRole || 'developer'}
+                  onValueChange={(value) => setViewAsRole(value === 'developer' ? null : value as 'admin' | 'agent')}
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="developer">View as Developer</SelectItem>
+                    <SelectItem value="admin">View as Admin</SelectItem>
+                    <SelectItem value="agent">View as Agent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          
+          {/* View As Banner */}
+          {userRole.isDeveloper && viewAsRole && (
+            <div className="mt-4 p-3 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900 rounded-lg flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Eye className="h-4 w-4 text-yellow-600" />
+                <span className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                  Viewing as {viewAsRole.charAt(0).toUpperCase() + viewAsRole.slice(1)}
+                </span>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setViewAsRole(null)}
+                className="h-6 px-2 text-yellow-800 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-800"
+              >
+                Exit
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* API Error Alerts */}
@@ -1067,13 +1114,15 @@ function DeveloperPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Change Role</DropdownMenuLabel>
-                                <DropdownMenuItem 
-                                  onClick={() => updateUserRoleMutation.mutate({ userId: user.id, role: 'developer' })}
-                                  disabled={user.role === 'developer' || updateUserRoleMutation.isPending}
-                                >
-                                  <Code className="h-4 w-4 mr-2" />
-                                  Developer
-                                </DropdownMenuItem>
+                                {userRole.isDeveloper && (
+                                  <DropdownMenuItem 
+                                    onClick={() => updateUserRoleMutation.mutate({ userId: user.id, role: 'developer' })}
+                                    disabled={user.role === 'developer' || updateUserRoleMutation.isPending}
+                                  >
+                                    <Code className="h-4 w-4 mr-2" />
+                                    Developer
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem 
                                   onClick={() => updateUserRoleMutation.mutate({ userId: user.id, role: 'admin' })}
                                   disabled={user.role === 'admin' || updateUserRoleMutation.isPending}
@@ -1303,8 +1352,9 @@ function DeveloperPage() {
             )}
           </TabsContent>
         </Tabs>
-      </div>
-    </Layout>
+        </div>
+      </Layout>
+    </ViewAsContext.Provider>
   );
 }
 

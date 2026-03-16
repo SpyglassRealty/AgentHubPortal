@@ -137,7 +137,7 @@ export async function updateDealStatus(
         await notifyDealApproved({
           dealNumber: deal.dealNumber,
           propertyAddress: deal.propertyAddress,
-          closingDate: deal.closingDate
+          closingDate: deal.closingDate || undefined
         });
         break;
         

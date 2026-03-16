@@ -489,13 +489,64 @@ export function registerCommunityEditorRoutes(app: Express) {
       let skipped = 0;
       let errors: string[] = [];
 
-      // Helper to create initial sections array
-      const createInitialSections = (communityName: string) => [{
-        id: "overview",
-        heading: `${communityName} Overview`,
-        content: `Welcome to ${communityName}, a distinctive community in the Austin area. This neighborhood offers unique characteristics and amenities that make it a special place to call home.`,
-        order: 1
-      }];
+      // Helper to create sections from IDX community content
+      const createSectionsFromContent = (communityName: string, communityData: any): any[] => {
+        const sections: any[] = [];
+        let order = 1;
+
+        // Overview section - always include for all communities
+        sections.push({
+          id: `section-${Date.now()}-overview`,
+          order: order++,
+          heading: `${communityName} Overview`,
+          content: communityData.description ? 
+            `<p>${communityData.description}</p>` : 
+            `<p>Welcome to ${communityName}, a distinctive community in the Austin area. This neighborhood offers unique characteristics and amenities that make it a special place to call home.</p>`
+        });
+
+        // Highlights section - if highlights exist
+        if (communityData.highlights && Array.isArray(communityData.highlights) && communityData.highlights.length > 0) {
+          const highlightsList = communityData.highlights.map((highlight: string) => `<li>${highlight}</li>`).join('');
+          sections.push({
+            id: `section-${Date.now()}-highlights`,
+            order: order++,
+            heading: `${communityName} Highlights`,
+            content: `<ul>${highlightsList}</ul>`
+          });
+        }
+
+        // Best For section - if bestFor exists
+        if (communityData.bestFor && Array.isArray(communityData.bestFor) && communityData.bestFor.length > 0) {
+          const bestForList = communityData.bestFor.map((item: string) => `<li>${item}</li>`).join('');
+          sections.push({
+            id: `section-${Date.now()}-best-for`,
+            order: order++,
+            heading: `Perfect For`,
+            content: `<p>${communityName} is particularly well-suited for:</p><ul>${bestForList}</ul>`
+          });
+        }
+
+        // Nearby Landmarks section - if nearbyLandmarks exists
+        if (communityData.nearbyLandmarks && Array.isArray(communityData.nearbyLandmarks) && communityData.nearbyLandmarks.length > 0) {
+          const landmarksList = communityData.nearbyLandmarks.map((landmark: string) => `<li>${landmark}</li>`).join('');
+          sections.push({
+            id: `section-${Date.now()}-landmarks`,
+            order: order++,
+            heading: `Nearby Landmarks & Attractions`,
+            content: `<ul>${landmarksList}</ul>`
+          });
+        }
+
+        // Real estate section - add for all communities
+        sections.push({
+          id: `section-${Date.now()}-real-estate`,
+          order: order++,
+          heading: `${communityName} Real Estate`,
+          content: `<p>Interested in buying a home in ${communityName}? Our Austin real estate experts are ready to help you navigate the local market. <a href="/contact.php">Contact Spyglass Realty</a> to learn more about buyer representation and to schedule tours of available properties.</p><p><a href="/home-evaluation.php">Get a free market analysis</a> if you're considering selling your ${communityName} property.</p>`
+        });
+
+        return sections;
+      };
 
       // Helper to convert coordinates from IDX format to Mission Control format
       const convertCoordinates = (coordinates: any[]): [number, number][] => {
@@ -536,28 +587,136 @@ export function registerCommunityEditorRoutes(app: Express) {
           .replace(/^-+|-+$/g, '');
       };
 
-      // Load IDX static data from hardcoded sources
-      // Note: In production, this would ideally import from the IDX app, but for now
-      // we'll use representative sample data to demonstrate the sync functionality
-      
+      // Load IDX static community data - real content from community-descriptions.ts
       const idxCommunities = [
-        // Sample from austin-communities.ts format
-        { id: "anderson-mill", name: "ANDERSON MILL", coordinates: [[30.456707349558, -97.792307359674], [30.452867912188, -97.791539155662]], center: { lat: 30.439083, lng: -97.825758 } },
-        { id: "windsor-park", name: "WINDSOR PARK", coordinates: [[30.308539963932, -97.670762852964], [30.308233590738, -97.67203530173]], center: { lat: 30.308800, lng: -97.690893 } },
-        { id: "dawson", name: "DAWSON", coordinates: [[30.238764836308, -97.753526659646], [30.237410976791, -97.754721346095]], center: { lat: 30.232859, lng: -97.761344 } },
-        { id: "west-university", name: "WEST UNIVERSITY", coordinates: [[30.302746382707, -97.738154269236], [30.301971456887, -97.738595085795]], center: { lat: 30.291602, lng: -97.746821 } },
-        
-        // Sample from communities-data.ts format (featured)
-        { id: "barton-creek", name: "Barton Creek", slug: "barton-creek", description: "Prestigious gated community known for luxury estates and world-class golf.", coordinates: [{ lat: 30.2850, lng: -97.8500 }, { lat: 30.2850, lng: -97.8100 }, { lat: 30.2550, lng: -97.8100 }, { lat: 30.2550, lng: -97.8500 }] },
-        { id: "westlake-hills", name: "Westlake Hills", slug: "westlake-hills", description: "Affluent community with top-rated schools and stunning Hill Country views.", coordinates: [{ lat: 30.3100, lng: -97.8100 }, { lat: 30.3100, lng: -97.7700 }, { lat: 30.2800, lng: -97.7700 }, { lat: 30.2800, lng: -97.8100 }] },
-        
-        // Sample from missing-communities.json format
-        { name: "321 West", slug: "321-west", polygon: [[-97.7518, 30.2632], [-97.7506, 30.2632], [-97.7506, 30.2642], [-97.7518, 30.2642]] },
-        { name: "Allandale", slug: "allandale", polygon: [[-97.7410, 30.3140], [-97.7300, 30.3140], [-97.7300, 30.3240], [-97.7410, 30.3240]] },
-        
-        // Sample area communities (zip/city format)
-        { name: "78704 – South Austin", slug: "zip-78704", type: "zip", filterValue: "78704", county: "Travis" },
-        { name: "Cedar Park", slug: "city-cedar-park", type: "city", filterValue: "Cedar Park", county: "Williamson" }
+        // From community-descriptions.ts - rich, locally-informed descriptions
+        {
+          slug: 'zilker',
+          name: 'Zilker',
+          description: `Zilker is the crown jewel of central Austin living. Nestled between Barton Creek and Lady Bird Lake, this neighborhood delivers an unbeatable combination of outdoor access, walkability, and old Austin charm. Residents wake up minutes from Barton Springs Pool, the hike-and-bike trail, and the sprawling 351-acre Zilker Metropolitan Park — the same park that hosts Austin City Limits Music Festival every October.
+
+Homes in Zilker range from lovingly maintained 1940s bungalows on tree-lined streets to sleek modern builds that have popped up along Kinney Avenue and Rabb Road. The housing stock is diverse, but demand is fierce — properties here rarely sit on market for long. Zilker Elementary is a beloved neighborhood school, and the area's central location means easy access to both downtown and South Lamar's restaurant row.
+
+Day-to-day life in Zilker revolves around the outdoors. You'll see neighbors paddleboarding on the lake, running the Butler Trail, or grabbing tacos at Torchy's on South 1st. Barton Springs Road serves as the neighborhood's main artery, lined with local favorites like Shady Grove and Chuy's. If you want the quintessential Austin lifestyle with real community roots, Zilker is it.`,
+          highlights: [
+            'Walk or bike to Barton Springs Pool and Zilker Park year-round',
+            'Zilker Elementary consistently rated among Austin\'s top public schools',
+            'Minutes from South Lamar dining, SoCo shopping, and downtown',
+            'Butler Hike-and-Bike Trail access at multiple trailheads',
+            'Strong home values with consistent appreciation over the past decade',
+          ],
+          bestFor: ['Outdoor enthusiasts', 'Young professionals', 'Families', 'Dog owners'],
+          nearbyLandmarks: [
+            'Zilker Metropolitan Park',
+            'Barton Springs Pool',
+            'Lady Bird Lake / Butler Trail',
+            'Austin City Limits at Zilker Park',
+            'Umlauf Sculpture Garden',
+          ],
+        },
+        {
+          slug: 'barton-hills',
+          name: 'Barton Hills',
+          description: `Barton Hills is one of Austin's best-kept secrets — a quiet, wooded enclave tucked between Zilker Park and the Barton Creek Greenbelt. The neighborhood has a distinctly unhurried, almost rural feel despite being just minutes from downtown. Streets wind through mature live oaks and cedar elms, and it's not uncommon to spot deer on your morning walk along Barton Hills Drive.
+
+The housing stock is predominantly mid-century ranch homes from the 1950s and '60s, many of which have been thoughtfully updated while retaining their original character. Larger lots are common here — you won't feel like you're on top of your neighbors. Newer custom homes have filled in along Robert E. Lee Road and Homedale Drive, but strict neighborhood covenants keep development in check.
+
+What makes Barton Hills truly special is the greenbelt access. Residents can walk to some of Austin's best swimming holes, including Campbell's Hole and Twin Falls, via trails that connect directly from neighborhood streets. Barton Hills Elementary anchors the community, and the neighborhood pool is a popular summer gathering spot. For groceries, the Barton Hills Market on South Lamar has been a fixture for decades.`,
+          highlights: [
+            'Direct access to the Barton Creek Greenbelt and swimming holes',
+            'Large lots with mature trees and a quiet, wooded character',
+            'Barton Hills Elementary — a strong neighborhood school',
+            'Community pool and neighborhood association events',
+            'Short drive to Zilker Park, South Lamar, and downtown',
+          ],
+          bestFor: ['Families with children', 'Outdoor enthusiasts', 'Dog owners', 'Those seeking peace and quiet'],
+          nearbyLandmarks: [
+            'Barton Creek Greenbelt',
+            'Campbell\'s Hole',
+            'Twin Falls',
+            'Zilker Park',
+            'Barton Hills Market',
+          ],
+        },
+        {
+          slug: 'downtown-austin',
+          name: 'Downtown Austin',
+          description: `Downtown Austin is the beating heart of the city, where gleaming high-rises stand beside historic buildings and every block pulses with energy. From the Texas State Capitol to the shores of Lady Bird Lake, downtown encompasses multiple distinct districts — the Warehouse District, Rainey Street, the Entertainment District, and the Central Business District.
+
+Living downtown means trading suburban space for urban sophistication. High-rise condominiums offer skyline views and walkable access to Austin's best restaurants, live music venues, and cultural attractions. Whether it's catching a show at the legendary Moody Theater, grabbing breakfast tacos from a food truck, or taking an evening stroll along the Lady Bird Lake boardwalk, downtown residents live at the center of Austin's cultural universe.
+
+The housing stock is primarily condominiums and luxury apartments, with options ranging from converted warehouse lofts in the Warehouse District to ultra-modern high-rises along the lake. Prices reflect the premium location, but for those who want to be in the thick of Austin's action, downtown delivers an unmatched urban experience.`,
+          highlights: [
+            'Walkable access to world-class dining, music venues, and nightlife',
+            'Lady Bird Lake and Butler Hike-and-Bike Trail at your doorstep',
+            'High-rise living with panoramic city and lake views',
+            'Home to major employers, government offices, and cultural institutions',
+            'Unparalleled public transportation and rideshare connectivity',
+          ],
+          bestFor: ['Urban professionals', 'Empty nesters', 'Music lovers', 'Car-free lifestyle seekers'],
+          nearbyLandmarks: [
+            'Texas State Capitol',
+            'Lady Bird Lake',
+            'Rainey Street Historic District',
+            'Sixth Street Entertainment District',
+            'Austin Convention Center',
+          ],
+        },
+        // Area communities - zip codes with real descriptions  
+        {
+          slug: 'zip-78704',
+          name: '78704 – South Austin',
+          type: 'zip',
+          filterValue: '78704',
+          county: 'Travis',
+          description: `78704 is South Austin in all its eclectic glory — a zip code that captures the neighborhood's creative spirit, diverse housing stock, and unbeatable food scene. Stretching from South Lamar to Congress and down to Slaughter Lane, this area includes iconic neighborhoods like Zilker, Barton Hills, and South Lamar.
+
+The real estate landscape is wonderfully varied. You'll find everything from charming 1940s cottages near Zilker Park to modern condos along South Lamar, from mid-century ranches with swimming pools to new construction townhomes. The area's popularity has driven significant appreciation, but the diversity of housing types means options exist across a range of price points.
+
+What makes 78704 special is the lifestyle. This is where you'll find Franklin Barbecue (yes, it's worth the line), South Lamar's restaurant row, and Zilker Park hosting everything from morning yoga to Austin City Limits. The area strikes that perfect Austin balance between laid-back and sophisticated, outdoorsy and cultural.`,
+          highlights: [
+            'Home to Franklin Barbecue, South Lamar dining, and Zilker Park',
+            'Diverse housing stock from vintage cottages to modern condos',
+            'Central location with easy access to downtown and the airport',
+            'Butler Hike-and-Bike Trail and Lady Bird Lake access',
+            'Strong sense of community with active neighborhood associations',
+          ],
+          bestFor: ['Foodies', 'Outdoor enthusiasts', 'Young professionals', 'Families'],
+          nearbyLandmarks: [
+            'Zilker Metropolitan Park',
+            'South Lamar Boulevard',
+            'Franklin Barbecue',
+            'Lady Bird Lake',
+            'Barton Springs Pool',
+          ],
+        },
+        {
+          slug: 'city-cedar-park',
+          name: 'Cedar Park',
+          type: 'city',
+          filterValue: 'Cedar Park',
+          county: 'Williamson',
+          description: `Cedar Park has earned its reputation as one of Central Texas's premier family destinations. Located just northwest of Austin, this city of roughly 80,000 residents offers the perfect blend of suburban amenities, top-rated schools, and small-town charm, all while maintaining easy access to Austin's employment centers.
+
+The housing market in Cedar Park is robust and diverse, featuring everything from established neighborhoods with mature trees to master-planned communities with resort-style amenities. Many homes were built in the 1990s and 2000s, offering solid construction and floor plans designed for modern family living. Newer developments continue to push the boundaries with energy-efficient homes and smart home technology.
+
+What sets Cedar Park apart is its commitment to quality of life. The city boasts excellent parks, including the popular Milburn Park with its swimming pool and sports facilities, and the scenic Brushy Creek Regional Trail. The HEB Center at Cedar Park brings major concerts and Texas Stars hockey games to residents' backyard. Combined with Leander ISD schools that consistently rank among the state's best, Cedar Park represents an ideal choice for families seeking suburban excellence.`,
+          highlights: [
+            'Leander ISD schools consistently rated among Texas\'s best',
+            'HEB Center at Cedar Park hosting major concerts and sporting events',
+            'Master-planned communities with resort-style amenities',
+            'Brushy Creek Regional Trail for hiking and biking',
+            '25-30 minute commute to downtown Austin',
+          ],
+          bestFor: ['Families with school-age children', 'Commuters to Austin', 'Sports and entertainment lovers', 'Suburban lifestyle seekers'],
+          nearbyLandmarks: [
+            'HEB Center at Cedar Park',
+            'Brushy Creek Regional Trail',
+            'Milburn Park',
+            'Hill Country Galleria',
+            'Salt Traders Coastal Cooking',
+          ],
+        }
       ];
 
       // Process each community from all sources
@@ -603,7 +762,7 @@ export function registerCommunityEditorRoutes(app: Express) {
             if (!existing.sections || (Array.isArray(existing.sections) && existing.sections.length === 0)) {
               const updateData: any = {
                 locationType,
-                sections: createInitialSections(community.name),
+                sections: createSectionsFromContent(community.name, communityData),
                 description: communityData.description || null,
                 metaTitle: `${community.name} Homes for Sale | Austin Real Estate | Spyglass Realty`,
                 metaDescription: `Explore homes for sale in ${community.name}. View listings, market stats, and neighborhood insights with Spyglass Realty's local Austin experts.`,
@@ -637,7 +796,7 @@ export function registerCommunityEditorRoutes(app: Express) {
               slug,
               name: community.name,
               locationType,
-              sections: createInitialSections(community.name),
+              sections: createSectionsFromContent(community.name, communityData),
               description: communityData.description || null,
               metaTitle: `${community.name} Homes for Sale | Austin Real Estate | Spyglass Realty`,
               metaDescription: `Explore homes for sale in ${community.name}. View listings, market stats, and neighborhood insights with Spyglass Realty's local Austin experts.`,

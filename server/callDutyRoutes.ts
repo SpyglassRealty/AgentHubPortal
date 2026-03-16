@@ -17,6 +17,8 @@ import {
   createCallDutyCalendarEvent,
   addCallDutyAttendee,
   removeCallDutyAttendee,
+  registerEventWatch,
+  getCalendarEventAttendees,
 } from "./googleCalendarClient";
 import { sendSlackMessage } from "./slackNotify";
 import { generateSlotsForWeek } from "./slotGenerationService";
@@ -89,23 +91,63 @@ function getUserName(req: any): string {
 }
 
 /**
+ * Format date for Slack notifications (e.g. "Thu, Mar 12")
+ */
+function formatSlackDate(dateStr: string): string {
+  const date = new Date(dateStr + "T00:00:00");
+  return date.toLocaleDateString("en-US", { 
+    weekday: "short", 
+    month: "short", 
+    day: "numeric" 
+  });
+}
+
+/**
+ * Format shift label for Slack notifications (e.g. "Morning (8:00 AM - 12:00 PM)")
+ */
+function formatShiftLabel(shiftType: string, startTime: string, endTime: string): string {
+  const label = SHIFT_TYPE_LABELS[shiftType] || shiftType;
+  return `${label} (${startTime} - ${endTime})`;
+}
+
+/**
  * Fire-and-forget Slack notification for Call Duty events.
  */
 function notifyCallDutySlack(
-  action: "signup" | "cancel",
+  action: "self_signup" | "admin_assign" | "force_assign" | "self_cancel" | "admin_remove",
   agentName: string,
   slot: { date: string; shiftType: string; startTime: string; endTime: string },
-  cancellationReason?: string,
+  options?: {
+    adminName?: string;
+    agentEmail?: string;
+    cancellationReason?: string;
+  }
 ): void {
-  const label = SHIFT_TYPE_LABELS[slot.shiftType] || slot.shiftType;
-  const emoji = action === "signup" ? "✅" : "❌";
-  const verb = action === "signup" ? "signed up for" : "cancelled";
-
-  let text = `${emoji} *${agentName}* ${verb} *${label} Shift* on *${slot.date}* (${slot.startTime}–${slot.endTime})`;
+  const shift = formatShiftLabel(slot.shiftType, slot.startTime, slot.endTime);
+  const dayDate = formatSlackDate(slot.date);
   
-  // Task 6: Include cancellation reason in Slack notifications
-  if (action === "cancel" && cancellationReason) {
-    text += `. Reason: ${cancellationReason}`;
+  let text = "";
+  
+  switch (action) {
+    case "self_signup":
+      text = `${agentName} signed up for the ${shift} on ${dayDate}.`;
+      break;
+      
+    case "admin_assign":
+      text = `${agentName} was assigned to the ${shift} on ${dayDate} by ${options?.adminName || "Admin"}.`;
+      break;
+      
+    case "force_assign":
+      text = `${agentName} (${options?.agentEmail}) was force-assigned to the ${shift} on ${dayDate} by ${options?.adminName || "Admin"}. _(External assignment — calendar invite sent to email, no Slack account.)_`;
+      break;
+      
+    case "self_cancel":
+      text = `${agentName} cancelled their ${shift} on ${dayDate}. Reason: ${options?.cancellationReason || "No reason provided"}`;
+      break;
+      
+    case "admin_remove":
+      text = `${agentName} was removed from the ${shift} on ${dayDate} by ${options?.adminName || "Admin"}. Reason: ${options?.cancellationReason || "No reason provided"}`;
+      break;
   }
 
   // Fire-and-forget — don't await
@@ -226,12 +268,15 @@ router.get("/slots", isAuthenticated, async (req: any, res) => {
         userId: callDutySignups.userId,
         status: callDutySignups.status,
         signedUpAt: callDutySignups.signedUpAt,
+        assignedName: callDutySignups.assignedName,
+        assignedEmail: callDutySignups.assignedEmail,
         firstName: users.firstName,
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
+        fubAvatarUrl: users.fubAvatarUrl,
       })
       .from(callDutySignups)
-      .innerJoin(users, eq(callDutySignups.userId, users.id))
+      .leftJoin(users, eq(callDutySignups.userId, users.id))
       .where(
         and(
           sql`${callDutySignups.slotId} IN (${sql.join(slotIds.map(id => sql`${id}`), sql`, `)})`,
@@ -300,9 +345,9 @@ router.get("/slots", isAuthenticated, async (req: any, res) => {
         signups: slotSignups.map((s) => ({
           id: s.id,
           userId: s.userId,
-          firstName: s.firstName,
-          lastName: s.lastName,
-          profileImageUrl: s.profileImageUrl,
+          firstName: s.userId ? s.firstName : s.assignedName?.split(' ')[0] || null,
+          lastName: s.userId ? s.lastName : s.assignedName?.split(' ').slice(1).join(' ') || null,
+          profileImageUrl: s.userId ? s.profileImageUrl : null,
           signedUpAt: s.signedUpAt,
         })),
         waitlist: slotWaitlist.map((w) => ({
@@ -440,15 +485,23 @@ router.post("/slots/:slotId/signup", isAuthenticated, async (req: any, res) => {
       const eventId = await ensureCalendarEvent(slot);
       if (eventId) {
         await addCallDutyAttendee(eventId, agentEmail);
+        // Register calendar watch for RSVP notifications
+        await registerEventWatch(eventId, slotId);
       }
     }
 
     // Slack notification (fire-and-forget)
-    notifyCallDutySlack("signup", getUserName(req), slot);
+    notifyCallDutySlack("self_signup", getUserName(req), slot);
 
     res.status(201).json(signup);
   } catch (error: any) {
     console.error("[Call Duty] Error signing up:", error);
+    
+    // Handle duplicate signup constraint violation
+    if (error.code === '23505' || error.constraint === 'idx_call_duty_signups_slot_user') {
+      return res.status(409).json({ message: "You're already signed up for this shift." });
+    }
+    
     res.status(500).json({ message: "Failed to sign up for shift" });
   }
 });
@@ -539,7 +592,9 @@ router.delete("/slots/:slotId/signup", isAuthenticated, async (req: any, res) =>
 
     // Slack notification (fire-and-forget)
     if (slot) {
-      notifyCallDutySlack("cancel", getUserName(req), slot, cancellationReason.trim());
+      notifyCallDutySlack("self_cancel", getUserName(req), slot, {
+        cancellationReason: cancellationReason.trim()
+      });
     }
 
     // Check waitlist and notify first person if a spot opened up
@@ -776,12 +831,14 @@ router.get("/unfilled-slots", isAuthenticated, async (req: any, res) => {
         userId: callDutySignups.userId,
         status: callDutySignups.status,
         signedUpAt: callDutySignups.signedUpAt,
+        assignedName: callDutySignups.assignedName,
+        assignedEmail: callDutySignups.assignedEmail,
         firstName: users.firstName,
         lastName: users.lastName,
         email: users.email,
       })
       .from(callDutySignups)
-      .innerJoin(users, eq(callDutySignups.userId, users.id))
+      .leftJoin(users, eq(callDutySignups.userId, users.id))
       .where(
         and(
           sql`${callDutySignups.slotId} IN (${sql.join(slotIds.map(id => sql`${id}`), sql`, `)})`,
@@ -809,9 +866,9 @@ router.get("/unfilled-slots", isAuthenticated, async (req: any, res) => {
           signups: slotSignups.map((s) => ({
             id: s.id,
             userId: s.userId,
-            firstName: s.firstName,
-            lastName: s.lastName,
-            email: s.email,
+            firstName: s.userId ? s.firstName : s.assignedName?.split(' ')[0] || null,
+            lastName: s.userId ? s.lastName : s.assignedName?.split(' ').slice(1).join(' ') || null,
+            email: s.userId ? s.email : s.assignedEmail,
             signedUpAt: s.signedUpAt,
           })),
         };
@@ -993,11 +1050,15 @@ router.post("/slots/:slotId/assign", isAuthenticated, async (req: any, res) => {
     if (!isAdmin) return;
 
     const { slotId } = req.params;
-    const { userId } = req.body;
+    const { userId, name, email } = req.body;
 
-    // Validation
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
+    // Validation - must have either userId or both name/email
+    if (!userId && (!name || !email)) {
+      return res.status(400).json({ message: "Either userId or both name and email are required" });
+    }
+
+    if (userId && (name || email)) {
+      return res.status(400).json({ message: "Cannot specify both userId and name/email - choose one assignment method" });
     }
 
     // Verify slot exists and is active
@@ -1010,30 +1071,66 @@ router.post("/slots/:slotId/assign", isAuthenticated, async (req: any, res) => {
       return res.status(404).json({ message: "Shift slot not found or inactive" });
     }
 
-    // Verify user exists
-    const [targetUser] = await db
-      .select({ id: users.id, email: users.email, firstName: users.firstName, lastName: users.lastName })
-      .from(users)
-      .where(eq(users.id, userId));
+    let targetUser = null;
+    let assignmentEmail = null;
+    let agentName = "";
 
-    if (!targetUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (userId) {
+      // Regular user assignment flow
+      const [user] = await db
+        .select({ id: users.id, email: users.email, firstName: users.firstName, lastName: users.lastName })
+        .from(users)
+        .where(eq(users.id, userId));
 
-    // Check if user already signed up for this slot (active)
-    const [existingSignup] = await db
-      .select()
-      .from(callDutySignups)
-      .where(
-        and(
-          eq(callDutySignups.slotId, slotId),
-          eq(callDutySignups.userId, userId),
-          eq(callDutySignups.status, "active")
-        )
-      );
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
 
-    if (existingSignup) {
-      return res.status(409).json({ message: "Agent is already signed up for this shift" });
+      targetUser = user;
+      assignmentEmail = user.email;
+      agentName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email || "Agent";
+
+      // Check if user already signed up for this slot (active)
+      const [existingSignup] = await db
+        .select()
+        .from(callDutySignups)
+        .where(
+          and(
+            eq(callDutySignups.slotId, slotId),
+            eq(callDutySignups.userId, userId),
+            eq(callDutySignups.status, "active")
+          )
+        );
+
+      if (existingSignup) {
+        return res.status(409).json({ message: "Agent is already signed up for this shift" });
+      }
+    } else {
+      // Force-assign by email flow
+      assignmentEmail = email.trim();
+      agentName = name.trim();
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(assignmentEmail)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      // Check if email already assigned to this slot (active)
+      const [existingSignup] = await db
+        .select()
+        .from(callDutySignups)
+        .where(
+          and(
+            eq(callDutySignups.slotId, slotId),
+            eq(callDutySignups.assignedEmail, assignmentEmail),
+            eq(callDutySignups.status, "active")
+          )
+        );
+
+      if (existingSignup) {
+        return res.status(409).json({ message: "This email is already assigned to this shift" });
+      }
     }
 
     // Check if slot is full
@@ -1052,22 +1149,45 @@ router.post("/slots/:slotId/assign", isAuthenticated, async (req: any, res) => {
     }
 
     // Create the assignment (signup)
+    const signupValues: any = {
+      slotId,
+      status: "active"
+    };
+
+    if (userId) {
+      signupValues.userId = userId;
+    } else {
+      signupValues.assignedName = name.trim();
+      signupValues.assignedEmail = assignmentEmail;
+    }
+
     const [signup] = await db
       .insert(callDutySignups)
-      .values({ slotId, userId })
+      .values(signupValues)
       .returning();
 
-    // Google Calendar: ensure event exists, then add agent as attendee
-    if (targetUser.email) {
+    // Google Calendar: ensure event exists, then add attendee
+    if (assignmentEmail) {
       const eventId = await ensureCalendarEvent(slot);
       if (eventId) {
-        await addCallDutyAttendee(eventId, targetUser.email);
+        await addCallDutyAttendee(eventId, assignmentEmail);
+        // Register calendar watch for RSVP notifications
+        await registerEventWatch(eventId, slotId);
       }
     }
 
     // Slack notification (fire-and-forget)
-    const agentName = `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || targetUser.email || "An agent";
-    notifyCallDutySlack("signup", agentName, slot);
+    const adminName = getUserName(req);
+    if (userId) {
+      // Regular admin assignment (existing user)
+      notifyCallDutySlack("admin_assign", agentName, slot, { adminName });
+    } else {
+      // Force assignment (external email)
+      notifyCallDutySlack("force_assign", agentName, slot, { 
+        adminName, 
+        agentEmail: assignmentEmail 
+      });
+    }
 
     res.status(201).json(signup);
   } catch (error: any) {
@@ -1152,7 +1272,10 @@ router.delete("/slots/:slotId/signups/:signupId", isAuthenticated, async (req: a
     // Slack notification (fire-and-forget)
     if (slot && targetUser) {
       const agentName = `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || targetUser.email || "An agent";
-      notifyCallDutySlack("cancel", agentName, slot, cancellationReason.trim());
+      notifyCallDutySlack("admin_remove", agentName, slot, {
+        adminName: getUserName(req),
+        cancellationReason: cancellationReason.trim()
+      });
     }
 
     res.json(cancelled);
@@ -1429,5 +1552,204 @@ router.get("/reports", isAuthenticated, async (req: any, res) => {
     res.status(500).json({ message: "Failed to generate reports" });
   }
 });
+
+// ── Google Calendar RSVP Webhook Handler ────────────────────────────────
+
+/**
+ * POST /calendar-webhook
+ * Webhook handler for Google Calendar push notifications.
+ * Processes RSVP status changes and posts Slack notifications.
+ */
+router.post("/calendar-webhook", async (req: any, res) => {
+  try {
+    // Always return 200 immediately to prevent Google retries
+    res.status(200).send("OK");
+
+    const resourceState = req.headers['x-goog-resource-state'];
+    const channelId = req.headers['x-goog-channel-id'];
+    const resourceId = req.headers['x-goog-resource-id'];
+
+    console.log(`[Calendar Webhook] Received notification: state=${resourceState}, channelId=${channelId}, resourceId=${resourceId}`);
+
+    // Only process 'exists' events (skip 'sync')
+    if (resourceState !== 'exists') {
+      console.log(`[Calendar Webhook] Ignoring ${resourceState} event`);
+      return;
+    }
+
+    if (!channelId || !resourceId) {
+      console.log("[Calendar Webhook] Missing required headers");
+      return;
+    }
+
+    // Find the watch registration
+    const watchResult = await db.execute(sql`
+      SELECT slot_id FROM calendar_watches 
+      WHERE watch_id = ${channelId} AND resource_id = ${resourceId}
+    `);
+
+    if (watchResult.rows.length === 0) {
+      console.log(`[Calendar Webhook] No watch found for channelId ${channelId}`);
+      return;
+    }
+
+    const slotId = (watchResult.rows[0] as any).slot_id;
+
+    // Get the slot and its Google Calendar event ID
+    const slotResult = await db.execute(sql`
+      SELECT google_calendar_event_id, date, shift_type, start_time, end_time
+      FROM call_duty_slots WHERE id = ${slotId}
+    `);
+
+    if (slotResult.rows.length === 0) {
+      console.log(`[Calendar Webhook] Slot ${slotId} not found`);
+      return;
+    }
+
+    const slot = slotResult.rows[0] as any;
+    const eventId = slot.google_calendar_event_id;
+
+    if (!eventId) {
+      console.log(`[Calendar Webhook] No Google Calendar event ID for slot ${slotId}`);
+      return;
+    }
+
+    // Fetch the event attendees from Google Calendar
+    const attendees = await getCalendarEventAttendees(eventId);
+    console.log(`[Calendar Webhook] Event has ${attendees.length} attendees`);
+
+    // Process each attendee's response status
+    for (const attendee of attendees) {
+      if (!attendee.email || !attendee.responseStatus) continue;
+
+      const email = attendee.email;
+      const currentStatus = attendee.responseStatus;
+
+      // Get the last known status for this attendee
+      const lastStatusResult = await db.execute(sql`
+        SELECT last_response_status FROM calendar_watch_attendees 
+        WHERE slot_id = ${slotId} AND attendee_email = ${email}
+      `);
+
+      const lastStatus = lastStatusResult.rows.length > 0 
+        ? (lastStatusResult.rows[0] as any).last_response_status 
+        : null;
+
+      // Only notify if status has changed
+      if (lastStatus !== currentStatus) {
+        console.log(`[Calendar Webhook] Status change for ${email}: ${lastStatus} → ${currentStatus}`);
+
+        // Get the attendee's name (first name + last name from database)
+        const userResult = await db.execute(sql`
+          SELECT first_name, last_name FROM users WHERE email = ${email}
+        `);
+
+        const userName = userResult.rows.length > 0 
+          ? `${(userResult.rows[0] as any).first_name || ''} ${(userResult.rows[0] as any).last_name || ''}`.trim() || email.split('@')[0]
+          : email.split('@')[0];
+
+        // Format the date and shift info
+        const shiftLabel = SHIFT_TYPE_LABELS[slot.shift_type] || slot.shift_type;
+        const dateObj = new Date(slot.date + 'T00:00:00');
+        const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+        const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+        // Generate Slack message based on response status
+        let slackMessage = '';
+        if (currentStatus === 'accepted') {
+          slackMessage = `✅ *${userName}* accepted the *${shiftLabel}* on *${dayName}, ${formattedDate}*.`;
+        } else if (currentStatus === 'declined') {
+          slackMessage = `❌ *${userName}* declined the *${shiftLabel}* on *${dayName}, ${formattedDate}*. Admin may need to fill this slot.`;
+        } else if (currentStatus === 'tentative') {
+          slackMessage = `❓ *${userName}* marked Maybe for the *${shiftLabel}* on *${dayName}, ${formattedDate}*.`;
+        }
+
+        if (slackMessage) {
+          console.log(`[Calendar Webhook] Posting to Slack: ${slackMessage}`);
+          
+          // Fire-and-forget Slack notification
+          sendSlackMessage(CALL_DUTY_SLACK_CHANNEL_ID, slackMessage).catch((error) => {
+            console.error("[Calendar Webhook] Failed to send Slack notification:", error);
+          });
+        }
+
+        // Update the stored status
+        await db.execute(sql`
+          INSERT INTO calendar_watch_attendees (slot_id, attendee_email, last_response_status, updated_at)
+          VALUES (${slotId}, ${email}, ${currentStatus}, NOW())
+          ON CONFLICT (slot_id, attendee_email)
+          DO UPDATE SET last_response_status = ${currentStatus}, updated_at = NOW()
+        `);
+      }
+    }
+
+  } catch (error: any) {
+    console.error("[Calendar Webhook] Error processing webhook:", error);
+    // Don't re-throw - always return 200 to Google
+  }
+});
+
+// ── Watch Renewal Functions ──────────────────────────────────────────────
+
+/**
+ * Renew expiring calendar watches (called by cron job).
+ * Re-registers watches that expire within 24 hours.
+ */
+export async function renewExpiringCalendarWatches(): Promise<void> {
+  try {
+    console.log("[Calendar Watch Renewal] Checking for expiring watches...");
+
+    // Find watches expiring within 24 hours
+    const expiringWatchesResult = await db.execute(sql`
+      SELECT cw.watch_id, cw.slot_id, cs.google_calendar_event_id
+      FROM calendar_watches cw
+      JOIN call_duty_slots cs ON cw.slot_id = cs.id
+      WHERE cw.expires_at < NOW() + INTERVAL '24 hours'
+      AND cs.date + cs.start_time::time > NOW()
+    `);
+
+    const expiringWatches = expiringWatchesResult.rows as any[];
+
+    if (expiringWatches.length === 0) {
+      console.log("[Calendar Watch Renewal] No expiring watches found");
+      return;
+    }
+
+    console.log(`[Calendar Watch Renewal] Found ${expiringWatches.length} expiring watches`);
+
+    // Re-register each expiring watch
+    for (const watch of expiringWatches) {
+      const { slot_id, google_calendar_event_id } = watch;
+
+      if (google_calendar_event_id) {
+        console.log(`[Calendar Watch Renewal] Renewing watch for slot ${slot_id}`);
+        
+        // Remove old watch record
+        await db.execute(sql`DELETE FROM calendar_watches WHERE slot_id = ${slot_id}`);
+        
+        // Register new watch
+        const success = await registerEventWatch(google_calendar_event_id, slot_id);
+        if (success) {
+          console.log(`[Calendar Watch Renewal] Successfully renewed watch for slot ${slot_id}`);
+        } else {
+          console.error(`[Calendar Watch Renewal] Failed to renew watch for slot ${slot_id}`);
+        }
+      }
+    }
+
+    // Clean up watches for slots that have already passed
+    await db.execute(sql`
+      DELETE FROM calendar_watches 
+      WHERE slot_id IN (
+        SELECT cs.id FROM call_duty_slots cs 
+        WHERE cs.date + cs.start_time::time < NOW()
+      )
+    `);
+
+    console.log("[Calendar Watch Renewal] Watch renewal complete");
+  } catch (error: any) {
+    console.error("[Calendar Watch Renewal] Error renewing watches:", error);
+  }
+}
 
 export default router;

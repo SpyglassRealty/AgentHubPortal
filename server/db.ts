@@ -95,6 +95,15 @@ async function runDirectMigrations() {
     // Community Content Blocks table (migration 0014)
     await createCommunityContentBlocksTable();
     
+    // Calendar Watch tables for Google Calendar RSVP notifications (Phase 3d)
+    await createCalendarWatchTables();
+    
+    // Call Duty Force-Assign enhancements (Phase 3a)
+    await addCallDutyForceAssignColumns();
+    
+    // FUB Avatar URL column for shift slot avatars (Phase 3c)
+    await addFubAvatarUrlColumn();
+    
   } catch (error) {
     console.error("[Database] Direct migration error:", error);
     throw error;
@@ -1152,5 +1161,100 @@ async function createCommunityContentBlocksTable() {
   } catch (error) {
     console.error("[Database] Error creating community_content_blocks table:", error);
     // Do not throw - table might already exist
+  }
+}
+
+// Calendar Watch tables for Google Calendar RSVP → Slack notifications (Phase 3d)
+async function createCalendarWatchTables() {
+  try {
+    console.log("[Database] Creating calendar watch tables...");
+    
+    // Main watch registrations table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS calendar_watches (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        watch_id TEXT NOT NULL,
+        resource_id TEXT NOT NULL,
+        slot_id VARCHAR NOT NULL REFERENCES call_duty_slots(id) ON DELETE CASCADE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    
+    // Attendee response status tracking table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS calendar_watch_attendees (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        slot_id VARCHAR NOT NULL REFERENCES call_duty_slots(id) ON DELETE CASCADE,
+        attendee_email TEXT NOT NULL,
+        last_response_status TEXT,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    // Create indexes for performance
+    const indexes = [
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_calendar_watches_watch_id ON calendar_watches(watch_id)',
+      'CREATE INDEX IF NOT EXISTS idx_calendar_watches_slot_id ON calendar_watches(slot_id)',
+      'CREATE INDEX IF NOT EXISTS idx_calendar_watches_expires_at ON calendar_watches(expires_at)',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_calendar_watch_attendees_slot_email ON calendar_watch_attendees(slot_id, attendee_email)',
+      'CREATE INDEX IF NOT EXISTS idx_calendar_watch_attendees_slot_id ON calendar_watch_attendees(slot_id)',
+    ];
+
+    for (const idx of indexes) {
+      try { 
+        await pool.query(idx); 
+      } catch (e) { 
+        console.log(`[Database] Index creation note: ${e.message}`); 
+      }
+    }
+
+    console.log("[Database] Calendar watch tables created/verified successfully");
+  } catch (error) {
+    console.error("[Database] Error creating calendar watch tables:", error);
+    // Do not throw - table might already exist
+  }
+}
+
+// Call Duty Force-Assign enhancements (Phase 3a)
+async function addCallDutyForceAssignColumns() {
+  try {
+    console.log("[Database] Adding Call Duty force-assign columns...");
+    
+    // Add assigned_name and assigned_email columns to call_duty_signups
+    await pool.query(`
+      ALTER TABLE call_duty_signups 
+      ADD COLUMN IF NOT EXISTS assigned_name TEXT,
+      ADD COLUMN IF NOT EXISTS assigned_email TEXT
+    `);
+
+    // Make user_id nullable to support force-assign (external users)
+    await pool.query(`
+      ALTER TABLE call_duty_signups 
+      ALTER COLUMN user_id DROP NOT NULL
+    `);
+
+    console.log("[Database] Call Duty force-assign columns added successfully");
+  } catch (error) {
+    console.error("[Database] Error adding force-assign columns:", error);
+    // Do not throw - columns might already exist
+  }
+}
+
+// FUB Avatar URL column for shift slot avatars (Phase 3c)
+async function addFubAvatarUrlColumn() {
+  try {
+    console.log("[Database] Adding FUB avatar URL column...");
+    
+    // Add fub_avatar_url column to users table
+    await pool.query(`
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS fub_avatar_url TEXT
+    `);
+
+    console.log("[Database] FUB avatar URL column added successfully");
+  } catch (error) {
+    console.error("[Database] Error adding FUB avatar URL column:", error);
+    // Do not throw - column might already exist
   }
 }

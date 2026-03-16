@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import Cropper from 'react-easy-crop';
@@ -30,6 +30,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useToast } from "@/hooks/use-toast";
 
 interface UserProfile {
@@ -321,8 +322,22 @@ export default function SettingsPage() {
   const [linkForm, setLinkForm] = useState({ title: "", url: "" });
   
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const userRole = useUserRole();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+
+  // Route guard: admin or developer only
+  React.useEffect(() => {
+    if (!isAuthLoading && user && !userRole.isAdmin) {
+      setLocation('/');
+    }
+  }, [isAuthLoading, user, userRole.isAdmin, setLocation]);
+
+  // Show nothing while loading or redirecting
+  if (isAuthLoading || !user || !userRole.isAdmin) {
+    return null;
+  }
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const sectionParam = searchParams.get("section");

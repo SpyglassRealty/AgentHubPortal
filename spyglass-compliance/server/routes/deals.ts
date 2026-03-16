@@ -14,6 +14,12 @@ import {
 import { generateDealNumber } from '../lib/deal-number-generator.js';
 import { generateComplianceItems } from '../lib/compliance-templates.js';
 import { v4 as uuidv4 } from 'uuid';
+import { User, DealStatus } from '@prisma/client';
+
+// Helper to properly cast user from request
+function getTypedUser(reqUser: any): User {
+  return reqUser as User;
+}
 
 const router = Router();
 
@@ -23,23 +29,21 @@ const router = Router();
  */
 router.get('/', requireAuth, async (req: Request, res: Response) => {
   try {
-    const {
-      status,
-      dealType,
-      search,
-      agentId,
-      limit = '50',
-      offset = '0',
-      sortBy = 'createdAt',
-      sortOrder = 'desc'
-    } = req.query;
+    const status = req.query.status as string | undefined;
+    const dealType = req.query.dealType as string | undefined;
+    const search = req.query.search as string | undefined;
+    const agentId = req.query.agentId as string | undefined;
+    const limit = (req.query.limit as string) || '50';
+    const offset = (req.query.offset as string) || '0';
+    const sortBy = (req.query.sortBy as string) || 'createdAt';
+    const sortOrder = (req.query.sortOrder as string) || 'desc';
 
     // Build filter conditions
     const where: any = {};
 
     // Agents can only see their own deals, admins see all
-    if (req.user?.role === 'agent') {
-      where.agentId = req.user.id;
+    if (req.user && getTypedUser(req.user).role === 'agent') {
+      where.agentId = getTypedUser(req.user).id;
     } else if (agentId && typeof agentId === 'string') {
       where.agentId = agentId;
     }
@@ -121,7 +125,7 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
  */
 router.get('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const deal = await prisma.deal.findUnique({
       where: { id },
@@ -184,7 +188,7 @@ router.get('/:id', requireAuth, async (req: Request, res: Response) => {
     }
 
     // Check ownership (agents can only see their own deals)
-    if (req.user?.role === 'agent' && deal.agentId !== req.user.id) {
+    if (getTypedUser(req.user).role === 'agent' && deal.agentId !== req.user.id) {
       return res.status(403).json({
         error: 'Access denied',
         message: 'You can only access your own deals'
@@ -256,14 +260,15 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     }
 
     // For agents, set agentId to themselves; admins can specify agentId
-    let agentId = req.user!.id;
-    if (req.user?.role === 'admin' || req.user?.role === 'super_admin') {
-      agentId = req.body.agentId || req.user!.id;
+    let agentId = getTypedUser(req.user).id;
+    if (getTypedUser(req.user).role === 'admin' || getTypedUser(req.user).role === 'super_admin') {
+      const bodyAgentId = (req.body as any).agentId as string | undefined;
+      agentId = bodyAgentId || getTypedUser(req.user).id;
       
       // Verify agent exists if specified
-      if (req.body.agentId) {
+      if (bodyAgentId) {
         const agent = await prisma.user.findUnique({
-          where: { id: req.body.agentId, isActive: true }
+          where: { id: bodyAgentId, isActive: true }
         });
         
         if (!agent) {
@@ -339,7 +344,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       // Create audit log
       await tx.auditLog.create({
         data: {
-          userId: req.user!.id,
+          userId: getTypedUser(req.user).id,
           dealId: newDeal.id,
           action: 'deal_created',
           details: {
@@ -371,7 +376,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       }
     });
 
-    console.log(`✅ Deal created: ${result.deal.dealNumber} by ${req.user?.email} (${result.complianceItems.length} compliance items generated)`);
+    console.log(`✅ Deal created: ${result.deal.dealNumber} by ${getTypedUser(req.user).email} (${result.complianceItems.length} compliance items generated)`);
 
     res.status(201).json({
       success: true,
@@ -395,7 +400,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
  */
 router.put('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     // Check if deal exists and user has access
     const existingDeal = await prisma.deal.findUnique({
@@ -410,7 +415,7 @@ router.put('/:id', requireAuth, async (req: Request, res: Response) => {
     }
 
     // Check ownership for agents
-    if (req.user?.role === 'agent' && existingDeal.agentId !== req.user.id) {
+    if (getTypedUser(req.user).role === 'agent' && existingDeal.agentId !== req.user.id) {
       return res.status(403).json({
         error: 'Access denied',
         message: 'You can only update your own deals'
@@ -443,12 +448,15 @@ router.put('/:id', requireAuth, async (req: Request, res: Response) => {
     });
 
     // Only admins can update status and agentId
-    if (req.user?.role === 'admin' || req.user?.role === 'super_admin') {
-      if (req.body.status) updateData.status = req.body.status;
-      if (req.body.agentId) {
+    if (getTypedUser(req.user).role === 'admin' || getTypedUser(req.user).role === 'super_admin') {
+      const bodyStatus = (req.body as any).status as string | undefined;
+      const bodyAgentId = (req.body as any).agentId as string | undefined;
+      
+      if (bodyStatus) updateData.status = bodyStatus;
+      if (bodyAgentId) {
         // Verify new agent exists
         const agent = await prisma.user.findUnique({
-          where: { id: req.body.agentId, isActive: true }
+          where: { id: bodyAgentId, isActive: true }
         });
         
         if (!agent) {
@@ -458,7 +466,7 @@ router.put('/:id', requireAuth, async (req: Request, res: Response) => {
           });
         }
         
-        updateData.agentId = req.body.agentId;
+        updateData.agentId = bodyAgentId;
       }
     }
 
@@ -490,7 +498,7 @@ router.put('/:id', requireAuth, async (req: Request, res: Response) => {
     // Create audit log
     await prisma.auditLog.create({
       data: {
-        userId: req.user!.id,
+        userId: getTypedUser(req.user).id,
         dealId: id,
         action: 'deal_updated',
         details: {
@@ -501,7 +509,7 @@ router.put('/:id', requireAuth, async (req: Request, res: Response) => {
       }
     });
 
-    console.log(`✅ Deal updated: ${updatedDeal.dealNumber} by ${req.user?.email}`);
+    console.log(`✅ Deal updated: ${updatedDeal.dealNumber} by ${getTypedUser(req.user).email}`);
 
     res.json({
       success: true,
@@ -524,7 +532,7 @@ router.put('/:id', requireAuth, async (req: Request, res: Response) => {
  */
 router.delete('/:id', requireAuth, requireAdmin, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const deal = await prisma.deal.findUnique({
       where: { id },
@@ -557,7 +565,7 @@ router.delete('/:id', requireAuth, requireAdmin, async (req: Request, res: Respo
       await tx.deal.delete({ where: { id } });
     });
 
-    console.log(`✅ Deal deleted: ${deal.dealNumber} by ${req.user?.email} (${deal._count.documents} documents, ${deal._count.complianceItems} compliance items)`);
+    console.log(`✅ Deal deleted: ${deal.dealNumber} by ${getTypedUser(req.user).email} (${deal._count.documents} documents, ${deal._count.complianceItems} compliance items)`);
 
     res.json({
       success: true,
@@ -581,7 +589,7 @@ router.get('/stats/overview', requireAuth, async (req: Request, res: Response) =
   try {
     // Build filter for agent vs admin
     const dealFilter: any = {};
-    if (req.user?.role === 'agent') {
+    if (getTypedUser(req.user).role === 'agent') {
       dealFilter.agentId = req.user.id;
     }
 
@@ -656,8 +664,8 @@ router.get('/stats/overview', requireAuth, async (req: Request, res: Response) =
  */
 router.post('/:id/status', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const { status, reason } = req.body;
+    const id = req.params.id as string;
+    const { status, reason } = req.body as { status: string; reason?: string };
 
     if (!status) {
       return res.status(400).json({
@@ -678,7 +686,7 @@ router.post('/:id/status', requireAuth, async (req: Request, res: Response) => {
     // Import here to avoid circular dependency
     const { updateDealStatus } = await import('../lib/deal-status-flow.js');
     
-    const result = await updateDealStatus(id, status, req.user!.id, reason);
+    const result = await updateDealStatus(id, status as DealStatus, getTypedUser(req.user).id, reason);
 
     if (!result.success) {
       return res.status(400).json({
@@ -741,7 +749,7 @@ router.get('/status/summary', requireAuth, async (req: Request, res: Response) =
     const { getDealStatusSummary } = await import('../lib/deal-status-flow.js');
     
     // Agents see only their deals, admins see all
-    const agentId = req.user?.role === 'agent' ? req.user.id : undefined;
+    const agentId = getTypedUser(req.user).role === 'agent' ? req.user.id : undefined;
     const summary = await getDealStatusSummary(agentId);
 
     res.json({

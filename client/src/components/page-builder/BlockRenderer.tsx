@@ -260,12 +260,15 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
         </section>
       );
 
-    case 'core-split':
+    case 'core-split': {
+      // Determine media position: use mediaPosition if provided, fallback to reverse for backward compatibility
+      const isMediaLeft = props.mediaPosition === 'left' || (props.mediaPosition === 'right' && props.reverse);
+      
       return (
         <section className={`py-16 ${props.background === 'light' ? 'bg-gray-50' : props.background === 'dark' ? 'bg-gray-900 text-white' : 'bg-white'}`}>
           <div className="max-w-[1100px] mx-auto px-4">
-            <div className={`grid grid-cols-1 md:grid-cols-2 gap-12 items-center`}>
-              <div className={props.reverse ? 'md:order-2' : ''}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+              <div className={isMediaLeft ? 'md:order-1' : 'md:order-2'}>
                 {props.videoUrl ? (
                   <VideoThumbnail videoUrl={props.videoUrl} />
                 ) : (
@@ -276,7 +279,7 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
                   />
                 )}
               </div>
-              <div className={props.reverse ? 'md:order-1' : ''}>
+              <div className={isMediaLeft ? 'md:order-2' : 'md:order-1'}>
                 <h2 className="text-3xl font-bold mb-4">{props.heading || 'Section Heading'}</h2>
                 <div 
                   className="prose prose-lg mb-6"
@@ -307,61 +310,27 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
           </div>
         </section>
       );
+    }
 
     case 'core-split-left':
-      return (
-        <section className={`py-16 ${props.background === 'light' ? 'bg-gray-50' : props.background === 'dark' ? 'bg-gray-900 text-white' : 'bg-white'}`}>
-          <div className="max-w-[1100px] mx-auto px-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-              <div>
-                {props.videoUrl ? (
-                  <VideoThumbnail videoUrl={props.videoUrl} />
-                ) : (
-                  <img 
-                    src={props.imageUrl || 'https://via.placeholder.com/600x400'} 
-                    alt={props.imageAlt || ''}
-                    className="w-full rounded-lg shadow-sm"
-                  />
-                )}
-              </div>
-              <div>
-                <h2 className="text-3xl font-bold mb-4">{props.heading || 'Section Heading'}</h2>
-                <div 
-                  className="prose prose-lg mb-6"
-                  dangerouslySetInnerHTML={{ __html: props.content || '<p>Content goes here...</p>' }}
-                />
-                {(props.primaryButtonText || props.secondaryButtonText) && (
-                  <div className="flex flex-wrap gap-3">
-                    {props.primaryButtonText && (
-                      <a 
-                        href={props.primaryButtonUrl || '#'}
-                        className="inline-flex px-6 py-3 bg-[#fa4616] text-white font-medium rounded hover:opacity-85 transition-opacity"
-                      >
-                        {props.primaryButtonText}
-                      </a>
-                    )}
-                    {props.secondaryButtonText && (
-                      <a 
-                        href={props.secondaryButtonUrl || '#'}
-                        className="inline-flex px-6 py-3 border-2 border-[#fa4616] text-[#fa4616] font-medium rounded hover:bg-[#fa4616] hover:text-white transition-colors"
-                      >
-                        {props.secondaryButtonText}
-                      </a>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
-      );
-
     case 'core-split-right':
+      // Legacy cases - redirect to core-split with appropriate mediaPosition
       return (
         <section className={`py-16 ${props.background === 'light' ? 'bg-gray-50' : props.background === 'dark' ? 'bg-gray-900 text-white' : 'bg-white'}`}>
           <div className="max-w-[1100px] mx-auto px-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-              <div>
+              <div className={type === 'core-split-left' ? 'md:order-1' : 'md:order-2'}>
+                {props.videoUrl ? (
+                  <VideoThumbnail videoUrl={props.videoUrl} />
+                ) : (
+                  <img 
+                    src={props.imageUrl || 'https://via.placeholder.com/600x400'} 
+                    alt={props.imageAlt || ''}
+                    className="w-full rounded-lg shadow-sm"
+                  />
+                )}
+              </div>
+              <div className={type === 'core-split-left' ? 'md:order-2' : 'md:order-1'}>
                 <h2 className="text-3xl font-bold mb-4">{props.heading || 'Section Heading'}</h2>
                 <div 
                   className="prose prose-lg mb-6"
@@ -386,17 +355,6 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
                       </a>
                     )}
                   </div>
-                )}
-              </div>
-              <div>
-                {props.videoUrl ? (
-                  <VideoThumbnail videoUrl={props.videoUrl} />
-                ) : (
-                  <img 
-                    src={props.imageUrl || 'https://via.placeholder.com/600x400'} 
-                    alt={props.imageAlt || ''}
-                    className="w-full rounded-lg shadow-sm"
-                  />
                 )}
               </div>
             </div>
