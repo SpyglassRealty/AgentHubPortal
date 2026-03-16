@@ -27,6 +27,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -167,6 +175,10 @@ export default function CallDutyPage() {
     label: string;
     cancellationReason?: string;
   } | null>(null);
+
+  const [emailAssignDialog, setEmailAssignDialog] = useState<{ slotId: string } | null>(null);
+  const [emailAssignName, setEmailAssignName] = useState("");
+  const [emailAssignEmail, setEmailAssignEmail] = useState("");
 
   // Cancellation reason input state
   const [cancellationReason, setCancellationReason] = useState("");
@@ -862,7 +874,11 @@ export default function CallDutyPage() {
                 availableUsers={availableUsers}
                 usersLoading={usersLoading}
                 onAssignAgent={handleAssignAgent}
-                onAssignByEmail={handleAssignByEmail}
+                onAssignByEmail={(slotId, name, email) => {
+                  setEmailAssignDialog({ slotId });
+                  setEmailAssignEmail(email); // pre-fill from search term
+                  setEmailAssignName("");
+                }}
                 onRemoveAgent={handleRemoveAgent}
               />
             )}
@@ -1474,6 +1490,57 @@ export default function CallDutyPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!emailAssignDialog} onOpenChange={(open) => !open && (setEmailAssignDialog(null), setEmailAssignName(""), setEmailAssignEmail(""))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign by Email</DialogTitle>
+            <DialogDescription>
+              Assign an external agent to this shift by email address.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="assign-name">Name</Label>
+              <Input
+                id="assign-name"
+                placeholder="Agent name"
+                value={emailAssignName}
+                onChange={(e) => setEmailAssignName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="assign-email">Email</Label>
+              <Input
+                id="assign-email"
+                type="email"
+                placeholder="agent@email.com"
+                value={emailAssignEmail}
+                onChange={(e) => setEmailAssignEmail(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => (setEmailAssignDialog(null), setEmailAssignName(""), setEmailAssignEmail(""))}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (emailAssignDialog && emailAssignName.trim() && emailAssignEmail.trim()) {
+                  handleAssignByEmail(emailAssignDialog.slotId, emailAssignName.trim(), emailAssignEmail.trim());
+                  setEmailAssignDialog(null);
+                  setEmailAssignName("");
+                  setEmailAssignEmail("");
+                }
+              }}
+              disabled={!emailAssignName.trim() || !emailAssignEmail.trim()}
+              className="bg-[#EF4923] hover:bg-[#EF4923]/90"
+            >
+              Assign
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
