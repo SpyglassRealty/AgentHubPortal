@@ -628,16 +628,9 @@ export default function CallDutyPage() {
   }
 
   function handleAssignByEmail(slotId: string, name: string, email: string) {
-    const slot = slots.find(s => s.id === slotId);
-    const slotLabel = slot ? `${formatShiftLabel(slot.shiftType)} (${formatTimeRange(slot.startTime, slot.endTime)}) on ${format(new Date(slot.date + "T00:00:00"), "EEE, MMM d")}` : "this shift";
-    
-    setConfirmAction({
-      type: "assign_by_email",
-      slotId,
-      name: name,
-      email: email,
-      label: `${name} (${email}) to ${slotLabel}`,
-    });
+    if (name.trim() && email.trim()) {
+      assignAgentMutation.mutate({ slotId, name: name.trim(), email: email.trim() });
+    }
   }
 
   function handleRemoveAgent(slotId: string, signupId: string, agentName: string) {

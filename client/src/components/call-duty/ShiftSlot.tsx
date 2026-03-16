@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { UserPlus, X, User, UserMinus, Users, Search, Mail } from "lucide-react";
 
 export interface SlotSignup {
@@ -104,6 +105,9 @@ export default function ShiftSlot({
 }: ShiftSlotProps) {
   const isPast = new Date(`${slot.date}T${slot.startTime}:00`) < new Date();
   const [searchTerm, setSearchTerm] = useState("");
+  const [showEmailAssign, setShowEmailAssign] = useState(false);
+  const [assignName, setAssignName] = useState("");
+  const [assignEmail, setAssignEmail] = useState("");
   const searchContainerRef = useRef<HTMLDivElement>(null);
   
   // Close search when clicking outside
@@ -152,7 +156,14 @@ export default function ShiftSlot({
   };
 
   const handleAssignByEmail = () => {
-    onAssignByEmail?.(slot.id, "", searchTerm.trim());
+    if (onAssignByEmail && assignName.trim() && assignEmail.trim()) {
+      onAssignByEmail(slot.id, assignName.trim(), assignEmail.trim());
+      // Reset form
+      setAssignName("");
+      setAssignEmail("");
+      setShowEmailAssign(false);
+      setSearchTerm("");
+    }
   };
 
   const handleRemoveAgent = (signupId: string, agentName: string) => {
@@ -338,7 +349,9 @@ export default function ShiftSlot({
           {/* Admin actions */}
           {isAdmin && !slot.isFull && (
             <div className="space-y-2">
-              {/* Search box */}
+              {!showEmailAssign && (
+                <>
+                  {/* Search box */}
                   <div className="relative" ref={searchContainerRef}>
                     <div className="flex items-center gap-1">
                       <Search className="h-3 w-3 text-muted-foreground flex-shrink-0" />
@@ -418,13 +431,65 @@ export default function ShiftSlot({
                       variant="ghost"
                       size="sm"
                       className="w-full h-7 text-xs text-blue-700 hover:text-blue-700 hover:bg-blue-100 border border-blue-200 dark:text-blue-400 dark:hover:bg-blue-950"
-                      onClick={handleAssignByEmail}
+                      onClick={() => { setShowEmailAssign(true); setAssignEmail(searchTerm.trim()); }}
                       disabled={isLoading}
                     >
                       <Mail className="h-3 w-3 mr-1" />
                       Assign by email instead
                     </Button>
                   )}
+                </>
+              )}
+
+              {/* Email assignment form */}
+              {showEmailAssign && (
+                <div className="space-y-2 p-2 border rounded-md bg-blue-50/50 dark:bg-blue-950/30">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Name</Label>
+                    <Input
+                      placeholder="Agent name"
+                      value={assignName}
+                      onChange={(e) => setAssignName(e.target.value)}
+                      className="h-7 text-xs"
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Email</Label>
+                    <Input
+                      type="email"
+                      placeholder="agent@email.com"
+                      value={assignEmail}
+                      onChange={(e) => setAssignEmail(e.target.value)}
+                      className="h-7 text-xs"
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      className="h-6 text-xs flex-1"
+                      onClick={handleAssignByEmail}
+                      disabled={isLoading || !assignName.trim() || !assignEmail.trim()}
+                    >
+                      Assign
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-xs"
+                      onClick={() => {
+                        setShowEmailAssign(false);
+                        setAssignName("");
+                        setAssignEmail("");
+                      }}
+                      disabled={isLoading}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
