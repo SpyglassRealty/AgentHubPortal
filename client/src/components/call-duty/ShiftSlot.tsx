@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { UserPlus, X, User, UserMinus, Users, Search, Mail } from "lucide-react";
 
 export interface SlotSignup {
@@ -104,6 +105,9 @@ export default function ShiftSlot({
 }: ShiftSlotProps) {
   const isPast = new Date(`${slot.date}T${slot.startTime}:00`) < new Date();
   const [searchTerm, setSearchTerm] = useState("");
+  const [showEmailAssign, setShowEmailAssign] = useState(false);
+  const [assignName, setAssignName] = useState("");
+  const [assignEmail, setAssignEmail] = useState("");
   const searchContainerRef = useRef<HTMLDivElement>(null);
   
   // Close search when clicking outside
@@ -151,6 +155,17 @@ export default function ShiftSlot({
     setSearchTerm("");
   };
 
+  const handleAssignByEmail = () => {
+    if (onAssignByEmail && assignName.trim() && assignEmail.trim()) {
+      onAssignByEmail(slot.id, assignName.trim(), assignEmail.trim());
+      // Reset form
+      setAssignName("");
+      setAssignEmail("");
+      setShowEmailAssign(false);
+      setSearchTerm("");
+    }
+  };
+
   const handleRemoveAgent = (signupId: string, agentName: string) => {
     if (onRemoveAgent) {
       onRemoveAgent(slot.id, signupId, agentName);
@@ -176,7 +191,7 @@ export default function ShiftSlot({
   }
 
   return (
-    <div className={`rounded-lg border p-3 transition-all overflow-visible ${stateClass}`}>
+    <div className={`rounded-lg border p-3 transition-all ${stateClass}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
@@ -334,7 +349,9 @@ export default function ShiftSlot({
           {/* Admin actions */}
           {isAdmin && !slot.isFull && (
             <div className="space-y-2">
-              {/* Search box */}
+              {!showEmailAssign && (
+                <>
+                  {/* Search box */}
                   <div className="relative" ref={searchContainerRef}>
                     <div className="flex items-center gap-1">
                       <Search className="h-3 w-3 text-muted-foreground flex-shrink-0" />
@@ -349,7 +366,7 @@ export default function ShiftSlot({
 
                     {/* Agent suggestions dropdown - show all unassigned users, filtered by search */}
                     {searchTerm.length >= 3 && filteredUsers.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-background border rounded-md shadow-lg max-h-32 overflow-y-auto">
                         {filteredUsers.map((user) => {
                           const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
                           return (
@@ -359,7 +376,7 @@ export default function ShiftSlot({
                               disabled={isLoading}
                               className="w-full flex items-center gap-2 p-2 text-xs hover:bg-muted/50 disabled:opacity-50 first:rounded-t-md last:rounded-b-md"
                             >
-                              <Avatar className="h-6 w-6 flex-shrink-0">
+                              <Avatar className="h-4 w-4 flex-shrink-0">
                                 <AvatarImage src={user.profileImageUrl || undefined} />
                                 <AvatarFallback className="text-[8px] bg-muted">
                                   {getInitials(user.firstName, user.lastName)}
@@ -392,37 +409,7 @@ export default function ShiftSlot({
                     )}
                   </div>
 
-                  {/* Autocomplete suggestion list */}
-                  {searchTerm.length >= 3 && filteredUsers.length > 0 && (
-                    <div className="relative">
-                      {searchTerm.length >= 3 && filteredUsers.length > 0 && (
-                        <div className="absolute top-0 left-0 right-0 z-10 bg-background border rounded-md shadow-lg max-h-32 overflow-y-auto">
-                          {filteredUsers.map((user) => {
-                            const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
-                            return (
-                              <button
-                                key={user.id}
-                                onClick={() => handleSelectUser(user.id)}
-                                disabled={isLoading}
-                                className="w-full flex items-center gap-2 p-2 text-left hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                <Avatar className="h-8 w-8 flex-shrink-0">
-                                  <AvatarImage src={user.profileImageUrl || undefined} />
-                                  <AvatarFallback className="text-xs bg-muted">
-                                    {getInitials(user.firstName, user.lastName)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex flex-col items-start min-w-0 flex-1">
-                                  <span className="truncate font-medium text-sm">{userName}</span>
-                                  <span className="truncate text-muted-foreground text-xs">{user.email}</span>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {/* Removed duplicate autocomplete section - already handled inside searchContainerRef above */}
                 </>
               )}
 
