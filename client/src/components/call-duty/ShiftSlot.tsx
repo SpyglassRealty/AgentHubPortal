@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +60,7 @@ interface ShiftSlotProps {
   // Admin props
   isAdmin?: boolean;
   availableUsers?: AvailableUser[];
+  usersLoading?: boolean;
   onAssignAgent?: (slotId: string, userId: string) => void;
   onAssignByEmail?: (slotId: string, name: string, email: string) => void;
   onRemoveAgent?: (slotId: string, signupId: string, agentName: string) => void;
@@ -97,6 +98,7 @@ export default function ShiftSlot({
   isLoading,
   isAdmin = false,
   availableUsers = [],
+  usersLoading = false,
   onAssignAgent,
   onAssignByEmail,
   onRemoveAgent
@@ -106,6 +108,21 @@ export default function ShiftSlot({
   const [showEmailAssign, setShowEmailAssign] = useState(false);
   const [assignName, setAssignName] = useState("");
   const [assignEmail, setAssignEmail] = useState("");
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Close search when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node) && searchTerm.trim()) {
+        setSearchTerm("");
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [searchTerm]);
   
   // Filter available users to exclude those already signed up for this slot
   const unassignedUsers = availableUsers.filter(user => 
@@ -128,6 +145,8 @@ export default function ShiftSlot({
   const handleAssignAgent = (userId: string) => {
     if (onAssignAgent) {
       onAssignAgent(slot.id, userId);
+      // Clear search term to close autocomplete dropdown
+      setSearchTerm("");
     }
   };
 
@@ -333,15 +352,45 @@ export default function ShiftSlot({
               {!showEmailAssign && (
                 <>
                   {/* Search box */}
-                  <div className="flex items-center gap-1">
-                    <Search className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                    <Input
-                      placeholder="Search agents..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="h-7 text-xs flex-1"
-                      disabled={isLoading}
-                    />
+                  <div className="relative" ref={searchContainerRef}>
+                    <div className="flex items-center gap-1">
+                      <Search className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                      <Input
+                        placeholder="Search agents..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="h-7 text-xs flex-1"
+                        disabled={isLoading}
+                      />
+                    </div>
+
+                    {/* Agent suggestions dropdown - show all unassigned users, filtered by search */}
+                    {unassignedUsers.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-background border rounded-md shadow-lg max-h-32 overflow-y-auto">
+                        {filteredUsers.map((user) => {
+                          const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
+                          return (
+                            <button
+                              key={user.id}
+                              onClick={() => handleAssignAgent(user.id)}
+                              disabled={isLoading}
+                              className="w-full flex items-center gap-2 p-2 text-xs hover:bg-muted/50 disabled:opacity-50 first:rounded-t-md last:rounded-b-md"
+                            >
+                              <Avatar className="h-4 w-4 flex-shrink-0">
+                                <AvatarImage src={user.profileImageUrl || undefined} />
+                                <AvatarFallback className="text-[8px] bg-muted">
+                                  {getInitials(user.firstName, user.lastName)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex flex-col items-start min-w-0 flex-1">
+                                <span className="truncate font-medium">{userName}</span>
+                                <span className="truncate text-muted-foreground text-[10px]">{user.email}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   {/* Autocomplete suggestion list */}
@@ -376,8 +425,8 @@ export default function ShiftSlot({
                     </div>
                   )}
                   
-                  {/* Fallback when search term entered but no agents match */}
-                  {searchTerm.length >= 3 && filteredUsers.length === 0 && (
+                  {/* Email assignment button - show when no users available or search yields no results */}
+                  {!usersLoading && (unassignedUsers.length === 0 || (searchTerm.length >= 3 && filteredUsers.length === 0)) && (
                     <Button
                       variant="ghost"
                       size="sm"

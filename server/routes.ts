@@ -342,18 +342,17 @@ export async function registerRoutes(
     }
   });
 
-  // Get all users (admin/developer only)
+  // Get all users for admin assignment purposes (call duty, etc.)
   app.get('/api/auth/users', isAuthenticated, async (req: any, res) => {
     try {
       const user = await getDbUser(req);
       if (!user) return res.status(404).json({ message: "User not found" });
       
-      // Check if user is admin or developer
-      const isAdmin = user.role === 'admin' || user.role === 'developer' || user.isSuperAdmin;
-      if (!isAdmin) {
+      // Only admin/developer can list all users
+      if (!user.isSuperAdmin && user.role !== 'admin' && user.role !== 'developer') {
         return res.status(403).json({ message: "Admin access required" });
       }
-      
+
       const users = await storage.getAllUsers();
       res.json(users);
     } catch (error) {
