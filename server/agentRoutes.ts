@@ -469,7 +469,7 @@ router.post("/admin/agents/upload-photo", uploadPhoto.single("file"), async (req
 // ── PUBLIC ROUTES ────────────────────────────────────────────────────────
 
 // GET /api/agents/search - MLS Grid-based agent search with Repliers enrichment
-router.get("/agents/search", async (req, res) => {
+router.get("/search", async (req, res) => {
   const query = req.query.q || req.query.name || '';
   
   if (!query || query.length < 2) {
