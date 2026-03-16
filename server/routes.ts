@@ -5209,7 +5209,7 @@ Respond with valid JSON in this exact format:
   });
 
   // GET /api/agents/search - MLS Grid-based agent search with Repliers enrichment
-  app.get('/api/agents/search', isAuthenticated, async (req: any, res) => {
+  app.get('/api/agents/search', async (req: any, res) => {
     const query = req.query.q || req.query.name || '';
     
     if (!query || query.length < 2) {
