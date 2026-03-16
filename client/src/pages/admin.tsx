@@ -31,6 +31,7 @@ import FormSubmissionDetailPage from "./admin/FormSubmissionDetail";
 const PolygonManagerPage = lazy(() => import("./admin/PolygonManager"));
 import MulticamEditorPage from "./admin/MulticamEditor";
 import AdminBeaconPage from "./admin-beacon";
+import AdminBeaconUnifiedPage from "./admin-beacon-unified";
 import AdminSettingsPage from "./admin-settings";
 import AdminDashboardsRouter from "./admin-dashboards";
 import { apps, type AppDefinition } from "@/lib/apps";
@@ -438,7 +439,8 @@ export default function AdminPage() {
       items: [
         { name: "Dashboard", href: "/admin", icon: Home, active: location === "/admin" },
         { name: "Agent Hub Portal", href: "/admin/dashboards", icon: BarChart3 },
-        { name: "Beacon", href: "/admin/beacon", icon: Activity },
+        { name: "Beacon (Fixed)", href: "/admin/beacon-unified", icon: Activity },
+        { name: "Beacon (Legacy)", href: "/admin/beacon", icon: Activity },
         { name: "Site Editor", href: "/admin/site-editor", icon: PenTool },
         { name: "Multicam Editor", href: "/admin/multicam-editor", icon: Film },
       ]
@@ -662,6 +664,7 @@ export default function AdminPage() {
                 <Switch>
                   {/* Sub-routes */}
                   <Route path="/admin/site-editor" component={() => <SiteEditorContent />} />
+                  <Route path="/admin/beacon-unified" component={AdminBeaconUnifiedPage} />
                   <Route path="/admin/beacon" component={AdminBeaconPage} />
                   <Route path="/admin/settings" component={AdminSettingsPage} />
                   <Route path="/admin/polygons">

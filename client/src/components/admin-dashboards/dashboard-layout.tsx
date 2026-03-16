@@ -65,7 +65,14 @@ const navItems: NavItem[] = [
 
 const externalTools: NavItem[] = [
   {
-    label: "Beacon Recruiting",
+    label: "Beacon (Unified)",
+    href: "/admin/beacon-unified",
+    icon: Radar,
+    section: "TOOLS",
+    external: false,
+  },
+  {
+    label: "Beacon (External)",
     href: "https://beacon.realtyhack.com",
     icon: Radar,
     section: "TOOLS",
@@ -165,26 +172,47 @@ export function DashboardLayout({
                 TOOLS
               </div>
             )}
-            {externalTools.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm cursor-pointer transition-colors",
-                  "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <item.icon className="h-4 w-4 flex-shrink-0" />
-                {!collapsed && (
-                  <>
-                    <span className="truncate flex-1">{item.label}</span>
-                    <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-50" />
-                  </>
-                )}
-              </a>
-            ))}
+            {externalTools.map((item) => {
+              if (item.external) {
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm cursor-pointer transition-colors",
+                      "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 flex-shrink-0" />
+                    {!collapsed && (
+                      <>
+                        <span className="truncate flex-1">{item.label}</span>
+                        <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-50" />
+                      </>
+                    )}
+                  </a>
+                );
+              } else {
+                const isActive = location === item.href;
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <span
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm cursor-pointer transition-colors",
+                        isActive
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <item.icon className="h-4 w-4 flex-shrink-0" />
+                      {!collapsed && <span className="truncate">{item.label}</span>}
+                    </span>
+                  </Link>
+                );
+              }
+            })}
           </div>
         </nav>
       </aside>

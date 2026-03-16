@@ -30,6 +30,7 @@ import AdminSettingsPage from "@/pages/admin-settings";
 import AdminPage from "@/pages/admin";
 import AdminDashboardsRouter from "@/pages/admin-dashboards";
 import AdminBeaconPage from "@/pages/admin-beacon";
+import AdminBeaconUnifiedPage from "@/pages/admin-beacon-unified";
 import CommunityListPage from "@/pages/admin/CommunityList";
 import CommunityEditorPage from "@/pages/admin/CommunityEditor";
 import AdminSiteEditorPage from "@/pages/admin-site-editor";
