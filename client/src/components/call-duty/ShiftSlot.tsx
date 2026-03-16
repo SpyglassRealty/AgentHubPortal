@@ -158,11 +158,6 @@ export default function ShiftSlot({
   const handleAssignByEmail = () => {
     if (onAssignByEmail && assignName.trim() && assignEmail.trim()) {
       onAssignByEmail(slot.id, assignName.trim(), assignEmail.trim());
-      // Reset form
-      setAssignName("");
-      setAssignEmail("");
-      setShowEmailAssign(false);
-      setSearchTerm("");
     }
   };
 
