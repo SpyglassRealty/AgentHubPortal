@@ -61,7 +61,7 @@ export default function ShiftCalendar({
   }, [slots]);
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto pb-40">
       <div className="min-w-[700px]">
         {/* Day headers */}
         <div className="grid grid-cols-[100px_repeat(7,1fr)] gap-2 mb-2">
