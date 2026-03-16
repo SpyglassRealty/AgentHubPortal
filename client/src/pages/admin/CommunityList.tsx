@@ -27,6 +27,7 @@ import { Search, ArrowLeft, ChevronLeft, ChevronRight, MapPin, Loader2, AlertTri
 
 export default function CommunityList() {
   const [, setLocation] = useLocation();
+  // Fix: Ensure all filter handlers call both state setter AND updateUrl
   
   // Get initial values from URL params
   const urlParams = new URLSearchParams(window.location.search);
