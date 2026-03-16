@@ -31,12 +31,13 @@ export default function CommunityList() {
   const [filter, setFilter] = useState("all");
   const [county, setCounty] = useState("");
   const [type, setType] = useState("");
+  const [hasContent, setHasContent] = useState("");
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState("name");
   const [selectedCommunities, setSelectedCommunities] = useState<string[]>([]);
   const { toast } = useToast();
 
-  const { data, isLoading } = useAdminCommunities(search, filter, page, county);
+  const { data, isLoading } = useAdminCommunities(search, filter, page, county, hasContent);
 
   const communities = data?.communities || [];
   const pagination = data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 1 };
@@ -204,6 +205,22 @@ export default function CommunityList() {
                   <SelectItem value="polygon">Neighborhoods</SelectItem>
                   <SelectItem value="zip">Zip Codes</SelectItem>
                   <SelectItem value="city">Cities</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={hasContent || "all"}
+                onValueChange={(v) => {
+                  setHasContent(v === "all" ? "" : v);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Content" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Content</SelectItem>
+                  <SelectItem value="true">Has sections</SelectItem>
+                  <SelectItem value="false">No sections</SelectItem>
                 </SelectContent>
               </Select>
               <Select

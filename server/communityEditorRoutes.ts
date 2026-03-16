@@ -171,6 +171,7 @@ export function registerCommunityEditorRoutes(app: Express) {
       const search = (req.query.search as string) || "";
       const filter = (req.query.filter as string) || "all"; // all | published | draft
       const county = (req.query.county as string) || "";
+      const hasContent = req.query.hasContent as string; // "true" | "false" | undefined
       const page = Math.max(1, parseInt((req.query.page as string) || "1", 10));
       const limit = Math.min(Math.max(1, parseInt((req.query.limit as string) || "50", 10)), 200);
       const offset = (page - 1) * limit;
@@ -195,6 +196,22 @@ export function registerCommunityEditorRoutes(app: Express) {
 
       if (county) {
         conditions.push(eq(communities.county, county));
+      }
+
+      if (hasContent === "true") {
+        conditions.push(
+          and(
+            sql`${communities.sections} IS NOT NULL`,
+            sql`jsonb_array_length(${communities.sections}) > 0`
+          )
+        );
+      } else if (hasContent === "false") {
+        conditions.push(
+          or(
+            sql`${communities.sections} IS NULL`,
+            sql`jsonb_array_length(${communities.sections}) = 0`
+          )
+        );
       }
 
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

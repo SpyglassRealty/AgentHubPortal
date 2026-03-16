@@ -75,10 +75,11 @@ export function useAdminCommunities(
   search: string = "",
   filter: string = "all",
   page: number = 1,
-  county: string = ""
+  county: string = "",
+  hasContent: string = ""
 ) {
   return useQuery<CommunitiesResponse>({
-    queryKey: ["admin-communities", search, filter, page, county],
+    queryKey: ["admin-communities", search, filter, page, county, hasContent],
     queryFn: () => {
       const params = new URLSearchParams({
         search,
@@ -87,6 +88,7 @@ export function useAdminCommunities(
         limit: "50",
       });
       if (county) params.set("county", county);
+      if (hasContent) params.set("hasContent", hasContent);
       return fetchJson(`/api/admin/communities?${params}`);
     },
     staleTime: 30_000,
