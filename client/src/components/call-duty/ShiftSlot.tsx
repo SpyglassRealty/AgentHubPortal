@@ -191,7 +191,7 @@ export default function ShiftSlot({
   }
 
   return (
-    <div className={`rounded-lg border p-3 transition-all ${stateClass}`}>
+    <div className={`rounded-lg border p-3 transition-all overflow-visible ${stateClass}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
@@ -366,7 +366,7 @@ export default function ShiftSlot({
 
                     {/* Agent suggestions dropdown - show all unassigned users, filtered by search */}
                     {searchTerm.length >= 3 && filteredUsers.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-background border rounded-md shadow-lg max-h-32 overflow-y-auto">
+                      <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-y-auto">
                         {filteredUsers.map((user) => {
                           const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
                           return (
