@@ -26,6 +26,7 @@ interface ShiftCalendarProps {
   // Admin props
   isAdmin?: boolean;
   availableUsers?: AvailableUser[];
+  usersLoading?: boolean;
   onAssignAgent?: (slotId: string, userId: string) => void;
   onAssignByEmail?: (slotId: string, name: string, email: string) => void;
   onRemoveAgent?: (slotId: string, signupId: string, agentName: string) => void;
@@ -40,6 +41,7 @@ export default function ShiftCalendar({
   isLoading,
   isAdmin,
   availableUsers,
+  usersLoading,
   onAssignAgent,
   onAssignByEmail,
   onRemoveAgent,
@@ -124,6 +126,7 @@ export default function ShiftCalendar({
                   isLoading={isLoading}
                   isAdmin={isAdmin}
                   availableUsers={availableUsers}
+                  usersLoading={usersLoading}
                   onAssignAgent={onAssignAgent}
                   onAssignByEmail={onAssignByEmail}
                   onRemoveAgent={onRemoveAgent}

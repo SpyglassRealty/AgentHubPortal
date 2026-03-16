@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowUpRight, ArrowRight, Plus, ExternalLink, Sparkles, ChevronDown, ChevronUp, Plug, Link2, PlayCircle, Play } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { OnboardingModal } from "@/components/onboarding-modal";
 import { SuggestionCard } from "@/components/suggestion-card";
 import { MarketPulseWithSpyglassListings } from "@/components/dashboard/MarketPulseWithSpyglassListings";
 import { GoogleDocModal } from "@/components/google-doc-modal";
@@ -97,7 +96,6 @@ export default function DashboardPage() {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
   const [showAllApps, setShowAllApps] = useState(false);
-  const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [showHandbook, setShowHandbook] = useState(false);
   const [showTrainingVideos, setShowTrainingVideos] = useState(false);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
@@ -149,7 +147,6 @@ export default function DashboardPage() {
       if (!res.ok) throw new Error("Failed to fetch suggestions");
       return res.json();
     },
-    enabled: !profileData?.needsOnboarding || onboardingComplete,
   });
 
   const { data: visibilityData } = useQuery<AppVisibilityResponse>({
@@ -182,7 +179,6 @@ export default function DashboardPage() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const showOnboarding = profileData?.needsOnboarding && !onboardingComplete;
   const suggestions = suggestionsData?.suggestions || [];
   
   const getGreeting = () => {
@@ -213,11 +209,6 @@ export default function DashboardPage() {
     <Layout>
       <div className="max-w-6xl mx-auto space-y-8">
         
-        <OnboardingModal 
-          open={showOnboarding || false} 
-          onComplete={() => setOnboardingComplete(true)} 
-        />
-
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-display font-bold text-foreground">
