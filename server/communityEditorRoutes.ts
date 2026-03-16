@@ -172,6 +172,9 @@ export function registerCommunityEditorRoutes(app: Express) {
       const filter = (req.query.filter as string) || "all"; // all | published | draft
       const county = (req.query.county as string) || "";
       const hasContent = req.query.hasContent as string; // "true" | "false" | undefined
+      const seoFilter = req.query.seoFilter as string; // "good" | "poor" | undefined
+      const sortBy = (req.query.sortBy as string) || "name"; // name | updated | seo_score
+      const sortDir = (req.query.sortDir as string) || "asc"; // asc | desc
       const page = Math.max(1, parseInt((req.query.page as string) || "1", 10));
       const limit = Math.min(Math.max(1, parseInt((req.query.limit as string) || "50", 10)), 200);
       const offset = (page - 1) * limit;
@@ -214,7 +217,69 @@ export function registerCommunityEditorRoutes(app: Express) {
         );
       }
 
+      // SEO filter logic
+      if (seoFilter === "good") {
+        conditions.push(
+          and(
+            sql`${communities.metaTitle} IS NOT NULL`,
+            sql`length(${communities.metaTitle}) <= 60`,
+            sql`${communities.metaDescription} IS NOT NULL`,
+            sql`length(${communities.metaDescription}) <= 160`,
+            sql`${communities.focusKeyword} IS NOT NULL`,
+            sql`${communities.description} IS NOT NULL`,
+            sql`length(${communities.description}) >= 100`
+          )
+        );
+      } else if (seoFilter === "poor") {
+        conditions.push(
+          or(
+            sql`${communities.metaTitle} IS NULL`,
+            sql`length(${communities.metaTitle}) > 60`,
+            sql`${communities.metaDescription} IS NULL`,
+            sql`length(${communities.metaDescription}) > 160`,
+            sql`${communities.focusKeyword} IS NULL`,
+            sql`${communities.description} IS NULL`,
+            sql`length(${communities.description}) < 100`
+          )
+        );
+      }
+
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      // Build order clause based on sortBy and sortDir
+      let orderClause;
+      const direction = sortDir === "desc" ? desc : asc;
+      
+      switch (sortBy) {
+        case "updated":
+          orderClause = direction(communities.updatedAt);
+          break;
+        case "seo_score":
+          // Calculate SEO score in SQL - closer to frontend logic
+          orderClause = direction(
+            sql`CASE 
+              WHEN ${communities.metaTitle} IS NULL THEN 75
+              WHEN length(${communities.metaTitle}) > 60 THEN 75
+              ELSE 100
+            END +
+            CASE 
+              WHEN ${communities.metaDescription} IS NULL THEN 75
+              WHEN length(${communities.metaDescription}) > 160 THEN 75
+              ELSE 100
+            END +
+            CASE 
+              WHEN ${communities.focusKeyword} IS NULL THEN 75
+              ELSE 100
+            END +
+            CASE 
+              WHEN ${communities.description} IS NULL OR length(${communities.description}) < 100 THEN 75
+              ELSE 100
+            END`
+          );
+          break;
+        default: // name
+          orderClause = direction(communities.name);
+      }
 
       const [rows, totalResult] = await Promise.all([
         db
@@ -227,10 +292,13 @@ export function registerCommunityEditorRoutes(app: Express) {
             featured: communities.featured,
             updatedAt: communities.updatedAt,
             metaTitle: communities.metaTitle,
+            metaDescription: communities.metaDescription,
+            focusKeyword: communities.focusKeyword,
+            description: communities.description,
           })
           .from(communities)
           .where(whereClause)
-          .orderBy(asc(communities.name))
+          .orderBy(orderClause)
           .limit(limit)
           .offset(offset),
         db

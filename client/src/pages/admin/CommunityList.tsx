@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 
 import { useAdminCommunities } from "@/lib/community-editor";
@@ -23,21 +23,44 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Search, ArrowLeft, ChevronLeft, ChevronRight, MapPin, Loader2, AlertTriangle, CheckCircle, Eye, EyeOff, Star, X } from "lucide-react";
+import { Search, ArrowLeft, ChevronLeft, ChevronRight, MapPin, Loader2, AlertTriangle, CheckCircle, Eye, EyeOff, Star, X, ChevronUp, ChevronDown } from "lucide-react";
 
 export default function CommunityList() {
   const [, setLocation] = useLocation();
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
-  const [county, setCounty] = useState("");
-  const [type, setType] = useState("");
-  const [hasContent, setHasContent] = useState("");
-  const [page, setPage] = useState(1);
-  const [sortBy, setSortBy] = useState("name");
+  
+  // Get initial values from URL params
+  const urlParams = new URLSearchParams(window.location.search);
+  const [search, setSearch] = useState(urlParams.get("search") || "");
+  const [filter, setFilter] = useState(urlParams.get("filter") || "all");
+  const [county, setCounty] = useState(urlParams.get("county") || "");
+  const [type, setType] = useState(urlParams.get("type") || "");
+  const [hasContent, setHasContent] = useState(urlParams.get("hasContent") || "");
+  const [seoFilter, setSeoFilter] = useState(urlParams.get("seoFilter") || "");
+  const [sortBy, setSortBy] = useState(urlParams.get("sortBy") || "name");
+  const [sortDir, setSortDir] = useState(urlParams.get("sortDir") || "asc");
+  const [page, setPage] = useState(Math.max(1, parseInt(urlParams.get("page") || "1", 10)));
   const [selectedCommunities, setSelectedCommunities] = useState<string[]>([]);
   const { toast } = useToast();
 
-  const { data, isLoading } = useAdminCommunities(search, filter, page, county, hasContent);
+  // Update URL when filters change
+  const updateUrl = (newParams: Record<string, string | number>) => {
+    const params = new URLSearchParams();
+    const allParams = { 
+      search, filter, county, type, hasContent, seoFilter, sortBy, sortDir, page: 1,
+      ...newParams 
+    };
+    
+    Object.entries(allParams).forEach(([key, value]) => {
+      if (value && value !== "all" && value !== "" && (key !== "page" || value !== 1)) {
+        params.set(key, String(value));
+      }
+    });
+    
+    const newUrl = `/admin/communities${params.toString() ? `?${params.toString()}` : ""}`;
+    window.history.replaceState(null, "", newUrl);
+  };
+
+  const { data, isLoading } = useAdminCommunities(search, filter, page, county, hasContent, seoFilter, sortBy, sortDir);
 
   const communities = data?.communities || [];
   const pagination = data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 1 };
@@ -149,8 +172,10 @@ export default function CommunityList() {
                   placeholder="Search by name, slug, or county..."
                   value={search}
                   onChange={(e) => {
-                    setSearch(e.target.value);
+                    const newSearch = e.target.value;
+                    setSearch(newSearch);
                     setPage(1);
+                    updateUrl({ search: newSearch, page: 1 });
                   }}
                   className="pl-9"
                 />
@@ -160,6 +185,7 @@ export default function CommunityList() {
                 onValueChange={(v) => {
                   setFilter(v);
                   setPage(1);
+                  updateUrl({ filter: v, page: 1 });
                 }}
               >
                 <SelectTrigger className="w-[160px]">
@@ -174,8 +200,10 @@ export default function CommunityList() {
               <Select
                 value={county || "all"}
                 onValueChange={(v) => {
-                  setCounty(v === "all" ? "" : v);
+                  const newCounty = v === "all" ? "" : v;
+                  setCounty(newCounty);
                   setPage(1);
+                  updateUrl({ county: newCounty, page: 1 });
                 }}
               >
                 <SelectTrigger className="w-[160px]">
@@ -193,8 +221,10 @@ export default function CommunityList() {
               <Select
                 value={type || "all"}
                 onValueChange={(v) => {
-                  setType(v === "all" ? "" : v);
+                  const newType = v === "all" ? "" : v;
+                  setType(newType);
                   setPage(1);
+                  updateUrl({ type: newType, page: 1 });
                 }}
               >
                 <SelectTrigger className="w-[160px]">
@@ -210,8 +240,10 @@ export default function CommunityList() {
               <Select
                 value={hasContent || "all"}
                 onValueChange={(v) => {
-                  setHasContent(v === "all" ? "" : v);
+                  const newHasContent = v === "all" ? "" : v;
+                  setHasContent(newHasContent);
                   setPage(1);
+                  updateUrl({ hasContent: newHasContent, page: 1 });
                 }}
               >
                 <SelectTrigger className="w-[160px]">
@@ -224,19 +256,53 @@ export default function CommunityList() {
                 </SelectContent>
               </Select>
               <Select
-                value={sortBy}
-                onValueChange={setSortBy}
+                value={seoFilter || "all"}
+                onValueChange={(v) => {
+                  const newSeoFilter = v === "all" ? "" : v;
+                  setSeoFilter(newSeoFilter);
+                  setPage(1);
+                  updateUrl({ seoFilter: newSeoFilter, page: 1 });
+                }}
               >
                 <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Sort by" />
+                  <SelectValue placeholder="SEO" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="name">Name A-Z</SelectItem>
-                  <SelectItem value="updated">Last Updated</SelectItem>
-                  <SelectItem value="seo_score">SEO Score</SelectItem>
-                  <SelectItem value="published">Status</SelectItem>
+                  <SelectItem value="all">All SEO</SelectItem>
+                  <SelectItem value="good">Good</SelectItem>
+                  <SelectItem value="poor">Poor</SelectItem>
                 </SelectContent>
               </Select>
+              <div className="flex items-center gap-1">
+                <Select
+                  value={sortBy}
+                  onValueChange={(v) => {
+                    setSortBy(v);
+                    updateUrl({ sortBy: v });
+                  }}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name">Name</SelectItem>
+                    <SelectItem value="updated">Last Updated</SelectItem>
+                    <SelectItem value="seo_score">SEO Score</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="px-2"
+                  onClick={() => {
+                    const newDir = sortDir === "asc" ? "desc" : "asc";
+                    setSortDir(newDir);
+                    updateUrl({ sortDir: newDir });
+                  }}
+                >
+                  {sortDir === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
 
             {/* Bulk Actions Bar */}
@@ -420,7 +486,11 @@ export default function CommunityList() {
                 variant="outline"
                 size="sm"
                 disabled={page <= 1}
-                onClick={() => setPage(page - 1)}
+                onClick={() => {
+                  const newPage = page - 1;
+                  setPage(newPage);
+                  updateUrl({ page: newPage });
+                }}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
                 Previous
@@ -429,7 +499,11 @@ export default function CommunityList() {
                 variant="outline"
                 size="sm"
                 disabled={page >= pagination.totalPages}
-                onClick={() => setPage(page + 1)}
+                onClick={() => {
+                  const newPage = page + 1;
+                  setPage(newPage);
+                  updateUrl({ page: newPage });
+                }}
               >
                 Next
                 <ChevronRight className="h-4 w-4 ml-1" />
