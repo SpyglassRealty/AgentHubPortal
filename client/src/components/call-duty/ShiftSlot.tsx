@@ -345,7 +345,7 @@ export default function ShiftSlot({
                   </div>
 
                   {/* Autocomplete suggestion list */}
-                  {unassignedUsers.length > 0 && (
+                  {searchTerm.length >= 3 && filteredUsers.length > 0 && (
                     <div className="relative">
                       {searchTerm.length >= 3 && filteredUsers.length > 0 && (
                         <div className="absolute top-0 left-0 right-0 z-10 bg-background border rounded-md shadow-lg max-h-32 overflow-y-auto">
