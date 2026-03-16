@@ -11,7 +11,8 @@ interface CoreSplitProps extends BlockProps {
   primaryButtonUrl?: string;
   secondaryButtonText?: string;
   secondaryButtonUrl?: string;
-  reverse?: boolean;
+  reverse?: boolean; // Keep for backward compatibility
+  mediaPosition?: 'left' | 'right';
   background?: 'white' | 'light' | 'dark';
 }
 
@@ -106,6 +107,7 @@ export function CoreSplitBlock({
   secondaryButtonText,
   secondaryButtonUrl,
   reverse = false,
+  mediaPosition = 'right',
   background = 'white'
 }: CoreSplitProps) {
   const bgClass = {
@@ -114,12 +116,15 @@ export function CoreSplitBlock({
     dark: 'bg-gray-900 text-white'
   }[background];
 
+  // Determine media position: use mediaPosition if provided, fallback to reverse for backward compatibility
+  const isMediaLeft = mediaPosition === 'left' || (mediaPosition === 'right' && reverse);
+
   return (
     <section className={`py-16 ${bgClass}`}>
       <div className="max-w-[1100px] mx-auto px-4">
-        <div className={`grid grid-cols-1 md:grid-cols-2 gap-12 items-center ${reverse ? 'md:flex-row-reverse' : ''}`}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           {/* Media */}
-          <div className={reverse ? 'md:order-2' : ''}>
+          <div className={isMediaLeft ? 'md:order-1' : 'md:order-2'}>
             {videoUrl ? (
               <VideoThumbnail videoUrl={videoUrl} className="w-full" />
             ) : imageUrl ? (
@@ -137,7 +142,7 @@ export function CoreSplitBlock({
           </div>
           
           {/* Content */}
-          <div className={reverse ? 'md:order-1' : ''}>
+          <div className={isMediaLeft ? 'md:order-2' : 'md:order-1'}>
             <h2 className="text-3xl font-bold mb-4">{heading}</h2>
             <div 
               className="prose prose-lg mb-6"
@@ -182,7 +187,14 @@ CoreSplitBlock.schema = {
   primaryButtonUrl: { type: 'string', label: 'Primary Button URL' },
   secondaryButtonText: { type: 'string', label: 'Secondary Button Text' },
   secondaryButtonUrl: { type: 'string', label: 'Secondary Button URL' },
-  reverse: { type: 'boolean', label: 'Reverse Layout' },
+  mediaPosition: { 
+    type: 'select', 
+    label: 'Media Position',
+    options: [
+      { value: 'left', label: 'Media Left' },
+      { value: 'right', label: 'Media Right' }
+    ]
+  },
   background: { 
     type: 'select', 
     label: 'Background', 

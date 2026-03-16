@@ -391,6 +391,22 @@ export default function ShiftSlot({
                         })}
                       </div>
                     )}
+
+                    {/* Email assignment button - show when no users available or search yields no results */}
+                    {!usersLoading && (unassignedUsers.length === 0 || (searchTerm.length >= 3 && filteredUsers.length === 0)) && (
+                      <div className="mt-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full h-7 text-xs text-blue-700 hover:text-blue-700 hover:bg-blue-100 border border-blue-200 dark:text-blue-400 dark:hover:bg-blue-950"
+                          onClick={() => { setShowEmailAssign(true); setAssignEmail(searchTerm.trim()); }}
+                          disabled={isLoading}
+                        >
+                          <Mail className="h-3 w-3 mr-1" />
+                          Assign by email instead
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Autocomplete suggestion list */}
@@ -423,20 +439,6 @@ export default function ShiftSlot({
                         </div>
                       )}
                     </div>
-                  )}
-                  
-                  {/* Email assignment button - show when no users available or search yields no results */}
-                  {!usersLoading && (unassignedUsers.length === 0 || (searchTerm.length >= 3 && filteredUsers.length === 0)) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full h-7 text-xs text-blue-700 hover:text-blue-700 hover:bg-blue-100 border border-blue-200 dark:text-blue-400 dark:hover:bg-blue-950"
-                      onClick={() => { setShowEmailAssign(true); setAssignEmail(searchTerm.trim()); }}
-                      disabled={isLoading}
-                    >
-                      <Mail className="h-3 w-3 mr-1" />
-                      Assign by email instead
-                    </Button>
                   )}
                 </>
               )}
