@@ -479,6 +479,22 @@ async function createPulseDataTables() {
         `
       },
       {
+        name: 'idx_saved_searches',
+        sql: `
+          CREATE TABLE IF NOT EXISTS idx_saved_searches (
+            id serial PRIMARY KEY,
+            name text NOT NULL,
+            slug text NOT NULL UNIQUE,
+            page_title text,
+            meta_description text,
+            filters jsonb NOT NULL DEFAULT '{}',
+            status text NOT NULL DEFAULT 'draft',
+            created_at timestamp DEFAULT NOW(),
+            updated_at timestamp DEFAULT NOW()
+          )
+        `
+      },
+      {
         name: 'cma_report_configs',
         sql: `
           CREATE TABLE IF NOT EXISTS cma_report_configs (
