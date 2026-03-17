@@ -24,6 +24,7 @@ import {
   UserCog,
   Swords,
   Rocket,
+  Gauge,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "$1B Tracker", href: "/admin/dashboards/billion-tracker", icon: Rocket, section: "GROWTH" },
   { label: "Retention Risk", href: "/admin/dashboards/retention-risk", icon: Shield, section: "GROWTH" },
+  { label: "Growth Planner", href: "/admin/dashboards/growth-planner", icon: Gauge, section: "GROWTH" },
   { label: "Battle Cards", href: "/admin/dashboards/recruiting-battlecards", icon: Swords, section: "GROWTH" },
   { label: "Overview", href: "/admin/dashboards", icon: LayoutDashboard, section: "DASHBOARD" },
   { label: "Analytics", href: "/admin/dashboards/insights", icon: Lightbulb, section: "DASHBOARD" },

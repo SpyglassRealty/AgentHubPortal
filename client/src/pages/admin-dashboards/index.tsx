@@ -20,6 +20,7 @@ import ReportsPage from "./reports";
 import RetentionRiskPage from "./retention-risk";
 import RecruitingBattlecardsPage from "./recruiting-battlecards";
 import BillionTrackerPage from "./billion-tracker";
+import GrowthPlannerPage from "./growth-planner";
 
 export default function AdminDashboardsRouter() {
   return (
@@ -29,6 +30,7 @@ export default function AdminDashboardsRouter() {
         <Route path="/admin/dashboards/billion-tracker" component={BillionTrackerPage} />
         <Route path="/admin/dashboards/retention-risk" component={RetentionRiskPage} />
         <Route path="/admin/dashboards/recruiting-battlecards" component={RecruitingBattlecardsPage} />
+        <Route path="/admin/dashboards/growth-planner" component={GrowthPlannerPage} />
         <Route path="/admin/dashboards/insights" component={InsightsPage} />
         <Route path="/admin/dashboards/leads" component={LeadsPage} />
         <Route path="/admin/dashboards/transactions" component={TransactionsPage} />
