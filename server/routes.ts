@@ -119,6 +119,7 @@ import populateAgentsEndpoint from "./populateAgentsEndpoint";
 import migrationEndpoint from "./migrationEndpoint";
 import landingPageRoutes from "./landingPageRoutes";
 import savedSearchRoutes from "./savedSearchRoutes";
+import idxSavedSearchesRoutes from "./routes/idxSavedSearchesRoutes";
 import testimonialRoutes from "./testimonialRoutes";
 import pageBuilderRoutes from "./pageBuilderRoutes";
 import corePageRoutes from "./corePageRoutes";
@@ -5589,6 +5590,9 @@ Respond with valid JSON in this exact format:
 
   // Register Phase 5 - Saved Search Dashboard (Repliers integration)
   app.use('/api', savedSearchRoutes);
+
+  // Register IDX Saved Searches routes
+  idxSavedSearchesRoutes(app, isAuthenticated);
 
   // Register Multicam Podcast Editor routes
   app.use('/api/admin/multicam', multicamRoutes);
