@@ -341,6 +341,18 @@ export const savedContentIdeas = pgTable('saved_content_ideas', {
   index("idx_saved_content_ideas_user_id").on(table.userId),
 ]);
 
+export const idxSavedSearches = pgTable("idx_saved_searches", {
+ id: serial("id").primaryKey(),
+ name: text("name").notNull(),
+ slug: text("slug").notNull().unique(),
+ pageTitle: text("page_title"),
+ metaDescription: text("meta_description"),
+ filters: jsonb("filters").notNull().default({}),
+ status: text("status").notNull().default("draft"),
+ createdAt: timestamp("created_at").defaultNow(),
+ updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export type SavedContentIdea = typeof savedContentIdeas.$inferSelect;
 export type InsertSavedContentIdea = typeof savedContentIdeas.$inferInsert;
 
