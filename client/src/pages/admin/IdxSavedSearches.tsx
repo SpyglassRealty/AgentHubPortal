@@ -476,6 +476,18 @@ export default function IdxSavedSearches() {
                         <> • Updated {new Date(search.updatedAt).toLocaleDateString()}</>
                       )}
                     </div>
+                    {search.status === 'published' && (
+                      <div className="mt-2">
+                        <a
+                          href={`https://spyglass-idx.vercel.app/idx/${search.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:text-blue-800"
+                        >
+                          View on site →
+                        </a>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <button
