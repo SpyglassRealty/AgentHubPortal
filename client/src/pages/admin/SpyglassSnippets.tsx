@@ -83,9 +83,9 @@ export default function IdxSavedSearches() {
 
   // Fetch saved searches
   const { data: searches = [], isLoading } = useQuery({
-    queryKey: ['idx-saved-searches'],
+    queryKey: ['spyglass-snippets'],
     queryFn: async () => {
-      const response = await fetch('/api/admin/idx-saved-searches');
+      const response = await fetch('/api/admin/spyglass-snippets');
       if (!response.ok) throw new Error('Failed to fetch saved searches');
       return response.json() as IdxSavedSearch[];
     }
@@ -118,7 +118,7 @@ export default function IdxSavedSearches() {
       };
 
       if (editingId) {
-        const response = await fetch(`/api/admin/idx-saved-searches/${editingId}`, {
+        const response = await fetch(`/api/admin/spyglass-snippets/${editingId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -126,7 +126,7 @@ export default function IdxSavedSearches() {
         if (!response.ok) throw new Error('Failed to update search');
         return response.json();
       } else {
-        const response = await fetch('/api/admin/idx-saved-searches', {
+        const response = await fetch('/api/admin/spyglass-snippets', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -136,7 +136,7 @@ export default function IdxSavedSearches() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['idx-saved-searches'] });
+      queryClient.invalidateQueries({ queryKey: ['spyglass-snippets'] });
       resetForm();
     }
   });
@@ -144,13 +144,13 @@ export default function IdxSavedSearches() {
   // Delete search
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/admin/idx-saved-searches/${id}`, {
+      const response = await fetch(`/api/admin/spyglass-snippets/${id}`, {
         method: 'DELETE'
       });
       if (!response.ok) throw new Error('Failed to delete search');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['idx-saved-searches'] });
+      queryClient.invalidateQueries({ queryKey: ['spyglass-snippets'] });
     }
   });
 
@@ -215,7 +215,7 @@ export default function IdxSavedSearches() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">IDX Saved Searches</h1>
+          <h1 className="text-2xl font-bold">Spyglass Snippets</h1>
           <p className="text-gray-600">Manage saved search templates for the IDX site</p>
         </div>
         <button

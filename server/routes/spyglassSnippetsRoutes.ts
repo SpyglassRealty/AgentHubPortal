@@ -5,19 +5,19 @@ import { eq, desc } from 'drizzle-orm';
 
 export default function idxSavedSearchesRoutes(app: any, isAuthenticated: any) {
   
-  // GET /api/admin/idx-saved-searches - List all saved searches (auth required)
-  app.get('/api/admin/idx-saved-searches', isAuthenticated, async (req: Request, res: Response) => {
+  // GET /api/admin/spyglass-snippets - List all saved searches (auth required)
+  app.get('/api/admin/spyglass-snippets', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const searches = await db.select().from(idxSavedSearches).orderBy(desc(idxSavedSearches.createdAt));
       res.json(searches);
     } catch (error) {
-      console.error('[IDX Saved Searches] Error fetching searches:', error);
+      console.error('[Spyglass Snippets] Error fetching searches:', error);
       res.status(500).json({ error: 'Failed to fetch saved searches' });
     }
   });
 
-  // POST /api/admin/idx-saved-searches - Create new saved search (auth required)
-  app.post('/api/admin/idx-saved-searches', isAuthenticated, async (req: Request, res: Response) => {
+  // POST /api/admin/spyglass-snippets - Create new saved search (auth required)
+  app.post('/api/admin/spyglass-snippets', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { name, slug, pageTitle, metaDescription, filters, status } = req.body;
       
@@ -36,7 +36,7 @@ export default function idxSavedSearchesRoutes(app: any, isAuthenticated: any) {
 
       res.json(newSearch[0]);
     } catch (error: any) {
-      console.error('[IDX Saved Searches] Error creating search:', error);
+      console.error('[Spyglass Snippets] Error creating search:', error);
       
       // Handle unique constraint violation for slug
       if (error.code === '23505' && error.constraint === 'idx_saved_searches_slug_unique') {
@@ -47,8 +47,8 @@ export default function idxSavedSearchesRoutes(app: any, isAuthenticated: any) {
     }
   });
 
-  // PUT /api/admin/idx-saved-searches/:id - Update saved search (auth required)
-  app.put('/api/admin/idx-saved-searches/:id', isAuthenticated, async (req: Request, res: Response) => {
+  // PUT /api/admin/spyglass-snippets/:id - Update saved search (auth required)
+  app.put('/api/admin/spyglass-snippets/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const { name, slug, pageTitle, metaDescription, filters, status } = req.body;
@@ -76,7 +76,7 @@ export default function idxSavedSearchesRoutes(app: any, isAuthenticated: any) {
 
       res.json(updatedSearch[0]);
     } catch (error: any) {
-      console.error('[IDX Saved Searches] Error updating search:', error);
+      console.error('[Spyglass Snippets] Error updating search:', error);
       
       // Handle unique constraint violation for slug
       if (error.code === '23505' && error.constraint === 'idx_saved_searches_slug_unique') {
@@ -87,8 +87,8 @@ export default function idxSavedSearchesRoutes(app: any, isAuthenticated: any) {
     }
   });
 
-  // DELETE /api/admin/idx-saved-searches/:id - Delete saved search (auth required)
-  app.delete('/api/admin/idx-saved-searches/:id', isAuthenticated, async (req: Request, res: Response) => {
+  // DELETE /api/admin/spyglass-snippets/:id - Delete saved search (auth required)
+  app.delete('/api/admin/spyglass-snippets/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       
@@ -106,13 +106,13 @@ export default function idxSavedSearchesRoutes(app: any, isAuthenticated: any) {
 
       res.json({ message: 'Saved search deleted successfully' });
     } catch (error) {
-      console.error('[IDX Saved Searches] Error deleting search:', error);
+      console.error('[Spyglass Snippets] Error deleting search:', error);
       res.status(500).json({ error: 'Failed to delete saved search' });
     }
   });
 
-  // GET /api/public/idx-saved-searches/:slug - Get public saved search by slug (NO auth)
-  app.get('/api/public/idx-saved-searches/:slug', async (req: Request, res: Response) => {
+  // GET /api/public/spyglass-snippets/:slug - Get public saved search by slug (NO auth)
+  app.get('/api/public/spyglass-snippets/:slug', async (req: Request, res: Response) => {
     try {
       const { slug } = req.params;
       

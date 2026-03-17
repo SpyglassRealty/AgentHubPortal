@@ -104,6 +104,9 @@ async function runDirectMigrations() {
     // FUB Avatar URL column for shift slot avatars (Phase 3c)
     await addFubAvatarUrlColumn();
     
+    // Spyglass Snippets expanded filter columns (F-SNP Phase 1)
+    await addSpyglassSnippetsColumns();
+    
   } catch (error) {
     console.error("[Database] Direct migration error:", error);
     throw error;
@@ -490,7 +493,20 @@ async function createPulseDataTables() {
             filters jsonb NOT NULL DEFAULT '{}',
             status text NOT NULL DEFAULT 'draft',
             created_at timestamp DEFAULT NOW(),
-            updated_at timestamp DEFAULT NOW()
+            updated_at timestamp DEFAULT NOW(),
+            sub_types text[],
+            min_baths integer,
+            features text[],
+            min_sqft integer,
+            max_sqft integer,
+            lot_size text,
+            year_built_min integer,
+            year_built_max integer,
+            zip_codes text[],
+            neighborhood text,
+            subdivision text,
+            time_since_published text,
+            filter_order text[]
           )
         `
       },
@@ -1272,5 +1288,34 @@ async function addFubAvatarUrlColumn() {
   } catch (error) {
     console.error("[Database] Error adding FUB avatar URL column:", error);
     // Do not throw - column might already exist
+  }
+}
+
+// Spyglass Snippets expanded filter columns (F-SNP Phase 1)
+async function addSpyglassSnippetsColumns() {
+  try {
+    console.log("[Database] Adding Spyglass Snippets expanded filter columns...");
+    
+    await pool.query(`
+      ALTER TABLE idx_saved_searches 
+      ADD COLUMN IF NOT EXISTS sub_types text[],
+      ADD COLUMN IF NOT EXISTS min_baths integer,
+      ADD COLUMN IF NOT EXISTS features text[],
+      ADD COLUMN IF NOT EXISTS min_sqft integer,
+      ADD COLUMN IF NOT EXISTS max_sqft integer,
+      ADD COLUMN IF NOT EXISTS lot_size text,
+      ADD COLUMN IF NOT EXISTS year_built_min integer,
+      ADD COLUMN IF NOT EXISTS year_built_max integer,
+      ADD COLUMN IF NOT EXISTS zip_codes text[],
+      ADD COLUMN IF NOT EXISTS neighborhood text,
+      ADD COLUMN IF NOT EXISTS subdivision text,
+      ADD COLUMN IF NOT EXISTS time_since_published text,
+      ADD COLUMN IF NOT EXISTS filter_order text[]
+    `);
+
+    console.log("[Database] Spyglass Snippets columns added successfully");
+  } catch (error) {
+    console.error("[Database] Error adding Spyglass Snippets columns:", error);
+    // Do not throw - columns might already exist
   }
 }

@@ -26,7 +26,7 @@ import LandingPageEditorPage from "./admin/LandingPageEditor";
 import RedirectsListPage from "./admin/RedirectsList";
 import GlobalScriptsListPage from "./admin/GlobalScriptsList";
 import SavedSearchDashboard from "./admin/SavedSearchDashboard";
-import IdxSavedSearches from "./admin/IdxSavedSearches";
+import SpyglassSnippets from "./admin/SpyglassSnippets";
 import FormSubmissionsPage from "./admin/FormSubmissions";
 import FormSubmissionDetailPage from "./admin/FormSubmissionDetail";
 const PolygonManagerPage = lazy(() => import("./admin/PolygonManager"));
@@ -456,7 +456,7 @@ export default function AdminPage() {
         { name: "Landing Pages", href: "/admin/landing-pages", icon: Globe },
         { name: "Page Builder", href: "/admin/pages", icon: FileText },
         { name: "Agent Pages", href: "https://appfactory-liart.vercel.app/content", icon: Users },
-        { name: "IDX Saved Searches", href: "/admin/idx-saved-searches", icon: Search },
+        { name: "Spyglass Snippets", href: "/admin/spyglass-snippets", icon: Search },
       ]
     },
     {
@@ -702,7 +702,7 @@ export default function AdminPage() {
                   <Route path="/admin/landing-pages" component={LandingPageListPage} />
                   <Route path="/admin/multicam-editor" component={MulticamEditorPage} />
                   <Route path="/admin/saved-searches" component={SavedSearchDashboard} />
-                  <Route path="/admin/idx-saved-searches" component={IdxSavedSearches} />
+                  <Route path="/admin/spyglass-snippets" component={SpyglassSnippets} />
                   <Route path="/admin/testimonials/sources" component={ReviewSourceManagerPage} />
                   <Route path="/admin/testimonials/:id" component={TestimonialEditorPage} />
                   <Route path="/admin/testimonials" component={TestimonialListPage} />
