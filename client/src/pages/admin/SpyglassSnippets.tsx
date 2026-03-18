@@ -337,19 +337,22 @@ export default function SpyglassSnippets() {
     }));
   };
 
-  const handleDragStart = (index: number) => {
-    draggedIndex.current = index;
+  const handleDragStart = (fieldKey: string) => {
+    const currentOrder = form.filterOrder.filter(f => f).length ? form.filterOrder.filter(f => f) : allFilterFields;
+    draggedIndex.current = currentOrder.indexOf(fieldKey);
   };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleDragOver = (e: React.DragEvent, fieldKey: string) => {
     e.preventDefault(); // ← required or drop won't fire
-    dragOverIndex.current = index;
+    const currentOrder = form.filterOrder.filter(f => f).length ? form.filterOrder.filter(f => f) : allFilterFields;
+    dragOverIndex.current = currentOrder.indexOf(fieldKey);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); // ← required
     if (draggedIndex.current !== null && dragOverIndex.current !== null && draggedIndex.current !== dragOverIndex.current) {
-      const newOrder = [...form.filterOrder];
+      const currentOrder = form.filterOrder.filter(f => f).length ? form.filterOrder.filter(f => f) : allFilterFields;
+      const newOrder = [...currentOrder];
       const moved = newOrder.splice(draggedIndex.current, 1)[0];
       newOrder.splice(dragOverIndex.current, 0, moved);
       setForm(prev => ({ ...prev, filterOrder: newOrder }));
@@ -481,8 +484,11 @@ export default function SpyglassSnippets() {
                 <h3 className="text-lg font-medium mb-4">Search Filters</h3>
                 
                 {/* Type Toggle */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Type</label>
+                <div key="type" draggable onDragStart={() => handleDragStart('type')} onDragOver={(e) => handleDragOver(e, 'type')} onDrop={handleDrop} className="mb-4 cursor-move">
+                  <div className="flex items-center gap-2 mb-1">
+                    <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <label className="block text-sm font-medium text-gray-700">Type</label>
+                  </div>
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -502,8 +508,11 @@ export default function SpyglassSnippets() {
                 </div>
 
                 {/* Property Types */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Property Types</label>
+                <div key="propertyTypes" draggable onDragStart={() => handleDragStart('propertyTypes')} onDragOver={(e) => handleDragOver(e, 'propertyTypes')} onDrop={handleDrop} className="mb-4 cursor-move">
+                  <div className="flex items-center gap-2 mb-1">
+                    <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <label className="block text-sm font-medium text-gray-700">Property Types</label>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {propertyTypeOptions.map(type => (
                       <button
@@ -523,8 +532,11 @@ export default function SpyglassSnippets() {
                 </div>
 
                 {/* Sub Types Pills */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Sub Types</label>
+                <div key="subTypes" draggable onDragStart={() => handleDragStart('subTypes')} onDragOver={(e) => handleDragOver(e, 'subTypes')} onDrop={handleDrop} className="mb-4 cursor-move">
+                  <div className="flex items-center gap-2 mb-1">
+                    <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <label className="block text-sm font-medium text-gray-700">Sub Types</label>
+                  </div>
                   <div className="flex flex-wrap gap-2 mb-2">
                     {form.subTypes.map((subType, index) => (
                       <span
@@ -557,8 +569,11 @@ export default function SpyglassSnippets() {
                 </div>
 
                 {/* Cities */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Cities</label>
+                <div key="cities" draggable onDragStart={() => handleDragStart('cities')} onDragOver={(e) => handleDragOver(e, 'cities')} onDrop={handleDrop} className="mb-4 cursor-move">
+                  <div className="flex items-center gap-2 mb-1">
+                    <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <label className="block text-sm font-medium text-gray-700">Cities</label>
+                  </div>
                   <input
                     type="text"
                     placeholder="Austin, Cedar Park, Round Rock"
@@ -569,172 +584,204 @@ export default function SpyglassSnippets() {
                 </div>
 
                 {/* Price Range */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Min Price</label>
-                    <select
-                      value={form.minPrice}
-                      onChange={(e) => setForm(prev => ({ ...prev, minPrice: e.target.value }))}
-                      className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Any</option>
-                      {priceOptions.slice(1).map(price => (
-                        <option key={price} value={price}>
-                          ${price === '2000000+' ? '2,000,000+' : new Intl.NumberFormat().format(parseInt(price))}
-                        </option>
-                      ))}
-                    </select>
+                <div key="minPrice" draggable onDragStart={() => handleDragStart('minPrice')} onDragOver={(e) => handleDragOver(e, 'minPrice')} onDrop={handleDrop} className="mb-4 cursor-move">
+                  <div className="flex items-center gap-2 mb-1">
+                    <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <label className="block text-sm font-medium text-gray-700">Price Range</label>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Max Price</label>
-                    <select
-                      value={form.maxPrice}
-                      onChange={(e) => setForm(prev => ({ ...prev, maxPrice: e.target.value }))}
-                      className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Any</option>
-                      {priceOptions.slice(1).map(price => (
-                        <option key={price} value={price}>
-                          ${price === '2000000+' ? '2,000,000+' : new Intl.NumberFormat().format(parseInt(price))}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Min Price</label>
+                      <select
+                        value={form.minPrice}
+                        onChange={(e) => setForm(prev => ({ ...prev, minPrice: e.target.value }))}
+                        className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Any</option>
+                        {priceOptions.slice(1).map(price => (
+                          <option key={price} value={price}>
+                            ${price === '2000000+' ? '2,000,000+' : new Intl.NumberFormat().format(parseInt(price))}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Max Price</label>
+                      <select
+                        value={form.maxPrice}
+                        onChange={(e) => setForm(prev => ({ ...prev, maxPrice: e.target.value }))}
+                        className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Any</option>
+                        {priceOptions.slice(1).map(price => (
+                          <option key={price} value={price}>
+                            ${price === '2000000+' ? '2,000,000+' : new Intl.NumberFormat().format(parseInt(price))}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
 
                 {/* Beds/Baths */}
-                <div className="grid grid-cols-2 gap-6 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Bedrooms</label>
-                    <div className="flex gap-1">
-                      {bedOptions.map(beds => (
-                        <button
-                          key={beds}
-                          type="button"
-                          onClick={() => setForm(prev => ({ ...prev, minBeds: beds }))}
-                          className={`px-3 py-1 text-sm rounded flex-1 ${
-                            form.minBeds === beds 
-                              ? 'bg-blue-600 text-white' 
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {beds || 'Any'}
-                        </button>
-                      ))}
-                    </div>
+                <div key="minBeds" draggable onDragStart={() => handleDragStart('minBeds')} onDragOver={(e) => handleDragOver(e, 'minBeds')} onDrop={handleDrop} className="mb-4 cursor-move">
+                  <div className="flex items-center gap-2 mb-1">
+                    <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <label className="block text-sm font-medium text-gray-700">Beds/Baths</label>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Bathrooms</label>
-                    <div className="flex gap-1">
-                      {bathOptions.map(baths => (
-                        <button
-                          key={baths}
-                          type="button"
-                          onClick={() => setForm(prev => ({ ...prev, minBaths: baths }))}
-                          className={`px-3 py-1 text-sm rounded flex-1 ${
-                            form.minBaths === baths 
-                              ? 'bg-blue-600 text-white' 
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {baths || 'Any'}
-                        </button>
-                      ))}
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Bedrooms</label>
+                      <div className="flex gap-1">
+                        {bedOptions.map(beds => (
+                          <button
+                            key={beds}
+                            type="button"
+                            onClick={() => setForm(prev => ({ ...prev, minBeds: beds }))}
+                            className={`px-3 py-1 text-sm rounded flex-1 ${
+                              form.minBeds === beds 
+                                ? 'bg-blue-600 text-white' 
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {beds || 'Any'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Bathrooms</label>
+                      <div className="flex gap-1">
+                        {bathOptions.map(baths => (
+                          <button
+                            key={baths}
+                            type="button"
+                            onClick={() => setForm(prev => ({ ...prev, minBaths: baths }))}
+                            className={`px-3 py-1 text-sm rounded flex-1 ${
+                              form.minBaths === baths 
+                                ? 'bg-blue-600 text-white' 
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {baths || 'Any'}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Sqft Range */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Min Sq Ft</label>
-                    <input
-                      type="number"
-                      value={form.sqftMin}
-                      onChange={(e) => setForm(prev => ({ ...prev, sqftMin: e.target.value }))}
-                      className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                <div key="sqftMin" draggable onDragStart={() => handleDragStart('sqftMin')} onDragOver={(e) => handleDragOver(e, 'sqftMin')} onDrop={handleDrop} className="mb-4 cursor-move">
+                  <div className="flex items-center gap-2 mb-1">
+                    <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <label className="block text-sm font-medium text-gray-700">Sq Ft Range</label>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Max Sq Ft</label>
-                    <input
-                      type="number"
-                      value={form.sqftMax}
-                      onChange={(e) => setForm(prev => ({ ...prev, sqftMax: e.target.value }))}
-                      className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Min Sq Ft</label>
+                      <input
+                        type="number"
+                        value={form.sqftMin}
+                        onChange={(e) => setForm(prev => ({ ...prev, sqftMin: e.target.value }))}
+                        className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Max Sq Ft</label>
+                      <input
+                        type="number"
+                        value={form.sqftMax}
+                        onChange={(e) => setForm(prev => ({ ...prev, sqftMax: e.target.value }))}
+                        className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* Year Built Range */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Year Built Min</label>
-                    <input
-                      type="number"
-                      value={form.yearBuiltMin}
-                      onChange={(e) => setForm(prev => ({ ...prev, yearBuiltMin: e.target.value }))}
-                      className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                <div key="yearBuiltMin" draggable onDragStart={() => handleDragStart('yearBuiltMin')} onDragOver={(e) => handleDragOver(e, 'yearBuiltMin')} onDrop={handleDrop} className="mb-4 cursor-move">
+                  <div className="flex items-center gap-2 mb-1">
+                    <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <label className="block text-sm font-medium text-gray-700">Year Built Range</label>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Year Built Max</label>
-                    <input
-                      type="number"
-                      value={form.yearBuiltMax}
-                      onChange={(e) => setForm(prev => ({ ...prev, yearBuiltMax: e.target.value }))}
-                      className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Year Built Min</label>
+                      <input
+                        type="number"
+                        value={form.yearBuiltMin}
+                        onChange={(e) => setForm(prev => ({ ...prev, yearBuiltMin: e.target.value }))}
+                        className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Year Built Max</label>
+                      <input
+                        type="number"
+                        value={form.yearBuiltMax}
+                        onChange={(e) => setForm(prev => ({ ...prev, yearBuiltMax: e.target.value }))}
+                        className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* Location Fields */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Zip Codes</label>
-                    <input
-                      type="text"
-                      placeholder="78701, 78702, 78703"
-                      value={form.zipCodes}
-                      onChange={(e) => setForm(prev => ({ ...prev, zipCodes: e.target.value }))}
-                      className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                <div key="zipCodes" draggable onDragStart={() => handleDragStart('zipCodes')} onDragOver={(e) => handleDragOver(e, 'zipCodes')} onDrop={handleDrop} className="mb-4 cursor-move">
+                  <div className="flex items-center gap-2 mb-1">
+                    <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <label className="block text-sm font-medium text-gray-700">Location Fields</label>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Neighborhood</label>
-                    <input
-                      type="text"
-                      value={form.neighborhood}
-                      onChange={(e) => setForm(prev => ({ ...prev, neighborhood: e.target.value }))}
-                      className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Zip Codes</label>
+                      <input
+                        type="text"
+                        placeholder="78701, 78702, 78703"
+                        value={form.zipCodes}
+                        onChange={(e) => setForm(prev => ({ ...prev, zipCodes: e.target.value }))}
+                        className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Neighborhood</label>
+                      <input
+                        type="text"
+                        value={form.neighborhood}
+                        onChange={(e) => setForm(prev => ({ ...prev, neighborhood: e.target.value }))}
+                        className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Subdivision</label>
-                    <input
-                      type="text"
-                      value={form.subdivision}
-                      onChange={(e) => setForm(prev => ({ ...prev, subdivision: e.target.value }))}
-                      className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">School District</label>
-                    <input
-                      type="text"
-                      value={form.schoolDistrict}
-                      onChange={(e) => setForm(prev => ({ ...prev, schoolDistrict: e.target.value }))}
-                      className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Subdivision</label>
+                      <input
+                        type="text"
+                        value={form.subdivision}
+                        onChange={(e) => setForm(prev => ({ ...prev, subdivision: e.target.value }))}
+                        className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">School District</label>
+                      <input
+                        type="text"
+                        value={form.schoolDistrict}
+                        onChange={(e) => setForm(prev => ({ ...prev, schoolDistrict: e.target.value }))}
+                        className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* Time Since Published */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Time Since Published</label>
+                <div key="timeSincePublished" draggable onDragStart={() => handleDragStart('timeSincePublished')} onDragOver={(e) => handleDragOver(e, 'timeSincePublished')} onDrop={handleDrop} className="mb-4 cursor-move">
+                  <div className="flex items-center gap-2 mb-1">
+                    <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <label className="block text-sm font-medium text-gray-700">Time Since Published</label>
+                  </div>
                   <select
                     value={form.timeSincePublished}
                     onChange={(e) => setForm(prev => ({ ...prev, timeSincePublished: e.target.value }))}
@@ -750,8 +797,11 @@ export default function SpyglassSnippets() {
                 </div>
 
                 {/* Features */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Features</label>
+                <div key="features" draggable onDragStart={() => handleDragStart('features')} onDragOver={(e) => handleDragOver(e, 'features')} onDrop={handleDrop} className="mb-4 cursor-move">
+                  <div className="flex items-center gap-2 mb-1">
+                    <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <label className="block text-sm font-medium text-gray-700">Features</label>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {featureOptions.map(feature => (
                       <button
@@ -771,8 +821,11 @@ export default function SpyglassSnippets() {
                 </div>
 
                 {/* Sort */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Sort</label>
+                <div key="sort" draggable onDragStart={() => handleDragStart('sort')} onDragOver={(e) => handleDragOver(e, 'sort')} onDrop={handleDrop} className="mb-4 cursor-move">
+                  <div className="flex items-center gap-2 mb-1">
+                    <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <label className="block text-sm font-medium text-gray-700">Sort</label>
+                  </div>
                   <select
                     value={form.sort}
                     onChange={(e) => setForm(prev => ({ ...prev, sort: e.target.value }))}
@@ -786,27 +839,7 @@ export default function SpyglassSnippets() {
                   </select>
                 </div>
 
-                {/* Filter Order (Drag to Reorder) */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Filter Order (Drag to Reorder)</label>
-                  <div className="space-y-1 max-h-48 overflow-y-auto border rounded p-2">
-                    {(form.filterOrder.filter(f => f).length ? form.filterOrder.filter(f => f) : allFilterFields).map((field, index) => (
-                      <div
-                        key={field}
-                        draggable
-                        onDragStart={() => handleDragStart(index)}
-                        onDragOver={(e) => handleDragOver(e, index)}
-                        onDrop={handleDrop}
-                        className={`flex items-center gap-2 p-2 bg-gray-50 rounded cursor-move hover:bg-gray-100 ${
-                          draggedIndex.current === index ? 'opacity-50' : ''
-                        }`}
-                      >
-                        <GripVertical className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm">{filterFieldLabels[field] || field}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+
               </div>
             </div>
 
