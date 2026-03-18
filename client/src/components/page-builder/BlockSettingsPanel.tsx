@@ -834,12 +834,12 @@ export function BlockSettingsPanel({ block, onUpdate, onClose }: BlockSettingsPa
             <Field label="Secondary Button URL">
               <Input value={props.secondaryButtonUrl || '#'} onChange={e => update('secondaryButtonUrl', e.target.value)} />
             </Field>
-            <Field label="Reverse Layout">
-              <Select value={props.reverse ? 'true' : 'false'} onValueChange={v => update('reverse', v === 'true')}>
+            <Field label="Media Position">
+              <Select value={props.mediaPosition || 'left'} onValueChange={v => update('mediaPosition', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="false">Media Left</SelectItem>
-                  <SelectItem value="true">Media Right</SelectItem>
+                  <SelectItem value="left">Media Left</SelectItem>
+                  <SelectItem value="right">Media Right</SelectItem>
                 </SelectContent>
               </Select>
             </Field>

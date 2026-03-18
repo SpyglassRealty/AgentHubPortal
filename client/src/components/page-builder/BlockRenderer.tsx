@@ -262,7 +262,7 @@ export function BlockRenderer({ block, isPreview = false, renderBlock }: BlockRe
 
     case 'core-split': {
       // Determine media position: use mediaPosition if provided, fallback to reverse for backward compatibility
-      const isMediaLeft = props.mediaPosition === 'left' || (props.mediaPosition === 'right' && props.reverse);
+      const isMediaLeft = props.mediaPosition !== 'right';
       
       return (
         <section className={`py-16 ${props.background === 'light' ? 'bg-gray-50' : props.background === 'dark' ? 'bg-gray-900 text-white' : 'bg-white'}`}>
