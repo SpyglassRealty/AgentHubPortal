@@ -135,7 +135,7 @@ export default function SpyglassSnippets() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<SnippetForm>(initialForm);
   const [searchTerm, setSearchTerm] = useState('');
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const draggedIndex = useRef<number | null>(null);
   const dragOverIndex = useRef<number | null>(null);
 
   const queryClient = useQueryClient();
@@ -313,23 +313,23 @@ export default function SpyglassSnippets() {
   };
 
   const handleDragStart = (index: number) => {
-    setDraggedIndex(index);
+    draggedIndex.current = index;
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
+    e.preventDefault(); // ← required or drop won't fire
     dragOverIndex.current = index;
   };
 
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (draggedIndex !== null && dragOverIndex.current !== null && draggedIndex !== dragOverIndex.current) {
+    e.preventDefault(); // ← required
+    if (draggedIndex.current !== null && dragOverIndex.current !== null && draggedIndex.current !== dragOverIndex.current) {
       const newOrder = [...form.filterOrder];
-      const [moved] = newOrder.splice(draggedIndex, 1);
+      const moved = newOrder.splice(draggedIndex.current, 1)[0];
       newOrder.splice(dragOverIndex.current, 0, moved);
       setForm(prev => ({ ...prev, filterOrder: newOrder }));
     }
-    setDraggedIndex(null);
+    draggedIndex.current = null;
     dragOverIndex.current = null;
   };
 
@@ -773,7 +773,7 @@ export default function SpyglassSnippets() {
                         onDragOver={(e) => handleDragOver(e, index)}
                         onDrop={handleDrop}
                         className={`flex items-center gap-2 p-2 bg-gray-50 rounded cursor-move hover:bg-gray-100 ${
-                          draggedIndex === index ? 'opacity-50' : ''
+                          draggedIndex.current === index ? 'opacity-50' : ''
                         }`}
                       >
                         <GripVertical className="w-4 h-4 text-gray-400" />
