@@ -907,7 +907,16 @@ export default function SpyglassSnippets() {
 
               {/* Filters Section */}
               <div className="border-t pt-6">
-                <h3 className="text-lg font-medium mb-4">Search Filters</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium">Search Filters</h3>
+                  <button
+                    type="button"
+                    onClick={() => setForm(prev => ({ ...prev, filterOrder: allFilterFields }))}
+                    className="text-xs text-blue-500 hover:text-blue-700 underline"
+                  >
+                    Reset to default order
+                  </button>
+                </div>
                 
                 {/* Dynamic field rendering based on filterOrder */}
                 {(form.filterOrder.filter(f => f).length ? form.filterOrder.filter(f => f) : allFilterFields).map(fieldKey => (
