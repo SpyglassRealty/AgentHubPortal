@@ -265,6 +265,7 @@ export default function SpyglassSnippets() {
   };
 
   const generateSlug = (name: string) => {
+    if (!name) return '';
     return name.toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
@@ -777,7 +778,7 @@ export default function SpyglassSnippets() {
                         }`}
                       >
                         <GripVertical className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}</span>
+                        <span className="text-sm capitalize">{field ? field.replace(/([A-Z])/g, ' $1').trim() : ''}</span>
                       </div>
                     ))}
                   </div>
