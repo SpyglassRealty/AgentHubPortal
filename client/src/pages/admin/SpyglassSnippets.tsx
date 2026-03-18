@@ -861,7 +861,19 @@ export default function SpyglassSnippets() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Slug*</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium">Slug*</label>
+                    {form.slug && (
+                      <a
+                        href={`https://spyglass-idx.vercel.app/idx/${form.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-500 hover:text-blue-700 underline flex items-center gap-1"
+                      >
+                        View on site ↗
+                      </a>
+                    )}
+                  </div>
                   <input
                     type="text"
                     value={form.slug}
@@ -994,7 +1006,7 @@ export default function SpyglassSnippets() {
                     {snippet.status === 'published' && (
                       <div className="mt-2">
                         <a
-                          href={`https://spyglass-idx.vercel.app/search/${snippet.slug}`}
+                          href={`https://spyglass-idx.vercel.app/idx/${snippet.slug}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm text-blue-600 hover:text-blue-800"
