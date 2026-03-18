@@ -130,6 +130,30 @@ const allFilterFields = [
   'schoolDistrict', 'timeSincePublished', 'features', 'sort'
 ];
 
+const filterFieldLabels: Record<string, string> = {
+  type: 'Type (Sale/Lease)',
+  propertyTypes: 'Property Types',
+  subTypes: 'Sub Types',
+  cities: 'Cities',
+  minPrice: 'Min Price',
+  maxPrice: 'Max Price',
+  minBeds: 'Min Beds',
+  maxBeds: 'Max Beds',
+  minBaths: 'Min Baths',
+  maxBaths: 'Max Baths',
+  sqftMin: 'Min Sq Ft',
+  sqftMax: 'Max Sq Ft',
+  yearBuiltMin: 'Year Built Min',
+  yearBuiltMax: 'Year Built Max',
+  zipCodes: 'Zip Codes',
+  neighborhood: 'Neighborhood',
+  subdivision: 'Subdivision',
+  schoolDistrict: 'School District',
+  timeSincePublished: 'Time Since Published',
+  features: 'Features',
+  sort: 'Sort',
+};
+
 export default function SpyglassSnippets() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -778,7 +802,7 @@ export default function SpyglassSnippets() {
                         }`}
                       >
                         <GripVertical className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm capitalize">{field ? field.replace(/([A-Z])/g, ' $1').trim() : ''}</span>
+                        <span className="text-sm">{filterFieldLabels[field] || field}</span>
                       </div>
                     ))}
                   </div>
