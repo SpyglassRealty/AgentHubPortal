@@ -199,7 +199,7 @@ export default function SpyglassSnippets() {
         ...(data.timeSincePublished && { timeSincePublished: data.timeSincePublished }),
         features: data.features.filter(Boolean),
         sort: data.sort,
-        filterOrder: data.filterOrder.length ? data.filterOrder : allFilterFields
+        filterOrder: data.filterOrder.filter((f: string) => f).length ? data.filterOrder.filter((f: string) => f) : allFilterFields
       };
 
       const payload = {
@@ -790,7 +790,7 @@ export default function SpyglassSnippets() {
                 <div className="mb-4">
                   <label className="block text-sm font-medium mb-2">Filter Order (Drag to Reorder)</label>
                   <div className="space-y-1 max-h-48 overflow-y-auto border rounded p-2">
-                    {(form.filterOrder.length ? form.filterOrder : allFilterFields).map((field, index) => (
+                    {(form.filterOrder.filter(f => f).length ? form.filterOrder.filter(f => f) : allFilterFields).map((field, index) => (
                       <div
                         key={field}
                         draggable
