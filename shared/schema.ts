@@ -899,6 +899,8 @@ export const communities = pgTable("communities", {
   seoScore: integer("seo_score"),
   seoIssues: jsonb("seo_issues"),
   canonicalUrl: varchar("canonical_url", { length: 500 }),
+  source: varchar("source", { length: 50 }).default('manual'), // 'manual' | 'snippet'
+  snippetId: integer("snippet_id").references(() => idxSavedSearches.id, { onDelete: 'set null' }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   updatedBy: varchar("updated_by", { length: 255 }),

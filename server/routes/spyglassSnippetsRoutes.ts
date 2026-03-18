@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../db';
-import { idxSavedSearches } from '../../shared/schema';
+import { idxSavedSearches, communities } from '../../shared/schema';
 import { eq, desc } from 'drizzle-orm';
 
 export default function idxSavedSearchesRoutes(app: any, isAuthenticated: any) {
@@ -72,6 +72,22 @@ export default function idxSavedSearchesRoutes(app: any, isAuthenticated: any) {
 
       if (updatedSearch.length === 0) {
         return res.status(404).json({ error: 'Saved search not found' });
+      }
+
+      // Auto-create community when snippet is published
+      if (status === 'published' && updatedSearch[0]) {
+        const snippet = updatedSearch[0];
+        const existing = await db.select().from(communities).where(eq(communities.slug, snippet.slug)).limit(1);
+        if (existing.length === 0) {
+          await db.insert(communities).values({
+            name: snippet.name,
+            slug: snippet.slug,
+            published: true,
+            source: 'snippet',
+            snippetId: snippet.id,
+            locationType: 'snippet', // required NOT NULL field
+          });
+        }
       }
 
       res.json(updatedSearch[0]);

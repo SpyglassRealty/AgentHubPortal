@@ -107,6 +107,9 @@ async function runDirectMigrations() {
     // Spyglass Snippets expanded filter columns (F-SNP Phase 1)
     await addSpyglassSnippetsColumns();
     
+    // Community source columns for F-SNP-4
+    await addCommunitySourceColumns();
+    
   } catch (error) {
     console.error("[Database] Direct migration error:", error);
     throw error;
@@ -1316,6 +1319,24 @@ async function addSpyglassSnippetsColumns() {
     console.log("[Database] Spyglass Snippets columns added successfully");
   } catch (error) {
     console.error("[Database] Error adding Spyglass Snippets columns:", error);
+    // Do not throw - columns might already exist
+  }
+}
+
+// Community source columns for F-SNP-4 (auto-create community on snippet publish)
+async function addCommunitySourceColumns() {
+  try {
+    console.log("[Database] Adding community source and snippet_id columns...");
+    
+    await pool.query(`
+      ALTER TABLE communities 
+      ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'manual',
+      ADD COLUMN IF NOT EXISTS snippet_id INTEGER REFERENCES idx_saved_searches(id) ON DELETE SET NULL
+    `);
+
+    console.log("[Database] Community source columns added successfully");
+  } catch (error) {
+    console.error("[Database] Error adding community source columns:", error);
     // Do not throw - columns might already exist
   }
 }
