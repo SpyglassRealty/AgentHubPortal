@@ -264,7 +264,7 @@ export function registerCommunityContentBlocksRoutes(app: Express) {
         .where(
           and(
             eq(communityContentBlocks.communityId, community[0].id),
-            eq(communityContentBlocks.published, true)
+            eq(communityContentBlocks.isPublished, true)
           )
         )
         .orderBy(asc(communityContentBlocks.sortOrder));
