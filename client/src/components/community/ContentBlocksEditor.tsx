@@ -318,6 +318,17 @@ function ContentBlockEditor({
     onUpdate({ [field]: value });
   };
 
+  const flushAllFields = () => {
+    onUpdate({
+      title: localBlock.title,
+      content: localBlock.content,
+      videoUrl: localBlock.videoUrl,
+      iframeUrl: localBlock.iframeUrl,
+      ctaText: localBlock.ctaText,
+      ctaUrl: localBlock.ctaUrl,
+    });
+  };
+
   return (
     <div className="border rounded-lg p-4 space-y-3 bg-card">
       {/* Header */}
@@ -358,7 +369,10 @@ function ContentBlockEditor({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={() => {
+              if (isExpanded) flushAllFields();
+              setIsExpanded(!isExpanded);
+            }}
             className="h-8 px-3"
           >
             {isExpanded ? 'Collapse' : 'Edit'}
@@ -367,7 +381,10 @@ function ContentBlockEditor({
           <Button
             variant="ghost"
             size="sm"
-            onClick={onDelete}
+            onClick={() => {
+              flushAllFields();
+              onDelete();
+            }}
             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
           >
             <Trash2 className="h-4 w-4" />
