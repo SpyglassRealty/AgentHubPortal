@@ -30,10 +30,11 @@ export interface ContentBlock {
   videoUrl: string;
   ctaText: string;
   ctaUrl: string;
-  imagePosition: 'left' | 'right';
+  iframeUrl: string;
+  mediaPosition: 'left' | 'right';
   backgroundColor: 'white' | 'light' | 'dark';
   sortOrder: number;
-  published: boolean;
+  isPublished: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -60,7 +61,18 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
       const response = await fetch(`/api/admin/communities/${communityId}/content-blocks`);
       if (response.ok) {
         const data = await response.json();
-        setBlocks(data.blocks || []);
+        // Map from API format to editor format
+        const mappedBlocks = data.blocks.map((block: any) => ({
+          ...block,
+          imageUrl: block.images?.[0] || '',
+          videoUrl: block.videos?.[0] || '',
+          ctaText: block.ctaButtons?.[0]?.text || '',
+          ctaUrl: block.ctaButtons?.[0]?.url || '',
+          iframeUrl: block.iframeUrl || '',
+          mediaPosition: block.mediaPosition || 'right',
+          isPublished: block.isPublished !== undefined ? block.isPublished : true
+        }));
+        setBlocks(mappedBlocks);
       }
     } catch (error) {
       console.error('Error fetching content blocks:', error);
@@ -80,15 +92,31 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
           blockType,
           title: 'New Section',
           content: '<p>Your content goes here...</p>',
-          imagePosition: 'right',
+          images: [],
+          videos: [],
+          ctaButtons: [],
+          mediaPosition: 'right',
           backgroundColor: 'white',
           sortOrder: blocks.length,
+          isPublished: true,
+          iframeUrl: ''
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setBlocks([...blocks, data.block]);
+        // Map response to editor format
+        const mappedBlock = {
+          ...data.block,
+          imageUrl: data.block.images?.[0] || '',
+          videoUrl: data.block.videos?.[0] || '',
+          ctaText: data.block.ctaButtons?.[0]?.text || '',
+          ctaUrl: data.block.ctaButtons?.[0]?.url || '',
+          iframeUrl: data.block.iframeUrl || '',
+          mediaPosition: data.block.mediaPosition || 'right',
+          isPublished: data.block.isPublished !== undefined ? data.block.isPublished : true
+        };
+        setBlocks([...blocks, mappedBlock]);
         toast({ title: 'Block added', description: 'New content block created.' });
       }
     } catch (error) {
@@ -101,16 +129,51 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
   // ── Update block ──────────────────────────────
   const updateBlock = async (blockId: number, updates: Partial<ContentBlock>) => {
     try {
+      // Map from editor format to API format
+      const apiUpdates: any = { ...updates };
+      
+      if (updates.imageUrl !== undefined) {
+        apiUpdates.images = updates.imageUrl ? [updates.imageUrl] : [];
+        delete apiUpdates.imageUrl;
+      }
+      if (updates.videoUrl !== undefined) {
+        apiUpdates.videos = updates.videoUrl ? [updates.videoUrl] : [];
+        delete apiUpdates.videoUrl;
+      }
+      if (updates.ctaText !== undefined || updates.ctaUrl !== undefined) {
+        const currentBlock = blocks.find(b => b.id === blockId);
+        apiUpdates.ctaButtons = [{
+          text: updates.ctaText !== undefined ? updates.ctaText : currentBlock?.ctaText || '',
+          url: updates.ctaUrl !== undefined ? updates.ctaUrl : currentBlock?.ctaUrl || ''
+        }];
+        delete apiUpdates.ctaText;
+        delete apiUpdates.ctaUrl;
+      }
+      if (updates.isPublished !== undefined) {
+        apiUpdates.isPublished = updates.isPublished;
+      }
+
       const response = await fetch(`/api/admin/communities/${communityId}/content-blocks/${blockId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
+        body: JSON.stringify(apiUpdates),
       });
 
       if (response.ok) {
         const data = await response.json();
+        // Map response back to editor format
+        const mappedBlock = {
+          ...data.block,
+          imageUrl: data.block.images?.[0] || '',
+          videoUrl: data.block.videos?.[0] || '',
+          ctaText: data.block.ctaButtons?.[0]?.text || '',
+          ctaUrl: data.block.ctaButtons?.[0]?.url || '',
+          iframeUrl: data.block.iframeUrl || '',
+          mediaPosition: data.block.mediaPosition || 'right',
+          isPublished: data.block.isPublished !== undefined ? data.block.isPublished : true
+        };
         setBlocks(blocks.map(block => 
-          block.id === blockId ? { ...block, ...data.block } : block
+          block.id === blockId ? { ...block, ...mappedBlock } : block
         ));
       }
     } catch (error) {
@@ -256,10 +319,10 @@ function ContentBlockEditor({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onUpdate({ published: !block.published })}
+            onClick={() => onUpdate({ isPublished: !block.isPublished })}
             className="h-8 w-8 p-0"
           >
-            {block.published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            {block.isPublished ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
           </Button>
           
           {index > 0 && (
@@ -329,7 +392,7 @@ function ContentBlockEditor({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <Label className="flex items-center gap-2">
                 <ImageIcon className="h-4 w-4" />
@@ -351,12 +414,23 @@ function ContentBlockEditor({
                 placeholder="YouTube, Vimeo, or direct video URL..."
               />
             </div>
+            <div>
+              <Label className="flex items-center gap-2">
+                <Link className="h-4 w-4" />
+                iFrame URL
+              </Label>
+              <Input
+                value={block.iframeUrl}
+                onChange={(e) => onUpdate({ iframeUrl: e.target.value })}
+                placeholder="Embedded content URL..."
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             <div>
               <Label>Media Position</Label>
-              <Select value={block.imagePosition} onValueChange={(value: any) => onUpdate({ imagePosition: value })}>
+              <Select value={block.mediaPosition} onValueChange={(value: any) => onUpdate({ mediaPosition: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

@@ -69,14 +69,14 @@ export function registerCommunityContentBlocksRoutes(app: Express) {
         blockType = 'split',
         title = '',
         content = '',
-        imageUrl = '',
-        videoUrl = '',
-        ctaText = '',
-        ctaUrl = '',
-        imagePosition = 'right',
+        images = [],
+        videos = [],
+        ctaButtons = [],
+        mediaPosition = 'right',
         backgroundColor = 'white',
         sortOrder = 0,
-        published = true
+        isPublished = true,
+        iframeUrl = ''
       } = req.body;
       
       const newBlock = await db
@@ -86,14 +86,14 @@ export function registerCommunityContentBlocksRoutes(app: Express) {
           blockType,
           title,
           content,
-          imageUrl,
-          videoUrl,
-          ctaText,
-          ctaUrl,
-          imagePosition,
+          images,
+          videos,
+          ctaButtons,
+          mediaPosition,
           backgroundColor,
           sortOrder,
-          published,
+          isPublished,
+          iframeUrl,
           createdBy: user.id
         })
         .returning();
@@ -136,7 +136,8 @@ export function registerCommunityContentBlocksRoutes(app: Express) {
         mediaPosition,
         backgroundColor,
         sortOrder,
-        isPublished
+        isPublished,
+        iframeUrl
       } = req.body;
       
       const updateData: any = {};
@@ -150,6 +151,7 @@ export function registerCommunityContentBlocksRoutes(app: Express) {
       if (backgroundColor !== undefined) updateData.backgroundColor = backgroundColor;
       if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
       if (isPublished !== undefined) updateData.isPublished = isPublished;
+      if (iframeUrl !== undefined) updateData.iframeUrl = iframeUrl;
       
       const updatedBlock = await db
         .update(communityContentBlocks)
