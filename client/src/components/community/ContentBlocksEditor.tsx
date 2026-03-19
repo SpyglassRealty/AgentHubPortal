@@ -413,6 +413,26 @@ function ContentBlockEditor({
                 onChange={(e) => onUpdate({ videoUrl: e.target.value })}
                 placeholder="YouTube, Vimeo, or direct video URL..."
               />
+              {block.videoUrl && (
+                <div className="mt-2">
+                  {block.videoUrl.includes('youtube.com') || block.videoUrl.includes('youtu.be') ? (
+                    (() => {
+                      const match = block.videoUrl.match(/(?:v=|youtu\.be\/)([^&?/]+)/);
+                      return match ? (
+                        <img 
+                          src={`https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`}
+                          alt="Video thumbnail"
+                          className="w-full max-w-md h-auto rounded-lg border"
+                        />
+                      ) : null;
+                    })()
+                  ) : (
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Video className="h-3 w-3" /> <a href={block.videoUrl} target="_blank" rel="noopener noreferrer" className="underline truncate">{block.videoUrl}</a>
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             <div>
               <Label className="flex items-center gap-2">
@@ -424,6 +444,12 @@ function ContentBlockEditor({
                 onChange={(e) => onUpdate({ iframeUrl: e.target.value })}
                 placeholder="Embedded content URL..."
               />
+              {block.iframeUrl && (
+                <div className="mt-2 space-y-1">
+                  <iframe src={block.iframeUrl} width="100%" height="300" frameBorder="0" className="rounded-lg border" />
+                  <p className="text-xs text-muted-foreground">Preview may not load for all URLs due to iframe restrictions.</p>
+                </div>
+              )}
             </div>
           </div>
 
