@@ -130,28 +130,26 @@ export function registerCommunityContentBlocksRoutes(app: Express) {
         blockType,
         title,
         content,
-        imageUrl,
-        videoUrl,
-        ctaText,
-        ctaUrl,
-        imagePosition,
+        images,
+        videos,
+        ctaButtons,
+        mediaPosition,
         backgroundColor,
         sortOrder,
-        published
+        isPublished
       } = req.body;
       
       const updateData: any = {};
       if (blockType !== undefined) updateData.blockType = blockType;
       if (title !== undefined) updateData.title = title;
       if (content !== undefined) updateData.content = content;
-      if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
-      if (videoUrl !== undefined) updateData.videoUrl = videoUrl;
-      if (ctaText !== undefined) updateData.ctaText = ctaText;
-      if (ctaUrl !== undefined) updateData.ctaUrl = ctaUrl;
-      if (imagePosition !== undefined) updateData.imagePosition = imagePosition;
+      if (images !== undefined) updateData.images = images;
+      if (videos !== undefined) updateData.videos = videos;
+      if (ctaButtons !== undefined) updateData.ctaButtons = ctaButtons;
+      if (mediaPosition !== undefined) updateData.mediaPosition = mediaPosition;
       if (backgroundColor !== undefined) updateData.backgroundColor = backgroundColor;
       if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
-      if (published !== undefined) updateData.published = published;
+      if (isPublished !== undefined) updateData.isPublished = isPublished;
       
       const updatedBlock = await db
         .update(communityContentBlocks)
