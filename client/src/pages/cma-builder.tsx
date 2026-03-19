@@ -758,6 +758,36 @@ function AnalysisPanel({
 
 // Mapbox access token will be fetched from API
 
+// Detection helper for typeahead
+const detectSearchType = (query: string): { type: 'mls' | 'zip' | 'address' | 'city' | null; value: string } => {
+  const trimmed = query.trim();
+  if (!trimmed) return { type: null, value: '' };
+  
+  // Zip code — 5 digits only
+  const zipPattern = /^\d{5}(-\d{4})?$/;
+  if (zipPattern.test(trimmed)) return { type: 'zip', value: trimmed };
+  
+  // MLS# — can be:
+  // 1. Pure numeric: 9116957
+  // 2. ACT prefix: ACT9116957 or ACT 9116957
+  const cleanedForMls = trimmed.replace(/\s/g, '');
+  const mlsWithAct = /^ACT\d{5,10}$/i.test(cleanedForMls);
+  const mlsNumericOnly = /^\d{6,10}$/.test(cleanedForMls);
+  
+  if (mlsWithAct) {
+    // Preserve full ACT prefix — send as-is to Repliers
+    return { type: 'mls', value: cleanedForMls.toUpperCase() }; // e.g. ACT9116957
+  }
+  if (mlsNumericOnly) {
+    return { type: 'mls', value: cleanedForMls }; // e.g. 9116957
+  }
+  
+  // Address — starts with number then word
+  if (/^\d+\s+\w+/.test(trimmed)) return { type: 'address', value: trimmed };
+  
+  return { type: 'city', value: trimmed };
+};
+
 // Find Comparable Properties Section
 function SearchPropertiesSection({
   onAddComp,
@@ -777,6 +807,12 @@ function SearchPropertiesSection({
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [activeTab, setActiveTab] = useState("criteria");
 
+  // Typeahead state
+  const [suggestions, setSuggestions] = useState<PropertyData[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Mapbox token state
   const [mapboxToken, setMapboxToken] = useState('');
 
@@ -794,6 +830,37 @@ function SearchPropertiesSection({
   const [mapMode, setMapMode] = useState<'pan' | 'draw'>('pan');
   const [drawnPolygon, setDrawnPolygon] = useState<number[][] | null>(null);
   const [drawingInProgress, setDrawingInProgress] = useState(false);
+
+  // Typeahead fetch function
+  const fetchSuggestions = async (query: string) => {
+    if (query.length < 2) { 
+      setSuggestions([]); 
+      setShowSuggestions(false); 
+      return; 
+    }
+    setSuggestionsLoading(true);
+    const detected = detectSearchType(query);
+    const body = detected.type === 'mls'
+      ? { mlsNumbers: [detected.value] }
+      : { search: query };
+    try {
+      const res = await fetch('/api/cma/search-properties', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSuggestions(data.listings || []);
+        setShowSuggestions(true);
+      }
+    } catch (e) { 
+      console.error('Suggestion error:', e); 
+    }
+    finally { 
+      setSuggestionsLoading(false); 
+    }
+  };
 
   const updateFilter = (key: keyof SearchFilters, value: any) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -1297,13 +1364,49 @@ function SearchPropertiesSection({
           {/* ROW 1: Quick Search */}
           <div className="space-y-3">
             <div className="flex gap-2">
-              <Input
-                placeholder="Search by address, MLS#, or listing ID..."
-                value={filters.quickSearch}
-                onChange={(e) => updateFilter("quickSearch", e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch(1)}
-                className="flex-1"
-              />
+              <div className="relative flex-1">
+                <Input
+                  placeholder="Search by address, MLS#, or listing ID..."
+                  value={filters.quickSearch}
+                  onChange={(e) => {
+                    updateFilter("quickSearch", e.target.value);
+                    if (debounceRef.current) clearTimeout(debounceRef.current);
+                    debounceRef.current = setTimeout(() => fetchSuggestions(e.target.value), 250);
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch(1)}
+                  className="flex-1"
+                />
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto mt-1">
+                    <div className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b">
+                      Addresses
+                    </div>
+                    {suggestions.map((listing) => (
+                      <button
+                        key={listing.mlsNumber}
+                        onClick={() => {
+                          onAddComp(listing); // wire to existing addComparable function
+                          setSuggestions([]);
+                          setShowSuggestions(false);
+                          updateFilter("quickSearch", "");
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-gray-50"
+                      >
+                        <Home className="h-4 w-4 text-green-600 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="truncate">{listing.address}</div>
+                          <div className="text-xs text-gray-400 flex items-center gap-2">
+                            <span className="font-medium text-green-600">
+                              ${listing.listPrice?.toLocaleString()}
+                            </span>
+                            <span># {listing.mlsNumber}</span>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <Button
                 className="bg-[#EF4923] hover:bg-[#d4401f] text-white px-6"
                 onClick={() => handleSearch(1)}
