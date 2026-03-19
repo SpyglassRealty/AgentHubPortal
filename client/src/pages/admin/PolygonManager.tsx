@@ -65,6 +65,17 @@ interface CommunityPolygon {
   centroid: { lat: number; lng: number } | null;
   published: boolean;
   county: string | null;
+  livebyLocationId: number | null;
+}
+
+interface LiveByLocation {
+  locationId: number;
+  name: string;
+  type: string;
+  subType?: string;
+  address?: string;
+  map: [number, number][];
+  size?: number;
 }
 
 function calculateCentroid(polygon: [number, number][]): { lat: number; lng: number } {
@@ -100,6 +111,9 @@ export default function PolygonManager() {
   const [deleteTarget, setDeleteTarget] = useState<CommunityPolygon | null>(null);
   const [drawnPolygon, setDrawnPolygon] = useState<[number, number][] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [livebySearchQuery, setLivebySearchQuery] = useState("");
+  const [livebyResults, setLivebyResults] = useState<LiveByLocation[]>([]);
+  const [selectedLivebyLocation, setSelectedLivebyLocation] = useState<LiveByLocation | null>(null);
 
   // Save form state
   const [saveName, setSaveName] = useState("");
@@ -129,6 +143,7 @@ export default function PolygonManager() {
       filterValue?: string;
       polygon: [number, number][];
       centroid: { lat: number; lng: number };
+      livebyLocationId?: number;
     }) => {
       const url = data.id
         ? `/api/admin/communities/${data.id}/polygon`
@@ -364,6 +379,54 @@ export default function PolygonManager() {
     setSaveFilterValue("");
     setDrawnPolygon(null);
     setEditingCommunity(null);
+    setSelectedLivebyLocation(null);
+    setLivebySearchQuery("");
+    setLivebyResults([]);
+  };
+
+  // LiveBy search with debouncing
+  useEffect(() => {
+    if (livebySearchQuery.trim().length < 2) {
+      setLivebyResults([]);
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/admin/liveby/autocomplete?search=${encodeURIComponent(livebySearchQuery)}`, {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const results = await res.json();
+          setLivebyResults(results);
+        }
+      } catch (error) {
+        console.error("LiveBy search error:", error);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [livebySearchQuery]);
+
+  const handleLiveBySelect = (location: LiveByLocation) => {
+    setSelectedLivebyLocation(location);
+    setLivebyResults([]);
+    setLivebySearchQuery(location.name);
+    
+    // Auto-populate form with LiveBy data
+    setSaveName(location.name);
+    setSaveSlug(location.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''));
+    
+    // Set polygon from map data
+    if (location.map && location.map.length >= 3) {
+      setDrawnPolygon(location.map);
+      
+      // Center map on polygon if we have the map reference
+      if (mapRef.current && location.map.length > 0) {
+        const bounds = L.latLngBounds(location.map.map(([lng, lat]) => [lat, lng]));
+        mapRef.current.fitBounds(bounds, { padding: [20, 20] });
+      }
+    }
   };
 
   const handleFinishDrawing = useCallback(() => {
@@ -401,6 +464,7 @@ export default function PolygonManager() {
       filterValue: saveFilterValue || undefined,
       polygon: drawnPolygon,
       centroid,
+      livebyLocationId: selectedLivebyLocation?.locationId,
     });
   };
 
@@ -628,6 +692,52 @@ export default function PolygonManager() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            {/* LiveBy Search Section */}
+            <div>
+              <Label>Search LiveBy Boundaries</Label>
+              <div className="relative mt-1">
+                <Input
+                  value={livebySearchQuery}
+                  onChange={(e) => setLivebySearchQuery(e.target.value)}
+                  placeholder="Search neighborhoods, cities..."
+                  className="pr-10"
+                />
+                <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
+                {livebyResults.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 bg-white border rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                    {livebyResults.map((result) => (
+                      <div
+                        key={result.locationId}
+                        className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
+                        onClick={() => handleLiveBySelect(result)}
+                      >
+                        <div className="font-medium">{result.name}</div>
+                        <div className="text-sm text-gray-500">
+                          {result.type}{result.subType && ` • ${result.subType}`}
+                          {result.address && ` • ${result.address}`}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {selectedLivebyLocation && (
+                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="text-sm font-medium text-blue-900">✓ LiveBy Location Selected</div>
+                  <div className="text-xs text-blue-700">
+                    {selectedLivebyLocation.name} • ID: {selectedLivebyLocation.locationId}
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                Search LiveBy to auto-populate polygon data, or draw manually below
+              </p>
+            </div>
+
+            <div className="border-t pt-4">
+              <Label className="text-sm text-gray-500">Manual Entry (fallback)</Label>
+            </div>
+
             <div>
               <Label>Name *</Label>
               <Input

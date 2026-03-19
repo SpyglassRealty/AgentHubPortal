@@ -20,6 +20,7 @@ interface RepliersRequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: any;
   params?: Record<string, string | number | boolean | undefined>;
+  headers?: Record<string, string>;
 }
 
 // Actual Repliers API listing format
@@ -190,7 +191,8 @@ async function repliersRequest<T>({
   endpoint, 
   method = 'GET', 
   body, 
-  params 
+  params,
+  headers: customHeaders 
 }: RepliersRequestOptions): Promise<T> {
   const url = new URL(endpoint, REPLIERS_API_URL);
   
@@ -206,6 +208,7 @@ async function repliersRequest<T>({
     'Accept': 'application/json',
     'Content-Type': 'application/json',
     'REPLIERS-API-KEY': REPLIERS_API_KEY,
+    ...customHeaders,
   };
 
   const response = await fetchWithTimeout(url.toString(), {
@@ -222,6 +225,9 @@ async function repliersRequest<T>({
 
   return response.json();
 }
+
+// Export main request function for external use
+export const makeRepliersRequest = repliersRequest;
 
 /**
  * Get Repliers image URL

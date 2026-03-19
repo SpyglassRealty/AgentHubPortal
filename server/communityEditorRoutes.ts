@@ -5,6 +5,7 @@ import { db } from "./db";
 import { communities } from "@shared/schema";
 import { eq, ilike, and, or, sql, desc, asc, count } from "drizzle-orm";
 import type { User } from "@shared/schema";
+import { makeRepliersRequest } from "./lib/repliers-api";
 
 // ── Helper: get DB user ──────────────────────────────
 async function getDbUser(req: any): Promise<User | undefined> {
@@ -56,7 +57,7 @@ export function registerCommunityEditorRoutes(app: Express) {
   // ── POST /api/admin/communities/polygon — create community with polygon ──
   app.post("/api/admin/communities/polygon", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
     try {
-      const { name, slug, locationType, filterValue, polygon, centroid } = req.body;
+      const { name, slug, locationType, filterValue, polygon, centroid, livebyLocationId } = req.body;
       const user = req.dbUser;
 
       if (!name || !slug || !polygon || polygon.length < 3) {
@@ -83,6 +84,7 @@ export function registerCommunityEditorRoutes(app: Express) {
           filterValue: filterValue || null,
           polygon,
           centroid,
+          livebyLocationId: livebyLocationId || null,
           updatedBy: user?.email || "admin",
         })
         .returning();
@@ -99,7 +101,7 @@ export function registerCommunityEditorRoutes(app: Express) {
   app.put("/api/admin/communities/:id/polygon", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const { name, slug, locationType, filterValue, polygon, centroid } = req.body;
+      const { name, slug, locationType, filterValue, polygon, centroid, livebyLocationId } = req.body;
       const user = req.dbUser;
 
       if (!polygon || polygon.length < 3) {
@@ -109,6 +111,7 @@ export function registerCommunityEditorRoutes(app: Express) {
       const updateData: Record<string, any> = {
         polygon,
         centroid,
+        livebyLocationId: livebyLocationId || null,
         updatedAt: new Date(),
         updatedBy: user?.email || "admin",
       };
@@ -162,6 +165,48 @@ export function registerCommunityEditorRoutes(app: Express) {
     } catch (error) {
       console.error("[Community Editor] Error deleting polygon:", error);
       res.status(500).json({ message: "Failed to delete polygon" });
+    }
+  });
+
+  // ── GET /api/admin/liveby/autocomplete — LiveBy location search ──
+  app.get("/api/admin/liveby/autocomplete", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { search } = req.query;
+      
+      if (!search || typeof search !== 'string' || search.trim().length < 2) {
+        return res.json([]);
+      }
+
+      const clientIp = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || '127.0.0.1';
+
+      const results = await makeRepliersRequest({
+        endpoint: '/locations/autocomplete',
+        params: {
+          search: search.trim(),
+          source: 'LiveBy',
+          type: 'neighborhood',
+          fields: 'locationId,name,type,map,address,subType,size'
+        },
+        headers: {
+          'X-Repliers-Forwarded-For': clientIp
+        }
+      });
+
+      // Return simplified format for frontend
+      const simplified = results.map((item: any) => ({
+        locationId: item.locationId,
+        name: item.name,
+        type: item.type || 'neighborhood',
+        subType: item.subType,
+        address: item.address,
+        map: item.map, // Contains polygon coordinates
+        size: item.size
+      }));
+
+      res.json(simplified);
+    } catch (error) {
+      console.error("[LiveBy Autocomplete] Error:", error);
+      res.status(500).json({ message: "Failed to search LiveBy locations" });
     }
   });
 

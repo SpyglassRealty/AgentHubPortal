@@ -875,6 +875,7 @@ export const communities = pgTable("communities", {
   polygon: jsonb("polygon").$type<[number, number][]>(), // array of [lng, lat] coordinates
   displayPolygon: jsonb("display_polygon").$type<[number, number][]>(), // array of [lat, lng] for Leaflet
   centroid: jsonb("centroid").$type<{ lat: number; lng: number }>(), // center point
+  livebyLocationId: integer("liveby_location_id"), // LiveBy locationId when sourced from LiveBy API
   heroImage: text("hero_image"), // URL for hero image
   parentSlug: varchar("parent_slug", { length: 255 }), // for nesting (e.g. zip belongs to city)
   // SEO fields
