@@ -142,7 +142,7 @@ const defaultFilters: SearchFilters = {
   minPrice: "",
   maxPrice: "",
   propertyType: "",
-  statuses: ["Active"],
+  statuses: ["A"],
   minSqft: "",
   maxSqft: "",
   minLotAcres: "",
@@ -866,20 +866,29 @@ function SearchPropertiesSection({
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  const toggleStatus = (status: string) => {
+  // Status label to API code mapping
+  const statusMapping: { [key: string]: string } = {
+    "Active": "A",
+    "Active Under Contract": "U", 
+    "Pending": "P",
+    "Closed": "S"
+  };
+
+  const toggleStatus = (statusLabel: string) => {
+    const statusCode = statusMapping[statusLabel];
     setFilters((prev) => {
       const current = prev.statuses;
-      if (current.includes(status)) {
-        const newStatuses = current.filter((s) => s !== status);
+      if (current.includes(statusCode)) {
+        const newStatuses = current.filter((s) => s !== statusCode);
         // If removing Closed, clear dateSoldDays
-        if (status === "Closed") {
+        if (statusLabel === "Closed") {
           return { ...prev, statuses: newStatuses, dateSoldDays: "180" };
         }
         return { ...prev, statuses: newStatuses };
       }
-      const newStatuses = [...current, status];
+      const newStatuses = [...current, statusCode];
       // If adding Closed, default dateSoldDays to 180
-      if (status === "Closed") {
+      if (statusLabel === "Closed") {
         return { ...prev, statuses: newStatuses, dateSoldDays: "180" };
       }
       return { ...prev, statuses: newStatuses };
@@ -1580,7 +1589,7 @@ function SearchPropertiesSection({
                         <label key={s} className="flex items-center gap-1.5 text-xs cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={filters.statuses.includes(s)}
+                            checked={filters.statuses.includes(statusMapping[s])}
                             onChange={() => toggleStatus(s)}
                             className="rounded border-gray-300 text-[#EF4923] focus:ring-[#EF4923]"
                           />
@@ -1588,7 +1597,7 @@ function SearchPropertiesSection({
                         </label>
                       ))}
                     </div>
-                    {filters.statuses.includes("Closed") && (
+                    {filters.statuses.includes("S") && (
                       <Select
                         value={filters.dateSoldDays || "180"}
                         onValueChange={(v) => updateFilter("dateSoldDays", v)}
