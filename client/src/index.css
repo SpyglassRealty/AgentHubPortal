@@ -3,6 +3,21 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* TipTap ProseMirror list styles */
+.ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+.ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+.ProseMirror li {
+  margin: 0.25rem 0;
+}
+
 :root {
   --radius: 0.5rem;
   --radius-sm: calc(var(--radius) - 4px);
