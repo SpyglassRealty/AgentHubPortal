@@ -76,6 +76,7 @@ export function RichTextEditor({
           "prose-p:text-foreground prose-p:leading-relaxed",
           "prose-strong:text-foreground prose-em:text-foreground",
           "prose-ul:text-foreground prose-ol:text-foreground",
+          "prose-ul:list-disc prose-ul:pl-6 prose-ol:list-decimal prose-ol:pl-6 prose-li:pl-0",
           "prose-li:text-foreground prose-a:text-primary",
           className
         ),
