@@ -69,7 +69,7 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
           ctaText: block.ctaButtons?.[0]?.text || '',
           ctaUrl: block.ctaButtons?.[0]?.url || '',
           iframeUrl: block.iframeUrl || '',
-          mediaPosition: block.mediaPosition || 'right',
+          mediaPosition: block.mediaPosition || 'left',
           isPublished: block.isPublished !== undefined ? block.isPublished : true
         }));
         setBlocks(mappedBlocks);
@@ -113,7 +113,7 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
           ctaText: data.block.ctaButtons?.[0]?.text || '',
           ctaUrl: data.block.ctaButtons?.[0]?.url || '',
           iframeUrl: data.block.iframeUrl || '',
-          mediaPosition: data.block.mediaPosition || 'right',
+          mediaPosition: data.block.mediaPosition || 'left',
           isPublished: data.block.isPublished !== undefined ? data.block.isPublished : true
         };
         setBlocks([...blocks, mappedBlock]);
@@ -169,7 +169,7 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
           ctaText: data.block.ctaButtons?.[0]?.text || '',
           ctaUrl: data.block.ctaButtons?.[0]?.url || '',
           iframeUrl: data.block.iframeUrl || '',
-          mediaPosition: data.block.mediaPosition || 'right',
+          mediaPosition: data.block.mediaPosition || 'left',
           isPublished: data.block.isPublished !== undefined ? data.block.isPublished : true
         };
         setBlocks(blocks.map(block => 
@@ -298,6 +298,25 @@ function ContentBlockEditor({
   onMoveDown 
 }: ContentBlockEditorProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [localBlock, setLocalBlock] = useState(block);
+
+  // Sync local state when block identity changes (not on every update)
+  useEffect(() => {
+    setLocalBlock(block);
+  }, [block.id]);
+
+  const handleFieldChange = (field: string, value: any) => {
+    setLocalBlock(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleBlur = (field: string) => {
+    onUpdate({ [field]: localBlock[field] });
+  };
+
+  const handleImmediateUpdate = (field: string, value: any) => {
+    setLocalBlock(prev => ({ ...prev, [field]: value }));
+    onUpdate({ [field]: value });
+  };
 
   return (
     <div className="border rounded-lg p-4 space-y-3 bg-card">
@@ -306,11 +325,11 @@ function ContentBlockEditor({
         <div className="flex items-center gap-3">
           <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
           <div>
-            <h4 className="font-medium">{block.title || 'Untitled Block'}</h4>
+            <h4 className="font-medium">{localBlock.title || 'Untitled Block'}</h4>
             <p className="text-sm text-muted-foreground">
-              {block.blockType === 'split' ? 'Split Layout' : 'Content Block'} 
-              {block.imageUrl && ' • Image'}
-              {block.videoUrl && ' • Video'}
+              {localBlock.blockType === 'split' ? 'Split Layout' : 'Content Block'} 
+              {localBlock.imageUrl && ' • Image'}
+              {localBlock.videoUrl && ' • Video'}
             </p>
           </div>
         </div>
@@ -319,10 +338,10 @@ function ContentBlockEditor({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onUpdate({ isPublished: !block.isPublished })}
+            onClick={() => handleImmediateUpdate('isPublished', !localBlock.isPublished)}
             className="h-8 w-8 p-0"
           >
-            {block.isPublished ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            {localBlock.isPublished ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
           </Button>
           
           {index > 0 && (
@@ -363,14 +382,15 @@ function ContentBlockEditor({
             <div>
               <Label>Title</Label>
               <Input
-                value={block.title}
-                onChange={(e) => onUpdate({ title: e.target.value })}
+                value={localBlock.title}
+                onChange={(e) => handleFieldChange('title', e.target.value)}
+                onBlur={() => handleBlur('title')}
                 placeholder="Section title..."
               />
             </div>
             <div>
               <Label>Background</Label>
-              <Select value={block.backgroundColor} onValueChange={(value: any) => onUpdate({ backgroundColor: value })}>
+              <Select value={localBlock.backgroundColor} onValueChange={(value: any) => handleImmediateUpdate('backgroundColor', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -386,8 +406,9 @@ function ContentBlockEditor({
           <div>
             <Label>Content</Label>
             <RichTextEditor
-              value={block.content}
-              onChange={(value) => onUpdate({ content: value })}
+              value={localBlock.content}
+              onChange={(value) => handleFieldChange('content', value)}
+              onBlur={() => handleBlur('content')}
               placeholder="Enter your content..."
             />
           </div>
@@ -399,8 +420,8 @@ function ContentBlockEditor({
                 Image
               </Label>
               <ImageUpload
-                value={block.imageUrl}
-                onChange={(url) => onUpdate({ imageUrl: url })}
+                value={localBlock.imageUrl}
+                onChange={(url) => handleImmediateUpdate('imageUrl', url)}
               />
             </div>
             <div>
@@ -409,15 +430,16 @@ function ContentBlockEditor({
                 Video URL
               </Label>
               <Input
-                value={block.videoUrl}
-                onChange={(e) => onUpdate({ videoUrl: e.target.value })}
+                value={localBlock.videoUrl}
+                onChange={(e) => handleFieldChange('videoUrl', e.target.value)}
+                onBlur={() => handleBlur('videoUrl')}
                 placeholder="YouTube, Vimeo, or direct video URL..."
               />
-              {block.videoUrl && (
+              {localBlock.videoUrl && (
                 <div className="mt-2">
-                  {block.videoUrl.includes('youtube.com') || block.videoUrl.includes('youtu.be') ? (
+                  {localBlock.videoUrl.includes('youtube.com') || localBlock.videoUrl.includes('youtu.be') ? (
                     (() => {
-                      const match = block.videoUrl.match(/(?:v=|youtu\.be\/)([^&?/]+)/);
+                      const match = localBlock.videoUrl.match(/(?:v=|youtu\.be\/)([^&?/]+)/);
                       return match ? (
                         <img 
                           src={`https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`}
@@ -428,7 +450,7 @@ function ContentBlockEditor({
                     })()
                   ) : (
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Video className="h-3 w-3" /> <a href={block.videoUrl} target="_blank" rel="noopener noreferrer" className="underline truncate">{block.videoUrl}</a>
+                      <Video className="h-3 w-3" /> <a href={localBlock.videoUrl} target="_blank" rel="noopener noreferrer" className="underline truncate">{localBlock.videoUrl}</a>
                     </p>
                   )}
                 </div>
@@ -440,13 +462,14 @@ function ContentBlockEditor({
                 iFrame URL
               </Label>
               <Input
-                value={block.iframeUrl}
-                onChange={(e) => onUpdate({ iframeUrl: e.target.value })}
+                value={localBlock.iframeUrl}
+                onChange={(e) => handleFieldChange('iframeUrl', e.target.value)}
+                onBlur={() => handleBlur('iframeUrl')}
                 placeholder="Embedded content URL..."
               />
-              {block.iframeUrl && (
+              {localBlock.iframeUrl && (
                 <div className="mt-2 space-y-1">
-                  <iframe src={block.iframeUrl} width="100%" height="300" frameBorder="0" className="rounded-lg border" />
+                  <iframe src={localBlock.iframeUrl} width="100%" height="300" frameBorder="0" className="rounded-lg border" />
                   <p className="text-xs text-muted-foreground">Preview may not load for all URLs due to iframe restrictions.</p>
                 </div>
               )}
@@ -456,7 +479,7 @@ function ContentBlockEditor({
           <div className="grid grid-cols-3 gap-4">
             <div>
               <Label>Media Position</Label>
-              <Select value={block.mediaPosition} onValueChange={(value: any) => onUpdate({ mediaPosition: value })}>
+              <Select value={localBlock.mediaPosition} onValueChange={(value: any) => handleImmediateUpdate('mediaPosition', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -469,16 +492,18 @@ function ContentBlockEditor({
             <div>
               <Label>CTA Button Text</Label>
               <Input
-                value={block.ctaText}
-                onChange={(e) => onUpdate({ ctaText: e.target.value })}
+                value={localBlock.ctaText}
+                onChange={(e) => handleFieldChange('ctaText', e.target.value)}
+                onBlur={() => handleBlur('ctaText')}
                 placeholder="Get Started"
               />
             </div>
             <div>
               <Label>CTA Button URL</Label>
               <Input
-                value={block.ctaUrl}
-                onChange={(e) => onUpdate({ ctaUrl: e.target.value })}
+                value={localBlock.ctaUrl}
+                onChange={(e) => handleFieldChange('ctaUrl', e.target.value)}
+                onBlur={() => handleBlur('ctaUrl')}
                 placeholder="/contact"
               />
             </div>
