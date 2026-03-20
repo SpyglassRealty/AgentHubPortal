@@ -391,7 +391,10 @@ export function registerCommunityEditorRoutes(app: Express) {
         return res.status(404).json({ message: "Community not found" });
       }
 
-      res.json(community);
+      res.json({
+        ...community,
+        pageTitle: community.pageTitle || community.page_title || null,
+      });
     } catch (error) {
       console.error("[Community Editor] Error getting community:", error);
       res.status(500).json({ message: "Failed to get community" });
