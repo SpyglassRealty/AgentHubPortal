@@ -453,7 +453,7 @@ export default function PolygonManager() {
       return;
     }
 
-    const slug = saveSlug.trim() || saveName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const slug = (saveSlug.trim() || saveName).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     const centroid = calculateCentroid(drawnPolygon);
 
     saveMutation.mutate({
