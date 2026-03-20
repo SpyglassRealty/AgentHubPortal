@@ -54,8 +54,7 @@ export function registerCommunityPublicRoutes(app: Express) {
           county: communities.county,
           locationType: communities.locationType,
           filterValue: communities.filterValue,
-          polygon: communities.polygon,
-          displayPolygon: communities.displayPolygon,
+
           centroid: communities.centroid,
           heroImage: communities.heroImage,
           metaTitle: communities.metaTitle,
@@ -80,8 +79,8 @@ export function registerCommunityPublicRoutes(app: Express) {
       const transformedCommunities = rows.map(community => ({
         name: community.name,
         slug: community.slug,
-        polygon: community.polygon || [],
-        displayPolygon: community.displayPolygon || [],
+        polygon: [],
+        displayPolygon: [],
         county: community.county || "Travis",
         featured: community.featured || false,
         // Additional fields for IDX compatibility
