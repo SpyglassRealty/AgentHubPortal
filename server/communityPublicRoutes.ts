@@ -17,7 +17,7 @@ export function registerCommunityPublicRoutes(app: Express) {
       const featured = req.query.featured === "true";
       const published = req.query.published !== "false"; // default to true
       const page = Math.max(1, parseInt((req.query.page as string) || "1", 10));
-      const limit = Math.min(Math.max(1, parseInt((req.query.limit as string) || "100", 10)), 500);
+      const limit = Math.min(Math.max(1, parseInt((req.query.limit as string) || "100", 10)), 2000);
       const offset = (page - 1) * limit;
 
       const conditions: any[] = [];
