@@ -109,7 +109,10 @@ async function runDirectMigrations() {
     
     // Community source columns for F-SNP-4
     await addCommunitySourceColumns();
-    
+
+    // Community page_title column for PB-H1
+    await addCommunityPageTitleColumn();
+
   } catch (error) {
     console.error("[Database] Direct migration error:", error);
     throw error;
@@ -1320,6 +1323,19 @@ async function addSpyglassSnippetsColumns() {
   } catch (error) {
     console.error("[Database] Error adding Spyglass Snippets columns:", error);
     // Do not throw - columns might already exist
+  }
+}
+
+// Community page_title column for PB-H1 (H1 override in community editor)
+async function addCommunityPageTitleColumn() {
+  try {
+    console.log("[Database] Adding community page_title column...");
+    await pool.query(`
+      ALTER TABLE communities ADD COLUMN IF NOT EXISTS page_title TEXT
+    `);
+    console.log("[Database] Community page_title column added successfully");
+  } catch (error) {
+    console.error("[Database] Error adding community page_title column:", error);
   }
 }
 
