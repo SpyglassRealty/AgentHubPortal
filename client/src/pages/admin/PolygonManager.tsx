@@ -106,6 +106,8 @@ export default function PolygonManager() {
   const [vertexCount, setVertexCount] = useState(0);
   const activeDrawHandlerRef = useRef<any>(null);
 
+  const [selectedCommunityId, setSelectedCommunityId] = useState<number | null>(null);
+  const polygonLayerMapRef = useRef<Map<number, L.Polygon>>(new Map());
   const [editingCommunity, setEditingCommunity] = useState<CommunityPolygon | null>(null);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CommunityPolygon | null>(null);
@@ -343,6 +345,7 @@ export default function PolygonManager() {
 
     // Clear previous community polygon layers
     polygonLayersRef.current.clearLayers();
+    polygonLayerMapRef.current.clear();
 
     communities.forEach((community) => {
       if (!community.polygon || community.polygon.length < 3) return;
@@ -352,13 +355,13 @@ export default function PolygonManager() {
         ([lng, lat]) => [lat, lng] as [number, number]
       );
 
-      const color = community.published ? "#3b82f6" : "#9ca3af";
-      const borderColor = community.published ? "#2563eb" : "#6b7280";
+      const color = community.published ? "#3b82f6" : "#8b5cf6";
+      const borderColor = community.published ? "#2563eb" : "#7c3aed";
 
       const poly = L.polygon(latLngs, {
         color: borderColor,
         fillColor: color,
-        fillOpacity: 0.2,
+        fillOpacity: community.published ? 0.2 : 0.3,
         weight: 2,
       });
 
@@ -369,6 +372,7 @@ export default function PolygonManager() {
       poly.bindTooltip(community.name, { sticky: true, opacity: 0.8 });
 
       polygonLayersRef.current.addLayer(poly);
+      polygonLayerMapRef.current.set(community.id, poly);
     });
   }, [communities, mapReady]);
 
@@ -506,6 +510,25 @@ export default function PolygonManager() {
 
   const handleFlyTo = (community: CommunityPolygon) => {
     if (!mapRef.current) return;
+
+    // Reset previous selection
+    if (selectedCommunityId !== null) {
+      const prevPoly = polygonLayerMapRef.current.get(selectedCommunityId);
+      const prevCommunity = communities.find(c => c.id === selectedCommunityId);
+      if (prevPoly && prevCommunity) {
+        const color = prevCommunity.published ? "#3b82f6" : "#8b5cf6";
+        const borderColor = prevCommunity.published ? "#2563eb" : "#7c3aed";
+        prevPoly.setStyle({ color: borderColor, fillColor: color, fillOpacity: prevCommunity.published ? 0.2 : 0.3, weight: 2 });
+      }
+    }
+
+    // Highlight selected polygon
+    const poly = polygonLayerMapRef.current.get(community.id);
+    if (poly) {
+      poly.setStyle({ color: "#ea580c", fillColor: "#f97316", fillOpacity: 0.5, weight: 3 });
+    }
+    setSelectedCommunityId(community.id);
+
     if (community.centroid) {
       mapRef.current.flyTo([community.centroid.lat, community.centroid.lng], 13);
     } else if (community.polygon && community.polygon.length >= 3) {
@@ -561,7 +584,7 @@ export default function PolygonManager() {
                   {filteredCommunities.map((community) => (
                     <div
                       key={community.id}
-                      className="flex items-center gap-2 p-2.5 rounded-lg hover:bg-muted/60 group transition-colors"
+                      className={`flex items-center gap-2 p-2.5 rounded-lg hover:bg-muted/60 group transition-colors ${selectedCommunityId === community.id ? 'bg-orange-50 ring-1 ring-orange-300' : ''}`}
                     >
                       <div
                         className="flex-1 cursor-pointer min-w-0"
