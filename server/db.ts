@@ -116,6 +116,9 @@ async function runDirectMigrations() {
     // Content block heading_level column for PB-CB-Heading
     await addContentBlockHeadingLevel();
 
+    // IDX leads table for form submissions
+    await createIdxLeadsTable();
+
   } catch (error) {
     console.error("[Database] Direct migration error:", error);
     throw error;
@@ -1326,6 +1329,46 @@ async function addSpyglassSnippetsColumns() {
   } catch (error) {
     console.error("[Database] Error adding Spyglass Snippets columns:", error);
     // Do not throw - columns might already exist
+  }
+}
+
+// IDX leads table for form submissions (A-Form-Backup)
+async function createIdxLeadsTable() {
+  try {
+    console.log("[Database] Creating idx_leads table if not exists...");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS idx_leads (
+        id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR NOT NULL,
+        email VARCHAR NOT NULL,
+        phone VARCHAR,
+        message TEXT,
+        form_type VARCHAR NOT NULL,
+        source VARCHAR DEFAULT 'spyglass-idx',
+        listing_address VARCHAR,
+        mls_number VARCHAR,
+        community_name VARCHAR,
+        preferred_date VARCHAR,
+        preferred_time VARCHAR,
+        status VARCHAR DEFAULT 'new',
+        notes TEXT,
+        assigned_to VARCHAR REFERENCES users(id),
+        fub_person_id INTEGER,
+        fub_sync_error TEXT,
+        fub_sync_attempts INTEGER DEFAULT 0,
+        submitted_at TIMESTAMP DEFAULT NOW(),
+        contacted_at TIMESTAMP,
+        archived_at TIMESTAMP
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_idx_leads_email ON idx_leads(email)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_idx_leads_status ON idx_leads(status)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_idx_leads_submitted ON idx_leads(submitted_at DESC)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_idx_leads_assigned ON idx_leads(assigned_to)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_idx_leads_mls ON idx_leads(mls_number) WHERE mls_number IS NOT NULL`);
+    console.log("[Database] idx_leads table ready");
+  } catch (error) {
+    console.error("[Database] Error creating idx_leads table:", error);
   }
 }
 
