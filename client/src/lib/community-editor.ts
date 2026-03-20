@@ -28,6 +28,7 @@ export interface Community {
   metaTitle: string | null;
   metaDescription: string | null;
   focusKeyword: string | null;
+  pageTitle: string | null;
   description: string | null;
   highlights: string[] | null;
   bestFor: string[] | null;
