@@ -107,7 +107,7 @@ export default function PolygonManager() {
   const activeDrawHandlerRef = useRef<any>(null);
 
   const [selectedCommunityId, setSelectedCommunityId] = useState<number | null>(null);
-  const polygonLayerMapRef = useRef<Map<number, L.Polygon>>(new Map());
+  const polygonLayerMapRef = useRef<Record<number, L.Polygon>>({});
   const [editingCommunity, setEditingCommunity] = useState<CommunityPolygon | null>(null);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CommunityPolygon | null>(null);
@@ -345,7 +345,7 @@ export default function PolygonManager() {
 
     // Clear previous community polygon layers
     polygonLayersRef.current.clearLayers();
-    polygonLayerMapRef.current.clear();
+    polygonLayerMapRef.current = {};
 
     communities.forEach((community) => {
       if (!community.polygon || community.polygon.length < 3) return;
@@ -372,7 +372,7 @@ export default function PolygonManager() {
       poly.bindTooltip(community.name, { sticky: true, opacity: 0.8 });
 
       polygonLayersRef.current.addLayer(poly);
-      polygonLayerMapRef.current.set(community.id, poly);
+      polygonLayerMapRef.current[community.id] = poly;
     });
   }, [communities, mapReady]);
 
@@ -513,7 +513,7 @@ export default function PolygonManager() {
 
     // Reset previous selection
     if (selectedCommunityId !== null) {
-      const prevPoly = polygonLayerMapRef.current.get(selectedCommunityId);
+      const prevPoly = polygonLayerMapRef.current[selectedCommunityId];
       const prevCommunity = communities.find(c => c.id === selectedCommunityId);
       if (prevPoly && prevCommunity) {
         const color = prevCommunity.published ? "#3b82f6" : "#8b5cf6";
@@ -523,7 +523,7 @@ export default function PolygonManager() {
     }
 
     // Highlight selected polygon
-    const poly = polygonLayerMapRef.current.get(community.id);
+    const poly = polygonLayerMapRef.current[community.id];
     if (poly) {
       poly.setStyle({ color: "#ea580c", fillColor: "#f97316", fillOpacity: 0.5, weight: 3 });
     }
