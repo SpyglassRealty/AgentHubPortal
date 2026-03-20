@@ -53,6 +53,7 @@ export default function CommunityEditor() {
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   const [focusKeyword, setFocusKeyword] = useState("");
+  const [pageTitle, setPageTitle] = useState("");
   const [description, setDescription] = useState("");
   const [sections, setSections] = useState<CommunitySection[]>([]);
   const [highlights, setHighlights] = useState<string[]>([]);
@@ -73,6 +74,7 @@ export default function CommunityEditor() {
       setMetaTitle(community.metaTitle || "");
       setMetaDescription(community.metaDescription || "");
       setFocusKeyword(community.focusKeyword || "");
+      setPageTitle(community.pageTitle || "");
       setDescription(community.description || "");
       setSections(community.sections || []);
       setHighlights(community.highlights || []);
@@ -94,6 +96,7 @@ export default function CommunityEditor() {
           metaTitle: metaTitle || null,
           metaDescription: metaDescription || null,
           focusKeyword: focusKeyword || null,
+          pageTitle: pageTitle || null,
           description: description || null,
           sections: sections.length > 0 ? sections : null,
           highlights: highlights.length > 0 ? highlights : null,
@@ -108,7 +111,7 @@ export default function CommunityEditor() {
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
-  }, [slug, metaTitle, metaDescription, focusKeyword, description, sections, highlights, bestFor, nearbyLandmarks, featuredImageUrl, published, featured, updateMutation, toast]);
+  }, [slug, metaTitle, metaDescription, focusKeyword, pageTitle, description, sections, highlights, bestFor, nearbyLandmarks, featuredImageUrl, published, featured, updateMutation, toast]);
 
   // ── Publish toggle ────────────────────────────────
   const handleTogglePublish = async () => {
@@ -243,6 +246,18 @@ export default function CommunityEditor() {
             <CardDescription>Search engine optimization settings</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div>
+              <Label>Page Title (H1)</Label>
+              <Input
+                value={pageTitle}
+                onChange={(e) => setPageTitle(e.target.value)}
+                placeholder={`Homes for Sale in ${community?.name || 'Community'}, TX`}
+                maxLength={80}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Override the default "Homes for Sale in [Community]" heading. Leave blank to use default.
+              </p>
+            </div>
             <div>
               <Label>Meta Title</Label>
               <Input

@@ -141,6 +141,7 @@ export function registerCommunityPublicRoutes(app: Express) {
       const transformedCommunity = {
         name: community.name,
         slug: community.slug,
+        pageTitle: community.pageTitle,
         polygon: community.polygon || [],
         displayPolygon: community.displayPolygon || [],
         county: community.county || "Travis",

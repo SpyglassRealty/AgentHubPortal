@@ -407,6 +407,7 @@ export function registerCommunityEditorRoutes(app: Express) {
         metaTitle,
         metaDescription,
         focusKeyword,
+        pageTitle,
         description,
         highlights,
         bestFor,
@@ -424,6 +425,7 @@ export function registerCommunityEditorRoutes(app: Express) {
       if (metaTitle !== undefined) updateData.metaTitle = metaTitle;
       if (metaDescription !== undefined) updateData.metaDescription = metaDescription;
       if (focusKeyword !== undefined) updateData.focusKeyword = focusKeyword;
+      if (pageTitle !== undefined) updateData.pageTitle = pageTitle;
       if (description !== undefined) updateData.description = description;
       if (highlights !== undefined) updateData.highlights = highlights;
       if (bestFor !== undefined) updateData.bestFor = bestFor;
