@@ -905,6 +905,7 @@ export const communities = pgTable("communities", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   updatedBy: varchar("updated_by", { length: 255 }),
+  pageTitle: text("page_title"),
 }, (table) => [
   uniqueIndex("idx_communities_slug").on(table.slug),
   index("idx_communities_county").on(table.county),
