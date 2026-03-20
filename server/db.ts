@@ -113,6 +113,9 @@ async function runDirectMigrations() {
     // Community page_title column for PB-H1
     await addCommunityPageTitleColumn();
 
+    // Content block heading_level column for PB-CB-Heading
+    await addContentBlockHeadingLevel();
+
   } catch (error) {
     console.error("[Database] Direct migration error:", error);
     throw error;
@@ -1323,6 +1326,19 @@ async function addSpyglassSnippetsColumns() {
   } catch (error) {
     console.error("[Database] Error adding Spyglass Snippets columns:", error);
     // Do not throw - columns might already exist
+  }
+}
+
+// Content block heading_level column for PB-CB-Heading
+async function addContentBlockHeadingLevel() {
+  try {
+    console.log("[Database] Adding content block heading_level column...");
+    await pool.query(`
+      ALTER TABLE community_content_blocks ADD COLUMN IF NOT EXISTS heading_level VARCHAR(10) DEFAULT 'h2'
+    `);
+    console.log("[Database] Content block heading_level column added successfully");
+  } catch (error) {
+    console.error("[Database] Error adding content block heading_level column:", error);
   }
 }
 

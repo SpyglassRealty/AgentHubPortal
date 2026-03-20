@@ -31,6 +31,7 @@ export interface ContentBlock {
   ctaText: string;
   ctaUrl: string;
   iframeUrl: string;
+  headingLevel: 'h1' | 'h2' | 'h3' | 'h4';
   mediaPosition: 'left' | 'right';
   backgroundColor: 'white' | 'light' | 'dark';
   sortOrder: number;
@@ -69,6 +70,7 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
           ctaText: block.ctaButtons?.[0]?.text || '',
           ctaUrl: block.ctaButtons?.[0]?.url || '',
           iframeUrl: block.iframeUrl || '',
+          headingLevel: block.headingLevel || 'h2',
           mediaPosition: block.mediaPosition || 'left',
           isPublished: block.isPublished !== undefined ? block.isPublished : true
         }));
@@ -96,6 +98,7 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
           videos: [],
           ctaButtons: [],
           mediaPosition: 'right',
+          headingLevel: 'h2',
           backgroundColor: 'white',
           sortOrder: blocks.length,
           isPublished: true,
@@ -113,6 +116,7 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
           ctaText: data.block.ctaButtons?.[0]?.text || '',
           ctaUrl: data.block.ctaButtons?.[0]?.url || '',
           iframeUrl: data.block.iframeUrl || '',
+          headingLevel: data.block.headingLevel || 'h2',
           mediaPosition: data.block.mediaPosition || 'left',
           isPublished: data.block.isPublished !== undefined ? data.block.isPublished : true
         };
@@ -169,6 +173,7 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
           ctaText: data.block.ctaButtons?.[0]?.text || '',
           ctaUrl: data.block.ctaButtons?.[0]?.url || '',
           iframeUrl: data.block.iframeUrl || '',
+          headingLevel: data.block.headingLevel || 'h2',
           mediaPosition: data.block.mediaPosition || 'left',
           isPublished: data.block.isPublished !== undefined ? data.block.isPublished : true
         };
@@ -322,6 +327,7 @@ function ContentBlockEditor({
     onUpdate({
       title: localBlock.title,
       content: localBlock.content,
+      headingLevel: localBlock.headingLevel,
       videoUrl: localBlock.videoUrl,
       iframeUrl: localBlock.iframeUrl,
       ctaText: localBlock.ctaText,
@@ -395,7 +401,7 @@ function ContentBlockEditor({
       {/* Expanded Edit Form */}
       {isExpanded && (
         <div className="space-y-4 pt-4 border-t">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <Label>Title</Label>
               <Input
@@ -404,6 +410,20 @@ function ContentBlockEditor({
                 onBlur={() => handleBlur('title')}
                 placeholder="Section title..."
               />
+            </div>
+            <div>
+              <Label>Heading Level</Label>
+              <Select value={localBlock.headingLevel || 'h2'} onValueChange={(value: any) => handleImmediateUpdate('headingLevel', value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="h1">H1</SelectItem>
+                  <SelectItem value="h2">H2</SelectItem>
+                  <SelectItem value="h3">H3</SelectItem>
+                  <SelectItem value="h4">H4</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Background</Label>

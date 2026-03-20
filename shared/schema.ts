@@ -1701,7 +1701,8 @@ export const communityContentBlocks = pgTable("community_content_blocks", {
   // Layout configuration
   backgroundColor: varchar("background_color", { length: 20 }).default("white"), // white, light, dark
   mediaPosition: varchar("media_position", { length: 10 }).default("left"), // left, right
-  
+  headingLevel: varchar("heading_level", { length: 10 }).default("h2"), // h1, h2, h3, h4
+
   // Call-to-action configuration
   ctaButtons: jsonb("cta_buttons").$type<Array<{
     text: string;

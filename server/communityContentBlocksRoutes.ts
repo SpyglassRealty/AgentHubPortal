@@ -73,12 +73,13 @@ export function registerCommunityContentBlocksRoutes(app: Express) {
         videos = [],
         ctaButtons = [],
         mediaPosition = 'right',
+        headingLevel = 'h2',
         backgroundColor = 'white',
         sortOrder = 0,
         isPublished = true,
         iframeUrl = ''
       } = req.body;
-      
+
       const newBlock = await db
         .insert(communityContentBlocks)
         .values({
@@ -90,6 +91,7 @@ export function registerCommunityContentBlocksRoutes(app: Express) {
           videos,
           ctaButtons,
           mediaPosition,
+          headingLevel,
           backgroundColor,
           sortOrder,
           isPublished,
@@ -134,12 +136,13 @@ export function registerCommunityContentBlocksRoutes(app: Express) {
         videos,
         ctaButtons,
         mediaPosition,
+        headingLevel,
         backgroundColor,
         sortOrder,
         isPublished,
         iframeUrl
       } = req.body;
-      
+
       const updateData: any = {};
       if (blockType !== undefined) updateData.blockType = blockType;
       if (title !== undefined) updateData.title = title;
@@ -148,6 +151,7 @@ export function registerCommunityContentBlocksRoutes(app: Express) {
       if (videos !== undefined) updateData.videos = videos;
       if (ctaButtons !== undefined) updateData.ctaButtons = ctaButtons;
       if (mediaPosition !== undefined) updateData.mediaPosition = mediaPosition;
+      if (headingLevel !== undefined) updateData.headingLevel = headingLevel;
       if (backgroundColor !== undefined) updateData.backgroundColor = backgroundColor;
       if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
       if (isPublished !== undefined) updateData.isPublished = isPublished;
