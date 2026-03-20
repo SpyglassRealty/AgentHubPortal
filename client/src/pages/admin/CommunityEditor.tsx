@@ -247,18 +247,6 @@ export default function CommunityEditor() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>Page Title (H1)</Label>
-              <Input
-                value={pageTitle}
-                onChange={(e) => setPageTitle(e.target.value)}
-                placeholder={`Homes for Sale in ${community?.name || 'Community'}, TX`}
-                maxLength={80}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Override the default "Homes for Sale in [Community]" heading. Leave blank to use default.
-              </p>
-            </div>
-            <div>
               <Label>Meta Title</Label>
               <Input
                 value={metaTitle}
@@ -306,6 +294,28 @@ export default function CommunityEditor() {
                   {metaDescription || `Learn about ${community.name}: homes for sale, neighborhood highlights, schools, and what it's like to live here.`}
                 </p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ── Page Content ──────────────────────────── */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Page Content</CardTitle>
+            <CardDescription>Customize visible page elements</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Page Title (H1)</Label>
+              <Input
+                value={pageTitle}
+                onChange={(e) => setPageTitle(e.target.value)}
+                placeholder={`Homes for Sale in ${community?.name || 'Community'}, TX`}
+                maxLength={80}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Override the default "Homes for Sale in [Community]" heading. Leave blank to use default.
+              </p>
             </div>
           </CardContent>
         </Card>
