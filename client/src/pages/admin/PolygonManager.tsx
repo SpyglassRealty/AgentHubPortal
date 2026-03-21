@@ -305,13 +305,32 @@ export default function PolygonManager() {
     });
 
     // Handle draw:edited event
-    map.on(L.Draw.Event.EDITED, (e: any) => {
+    map.on(L.Draw.Event.EDITED, async (e: any) => {
       const layers = e.layers;
-      layers.eachLayer((layer: any) => {
+      layers.eachLayer(async (layer: any) => {
         if (layer instanceof L.Polygon) {
           const latLngs = layer.getLatLngs()[0] as L.LatLng[];
           const polygon: [number, number][] = latLngs.map((ll) => [ll.lng, ll.lat]);
           setDrawnPolygon(polygon);
+          
+          // Auto-save the redrawn polygon to DB
+          if (editingCommunity?.id) {
+            try {
+              const centroid = calculateCentroid(polygon);
+              const res = await fetch(`/api/admin/communities/${editingCommunity.id}/polygon`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ polygon, centroid }),
+              });
+              if (!res.ok) throw new Error("Failed to save polygon");
+              queryClient.invalidateQueries({ queryKey: ["/api/admin/communities/with-polygons"] });
+              toast({ title: "Polygon updated automatically" });
+            } catch (error) {
+              console.error("Auto-save failed:", error);
+              toast({ title: "Auto-save failed", description: "Manual save required", variant: "destructive" });
+            }
+          }
         }
       });
     });
