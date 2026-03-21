@@ -142,8 +142,8 @@ export function registerCommunityPublicRoutes(app: Express) {
         name: community.name,
         slug: community.slug,
         pageTitle: community.pageTitle,
-        polygon: community.polygon || [],
-        displayPolygon: community.displayPolygon || [],
+        polygon: community.polygon || community['polygon'] || community.display_polygon || [],
+        displayPolygon: community.displayPolygon || community['display_polygon'] || community.display_polygon || [],
         county: community.county || "Travis",
         featured: community.featured || false,
         // Extended content for detail pages
