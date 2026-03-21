@@ -189,6 +189,19 @@ export default function PolygonManager() {
           }, 100);
         }
       }, 50);
+      
+      // Defer invalidateQueries to prevent flicker during modal close
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/communities/with-polygons"] });
+        
+        // Auto-zoom to updated polygon if we were editing
+        if (savedCommunity && drawnPolygon) {
+          setTimeout(() => {
+            const updatedCommunity = { ...savedCommunity, polygon: drawnPolygon };
+            handleFlyTo(updatedCommunity);
+          }, 100);
+        }
+      }, 50);
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
