@@ -123,6 +123,12 @@ export default function PolygonManager() {
   const [saveLocationType, setSaveLocationType] = useState<string>("polygon");
   const [saveFilterValue, setSaveFilterValue] = useState("");
 
+  const getPolygonColor = (community: any) => {
+    if (community?.source === 'snippet') return '#22c55e';
+    if (community?.livebyLocationId) return '#3b82f6';
+    return '#f97316';
+  };
+
   // Fetch communities with polygons
   const { data: communities = [], isLoading } = useQuery<CommunityPolygon[]>({
     queryKey: ["/api/admin/communities/with-polygons"],
@@ -355,7 +361,7 @@ export default function PolygonManager() {
         ([lng, lat]) => [lat, lng] as [number, number]
       );
 
-      const color = community.published ? "#3b82f6" : "#8b5cf6";
+      const color = getPolygonColor(community);
       const borderColor = community.published ? "#2563eb" : "#7c3aed";
 
       const poly = L.polygon(latLngs, {
@@ -516,7 +522,7 @@ export default function PolygonManager() {
       const prevPoly = polygonLayerMapRef.current[selectedCommunityId];
       const prevCommunity = communities.find(c => c.id === selectedCommunityId);
       if (prevPoly && prevCommunity) {
-        const color = prevCommunity.published ? "#3b82f6" : "#8b5cf6";
+        const color = getPolygonColor(prevCommunity);
         const borderColor = prevCommunity.published ? "#2563eb" : "#7c3aed";
         prevPoly.setStyle({ color: borderColor, fillColor: color, fillOpacity: prevCommunity.published ? 0.2 : 0.3, weight: 2 });
       }
@@ -525,7 +531,7 @@ export default function PolygonManager() {
     // Highlight selected polygon
     const poly = polygonLayerMapRef.current[community.id];
     if (poly) {
-      poly.setStyle({ color: "#ea580c", fillColor: "#f97316", fillOpacity: 0.5, weight: 3 });
+      poly.setStyle({ color: "#ea580c", fillColor: "#ea580c", fillOpacity: 0.4, weight: 3 });
     }
     setSelectedCommunityId(community.id);
 
