@@ -169,13 +169,26 @@ export default function PolygonManager() {
       }
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/communities/with-polygons"] });
+    onSuccess: (data) => {
       toast({ title: "Polygon saved successfully" });
       setShowSaveDialog(false);
+      const savedCommunity = editingCommunity;
       resetForm();
       // Clear drawn items from map
       drawnItemsRef.current.clearLayers();
+      
+      // Defer invalidateQueries to prevent flicker during modal close
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/communities/with-polygons"] });
+        
+        // Auto-zoom to updated polygon if we were editing
+        if (savedCommunity && drawnPolygon) {
+          setTimeout(() => {
+            const updatedCommunity = { ...savedCommunity, polygon: drawnPolygon };
+            handleFlyTo(updatedCommunity);
+          }, 100);
+        }
+      }, 50);
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -554,13 +567,16 @@ export default function PolygonManager() {
     }
     setSelectedCommunityId(community.id);
 
-    if (community.centroid) {
-      mapRef.current.flyTo([community.centroid.lat, community.centroid.lng], 13);
-    } else if (community.polygon && community.polygon.length >= 3) {
-      const latLngs: L.LatLngExpression[] = community.polygon.map(
-        ([lng, lat]) => [lat, lng] as [number, number]
+    if (community.polygon && community.polygon.length >= 3) {
+      const latLngs = community.polygon.map(([lng, lat]: [number, number]) => 
+        L.latLng(lat, lng)
       );
-      mapRef.current.fitBounds(L.latLngBounds(latLngs), { padding: [40, 40] });
+      mapRef.current.fitBounds(L.latLngBounds(latLngs), { 
+        padding: [50, 50],
+        maxZoom: 18 // allow closer zoom for small polygons
+      });
+    } else if (community.centroid?.lat && community.centroid?.lng) {
+      mapRef.current.flyTo([community.centroid.lat, community.centroid.lng], 15);
     }
   };
 
