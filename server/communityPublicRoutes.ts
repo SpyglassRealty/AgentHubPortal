@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { db } from "./db";
 import { communities, communityContentBlocks } from "@shared/schema";
-import { eq, ilike, and, or, desc, asc } from "drizzle-orm";
+import { eq, ilike, and, or, desc, asc, sql } from "drizzle-orm";
 
 /**
  * Public API routes for communities (used by IDX site)
@@ -127,6 +127,17 @@ export function registerCommunityPublicRoutes(app: Express) {
         return res.status(404).json({ error: "Community not found" });
       }
 
+      // Raw SQL fallback for polygon (Drizzle ORM doesn't reliably return JSONB polygon fields)
+      let polygonData = community.polygon || community.displayPolygon || [];
+      let displayPolygonData = community.displayPolygon || [];
+      if (!polygonData || (Array.isArray(polygonData) && polygonData.length === 0)) {
+        const rawResult = await db.execute(sql`SELECT polygon, display_polygon FROM communities WHERE slug = ${slug.toLowerCase()}`);
+        if (rawResult.rows?.[0]) {
+          polygonData = rawResult.rows[0].polygon || [];
+          displayPolygonData = rawResult.rows[0].display_polygon || [];
+        }
+      }
+
       // Fetch content blocks for this community
       const contentBlocks = await db
         .select()
@@ -142,8 +153,8 @@ export function registerCommunityPublicRoutes(app: Express) {
         name: community.name,
         slug: community.slug,
         pageTitle: community.pageTitle,
-        polygon: community.polygon || [],
-        displayPolygon: community.displayPolygon || [],
+        polygon: polygonData,
+        displayPolygon: displayPolygonData,
         county: community.county || "Travis",
         featured: community.featured || false,
         // Extended content for detail pages
