@@ -39,6 +39,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "$1B Tracker", href: "/admin/dashboards/billion-tracker", icon: Rocket, section: "GROWTH" },
+  { label: "Growth Trajectory", href: "/admin/dashboards/growth-trajectory", icon: TrendingUp, section: "GROWTH" },
   { label: "Retention Risk", href: "/admin/dashboards/retention-risk", icon: Shield, section: "GROWTH" },
   { label: "Battle Cards", href: "/admin/dashboards/recruiting-battlecards", icon: Swords, section: "GROWTH" },
   { label: "Overview", href: "/admin/dashboards", icon: LayoutDashboard, section: "DASHBOARD" },
