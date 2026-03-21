@@ -127,17 +127,19 @@ export function registerCommunityPublicRoutes(app: Express) {
         return res.status(404).json({ error: "Community not found" });
       }
 
-      // Raw SQL fallback for polygon (Drizzle ORM doesn't reliably return JSONB polygon fields)
-      let polygonData = community.polygon || community.displayPolygon || [];
-      let displayPolygonData = community.displayPolygon || [];
-      if (!polygonData || (Array.isArray(polygonData) && polygonData.length === 0)) {
-        const rawResult = await db.execute(sql`SELECT polygon, display_polygon FROM communities WHERE slug = ${slug.toLowerCase()}`);
-        if (rawResult.rows && rawResult.rows.length > 0) {
-          const rawPoly = rawResult.rows[0].polygon;
-          const rawDisplay = rawResult.rows[0].display_polygon;
-          polygonData = typeof rawPoly === 'string' ? JSON.parse(rawPoly) : (rawPoly || []);
-          displayPolygonData = typeof rawDisplay === 'string' ? JSON.parse(rawDisplay) : (rawDisplay || []);
-        }
+      // ALWAYS fetch polygon via raw SQL — Drizzle ORM unreliable for JSONB fields
+      const rawResult = await db.execute(
+        sql`SELECT polygon, display_polygon FROM communities WHERE slug = ${slug.toLowerCase()}`
+      );
+
+      let polygonData: any[] = [];
+      let displayPolygonData: any[] = [];
+
+      if (rawResult.rows && rawResult.rows.length > 0) {
+        const rawPoly = rawResult.rows[0].polygon;
+        const rawDisplay = rawResult.rows[0].display_polygon;
+        polygonData = typeof rawPoly === 'string' ? JSON.parse(rawPoly) : (Array.isArray(rawPoly) ? rawPoly : []);
+        displayPolygonData = typeof rawDisplay === 'string' ? JSON.parse(rawDisplay) : (Array.isArray(rawDisplay) ? rawDisplay : []);
       }
 
       // Fetch content blocks for this community
