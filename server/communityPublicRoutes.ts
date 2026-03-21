@@ -118,7 +118,7 @@ export function registerCommunityPublicRoutes(app: Express) {
         .select()
         .from(communities)
         .where(and(
-          eq(communities.slug, slug),
+          eq(communities.slug, slug.toLowerCase()),
           eq(communities.published, true)
         ))
         .limit(1);
