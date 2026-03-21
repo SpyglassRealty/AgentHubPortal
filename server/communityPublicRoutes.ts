@@ -132,9 +132,11 @@ export function registerCommunityPublicRoutes(app: Express) {
       let displayPolygonData = community.displayPolygon || [];
       if (!polygonData || (Array.isArray(polygonData) && polygonData.length === 0)) {
         const rawResult = await db.execute(sql`SELECT polygon, display_polygon FROM communities WHERE slug = ${slug.toLowerCase()}`);
-        if (rawResult.rows?.[0]) {
-          polygonData = rawResult.rows[0].polygon || [];
-          displayPolygonData = rawResult.rows[0].display_polygon || [];
+        if (rawResult.rows && rawResult.rows.length > 0) {
+          const rawPoly = rawResult.rows[0].polygon;
+          const rawDisplay = rawResult.rows[0].display_polygon;
+          polygonData = typeof rawPoly === 'string' ? JSON.parse(rawPoly) : (rawPoly || []);
+          displayPolygonData = typeof rawDisplay === 'string' ? JSON.parse(rawDisplay) : (rawDisplay || []);
         }
       }
 
