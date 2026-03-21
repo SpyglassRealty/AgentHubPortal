@@ -60,7 +60,10 @@ export function registerCommunityEditorRoutes(app: Express) {
       const { name, slug, locationType, filterValue, polygon, centroid, livebyLocationId } = req.body;
       const user = req.dbUser;
 
-      if (!name || !slug || !polygon || polygon.length < 3) {
+      // Normalize slug to lowercase
+      const normalizedSlug = slug ? slug.toLowerCase() : name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+      if (!name || !normalizedSlug || !polygon || polygon.length < 3) {
         return res.status(400).json({ message: "Name, slug, and polygon (min 3 points) are required" });
       }
 
@@ -68,7 +71,7 @@ export function registerCommunityEditorRoutes(app: Express) {
       const [existing] = await db
         .select({ id: communities.id })
         .from(communities)
-        .where(eq(communities.slug, slug))
+        .where(eq(communities.slug, normalizedSlug))
         .limit(1);
 
       if (existing) {
@@ -79,7 +82,7 @@ export function registerCommunityEditorRoutes(app: Express) {
         .insert(communities)
         .values({
           name,
-          slug,
+          slug: normalizedSlug,
           locationType: locationType || "polygon",
           filterValue: filterValue || null,
           polygon,
@@ -117,7 +120,7 @@ export function registerCommunityEditorRoutes(app: Express) {
       };
 
       if (name) updateData.name = name;
-      if (slug) updateData.slug = slug;
+      if (slug) updateData.slug = slug.toLowerCase();
       if (locationType) updateData.locationType = locationType;
       if (filterValue !== undefined) updateData.filterValue = filterValue || null;
 
