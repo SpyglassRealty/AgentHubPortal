@@ -387,7 +387,7 @@ export function registerCommunityEditorRoutes(app: Express) {
       const [community] = await db
         .select()
         .from(communities)
-        .where(eq(communities.slug, slug))
+        .where(eq(communities.slug, slug.toLowerCase()))
         .limit(1);
 
       if (!community) {
@@ -440,7 +440,7 @@ export function registerCommunityEditorRoutes(app: Express) {
       const [updated] = await db
         .update(communities)
         .set(updateData)
-        .where(eq(communities.slug, slug))
+        .where(eq(communities.slug, slug.toLowerCase()))
         .returning();
 
       if (!updated) {
@@ -465,7 +465,7 @@ export function registerCommunityEditorRoutes(app: Express) {
       const [current] = await db
         .select({ published: communities.published })
         .from(communities)
-        .where(eq(communities.slug, slug))
+        .where(eq(communities.slug, slug.toLowerCase()))
         .limit(1);
 
       if (!current) {
@@ -481,7 +481,7 @@ export function registerCommunityEditorRoutes(app: Express) {
           updatedAt: new Date(),
           updatedBy: user?.email || "admin",
         })
-        .where(eq(communities.slug, slug))
+        .where(eq(communities.slug, slug.toLowerCase()))
         .returning();
 
       console.log(`[Community Editor] ${slug} ${newState ? "published" : "unpublished"} by ${user?.email}`);
@@ -889,7 +889,7 @@ What sets Cedar Park apart is its commitment to quality of life. The city boasts
           const [existing] = await db
             .select()
             .from(communities)
-            .where(eq(communities.slug, slug))
+            .where(eq(communities.slug, slug.toLowerCase()))
             .limit(1);
 
           if (existing) {
