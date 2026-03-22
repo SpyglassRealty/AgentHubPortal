@@ -208,19 +208,33 @@ export default function PolygonManager() {
     },
   });
 
-  // Delete polygon mutation
+  // Delete polygon/community mutation
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await fetch(`/api/admin/communities/${id}/polygon`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to delete polygon");
-      return res.json();
+    mutationFn: async (community: { id: number; polygon?: number[][]; locationType: string; name: string }) => {
+      // If community has 0 points and is polygon/snippet type, delete entire community
+      if (['polygon', 'snippet'].includes(community.locationType) && 
+          (!community.polygon || community.polygon.length === 0)) {
+        const res = await fetch(`/api/admin/communities/${community.id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Failed to delete community");
+        return { type: 'community', data: await res.json() };
+      } else {
+        // Otherwise just clear polygon data
+        const res = await fetch(`/api/admin/communities/${community.id}/polygon`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Failed to delete polygon");
+        return { type: 'polygon', data: await res.json() };
+      }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/communities/with-polygons"] });
-      toast({ title: "Polygon deleted" });
+      toast({ 
+        title: result.type === 'community' ? "Community deleted" : "Polygon deleted" 
+      });
       setDeleteTarget(null);
     },
     onError: (error: Error) => {
@@ -593,12 +607,22 @@ export default function PolygonManager() {
     }
   };
 
-  const filteredCommunities = communities.filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const filteredCommunities = communities.filter((c) => {
+    // First apply search filtering
+    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.slug.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.county || "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      (c.county || "").toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (!matchesSearch) return false;
+    
+    // Then apply locationType-based filtering
+    if (c.locationType === 'neighborhood') {
+      return true; // Always show LiveBy communities regardless of polygon count
+    }
+    
+    // Hide polygon/snippet communities with 0 points
+    return c.polygon && c.polygon.length > 0;
+  });
 
   return (
     <div className="flex gap-4 h-[calc(100vh-180px)]">
@@ -678,15 +702,18 @@ export default function PolygonManager() {
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                          onClick={() => setDeleteTarget(community)}
-                          title="Delete polygon"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {/* Only show trash icon for manual polygon/snippet communities */}
+                        {['polygon', 'snippet'].includes(community.locationType) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                            onClick={() => setDeleteTarget(community)}
+                            title={community.polygon && community.polygon.length > 0 ? "Delete polygon" : "Delete community"}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -899,16 +926,31 @@ export default function PolygonManager() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent className="z-[9999]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Polygon</AlertDialogTitle>
+            <AlertDialogTitle>
+              {deleteTarget && ['polygon', 'snippet'].includes(deleteTarget.locationType) && 
+               (!deleteTarget.polygon || deleteTarget.polygon.length === 0) 
+                ? 'Delete Community' 
+                : 'Delete Polygon'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the polygon for "{deleteTarget?.name}"? This will only
-              clear the polygon data, not delete the community.
+              {deleteTarget && ['polygon', 'snippet'].includes(deleteTarget.locationType) && 
+               (!deleteTarget.polygon || deleteTarget.polygon.length === 0) ? (
+                <>
+                  Are you sure you want to delete "{deleteTarget.name}" community entirely? 
+                  This cannot be undone.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to delete the polygon for "{deleteTarget?.name}"? This will only
+                  clear the polygon data, not delete the community.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

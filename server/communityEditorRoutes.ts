@@ -170,6 +170,39 @@ export function registerCommunityEditorRoutes(app: Express) {
     }
   });
 
+  // ── DELETE /api/admin/communities/:id — delete entire community (polygon/snippet only) ──
+  app.delete("/api/admin/communities/:id", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const user = req.dbUser;
+
+      // Block delete for LiveBy neighborhood communities
+      const community = await db.query.communities.findFirst({
+        where: eq(communities.id, id)
+      });
+      if (!community) return res.status(404).json({ message: "Community not found" });
+      if (community.locationType === 'neighborhood') {
+        return res.status(403).json({ message: "Cannot delete LiveBy neighborhood communities" });
+      }
+
+      // Only allow delete for manually created communities
+      if (!['polygon', 'snippet'].includes(community.locationType)) {
+        return res.status(403).json({ message: "Can only delete polygon or snippet communities" });
+      }
+
+      // Use raw SQL for reliable deletion
+      await db.execute(
+        sql`DELETE FROM communities WHERE id = ${id}`
+      );
+
+      console.log(`[Community Editor] Deleted community ${community.slug} (${community.locationType}) by ${user?.email}`);
+      res.json({ message: "Community deleted successfully" });
+    } catch (error) {
+      console.error("[Community Editor] Error deleting community:", error);
+      res.status(500).json({ message: "Failed to delete community" });
+    }
+  });
+
   // ── GET /api/admin/liveby/autocomplete — LiveBy location search ──
   app.get("/api/admin/liveby/autocomplete", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
     try {
