@@ -165,7 +165,13 @@ export function registerCommunityPublicRoutes(app: Express) {
         slug: community.slug,
         pageTitle: community.pageTitle,
         polygon: polygonData,
-        displayPolygon: displayPolygonData,
+        // Pre-swap polygon to [lat, lng] for displayPolygon — matches static file format
+        displayPolygon: displayPolygonData.length > 0
+          ? displayPolygonData
+          : polygonData.map((coord: any) => Array.isArray(coord)
+            ? [coord[1], coord[0]] // swap [lng, lat] → [lat, lng]
+            : [coord.lat, coord.lng]
+          ),
         county: community.county || "Travis",
         featured: community.featured || false,
         // Extended content for detail pages
