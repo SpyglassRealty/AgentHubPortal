@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
 import mapboxgl from "mapbox-gl";
@@ -824,6 +825,8 @@ function SearchPropertiesSection({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
 
   // Mapbox token state
   const [mapboxToken, setMapboxToken] = useState('');
@@ -872,7 +875,10 @@ function SearchPropertiesSection({
       const res = await apiRequest("POST", "/api/cma/search-properties", body);
       const data = await res.json();
       setSuggestions(data.listings || []);
-      setShowSuggestions(true);
+      if (data.listings && data.listings.length > 0) {
+        updateDropdownPosition();
+        setShowSuggestions(true);
+      }
     } catch (e) { 
       console.error('Suggestion error:', e); 
       setSuggestions([]);
@@ -882,6 +888,17 @@ function SearchPropertiesSection({
       setSuggestionsLoading(false); 
     }
   };
+
+  // Calculate dropdown position relative to input
+  const updateDropdownPosition = useCallback(() => {
+    if (!inputRef.current) return;
+    const rect = inputRef.current.getBoundingClientRect();
+    setDropdownPosition({
+      top: rect.bottom + window.scrollY + 4, // 4px gap below input
+      left: rect.left + window.scrollX,
+      width: rect.width
+    });
+  }, []);
 
   const updateFilter = (key: keyof SearchFilters, value: any) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -1381,6 +1398,23 @@ function SearchPropertiesSection({
     };
   }, []);
 
+  // Hide suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showSuggestions && inputRef.current && !inputRef.current.contains(event.target as Node)) {
+        // Check if click is outside the portal dropdown as well
+        const dropdownElement = document.querySelector('[data-suggestions-dropdown]');
+        if (!dropdownElement || !dropdownElement.contains(event.target as Node)) {
+          setShowSuggestions(false);
+          setSuggestions([]);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showSuggestions]);
+
   return (
     <div className="space-y-4">
       <Card>
@@ -1396,6 +1430,7 @@ function SearchPropertiesSection({
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Input
+                  ref={inputRef}
                   placeholder="Search by address, MLS#, or listing ID..."
                   value={filters.quickSearch}
                   onChange={(e) => {
@@ -1406,8 +1441,16 @@ function SearchPropertiesSection({
                   onKeyDown={(e) => e.key === "Enter" && handleSearch(1)}
                   className="flex-1"
                 />
-                {showSuggestions && suggestions.length > 0 && (
-                  <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto mt-1">
+                {showSuggestions && suggestions.length > 0 && createPortal(
+                  <div 
+                    data-suggestions-dropdown
+                    className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto"
+                    style={{
+                      top: dropdownPosition.top,
+                      left: dropdownPosition.left,
+                      width: dropdownPosition.width
+                    }}
+                  >
                     <div className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b">
                       Addresses
                     </div>
@@ -1434,7 +1477,8 @@ function SearchPropertiesSection({
                         </div>
                       </button>
                     ))}
-                  </div>
+                  </div>,
+                  document.body
                 )}
               </div>
               <Button
