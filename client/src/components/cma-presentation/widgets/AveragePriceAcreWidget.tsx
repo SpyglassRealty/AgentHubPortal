@@ -315,7 +315,17 @@ export function AveragePriceAcreWidget({
   const subjectWithAcreage = useMemo<PropertyWithAcreage | null>(() => {
     if (!subjectProperty) return null;
     const acres = getAcres(subjectProperty);
-    if (!acres || acres <= 0) return null;
+    if (!acres || acres <= 0) {
+      // Subject property has no lot size data - still return object for display but mark it
+      const price = subjectProperty.soldPrice || subjectProperty.listPrice || 0;
+      return {
+        ...subjectProperty,
+        lotSizeAcres: 0, // Mark as unavailable
+        pricePerAcre: 0,
+        isSubject: true,
+        hasLotSizeData: false, // Flag for showing "unavailable" message
+      };
+    }
     const price = subjectProperty.soldPrice || subjectProperty.listPrice || (avgPricePerAcre * acres);
     // Always calculate fresh price per acre from current data
     const pricePerAcre = price > 0 && acres > 0 ? Math.round(price / acres) : 0;
@@ -324,6 +334,7 @@ export function AveragePriceAcreWidget({
       lotSizeAcres: acres,
       pricePerAcre: pricePerAcre,
       isSubject: true,
+      hasLotSizeData: true,
     };
   }, [subjectProperty, avgPricePerAcre]);
 
@@ -357,6 +368,8 @@ export function AveragePriceAcreWidget({
 
   const subjectChartData = useMemo(() => {
     if (!subjectWithAcreage || !showSubject) return [];
+    // Don't plot subject property if it has no lot size data (can't determine X position)
+    if (subjectWithAcreage.lotSizeAcres === 0) return [];
     return [{
       ...subjectWithAcreage,
       x: subjectWithAcreage.lotSizeAcres,
@@ -569,15 +582,14 @@ export function AveragePriceAcreWidget({
                   />
                   <Tooltip content={<CustomTooltip />} />
                   
-                  {showTrendline && trendlineData.length === 2 && (
+                  {/* Trendline - use separate Scatter with line=true for better rendering */}
+                  {showTrendline && trendlineData.length === 2 && regressionData && (
                     <Scatter
+                      name="Trendline"
                       data={trendlineData}
-                      line={{
-                        stroke: '#9CA3AF',
-                        strokeWidth: 3,
-                        strokeDasharray: '8 4',
-                      }}
-                      shape={() => <></>}
+                      fill="transparent"
+                      line={{ stroke: '#9CA3AF', strokeWidth: 3, strokeDasharray: '8 4' }}
+                      shape={(props: any) => null} // Don't render dots, just the line
                       isAnimationActive={false}
                       legendType="none"
                     />
@@ -715,9 +727,15 @@ export function AveragePriceAcreWidget({
                 checked={showSubject} 
                 onCheckedChange={(checked) => setShowSubject(checked === true)}
                 data-testid="checkbox-show-subject"
+                disabled={subjectWithAcreage?.lotSizeAcres === 0}
               />
-              <Home className="w-4 h-4 text-blue-500" />
-              <span className="text-muted-foreground">Subject Property</span>
+              <Home className={`w-4 h-4 ${subjectWithAcreage?.lotSizeAcres === 0 ? 'text-muted-foreground' : 'text-blue-500'}`} />
+              <span className="text-muted-foreground">
+                Subject Property
+                {subjectWithAcreage?.lotSizeAcres === 0 && (
+                  <span className="text-amber-600 ml-2 font-medium">(Lot size unavailable)</span>
+                )}
+              </span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <Checkbox 
