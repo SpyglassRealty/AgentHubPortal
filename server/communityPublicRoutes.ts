@@ -131,6 +131,7 @@ export function registerCommunityPublicRoutes(app: Express) {
       const rawResult = await db.execute(
         sql`SELECT polygon::text as polygon_text, display_polygon::text as display_polygon_text FROM communities WHERE slug = ${slug.toLowerCase()}`
       );
+      console.log('[POLYGON-DEBUG] raw row:', JSON.stringify(rawResult.rows[0]));
 
       let polygonData: any[] = [];
       let displayPolygonData: any[] = [];
