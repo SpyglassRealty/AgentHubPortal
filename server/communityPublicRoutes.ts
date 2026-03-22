@@ -127,19 +127,26 @@ export function registerCommunityPublicRoutes(app: Express) {
         return res.status(404).json({ error: "Community not found" });
       }
 
-      // ALWAYS fetch polygon via raw SQL — Drizzle ORM unreliable for JSONB fields
+      // Always raw SQL for polygon — Drizzle ORM unreliable for JSONB
       const rawResult = await db.execute(
-        sql`SELECT polygon, display_polygon FROM communities WHERE slug = ${slug.toLowerCase()}`
+        sql`SELECT polygon::text as polygon_text, display_polygon::text as display_polygon_text FROM communities WHERE slug = ${slug.toLowerCase()}`
       );
 
       let polygonData: any[] = [];
       let displayPolygonData: any[] = [];
 
       if (rawResult.rows && rawResult.rows.length > 0) {
-        const rawPoly = rawResult.rows[0].polygon;
-        const rawDisplay = rawResult.rows[0].display_polygon;
-        polygonData = typeof rawPoly === 'string' ? JSON.parse(rawPoly) : (Array.isArray(rawPoly) ? rawPoly : []);
-        displayPolygonData = typeof rawDisplay === 'string' ? JSON.parse(rawDisplay) : (Array.isArray(rawDisplay) ? rawDisplay : []);
+        const row = rawResult.rows[0];
+        try {
+          if (row.polygon_text && row.polygon_text !== 'null') {
+            polygonData = JSON.parse(row.polygon_text);
+          }
+        } catch(e) {}
+        try {
+          if (row.display_polygon_text && row.display_polygon_text !== 'null') {
+            displayPolygonData = JSON.parse(row.display_polygon_text);
+          }
+        } catch(e) {}
       }
 
       // Fetch content blocks for this community
