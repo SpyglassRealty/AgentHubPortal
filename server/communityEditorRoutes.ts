@@ -148,23 +148,22 @@ export function registerCommunityEditorRoutes(app: Express) {
       const id = parseInt(req.params.id);
       const user = req.dbUser;
 
-      const [updated] = await db
-        .update(communities)
-        .set({
-          polygon: null,
-          centroid: null,
-          updatedAt: new Date(),
-          updatedBy: user?.email || "admin",
-        })
-        .where(eq(communities.id, id))
-        .returning();
-
-      if (!updated) {
-        return res.status(404).json({ message: "Community not found" });
+      // Block delete for LiveBy neighborhood communities
+      const community = await db.query.communities.findFirst({
+        where: eq(communities.id, id)
+      });
+      if (!community) return res.status(404).json({ message: "Community not found" });
+      if (community.locationType === 'neighborhood') {
+        return res.status(403).json({ message: "Cannot delete polygon for LiveBy neighborhood communities" });
       }
 
-      console.log(`[Community Editor] Deleted polygon for ${updated.slug} by ${user?.email}`);
-      res.json({ message: "Polygon deleted", community: updated });
+      // Use raw SQL — Drizzle ORM unreliable for JSONB null updates
+      await db.execute(
+        sql`UPDATE communities SET polygon = '[]'::jsonb, display_polygon = '[]'::jsonb, centroid = NULL, updated_at = NOW(), updated_by = ${user?.email || 'admin'} WHERE id = ${id}`
+      );
+
+      console.log(`[Community Editor] Deleted polygon for id=${id} by ${user?.email}`);
+      res.json({ message: "Polygon deleted" });
     } catch (error) {
       console.error("[Community Editor] Error deleting polygon:", error);
       res.status(500).json({ message: "Failed to delete polygon" });
