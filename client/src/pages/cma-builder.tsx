@@ -840,22 +840,31 @@ function SearchPropertiesSection({
     }
     setSuggestionsLoading(true);
     const detected = detectSearchType(query);
-    const body = detected.type === 'mls'
-      ? { mlsNumbers: [detected.value] }
-      : { search: query };
+    
+    let body: any = {
+      limit: 10, // Limit to 10 suggestions for performance
+      page: 1,
+    };
+    
+    if (detected.type === 'mls') {
+      // MLS number search - search by exact MLS
+      body.mlsNumbers = [detected.value];
+    } else {
+      // Address search - enable fuzzy search and include all statuses for subject property lookup
+      body.search = query;
+      body.fuzzySearch = true;
+      body.statuses = ["A", "U", "P", "S"]; // Include all statuses: Active, Under Contract, Pending, Sold
+    }
+    
     try {
-      const res = await fetch('/api/cma/search-properties', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSuggestions(data.listings || []);
-        setShowSuggestions(true);
-      }
+      const res = await apiRequest("POST", "/api/cma/search-properties", body);
+      const data = await res.json();
+      setSuggestions(data.listings || []);
+      setShowSuggestions(true);
     } catch (e) { 
       console.error('Suggestion error:', e); 
+      setSuggestions([]);
+      setShowSuggestions(false);
     }
     finally { 
       setSuggestionsLoading(false); 

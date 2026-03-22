@@ -3717,7 +3717,7 @@ Respond with valid JSON in this exact format:
         hasActive = statusArray.includes('Active') || statusArray.includes('A');
         hasAUC = statusArray.includes('Active Under Contract');
         hasPending = statusArray.includes('Pending');
-        hasClosed = statusArray.includes('Closed') || statusArray.includes('U');
+        hasClosed = statusArray.includes('Closed') || statusArray.includes('U') || statusArray.includes('S');
         hasAnyActive = hasActive || hasAUC || hasPending;
         
         if (statusArray.length === 0) {
@@ -3731,12 +3731,34 @@ Respond with valid JSON in this exact format:
           params.append('lastStatus', 'Sld');
           params.append('minClosedDate', minDate.toISOString().split('T')[0]);
         } else if (!hasClosed) {
-          // Only active statuses
-          statusArray.forEach(s => params.append('standardStatus', s));
+          // Only active statuses - handle ACTRIS "A" status properly
+          statusArray.forEach(status => {
+            if (status === 'Active' || status === 'A') {
+              params.append('standardStatus', 'Active');
+            } else if (status === 'U') {
+              // Under Contract / Pending
+              params.append('standardStatus', 'Pending');
+            } else if (status === 'P') {
+              // Pending
+              params.append('standardStatus', 'Pending');
+            } else {
+              params.append('standardStatus', status);
+            }
+          });
         } else {
           // Mix of active and closed - search active statuses first, then merge closed results after
-          const activeStatuses = statusArray.filter(s => s !== 'Closed');
-          activeStatuses.forEach(s => params.append('standardStatus', s));
+          const activeStatuses = statusArray.filter(s => s !== 'Closed' && s !== 'U' && s !== 'S');
+          activeStatuses.forEach(status => {
+            if (status === 'Active' || status === 'A') {
+              params.append('standardStatus', 'Active');
+            } else if (status === 'U') {
+              params.append('standardStatus', 'Pending');
+            } else if (status === 'P') {
+              params.append('standardStatus', 'Pending');
+            } else {
+              params.append('standardStatus', status);
+            }
+          });
         }
       }
 
