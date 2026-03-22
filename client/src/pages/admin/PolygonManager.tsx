@@ -211,29 +211,18 @@ export default function PolygonManager() {
   // Delete polygon/community mutation
   const deleteMutation = useMutation({
     mutationFn: async (community: { id: number; polygon?: number[][]; locationType: string; name: string }) => {
-      // If community has 0 points and is polygon/snippet type, delete entire community
-      if (['polygon', 'snippet'].includes(community.locationType) && 
-          (!community.polygon || community.polygon.length === 0)) {
-        const res = await fetch(`/api/admin/communities/${community.id}`, {
-          method: "DELETE",
-          credentials: "include",
-        });
-        if (!res.ok) throw new Error("Failed to delete community");
-        return { type: 'community', data: await res.json() };
-      } else {
-        // Otherwise just clear polygon data
-        const res = await fetch(`/api/admin/communities/${community.id}/polygon`, {
-          method: "DELETE",
-          credentials: "include",
-        });
-        if (!res.ok) throw new Error("Failed to delete polygon");
-        return { type: 'polygon', data: await res.json() };
-      }
+      // Always delete entire community row when trash icon is clicked
+      const res = await fetch(`/api/admin/communities/${community.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to delete community");
+      return { type: 'community', data: await res.json() };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/communities/with-polygons"] });
       toast({ 
-        title: result.type === 'community' ? "Community deleted" : "Polygon deleted" 
+        title: "Community deleted"
       });
       setDeleteTarget(null);
     },
