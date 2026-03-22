@@ -251,12 +251,24 @@ function SubjectPropertyPanel({
     if (!searchQuery.trim()) return;
     setSearching(true);
     try {
-      const res = await apiRequest("POST", "/api/cma/search-properties", {
-        search: searchQuery,
-        limit: 5,
-        fuzzySearch: true,
+      const detected = detectSearchType(searchQuery);
+      
+      let body: any = {
         statuses: ["A", "U"], // Include active AND sold/unavailable (subject may be sold)
-      });
+      };
+      
+      if (detected.type === 'mls') {
+        // MLS number search - search by exact MLS
+        body.mlsNumbers = [detected.value];
+        body.limit = 10;
+      } else {
+        // Address search - enable fuzzy search
+        body.search = searchQuery;
+        body.limit = 5;
+        body.fuzzySearch = true;
+      }
+      
+      const res = await apiRequest("POST", "/api/cma/search-properties", body);
       const data = await res.json();
       setSearchResults(data.listings || []);
     } catch {
