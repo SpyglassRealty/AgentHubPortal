@@ -66,6 +66,7 @@ interface CommunityPolygon {
   published: boolean;
   county: string | null;
   livebyLocationId: number | null;
+  source: string | null;
 }
 
 interface LiveByLocation {
