@@ -415,7 +415,7 @@ export default function PolygonManager() {
       const poly = L.polygon(latLngs, {
         color: borderColor,
         fillColor: color,
-        fillOpacity: community.published ? 0.2 : 0.3,
+        fillOpacity: community.published ? 0.35 : 0.3,
         weight: 2,
       });
 
@@ -579,7 +579,7 @@ export default function PolygonManager() {
     // Highlight selected polygon
     const poly = polygonLayerMapRef.current[community.id];
     if (poly) {
-      poly.setStyle({ color: "#ea580c", fillColor: "#ea580c", fillOpacity: 0.4, weight: 3 });
+      poly.setStyle({ color: "#eab308", fillColor: "#eab308", fillOpacity: 0.4, weight: 3 });
     }
     setSelectedCommunityId(community.id);
 
