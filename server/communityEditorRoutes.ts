@@ -43,6 +43,8 @@ export function registerCommunityEditorRoutes(app: Express) {
           centroid: communities.centroid,
           published: communities.published,
           county: communities.county,
+          livebyLocationId: communities.livebyLocationId,
+          source: communities.source,
         })
         .from(communities)
         .orderBy(asc(communities.name));
