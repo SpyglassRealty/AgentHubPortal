@@ -757,6 +757,18 @@ export default function PolygonManager() {
                 </div>
               </div>
             )}
+            {/* Polygon color legend */}
+            <div className="absolute bottom-16 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-md z-[1000] max-w-[180px]">
+              <p className="text-xs font-semibold text-gray-700 mb-1">Legend</p>
+              <div className="grid gap-0.5 text-xs text-gray-600">
+                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm shrink-0" style={{ background: '#3b82f6', opacity: 0.8 }} />LiveBy</div>
+                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm shrink-0" style={{ background: '#22c55e', opacity: 0.8 }} />Snippet</div>
+                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm shrink-0" style={{ background: '#f97316', opacity: 0.8 }} />Manual / Drawn</div>
+                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm shrink-0" style={{ background: '#eab308', opacity: 0.8 }} />Selected</div>
+                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm shrink-0 border-2" style={{ borderColor: '#2563eb' }} />Published</div>
+                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm shrink-0 border-2" style={{ borderColor: '#7c3aed' }} />Draft</div>
+              </div>
+            </div>
             <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-md z-[1000]">
               <p className="text-xs text-gray-600">
                 <strong>Draw:</strong> Click the polygon tool ▢ on the left, then click to place points.{" "}
