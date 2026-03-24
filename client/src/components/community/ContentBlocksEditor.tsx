@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -323,6 +323,21 @@ function ContentBlockEditor({
     onUpdate({ [field]: value });
   };
 
+  // Debounced save for RTE content (avoids a PUT on every keystroke)
+  const contentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleDebouncedContentUpdate = useCallback((value: string) => {
+    setLocalBlock(prev => ({ ...prev, content: value }));
+    if (contentTimerRef.current) clearTimeout(contentTimerRef.current);
+    contentTimerRef.current = setTimeout(() => {
+      onUpdate({ content: value });
+    }, 800);
+  }, [onUpdate]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => { if (contentTimerRef.current) clearTimeout(contentTimerRef.current); };
+  }, []);
+
   const flushAllFields = () => {
     onUpdate({
       title: localBlock.title,
@@ -444,8 +459,7 @@ function ContentBlockEditor({
             <Label>Content</Label>
             <RichTextEditor
               value={localBlock.content}
-              onChange={(value) => handleFieldChange('content', value)}
-              onBlur={() => handleBlur('content')}
+              onChange={handleDebouncedContentUpdate}
               placeholder="Enter your content..."
             />
           </div>
