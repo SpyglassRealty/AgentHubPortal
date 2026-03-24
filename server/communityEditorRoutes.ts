@@ -453,6 +453,7 @@ export function registerCommunityEditorRoutes(app: Express) {
         published,
         featured,
         featuredImageUrl,
+        heroImage,
       } = req.body;
 
       const updateData: Record<string, any> = {
@@ -472,6 +473,7 @@ export function registerCommunityEditorRoutes(app: Express) {
       if (published !== undefined) updateData.published = published;
       if (featured !== undefined) updateData.featured = featured;
       if (featuredImageUrl !== undefined) updateData.featuredImageUrl = featuredImageUrl;
+      if (heroImage !== undefined) updateData.heroImage = heroImage;
 
       const [updated] = await db
         .update(communities)
