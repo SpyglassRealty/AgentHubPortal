@@ -126,8 +126,8 @@ export default function PolygonManager() {
 
   const getPolygonColor = (community: any) => {
     if (community?.locationType === 'snippet') return '#22c55e';
-    if (community?.locationType === 'neighborhood') return '#3b82f6';
-    return '#f97316';
+    if (community?.locationType === 'polygon') return '#f97316';
+    return '#3b82f6';
   };
 
   // Fetch communities with polygons
@@ -681,12 +681,12 @@ export default function PolygonManager() {
                               {community.county}
                             </span>
                           )}
-                          {community.locationType === 'neighborhood' ? (
-                            <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 20, background: '#dbeafe', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>Boundary</span>
-                          ) : community.locationType === 'snippet' ? (
+                          {community.locationType === 'snippet' ? (
                             <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 20, background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' }}>Snippet</span>
-                          ) : (
+                          ) : community.locationType === 'polygon' ? (
                             <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 20, background: '#ffedd5', color: '#c2410c', border: '1px solid #fed7aa' }}>Drawn</span>
+                          ) : (
+                            <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 20, background: '#dbeafe', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>Boundary</span>
                           )}
                         </div>
                       </div>
