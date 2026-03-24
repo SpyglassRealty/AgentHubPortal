@@ -57,6 +57,7 @@ export function registerCommunityPublicRoutes(app: Express) {
 
           centroid: communities.centroid,
           heroImage: communities.heroImage,
+          featuredImageUrl: communities.featuredImageUrl,
           metaTitle: communities.metaTitle,
           metaDescription: communities.metaDescription,
           description: communities.description,
@@ -88,6 +89,7 @@ export function registerCommunityPublicRoutes(app: Express) {
         filterValue: community.filterValue,
         centroid: community.centroid,
         heroImage: community.heroImage,
+        featuredImageUrl: community.featuredImageUrl,
         metaTitle: community.metaTitle,
         metaDescription: community.metaDescription,
         description: community.description,
@@ -179,6 +181,7 @@ export function registerCommunityPublicRoutes(app: Express) {
         filterValue: community.filterValue,
         centroid: community.centroid,
         heroImage: community.heroImage,
+        featuredImageUrl: community.featuredImageUrl,
         metaTitle: community.metaTitle,
         metaDescription: community.metaDescription,
         description: community.description,
