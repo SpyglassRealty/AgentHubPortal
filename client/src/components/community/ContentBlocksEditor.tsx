@@ -325,18 +325,26 @@ function ContentBlockEditor({
 
   // Debounced save for RTE content (avoids a PUT on every keystroke)
   const contentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingContentRef = useRef<string | null>(null);
   const handleDebouncedContentUpdate = useCallback((value: string) => {
     setLocalBlock(prev => ({ ...prev, content: value }));
+    pendingContentRef.current = value;
     if (contentTimerRef.current) clearTimeout(contentTimerRef.current);
     contentTimerRef.current = setTimeout(() => {
       onUpdate({ content: value });
+      pendingContentRef.current = null;
     }, 800);
   }, [onUpdate]);
 
-  // Cleanup timer on unmount
+  // Flush pending content save on unmount (block collapse / navigation)
   useEffect(() => {
-    return () => { if (contentTimerRef.current) clearTimeout(contentTimerRef.current); };
-  }, []);
+    return () => {
+      if (contentTimerRef.current) clearTimeout(contentTimerRef.current);
+      if (pendingContentRef.current !== null) {
+        onUpdate({ content: pendingContentRef.current });
+      }
+    };
+  }, [onUpdate]);
 
   const flushAllFields = () => {
     onUpdate({
