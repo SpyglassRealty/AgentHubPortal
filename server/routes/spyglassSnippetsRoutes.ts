@@ -34,6 +34,29 @@ export default function idxSavedSearchesRoutes(app: any, isAuthenticated: any) {
         status: status || 'draft'
       }).returning();
 
+      // Auto-create community when snippet is created as published
+      if ((status || 'draft') === 'published' && newSearch[0]) {
+        try {
+          const snippet = newSearch[0];
+          const existing = await db.select().from(communities).where(eq(communities.slug, snippet.slug)).limit(1);
+          if (existing.length === 0) {
+            await db.insert(communities).values({
+              name: snippet.name,
+              slug: snippet.slug,
+              published: true,
+              source: 'snippet',
+              snippetId: snippet.id,
+              locationType: 'snippet',
+              pageTitle: snippet.pageTitle || undefined,
+              metaDescription: snippet.metaDescription || undefined,
+            });
+            console.log(`[Spyglass Snippets] Auto-created community for snippet: ${snippet.slug}`);
+          }
+        } catch (communityError) {
+          console.error('[Spyglass Snippets] Failed to auto-create community (snippet was saved):', communityError);
+        }
+      }
+
       res.json(newSearch[0]);
     } catch (error: any) {
       console.error('[Spyglass Snippets] Error creating search:', error);
@@ -76,17 +99,24 @@ export default function idxSavedSearchesRoutes(app: any, isAuthenticated: any) {
 
       // Auto-create community when snippet is published
       if (status === 'published' && updatedSearch[0]) {
-        const snippet = updatedSearch[0];
-        const existing = await db.select().from(communities).where(eq(communities.slug, snippet.slug)).limit(1);
-        if (existing.length === 0) {
-          await db.insert(communities).values({
-            name: snippet.name,
-            slug: snippet.slug,
-            published: true,
-            source: 'snippet',
-            snippetId: snippet.id,
-            locationType: 'snippet', // required NOT NULL field
-          });
+        try {
+          const snippet = updatedSearch[0];
+          const existing = await db.select().from(communities).where(eq(communities.slug, snippet.slug)).limit(1);
+          if (existing.length === 0) {
+            await db.insert(communities).values({
+              name: snippet.name,
+              slug: snippet.slug,
+              published: true,
+              source: 'snippet',
+              snippetId: snippet.id,
+              locationType: 'snippet',
+              pageTitle: snippet.pageTitle || undefined,
+              metaDescription: snippet.metaDescription || undefined,
+            });
+            console.log(`[Spyglass Snippets] Auto-created community for snippet: ${snippet.slug}`);
+          }
+        } catch (communityError) {
+          console.error('[Spyglass Snippets] Failed to auto-create community (snippet was saved):', communityError);
         }
       }
 
