@@ -680,6 +680,13 @@ export default function PolygonManager() {
                               {community.county}
                             </span>
                           )}
+                          {community.livebyLocationId ? (
+                            <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 20, background: '#dbeafe', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>Boundary</span>
+                          ) : community.source === 'snippet' ? (
+                            <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 20, background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' }}>Snippet</span>
+                          ) : (
+                            <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 20, background: '#ffedd5', color: '#c2410c', border: '1px solid #fed7aa' }}>Drawn</span>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
