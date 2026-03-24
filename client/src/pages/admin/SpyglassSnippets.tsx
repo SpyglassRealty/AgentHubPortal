@@ -865,7 +865,7 @@ export default function SpyglassSnippets() {
                     <label className="block text-sm font-medium">Slug*</label>
                     {form.slug && (
                       <a
-                        href={`https://spyglass-idx.vercel.app/idx/${form.slug}`}
+                        href={`https://spyglass-idx.vercel.app/${form.slug}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-blue-500 hover:text-blue-700 underline flex items-center gap-1"
@@ -1006,7 +1006,7 @@ export default function SpyglassSnippets() {
                     {snippet.status === 'published' && (
                       <div className="mt-2">
                         <a
-                          href={`https://spyglass-idx.vercel.app/idx/${snippet.slug}`}
+                          href={`https://spyglass-idx.vercel.app/${snippet.slug}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm text-blue-600 hover:text-blue-800"
