@@ -658,6 +658,7 @@ export default function PolygonManager() {
                         onClick={() => handleFlyTo(community)}
                       >
                         <div className="flex items-center gap-2">
+                          <span className="shrink-0 rounded-full" style={{ width: 8, height: 8, backgroundColor: getPolygonColor(community) }} />
                           <span className="font-medium text-sm truncate">{community.name}</span>
                           {community.published ? (
                             <Eye className="h-3 w-3 text-green-500 shrink-0" />
