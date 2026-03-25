@@ -83,8 +83,8 @@ export default function CommunityEditor() {
       setMetaTitle(community.metaTitle || "");
       setMetaDescription(community.metaDescription || "");
       setFocusKeyword(community.focusKeyword || "");
-      setUrlSlug(community.customSlug || community.slug || "");
-      setOriginalSlug(community.customSlug || community.slug || "");
+      setUrlSlug(community.slug || "");
+      setOriginalSlug(community.slug || "");
       setPageTitle(community.pageTitle || "");
       setAboutHeadingLevel(community.aboutHeadingLevel || "h2");
       setDescription(community.description || "");
@@ -108,7 +108,7 @@ export default function CommunityEditor() {
           metaTitle: metaTitle || null,
           metaDescription: metaDescription || null,
           focusKeyword: focusKeyword || null,
-          customSlug: urlSlug !== community?.slug ? urlSlug : null,
+          newSlug: urlSlug !== originalSlug ? urlSlug : undefined,
           pageTitle: pageTitle || null,
           aboutHeadingLevel: aboutHeadingLevel || 'h2',
           description: description || null,
@@ -123,6 +123,9 @@ export default function CommunityEditor() {
       });
       setOriginalSlug(urlSlug);
       toast({ title: "Saved", description: "Community content updated." });
+      if (urlSlug !== slug) {
+        setLocation(`/admin/communities/${urlSlug}`);
+      }
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
@@ -247,14 +250,14 @@ export default function CommunityEditor() {
             </Button>
             <div>
               <h1 className="text-2xl font-bold">{community.name}</h1>
-              <p className="text-sm text-muted-foreground">/{community.slug} • {community.county}</p>
+              <p className="text-sm text-muted-foreground">/{urlSlug || community.slug} • {community.county}</p>
             </div>
           </div>
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open(`https://spyglass-idx.vercel.app/communities/${community.slug}`, '_blank')}
+              onClick={() => window.open(`https://spyglass-idx.vercel.app/${urlSlug || community.slug}`, '_blank')}
             >
               <Globe className="h-4 w-4 mr-1" />
               View on Site
