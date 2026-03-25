@@ -52,9 +52,12 @@ export function Header({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  const filteredSlides = slides.filter(s =>
-    s.title.toLowerCase().includes(searchQuery.toLowerCase())
-  ).slice(0, 6);
+  const filteredSlides = searchQuery.trim().length >= 3
+    ? slides.filter(s =>
+        s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        String(s.number).includes(searchQuery.trim())
+      ).slice(0, 6)
+    : [];
 
   useEffect(() => {
     if (searchOpen && searchInputRef.current) {
