@@ -178,8 +178,6 @@ export function CmaPresentationPlayer({
         averageDaysOnMarket={averageDaysOnMarket}
         suggestedListPrice={suggestedListPrice}
         avgPricePerAcre={avgPricePerAcre}
-        onSlideSelect={setCurrentSlide}
-        slides={WIDGETS}
       />
 
       <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900/30 pb-16">
