@@ -70,13 +70,7 @@ export function AgentResumeWidget({ agent }: AgentResumeWidgetProps) {
             {/* Right column - Bio */}
             <div className="flex-1 md:w-2/3">
               {agent.bio ? (
-                <div className="prose dark:prose-invert max-w-none">
-                  {agent.bio.split('\n\n').map((paragraph, index) => (
-                    <p key={index} className="text-base leading-relaxed mb-4">
-                      {paragraph}
-                    </p>
-                  ))}
-                </div>
+                <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: agent.bio }} />
               ) : (
                 <div className="space-y-4">
                   <div className="prose dark:prose-invert max-w-none">

@@ -1099,6 +1099,92 @@ function SearchPropertiesSection({
     setHasSearched(false);
   };
 
+  // Render markers on the map for a given list of properties
+  const renderMarkersForListings = useCallback((listings: PropertyData[]) => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Clear existing markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    listings.forEach((prop) => {
+      if (!prop.latitude || !prop.longitude) return;
+
+      const markerColor = (prop.status === 'Active') ? '#1D9E75' :
+        (prop.status === 'Active Under Contract' || prop.status === 'Pending') ? '#378ADD' : '#EF4923';
+      const el = document.createElement('div');
+      el.className = 'cma-map-marker';
+      el.style.cssText = `
+        width: 28px; height: 28px;
+        background: ${markerColor};
+        border: 2px solid white;
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        transition: transform 0.15s ease;
+      `;
+      el.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.2)'; });
+      el.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)'; });
+
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([prop.longitude!, prop.latitude!])
+        .addTo(map);
+
+      el.addEventListener('click', () => {
+        if (popupRef.current) popupRef.current.remove();
+        const isAlreadyAdded = existingMlsNumbers.has(prop.mlsNumber);
+        const popupHtml = `
+          <div style="min-width: 220px; font-family: system-ui, sans-serif;">
+            ${((prop.photos && prop.photos.length > 0) || prop.photo) ? `<img src="${(prop.photos && prop.photos.length > 0) ? prop.photos[0] : prop.photo}" style="width: 100%; height: 100px; object-fit: cover; border-radius: 6px 6px 0 0; margin: -10px -10px 8px -10px; width: calc(100% + 20px);" />` : ''}
+            <div style="font-weight: 600; font-size: 13px; margin-bottom: 2px;">${prop.address}</div>
+            ${prop.mlsNumber ? `<div style="font-size: 11px; color: #888; margin-bottom: 4px;">MLS# ${prop.mlsNumber.replace(/^ACT[-]?/i, '')}</div>` : ''}
+            <div style="font-size: 16px; font-weight: 700; color: #EF4923; margin-bottom: 4px;">
+              ${formatPrice(prop.listPrice)}
+              ${prop.soldPrice ? `<span style="font-size: 12px; color: #666; font-weight: 400; margin-left: 4px;">Sold: ${formatPrice(prop.soldPrice)}</span>` : ''}
+            </div>
+            <div style="font-size: 12px; color: #555; margin-bottom: 8px;">
+              ${prop.beds} bd · ${prop.baths} ba · ${formatNumber(prop.sqft)} sqft
+              ${prop.yearBuilt ? ` · Built ${prop.yearBuilt}` : ''}
+            </div>
+            <button id="add-comp-${prop.mlsNumber}" style="
+              width: 100%; padding: 6px 12px;
+              background: ${isAlreadyAdded ? '#22c55e' : '#EF4923'};
+              color: white; border: none; border-radius: 6px;
+              font-size: 12px; font-weight: 600;
+              cursor: ${isAlreadyAdded ? 'default' : 'pointer'};
+              opacity: ${isAlreadyAdded ? '0.7' : '1'};
+            ">
+              ${isAlreadyAdded ? '✓ Already Added' : '+ Add as Comp'}
+            </button>
+          </div>
+        `;
+        const popup = new mapboxgl.Popup({ closeOnClick: true, maxWidth: '280px', offset: 15 })
+          .setLngLat([prop.longitude!, prop.latitude!])
+          .setHTML(popupHtml)
+          .addTo(map);
+        popupRef.current = popup;
+        popup.on('open', () => {
+          setTimeout(() => {
+            const btn = document.getElementById(`add-comp-${prop.mlsNumber}`);
+            if (btn && !isAlreadyAdded) {
+              btn.addEventListener('click', () => { onAddComp(prop); popup.remove(); });
+            }
+          }, 50);
+        });
+      });
+
+      markersRef.current.push(marker);
+    });
+  }, [existingMlsNumbers, onAddComp]);
+
+  // Sync criteria search results to map markers when map is ready
+  useEffect(() => {
+    if (!mapRef.current || !mapReady) return;
+    if (searchResults.length === 0) return;
+    renderMarkersForListings(searchResults);
+  }, [searchResults, mapReady, renderMarkersForListings]);
+
   // Map search by viewport bounds or drawn polygon
   const handleMapSearch = useCallback(async () => {
     const map = mapRef.current;
@@ -1134,104 +1220,8 @@ function SearchPropertiesSection({
       setMapResults(listings);
       setMapTotalResults(data.total || 0);
 
-      // Clear existing markers
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
-
-      // Add markers for each result
-      listings.forEach((prop) => {
-        if (!prop.latitude || !prop.longitude) return;
-
-        // Create custom marker element with status-based color
-        const markerColor = (prop.status === 'Active') ? '#1D9E75' :
-          (prop.status === 'Active Under Contract' || prop.status === 'Pending') ? '#378ADD' : '#EF4923';
-        const el = document.createElement('div');
-        el.className = 'cma-map-marker';
-        el.style.cssText = `
-          width: 28px; height: 28px;
-          background: ${markerColor};
-          border: 2px solid white;
-          border-radius: 50%;
-          cursor: pointer;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-          transition: transform 0.15s ease;
-        `;
-        el.addEventListener('mouseenter', () => {
-          el.style.transform = 'scale(1.2)';
-        });
-        el.addEventListener('mouseleave', () => {
-          el.style.transform = 'scale(1)';
-        });
-
-        const marker = new mapboxgl.Marker({ element: el })
-          .setLngLat([prop.longitude!, prop.latitude!])
-          .addTo(map);
-
-        // Popup on click
-        el.addEventListener('click', () => {
-          // Close existing popup
-          if (popupRef.current) {
-            popupRef.current.remove();
-          }
-
-          const isAlreadyAdded = existingMlsNumbers.has(prop.mlsNumber);
-          const popupHtml = `
-            <div style="min-width: 220px; font-family: system-ui, sans-serif;">
-              ${((prop.photos && prop.photos.length > 0) || prop.photo) ? `<img src="${(prop.photos && prop.photos.length > 0) ? prop.photos[0] : prop.photo}" style="width: 100%; height: 100px; object-fit: cover; border-radius: 6px 6px 0 0; margin: -10px -10px 8px -10px; width: calc(100% + 20px);" />` : ''}
-              <div style="font-weight: 600; font-size: 13px; margin-bottom: 2px;">${prop.address}</div>
-              ${prop.mlsNumber ? `<div style="font-size: 11px; color: #888; margin-bottom: 4px;">MLS# ${prop.mlsNumber.replace(/^ACT[-]?/i, '')}</div>` : ''}
-              <div style="font-size: 16px; font-weight: 700; color: #EF4923; margin-bottom: 4px;">
-                ${formatPrice(prop.listPrice)}
-                ${prop.soldPrice ? `<span style="font-size: 12px; color: #666; font-weight: 400; margin-left: 4px;">Sold: ${formatPrice(prop.soldPrice)}</span>` : ''}
-              </div>
-              <div style="font-size: 12px; color: #555; margin-bottom: 8px;">
-                ${prop.beds} bd · ${prop.baths} ba · ${formatNumber(prop.sqft)} sqft
-                ${prop.yearBuilt ? ` · Built ${prop.yearBuilt}` : ''}
-              </div>
-              <button id="add-comp-${prop.mlsNumber}" style="
-                width: 100%;
-                padding: 6px 12px;
-                background: ${isAlreadyAdded ? '#22c55e' : '#EF4923'};
-                color: white;
-                border: none;
-                border-radius: 6px;
-                font-size: 12px;
-                font-weight: 600;
-                cursor: ${isAlreadyAdded ? 'default' : 'pointer'};
-                opacity: ${isAlreadyAdded ? '0.7' : '1'};
-              ">
-                ${isAlreadyAdded ? '✓ Already Added' : '+ Add as Comp'}
-              </button>
-            </div>
-          `;
-
-          const popup = new mapboxgl.Popup({
-            closeOnClick: true,
-            maxWidth: '280px',
-            offset: 15,
-          })
-            .setLngLat([prop.longitude!, prop.latitude!])
-            .setHTML(popupHtml)
-            .addTo(map);
-
-          popupRef.current = popup;
-
-          // Attach click handler after popup is added to DOM
-          popup.on('open', () => {
-            setTimeout(() => {
-              const btn = document.getElementById(`add-comp-${prop.mlsNumber}`);
-              if (btn && !isAlreadyAdded) {
-                btn.addEventListener('click', () => {
-                  onAddComp(prop);
-                  popup.remove();
-                });
-              }
-            }, 50);
-          });
-        });
-
-        markersRef.current.push(marker);
-      });
+      // Render markers using shared function
+      renderMarkersForListings(listings);
     } catch (err) {
       console.error("Map search failed:", err);
       setMapResults([]);
