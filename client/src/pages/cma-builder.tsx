@@ -143,7 +143,7 @@ const defaultFilters: SearchFilters = {
   minPrice: "",
   maxPrice: "",
   propertyType: "",
-  statuses: ["A"],
+  statuses: ["A", "U", "S"],
   minSqft: "",
   maxSqft: "",
   minLotAcres: "",
@@ -151,7 +151,7 @@ const defaultFilters: SearchFilters = {
   stories: "",
   minYearBuilt: "",
   maxYearBuilt: "",
-  dateSoldDays: "180",
+  dateSoldDays: "365",
   garageSpaces: "any",
   parkingSpaces: "",
   privatePool: "any",
@@ -205,11 +205,12 @@ const GARAGE_OPTIONS = [
 
 // Date Sold dropdown options
 const DATE_SOLD_OPTIONS = [
-  { label: "Last 90 Days", value: "90" },
-  { label: "Last 120 Days", value: "120" },
-  { label: "Last 150 Days", value: "150" },
-  { label: "Last 180 Days", value: "180" },
-  { label: "Last 360 Days", value: "360" },
+  { label: "0–90 days", value: "90" },
+  { label: "0–120 days", value: "120" },
+  { label: "0–150 days", value: "150" },
+  { label: "0–180 days", value: "180" },
+  { label: "0–365 days (default)", value: "365" },
+  { label: "0–730 days (2 years)", value: "730" },
 ];
 
 function formatPrice(price: number | null | undefined): string {
@@ -967,14 +968,14 @@ function SearchPropertiesSection({
         const newStatuses = current.filter((s) => s !== statusCode);
         // If removing Closed, clear dateSoldDays
         if (statusLabel === "Closed") {
-          return { ...prev, statuses: newStatuses, dateSoldDays: "180" };
+          return { ...prev, statuses: newStatuses, dateSoldDays: "365" };
         }
         return { ...prev, statuses: newStatuses };
       }
       const newStatuses = [...current, statusCode];
       // If adding Closed, default dateSoldDays to 180
       if (statusLabel === "Closed") {
-        return { ...prev, statuses: newStatuses, dateSoldDays: "180" };
+        return { ...prev, statuses: newStatuses, dateSoldDays: "365" };
       }
       return { ...prev, statuses: newStatuses };
     });
@@ -1543,331 +1544,163 @@ function SearchPropertiesSection({
             </div>
           </div>
 
-          {/* ROW 2: Advanced Filters (Collapsible) */}
-          <div className="border rounded-lg">
-            <Button
-              variant="ghost"
-              className="w-full justify-between p-3"
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            >
-              <span className="text-sm font-medium">Show Advanced Filters</span>
-              {showAdvancedFilters ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </Button>
-            
-            {showAdvancedFilters && (
-              <div className="p-4 pt-0 space-y-4 border-t">
-                {/* Location Row */}
-                <div>
-                  <Label className="text-xs font-semibold text-muted-foreground mb-2 block">LOCATION</Label>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <Input
-                      placeholder="City"
-                      value={filters.city}
-                      onChange={(e) => updateFilter("city", e.target.value)}
-                    />
-                    <Input
-                      placeholder="County"
-                      value={filters.county}
-                      onChange={(e) => updateFilter("county", e.target.value)}
-                    />
-                    <Input
-                      placeholder="Zip"
-                      value={filters.zip}
-                      onChange={(e) => updateFilter("zip", e.target.value)}
-                    />
-                    <Input
-                      placeholder="Subdivision"
-                      value={filters.subdivision}
-                      onChange={(e) => updateFilter("subdivision", e.target.value)}
-                    />
-                    <Input
-                      placeholder="Area"
-                      value={filters.area}
-                      onChange={(e) => updateFilter("area", e.target.value)}
-                    />
-                  </div>
-                </div>
+          {/* Filter Grid — always visible */}
+          <div className="space-y-3">
+            {/* Row 1: City | Subdivision | Zip | School District | Elementary */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <Input placeholder="e.g. Austin" value={filters.city} onChange={(e) => updateFilter("city", e.target.value)} />
+              <Input placeholder="e.g. Barton Hills" value={filters.subdivision} onChange={(e) => updateFilter("subdivision", e.target.value)} />
+              <Input placeholder="e.g. 78704" value={filters.zip} onChange={(e) => updateFilter("zip", e.target.value)} />
+              <Input placeholder="e.g. Austin ISD" value={filters.schoolDistrict} onChange={(e) => updateFilter("schoolDistrict", e.target.value)} />
+              <Input placeholder="Elementary School" value={filters.elementarySchool} onChange={(e) => updateFilter("elementarySchool", e.target.value)} />
+            </div>
 
-                {/* Property Row */}
-                <div>
-                  <Label className="text-xs font-semibold text-muted-foreground mb-2 block">PROPERTY</Label>
-                  <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-                    <Select
-                      value={filters.propertyType || "all"}
-                      onValueChange={(v) => updateFilter("propertyType", v === "all" ? "" : v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Any Type</SelectItem>
-                        {RESO_PROPERTY_TYPES.map((pt) => (
-                          <SelectItem key={pt} value={pt}>{pt}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      value={filters.minBeds || "any"}
-                      onValueChange={(v) => updateFilter("minBeds", v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Min Beds" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {BED_OPTIONS.map((opt, index) => (
-                          <SelectItem key={`minbeds-${index}`} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      value={filters.minBaths || "any"}
-                      onValueChange={(v) => updateFilter("minBaths", v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Min Baths" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {BATH_OPTIONS.map((opt, index) => (
-                          <SelectItem key={`minbaths-${index}`} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      type="number"
-                      placeholder="Full Baths"
-                      value={filters.fullBaths}
-                      onChange={(e) => updateFilter("fullBaths", e.target.value)}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Half Baths"
-                      value={filters.halfBaths}
-                      onChange={(e) => updateFilter("halfBaths", e.target.value)}
-                    />
-                  </div>
-                </div>
+            {/* Row 2: Middle | High | Min Beds | Min Baths | Min Price */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <Input placeholder="Middle School" value={filters.middleSchool} onChange={(e) => updateFilter("middleSchool", e.target.value)} />
+              <Input placeholder="High School" value={filters.highSchool} onChange={(e) => updateFilter("highSchool", e.target.value)} />
+              <Select value={filters.minBeds || "any"} onValueChange={(v) => updateFilter("minBeds", v)}>
+                <SelectTrigger><SelectValue placeholder="Min Beds" /></SelectTrigger>
+                <SelectContent>
+                  {BED_OPTIONS.map((opt, i) => <SelectItem key={`minbeds-${i}`} value={opt.value}>{opt.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={filters.minBaths || "any"} onValueChange={(v) => updateFilter("minBaths", v)}>
+                <SelectTrigger><SelectValue placeholder="Min Baths" /></SelectTrigger>
+                <SelectContent>
+                  {BATH_OPTIONS.map((opt, i) => <SelectItem key={`minbaths-${i}`} value={opt.value}>{opt.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={filters.minPrice || "any"} onValueChange={(v) => updateFilter("minPrice", v === "any" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="Min Price" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any</SelectItem>
+                  <SelectItem value="300000">$300k</SelectItem>
+                  <SelectItem value="400000">$400k</SelectItem>
+                  <SelectItem value="500000">$500k</SelectItem>
+                  <SelectItem value="600000">$600k</SelectItem>
+                  <SelectItem value="700000">$700k</SelectItem>
+                  <SelectItem value="800000">$800k</SelectItem>
+                  <SelectItem value="900000">$900k</SelectItem>
+                  <SelectItem value="1000000">$1M+</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-                {/* Size Row */}
-                <div>
-                  <Label className="text-xs font-semibold text-muted-foreground mb-2 block">SIZE</Label>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <Input
-                      type="number"
-                      placeholder="Min SqFt"
-                      value={filters.minSqft}
-                      onChange={(e) => updateFilter("minSqft", e.target.value)}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Max SqFt"
-                      value={filters.maxSqft}
-                      onChange={(e) => updateFilter("maxSqft", e.target.value)}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Stories"
-                      value={filters.stories}
-                      onChange={(e) => updateFilter("stories", e.target.value)}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Min Year Built"
-                      value={filters.minYearBuilt}
-                      onChange={(e) => updateFilter("minYearBuilt", e.target.value)}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Max Year Built"
-                      value={filters.maxYearBuilt}
-                      onChange={(e) => updateFilter("maxYearBuilt", e.target.value)}
-                    />
-                  </div>
-                </div>
+            {/* Row 3: Max Price | Property Type */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <Select value={filters.maxPrice || "any"} onValueChange={(v) => updateFilter("maxPrice", v === "any" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="Max Price" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any</SelectItem>
+                  <SelectItem value="300000">$300k</SelectItem>
+                  <SelectItem value="400000">$400k</SelectItem>
+                  <SelectItem value="500000">$500k</SelectItem>
+                  <SelectItem value="600000">$600k</SelectItem>
+                  <SelectItem value="700000">$700k</SelectItem>
+                  <SelectItem value="800000">$800k</SelectItem>
+                  <SelectItem value="900000">$900k</SelectItem>
+                  <SelectItem value="1000000">$1M+</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filters.propertyType || "all"} onValueChange={(v) => updateFilter("propertyType", v === "all" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Select...</SelectItem>
+                  <SelectItem value="Single Family Residence">Single Family</SelectItem>
+                  <SelectItem value="Condominium">Condo</SelectItem>
+                  <SelectItem value="Townhouse">Townhouse</SelectItem>
+                  <SelectItem value="Multi-Family">Multi-Family</SelectItem>
+                  <SelectItem value="Unimproved Land">Land</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-                {/* Status Row */}
-                <div>
-                  <Label className="text-xs font-semibold text-muted-foreground mb-2 block">STATUS</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
-                    <div className="flex flex-wrap gap-3">
-                      {["Active", "Active Under Contract", "Pending", "Closed"].map((s) => (
-                        <label key={s} className="flex items-center gap-1.5 text-xs cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={filters.statuses.includes(statusMapping[s])}
-                            onChange={() => toggleStatus(s)}
-                            className="rounded border-gray-300 text-[#EF4923] focus:ring-[#EF4923]"
-                          />
-                          {s}
-                        </label>
-                      ))}
-                    </div>
-                    {filters.statuses.includes("S") && (
-                      <Select
-                        value={filters.dateSoldDays || "180"}
-                        onValueChange={(v) => updateFilter("dateSoldDays", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Date Sold" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {DATE_SOLD_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                </div>
+            {/* Status checkboxes */}
+            <div className="flex items-center gap-4">
+              <Label className="text-xs font-semibold text-muted-foreground">Status:</Label>
+              {[
+                { label: "Active", code: "A", bgChecked: "#EAF3DE", borderChecked: "#639922", tickColor: "#27500A" },
+                { label: "Active Under Contract", code: "U", bgChecked: "#E6F1FB", borderChecked: "#378ADD", tickColor: "#0C447C" },
+                { label: "Closed", code: "S", bgChecked: "#FAECE7", borderChecked: "#D85A30", tickColor: "#711B13" },
+              ].map((s) => {
+                const isChecked = filters.statuses.includes(s.code);
+                return (
+                  <label
+                    key={s.code}
+                    className="flex items-center gap-1.5 text-xs cursor-pointer px-2.5 py-1 rounded-md border transition-colors"
+                    style={isChecked ? { backgroundColor: s.bgChecked, borderColor: s.borderChecked, color: s.tickColor } : { backgroundColor: 'transparent', borderColor: '#d1d5db', color: '#6b7280' }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggleStatus(s.label)}
+                      className="rounded"
+                      style={isChecked ? { accentColor: s.tickColor } : {}}
+                    />
+                    <span className="font-medium">{s.label}</span>
+                  </label>
+                );
+              })}
+            </div>
 
-                {/* Price Row */}
-                <div>
-                  <Label className="text-xs font-semibold text-muted-foreground mb-2 block">PRICE</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input
-                      type="number"
-                      placeholder="Min Price"
-                      value={filters.minPrice}
-                      onChange={(e) => updateFilter("minPrice", e.target.value)}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Max Price"
-                      value={filters.maxPrice}
-                      onChange={(e) => updateFilter("maxPrice", e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Extras Row */}
-                <div>
-                  <Label className="text-xs font-semibold text-muted-foreground mb-2 block">EXTRAS</Label>
-                  <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
-                    <Input
-                      type="number"
-                      placeholder="Min Lot (ac)"
-                      value={filters.minLotAcres}
-                      onChange={(e) => updateFilter("minLotAcres", e.target.value)}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Max Lot (ac)"
-                      value={filters.maxLotAcres}
-                      onChange={(e) => updateFilter("maxLotAcres", e.target.value)}
-                    />
-                    <Select
-                      value={filters.garageSpaces || "any"}
-                      onValueChange={(v) => updateFilter("garageSpaces", v === "any" ? "" : v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Garage" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {GARAGE_OPTIONS.map((opt, index) => (
-                          <SelectItem key={`garage-${index}`} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      type="number"
-                      placeholder="Parking"
-                      value={filters.parkingSpaces}
-                      onChange={(e) => updateFilter("parkingSpaces", e.target.value)}
-                    />
-                    <Select
-                      value={filters.privatePool || "any"}
-                      onValueChange={(v) => updateFilter("privatePool", v === "any" ? "" : v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pool?" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="any">Any Pool</SelectItem>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      value={filters.waterfront || "any"}
-                      onValueChange={(v) => updateFilter("waterfront", v === "any" ? "" : v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Waterfront?" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="any">Any Waterfront</SelectItem>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      value={filters.hoa || "any"}
-                      onValueChange={(v) => updateFilter("hoa", v === "any" ? "" : v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="HOA?" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="any">Any HOA</SelectItem>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Schools Row */}
-                <div>
-                  <Label className="text-xs font-semibold text-muted-foreground mb-2 block">SCHOOLS</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <Input
-                      placeholder="Elementary"
-                      value={filters.elementarySchool}
-                      onChange={(e) => updateFilter("elementarySchool", e.target.value)}
-                    />
-                    <Input
-                      placeholder="Middle"
-                      value={filters.middleSchool}
-                      onChange={(e) => updateFilter("middleSchool", e.target.value)}
-                    />
-                    <Input
-                      placeholder="High"
-                      value={filters.highSchool}
-                      onChange={(e) => updateFilter("highSchool", e.target.value)}
-                    />
-                    <Select
-                      value={filters.primaryBedOnMain || "any"}
-                      onValueChange={(v) => updateFilter("primaryBedOnMain", v === "any" ? "" : v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Primary Bed on Main" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="any">Any Primary Bed</SelectItem>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Clear Filters */}
-                <div className="pt-2">
-                  <Button variant="outline" onClick={clearFilters} size="sm">
-                    Clear All Filters
-                  </Button>
+            {/* Conditional Close Date row OR secondary filters */}
+            {filters.statuses.includes("S") ? (
+              <div className="rounded-lg p-3 space-y-2" style={{ backgroundColor: "#FEF8F6", border: "0.5px solid #F5C4B3" }}>
+                <p className="text-[10px] font-medium" style={{ color: "#711B13" }}>Closed date range — required when Closed is selected</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+                  <Select value={filters.dateSoldDays || "365"} onValueChange={(v) => updateFilter("dateSoldDays", v)}>
+                    <SelectTrigger><SelectValue placeholder="Close Date *" /></SelectTrigger>
+                    <SelectContent>
+                      {DATE_SOLD_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Input type="number" placeholder="e.g. 2000" value={filters.minSqft} onChange={(e) => updateFilter("minSqft", e.target.value)} />
+                  <Input type="number" placeholder="e.g. 5000" value={filters.maxSqft} onChange={(e) => updateFilter("maxSqft", e.target.value)} />
+                  <Input type="number" placeholder="e.g. 0.25" value={filters.minLotAcres} onChange={(e) => updateFilter("minLotAcres", e.target.value)} />
+                  <Input type="number" placeholder="e.g. 1.0" value={filters.maxLotAcres} onChange={(e) => updateFilter("maxLotAcres", e.target.value)} />
+                  <Select value={filters.stories || "any"} onValueChange={(v) => updateFilter("stories", v === "any" ? "" : v)}>
+                    <SelectTrigger><SelectValue placeholder="Stories" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any</SelectItem>
+                      <SelectItem value="1">1</SelectItem>
+                      <SelectItem value="2">2</SelectItem>
+                      <SelectItem value="3">3+</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input type="number" placeholder="e.g. 1990" value={filters.minYearBuilt} onChange={(e) => updateFilter("minYearBuilt", e.target.value)} />
+                  <Input type="number" placeholder="e.g. 2024" value={filters.maxYearBuilt} onChange={(e) => updateFilter("maxYearBuilt", e.target.value)} />
                 </div>
               </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Input type="number" placeholder="Min Sq Ft" value={filters.minSqft} onChange={(e) => updateFilter("minSqft", e.target.value)} />
+                <Input type="number" placeholder="Max Sq Ft" value={filters.maxSqft} onChange={(e) => updateFilter("maxSqft", e.target.value)} />
+                <Input type="number" placeholder="Min Lot (Acres)" value={filters.minLotAcres} onChange={(e) => updateFilter("minLotAcres", e.target.value)} />
+                <Input type="number" placeholder="Max Lot (Acres)" value={filters.maxLotAcres} onChange={(e) => updateFilter("maxLotAcres", e.target.value)} />
+                <Select value={filters.stories || "any"} onValueChange={(v) => updateFilter("stories", v === "any" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Stories" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Any</SelectItem>
+                    <SelectItem value="1">1</SelectItem>
+                    <SelectItem value="2">2</SelectItem>
+                    <SelectItem value="3">3+</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input type="number" placeholder="Min Year Built" value={filters.minYearBuilt} onChange={(e) => updateFilter("minYearBuilt", e.target.value)} />
+                <Input type="number" placeholder="Max Year Built" value={filters.maxYearBuilt} onChange={(e) => updateFilter("maxYearBuilt", e.target.value)} />
+              </div>
             )}
+
+            {/* Search Properties button */}
+            <Button
+              className="w-full bg-[#EF4923] hover:bg-[#d4401f] text-white"
+              onClick={() => handleSearch(1)}
+              disabled={searching}
+            >
+              {searching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
+              Search Properties
+            </Button>
           </div>
 
           {/* Map Search Toggle */}
