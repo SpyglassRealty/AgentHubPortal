@@ -1273,10 +1273,10 @@ function SearchPropertiesSection({
 
   // Sync criteria search results to map markers when map is ready
   useEffect(() => {
-    if (!mapRef.current || !mapReady) return;
+    if (!mapRef.current || !mapReady || activeTab !== 'map') return;
     if (searchResults.length === 0) return;
     renderMarkersForListings(searchResults);
-  }, [searchResults, mapReady, renderMarkersForListings]);
+  }, [searchResults, mapReady, activeTab, renderMarkersForListings]);
 
   // Map search by viewport bounds or drawn polygon
   const handleMapSearch = useCallback(async () => {
@@ -1289,7 +1289,7 @@ function SearchPropertiesSection({
       const body: any = {
         page: 1,
         limit: 50,
-        statuses: ['Active', 'Active Under Contract'],
+        statuses: ['Active', 'Active Under Contract', 'Closed'],
       };
 
       if (drawnPolygon && drawnPolygon.length >= 3) {
@@ -1524,6 +1524,9 @@ function SearchPropertiesSection({
 
       map.on('load', () => {
         setMapReady(true);
+        if (searchResults && searchResults.length > 0) {
+          renderMarkersForListings(searchResults);
+        }
       });
 
       map.on('moveend', () => {
