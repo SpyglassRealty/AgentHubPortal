@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { SeoPanel } from "@/components/seo/SeoPanel";
+
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { ImageUpload } from "@/components/editor/ImageUpload";
 import { ContentBlocksEditor } from "@/components/community/ContentBlocksEditor";
@@ -54,6 +54,7 @@ export default function CommunityEditor() {
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   const [focusKeyword, setFocusKeyword] = useState("");
+  const [urlSlug, setUrlSlug] = useState("");
   const [pageTitle, setPageTitle] = useState("");
   const [aboutHeadingLevel, setAboutHeadingLevel] = useState("h2");
   const [description, setDescription] = useState("");
@@ -76,6 +77,7 @@ export default function CommunityEditor() {
       setMetaTitle(community.metaTitle || "");
       setMetaDescription(community.metaDescription || "");
       setFocusKeyword(community.focusKeyword || "");
+      setUrlSlug(community.customSlug || community.slug || "");
       setPageTitle(community.pageTitle || "");
       setAboutHeadingLevel(community.aboutHeadingLevel || "h2");
       setDescription(community.description || "");
@@ -99,6 +101,7 @@ export default function CommunityEditor() {
           metaTitle: metaTitle || null,
           metaDescription: metaDescription || null,
           focusKeyword: focusKeyword || null,
+          customSlug: urlSlug !== community?.slug ? urlSlug : null,
           pageTitle: pageTitle || null,
           aboutHeadingLevel: aboutHeadingLevel || 'h2',
           description: description || null,
@@ -115,7 +118,7 @@ export default function CommunityEditor() {
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
-  }, [slug, metaTitle, metaDescription, focusKeyword, pageTitle, aboutHeadingLevel, description, sections, highlights, bestFor, nearbyLandmarks, featuredImageUrl, published, featured, updateMutation, toast]);
+  }, [slug, metaTitle, metaDescription, focusKeyword, urlSlug, pageTitle, aboutHeadingLevel, description, sections, highlights, bestFor, nearbyLandmarks, featuredImageUrl, published, featured, updateMutation, toast, community]);
 
   // ── Publish toggle ────────────────────────────────
   const handleTogglePublish = async () => {
@@ -284,6 +287,18 @@ export default function CommunityEditor() {
               />
             </div>
 
+            <div>
+              <Label>URL Slug</Label>
+              <Input
+                value={urlSlug}
+                onChange={(e) => setUrlSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                placeholder={community.slug}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                The URL path for this community page. Changes require a Vercel rebuild to take effect.
+              </p>
+            </div>
+
             {/* Google Preview */}
             <div className="border rounded-lg p-4 bg-white dark:bg-card">
               <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wider">Google Preview</p>
@@ -292,7 +307,7 @@ export default function CommunityEditor() {
                   {metaTitle || `${community.name} – Homes for Sale & Community Guide`}
                 </p>
                 <p className="text-green-700 dark:text-green-500 text-sm truncate">
-                  spyglassrealty.com/communities/{community.slug}
+                  spyglassrealty.com/{urlSlug || community.slug}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
                   {metaDescription || `Learn about ${community.name}: homes for sale, neighborhood highlights, schools, and what it's like to live here.`}
@@ -346,120 +361,6 @@ export default function CommunityEditor() {
                 placeholder="Write about this community — what makes it special, what the homes are like, the lifestyle..."
               />
             </div>
-          </CardContent>
-        </Card>
-
-        {/* ── Enhanced SEO Panel ─────────────────── */}
-        <SeoPanel
-          pageType="community"
-          pageId={community.slug}
-          initialData={{
-            customTitle: community.metaTitle || undefined,
-            customDescription: community.metaDescription || undefined,
-            focusKeyword: community.focusKeyword || undefined,
-            customSlug: community.customSlug || undefined,
-            featuredImageUrl: community.featuredImageUrl || undefined,
-            ogImageUrl: community.ogImageUrl || undefined,
-            breadcrumbPath: community.breadcrumbPath || undefined,
-            indexingDirective: community.indexingDirective || undefined,
-            customSchema: community.customSchema || undefined,
-            canonicalUrl: community.canonicalUrl || undefined,
-            seoScore: community.seoScore || undefined,
-            seoIssues: community.seoIssues || undefined,
-          }}
-          pageData={{
-            title: community.name,
-            description: community.description || undefined,
-            slug: community.slug,
-            content: community.description || undefined,
-            heroImage: community.heroImage || undefined,
-          }}
-          onSave={(seoData) => {
-            // Update local state to reflect SEO changes
-            console.log('SEO data saved:', seoData);
-            // Force refetch to get updated data
-            queryClient.invalidateQueries({ queryKey: ["/api/admin/communities", slug] });
-          }}
-        />
-
-        {/* ── Sections Manager ───────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Content Sections</CardTitle>
-            <CardDescription>H2 content blocks for the page (drag to reorder)</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {sections.map((section, idx) => (
-              <div key={section.id} className="border rounded-lg p-4 space-y-3 relative group">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="cursor-grab active:cursor-grabbing opacity-60 hover:opacity-100"
-                      onMouseDown={(e) => {
-                        // Simple drag-and-drop implementation
-                        // This is a basic version - for production, consider using react-beautiful-dnd
-                        const startY = e.clientY;
-                        let isDragging = false;
-                        
-                        const handleMouseMove = (moveEvent: MouseEvent) => {
-                          const deltaY = moveEvent.clientY - startY;
-                          if (Math.abs(deltaY) > 10) isDragging = true;
-                        };
-
-                        const handleMouseUp = () => {
-                          document.removeEventListener('mousemove', handleMouseMove);
-                          document.removeEventListener('mouseup', handleMouseUp);
-                        };
-
-                        document.addEventListener('mousemove', handleMouseMove);
-                        document.addEventListener('mouseup', handleMouseUp);
-                      }}
-                    >
-                      <GripVertical className="h-4 w-4" />
-                    </div>
-                    <Badge variant="secondary" className="text-xs">Section {idx + 1}</Badge>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {idx > 0 && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => moveSection(idx, idx - 1)}
-                        className="h-7 w-7"
-                      >
-                        ↑
-                      </Button>
-                    )}
-                    {idx < sections.length - 1 && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => moveSection(idx, idx + 1)}
-                        className="h-7 w-7"
-                      >
-                        ↓
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSection(idx)}>
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  </div>
-                </div>
-                <Input
-                  placeholder="Section heading (H2)"
-                  value={section.heading}
-                  onChange={(e) => updateSection(idx, "heading", e.target.value)}
-                />
-                <RichTextEditor
-                  value={section.content}
-                  onChange={(html) => updateSection(idx, "content", html)}
-                  placeholder="Section content..."
-                />
-              </div>
-            ))}
-            <Button variant="outline" onClick={addSection}>
-              <Plus className="h-4 w-4 mr-2" /> Add Section
-            </Button>
           </CardContent>
         </Card>
 
