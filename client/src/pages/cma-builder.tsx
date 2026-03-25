@@ -907,6 +907,7 @@ function SearchPropertiesSection({
   const [mapSearching, setMapSearching] = useState(false);
   const [mapResults, setMapResults] = useState<PropertyData[]>([]);
   const [mapTotalResults, setMapTotalResults] = useState(0);
+  const [showMarkers, setShowMarkers] = useState(true);
   const [showSearchButton, setShowSearchButton] = useState(true);
   const [mapReady, setMapReady] = useState(false);
   const [mapMode, setMapMode] = useState<'pan' | 'draw'>('pan');
@@ -1141,12 +1142,14 @@ function SearchPropertiesSection({
       listings.forEach((prop) => {
         if (!prop.latitude || !prop.longitude) return;
 
-        // Create custom marker element
+        // Create custom marker element with status-based color
+        const markerColor = (prop.status === 'Active') ? '#1D9E75' :
+          (prop.status === 'Active Under Contract' || prop.status === 'Pending') ? '#378ADD' : '#EF4923';
         const el = document.createElement('div');
         el.className = 'cma-map-marker';
         el.style.cssText = `
           width: 28px; height: 28px;
-          background: #EF4923;
+          background: ${markerColor};
           border: 2px solid white;
           border-radius: 50%;
           cursor: pointer;
@@ -1759,6 +1762,21 @@ function SearchPropertiesSection({
                   </Button>
                 </div>
 
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowMarkers(!showMarkers);
+                    markersRef.current.forEach((m) => {
+                      const el = m.getElement();
+                      el.style.display = showMarkers ? 'none' : '';
+                    });
+                  }}
+                >
+                  <MapPin className="h-4 w-4 mr-1.5" />
+                  {showMarkers ? 'Hide' : 'Show'} Listings
+                </Button>
+
                 {drawnPolygon && (
                   <Button
                     variant="outline"
@@ -2193,7 +2211,7 @@ export default function CmaBuilderPage() {
         </div>
 
         {/* Step Progress Bar */}
-        <div className="flex items-center justify-center gap-0">
+        <div className="flex items-start justify-between w-full max-w-xl mx-auto mb-4 px-4">
           {[
             {
               num: 1,
@@ -2214,12 +2232,9 @@ export default function CmaBuilderPage() {
               sub: !isStep2Complete ? "Add comparables first" : "Ready to generate",
             },
           ].map((step, i) => (
-            <div key={step.num} className="flex items-center">
-              {i > 0 && (
-                <div className={`w-12 h-0.5 ${step.state === 'locked' ? 'bg-gray-200' : 'bg-[#EF4923]'}`} />
-              )}
-              <div className="flex flex-col items-center text-center min-w-[100px]">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+            <div key={step.num} className="flex items-start flex-1 min-w-0">
+              <div className="flex flex-col items-center flex-1 min-w-0">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
                   step.state === 'done' ? 'bg-[#1D9E75] text-white' :
                   step.state === 'active' ? 'bg-[#EF4923] text-white' :
                   'bg-gray-200 text-gray-400'
@@ -2228,9 +2243,20 @@ export default function CmaBuilderPage() {
                    step.state === 'locked' ? <Lock className="h-3 w-3" /> :
                    step.num}
                 </div>
-                <p className="text-xs font-medium mt-1">{step.label}</p>
-                <p className={`text-[10px] ${step.state === 'locked' ? 'text-gray-400' : step.state === 'done' ? 'text-[#1D9E75]' : 'text-[#EF4923]'}`}>{step.sub}</p>
+                <p className="text-xs font-medium mt-1 text-center leading-tight w-full">{step.label}</p>
+                <p className={`text-[10px] text-center leading-tight mt-0.5 w-full ${
+                  step.state === 'locked' ? 'text-gray-400' :
+                  step.state === 'done' ? 'text-[#1D9E75]' :
+                  'text-[#EF4923]'
+                }`}>{step.sub}</p>
               </div>
+              {i < 2 && (
+                <div className={`flex-shrink-0 w-8 h-0.5 mt-4 ${
+                  step.state === 'done' ? 'bg-[#1D9E75]' :
+                  step.state === 'active' ? 'bg-[#EF4923]' :
+                  'bg-gray-200'
+                }`} />
+              )}
             </div>
           ))}
         </div>
