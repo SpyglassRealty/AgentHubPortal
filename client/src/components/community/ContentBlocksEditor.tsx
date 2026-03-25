@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ImageUpload } from "@/components/editor/ImageUpload";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
 import {
   Plus,
   Trash2,
@@ -28,6 +29,7 @@ export interface ContentBlock {
   content: string;
   imageUrl: string;
   videoUrl: string;
+  ctaEnabled: boolean;
   ctaText: string;
   ctaUrl: string;
   iframeUrl: string;
@@ -67,6 +69,7 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
           ...block,
           imageUrl: block.images?.[0] || '',
           videoUrl: block.videos?.[0] || '',
+          ctaEnabled: !!(block.ctaButtons?.[0]?.text || block.ctaButtons?.[0]?.url),
           ctaText: block.ctaButtons?.[0]?.text || '',
           ctaUrl: block.ctaButtons?.[0]?.url || '',
           iframeUrl: block.iframeUrl || '',
@@ -113,6 +116,7 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
           ...data.block,
           imageUrl: data.block.images?.[0] || '',
           videoUrl: data.block.videos?.[0] || '',
+          ctaEnabled: !!(data.block.ctaButtons?.[0]?.text || data.block.ctaButtons?.[0]?.url),
           ctaText: data.block.ctaButtons?.[0]?.text || '',
           ctaUrl: data.block.ctaButtons?.[0]?.url || '',
           iframeUrl: data.block.iframeUrl || '',
@@ -144,15 +148,22 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
         apiUpdates.videos = updates.videoUrl ? [updates.videoUrl] : [];
         delete apiUpdates.videoUrl;
       }
-      if (updates.ctaText !== undefined || updates.ctaUrl !== undefined) {
+      if (updates.ctaEnabled === false) {
+        apiUpdates.ctaButtons = [];
+        delete apiUpdates.ctaEnabled;
+        delete apiUpdates.ctaText;
+        delete apiUpdates.ctaUrl;
+      } else if (updates.ctaText !== undefined || updates.ctaUrl !== undefined) {
         const currentBlock = blocks.find(b => b.id === blockId);
         apiUpdates.ctaButtons = [{
           text: updates.ctaText !== undefined ? updates.ctaText : currentBlock?.ctaText || '',
           url: updates.ctaUrl !== undefined ? updates.ctaUrl : currentBlock?.ctaUrl || ''
         }];
+        delete apiUpdates.ctaEnabled;
         delete apiUpdates.ctaText;
         delete apiUpdates.ctaUrl;
       }
+      delete apiUpdates.ctaEnabled;
       if (updates.isPublished !== undefined) {
         apiUpdates.isPublished = updates.isPublished;
       }
@@ -170,6 +181,7 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
           ...data.block,
           imageUrl: data.block.images?.[0] || '',
           videoUrl: data.block.videos?.[0] || '',
+          ctaEnabled: !!(data.block.ctaButtons?.[0]?.text || data.block.ctaButtons?.[0]?.url),
           ctaText: data.block.ctaButtons?.[0]?.text || '',
           ctaUrl: data.block.ctaButtons?.[0]?.url || '',
           iframeUrl: data.block.iframeUrl || '',
@@ -177,7 +189,7 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
           mediaPosition: data.block.mediaPosition || 'left',
           isPublished: data.block.isPublished !== undefined ? data.block.isPublished : true
         };
-        setBlocks(blocks.map(block => 
+        setBlocks(blocks.map(block =>
           block.id === blockId ? { ...block, ...mappedBlock } : block
         ));
       }
@@ -548,23 +560,41 @@ function ContentBlockEditor({
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>CTA Button Text</Label>
-              <Input
-                value={localBlock.ctaText}
-                onChange={(e) => handleFieldChange('ctaText', e.target.value)}
-                onBlur={() => handleBlur('ctaText')}
-                placeholder="Get Started"
-              />
-            </div>
-            <div>
-              <Label>CTA Button URL</Label>
-              <Input
-                value={localBlock.ctaUrl}
-                onChange={(e) => handleFieldChange('ctaUrl', e.target.value)}
-                onBlur={() => handleBlur('ctaUrl')}
-                placeholder="/contact"
-              />
+            <div className="col-span-2 space-y-3">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={localBlock.ctaEnabled}
+                  onCheckedChange={(checked) => {
+                    handleImmediateUpdate('ctaEnabled', checked);
+                    if (!checked) {
+                      onUpdate({ ctaEnabled: false, ctaText: '', ctaUrl: '' });
+                    }
+                  }}
+                />
+                <Label>CTA Button</Label>
+              </div>
+              {localBlock.ctaEnabled && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Button Text</Label>
+                    <Input
+                      value={localBlock.ctaText}
+                      onChange={(e) => handleFieldChange('ctaText', e.target.value)}
+                      onBlur={() => handleBlur('ctaText')}
+                      placeholder="Get Started"
+                    />
+                  </div>
+                  <div>
+                    <Label>Button URL</Label>
+                    <Input
+                      value={localBlock.ctaUrl}
+                      onChange={(e) => handleFieldChange('ctaUrl', e.target.value)}
+                      onBlur={() => handleBlur('ctaUrl')}
+                      placeholder="/contact"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
