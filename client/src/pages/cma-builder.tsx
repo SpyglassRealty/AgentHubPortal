@@ -683,8 +683,21 @@ function AnalysisPanel({
     );
   }
 
+  const CORAL = '#EF4923';
+  const GREEN_ACTIVE = '#1D9E75';
+  const BLUE_AUC = '#378ADD';
+  const GRAY_NEUTRAL = '#6B7280';
+
   const analysis = useMemo(() => {
     if (comps.length === 0) return null;
+
+    const avg = (arr: number[]) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
+    const med = (arr: number[]) => {
+      if (!arr.length) return 0;
+      const sorted = [...arr].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    };
 
     const prices = comps.map((c) => c.soldPrice || c.listPrice).filter(Boolean) as number[];
     const sqfts = comps.map((c) => c.sqft).filter(Boolean) as number[];
@@ -696,13 +709,29 @@ function AnalysisPanel({
       .filter(Boolean);
     const doms = comps.map((c) => c.daysOnMarket).filter((d) => d !== undefined && d !== null) as number[];
 
-    const avg = (arr: number[]) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
-    const med = (arr: number[]) => {
-      if (!arr.length) return 0;
-      const sorted = [...arr].sort((a, b) => a - b);
-      const mid = Math.floor(sorted.length / 2);
-      return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-    };
+    // Active / Under Contract comps
+    const activeComps = comps.filter(c => c.status === 'Active' || c.status === 'Active Under Contract');
+    const activeListPrices = activeComps.map(c => c.listPrice).filter(Boolean) as number[];
+
+    // Closed comps
+    const closedComps = comps.filter(c => c.status === 'Closed' || c.status === 'Sold');
+    const closedPrices = closedComps.map(c => c.soldPrice || c.listPrice).filter(Boolean) as number[];
+    const closedDoms = closedComps.map(c => c.daysOnMarket).filter((d) => d !== undefined && d !== null) as number[];
+
+    // Price brackets
+    const allPrices = comps.map(c => {
+      if (c.status === 'Closed' || c.status === 'Sold') return c.soldPrice || c.listPrice;
+      return c.listPrice;
+    }).filter(Boolean) as number[];
+    const brackets: Record<string, number> = {};
+    allPrices.forEach(p => {
+      const lower = Math.floor(p / 100000) * 100000;
+      const key = `$${(lower / 1000).toFixed(0)}K–$${((lower + 100000) / 1000).toFixed(0)}K`;
+      brackets[key] = (brackets[key] || 0) + 1;
+    });
+    const topBrackets = Object.entries(brackets)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
 
     return {
       avgPrice: avg(prices),
@@ -714,8 +743,20 @@ function AnalysisPanel({
       avgSqft: avg(sqfts),
       avgDom: avg(doms),
       count: comps.length,
+      // Active vs Closed split
+      activeCount: activeComps.length,
+      avgActiveListPrice: avg(activeListPrices),
+      closedCount: closedComps.length,
+      avgClosedPrice: avg(closedPrices),
+      medClosedPrice: med(closedPrices),
+      avgClosedDom: closedDoms.length > 0 ? avg(closedDoms) : null,
+      // Price brackets
+      topBrackets,
+      maxBracketCount: topBrackets.length > 0 ? Math.max(...topBrackets.map(b => b[1])) : 0,
+      // For snapshot
+      subdivision: comps[0]?.subdivision || subject?.subdivision || 'this area',
     };
-  }, [comps]);
+  }, [comps, subject]);
 
   if (!analysis) {
     return (
@@ -752,6 +793,47 @@ function AnalysisPanel({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Enhancement 1: Market Snapshot */}
+        <p className="text-sm text-gray-500 italic mb-3">
+          Based on {analysis.count} comparables in {analysis.subdivision}, closed properties averaged {formatPrice(analysis.avgClosedPrice)} with a median of {formatPrice(analysis.medClosedPrice)}.
+          {analysis.activeCount > 0 && analysis.closedCount > 0 && analysis.avgClosedPrice > 0 && (
+            <> Active listings are priced {((analysis.avgActiveListPrice - analysis.avgClosedPrice) / analysis.avgClosedPrice * 100).toFixed(1)}% {analysis.avgActiveListPrice >= analysis.avgClosedPrice ? 'above' : 'below'} recent closed sales.</>
+          )}
+          {analysis.avgClosedDom !== null && (
+            <> Properties are selling in an average of {analysis.avgClosedDom.toFixed(0)} days.</>
+          )}
+        </p>
+
+        {/* Enhancement 2: Market Temperature */}
+        {analysis.avgClosedDom !== null ? (() => {
+          const dom = analysis.avgClosedDom!;
+          const temp = dom < 15 ? { emoji: '🔥', label: 'Hot Market', bg: CORAL }
+            : dom <= 30 ? { emoji: '🌤', label: 'Warm Market', bg: '#F97316' }
+            : dom <= 60 ? { emoji: '〜', label: 'Neutral Market', bg: GRAY_NEUTRAL }
+            : { emoji: '❄️', label: 'Cool Market', bg: BLUE_AUC };
+          return (
+            <span className="inline-flex items-center text-white text-sm px-3 py-1 rounded-full mb-4" style={{ backgroundColor: temp.bg }}>
+              {temp.emoji} {temp.label} · Avg {dom.toFixed(0)} Days on Market
+            </span>
+          );
+        })() : (
+          <p className="text-sm text-gray-400 italic mb-4">Insufficient closed data for market temperature</p>
+        )}
+
+        {/* Enhancement 3: Active vs Closed Price Split */}
+        <div className="flex gap-3">
+          <div className="flex-1 bg-white border border-gray-200 rounded-lg p-3" style={{ borderLeft: `3px solid ${GREEN_ACTIVE}` }}>
+            <p className="text-xs font-medium text-muted-foreground">Active Avg List Price</p>
+            <p className="text-lg font-semibold">{analysis.activeCount > 0 ? formatPrice(analysis.avgActiveListPrice) : 'No data'}</p>
+            <p className="text-xs text-muted-foreground">{analysis.activeCount} properties</p>
+          </div>
+          <div className="flex-1 bg-white border border-gray-200 rounded-lg p-3" style={{ borderLeft: `3px solid ${CORAL}` }}>
+            <p className="text-xs font-medium text-muted-foreground">Closed Avg Close Price</p>
+            <p className="text-lg font-semibold">{analysis.closedCount > 0 ? formatPrice(analysis.avgClosedPrice) : 'No data'}</p>
+            <p className="text-xs text-muted-foreground">{analysis.closedCount} properties</p>
+          </div>
+        </div>
+
         {/* Price comparison to subject */}
         {subject && subjectPrice > 0 && (
           <div className="p-3 rounded-lg bg-muted/50 border">
@@ -769,11 +851,7 @@ function AnalysisPanel({
               ) : (
                 <Minus className="h-4 w-4 text-gray-500" />
               )}
-              <span
-                className={`text-sm font-medium ${
-                  priceDiff > 0 ? "text-red-500" : priceDiff < 0 ? "text-green-500" : "text-gray-500"
-                }`}
-              >
+              <span className={`text-sm font-medium ${priceDiff > 0 ? "text-red-500" : priceDiff < 0 ? "text-green-500" : "text-gray-500"}`}>
                 {priceDiff > 0 ? "+" : ""}{formatPrice(priceDiff)} ({priceDiffPct > 0 ? "+" : ""}{priceDiffPct.toFixed(1)}%)
               </span>
               <span className="text-xs text-muted-foreground ml-1">
@@ -795,24 +873,18 @@ function AnalysisPanel({
           </div>
           <div className="p-3 rounded-lg border">
             <p className="text-xs font-medium text-muted-foreground">Price Range</p>
-            <p className="text-sm font-semibold">
-              {formatPrice(analysis.minPrice)} – {formatPrice(analysis.maxPrice)}
-            </p>
+            <p className="text-sm font-semibold">{formatPrice(analysis.minPrice)} – {formatPrice(analysis.maxPrice)}</p>
           </div>
           <div className="p-3 rounded-lg border">
-            <p className="text-xs font-medium text-muted-foreground">Avg $/SqFt</p>
-            <p className="text-base font-bold">
-              ${analysis.avgPricePerSqft.toFixed(0)}
-            </p>
+            <p className="text-xs font-medium text-muted-foreground">Avg $/Living Area</p>
+            <p className="text-base font-bold">${analysis.avgPricePerSqft.toFixed(0)}</p>
           </div>
           <div className="p-3 rounded-lg border">
-            <p className="text-xs font-medium text-muted-foreground">Median $/SqFt</p>
-            <p className="text-base font-bold">
-              ${analysis.medPricePerSqft.toFixed(0)}
-            </p>
+            <p className="text-xs font-medium text-muted-foreground">Median $/Living Area</p>
+            <p className="text-base font-bold">${analysis.medPricePerSqft.toFixed(0)}</p>
           </div>
           <div className="p-3 rounded-lg border">
-            <p className="text-xs font-medium text-muted-foreground">Avg DOM</p>
+            <p className="text-xs font-medium text-muted-foreground">Avg Days on Market</p>
             <p className="text-base font-bold">{analysis.avgDom.toFixed(0)} days</p>
           </div>
         </div>
@@ -820,13 +892,34 @@ function AnalysisPanel({
         {/* Suggested value */}
         {subject && subject.sqft > 0 && (
           <div className="p-3 rounded-lg bg-[#EF4923]/5 border border-[#EF4923]/20">
-            <p className="text-xs font-medium text-[#EF4923] mb-1">Suggested Value (based on $/sqft)</p>
+            <p className="text-xs font-medium text-[#EF4923] mb-1">Suggested Value (based on $/living area)</p>
             <p className="text-xl font-bold text-[#EF4923]">
               {formatPrice(analysis.avgPricePerSqft * subject.sqft)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               ${analysis.avgPricePerSqft.toFixed(0)}/sqft × {formatNumber(subject.sqft)} sqft
             </p>
+          </div>
+        )}
+
+        {/* Enhancement 4: Price Distribution */}
+        {analysis.topBrackets.length > 0 && (
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-2">Price Distribution</p>
+            <div className="space-y-1.5">
+              {analysis.topBrackets.map(([label, count]) => (
+                <div key={label} className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600 w-28 flex-shrink-0">{label}</span>
+                  <div className="flex-1 bg-gray-100 rounded-sm h-4">
+                    <div
+                      className="h-4 rounded-sm"
+                      style={{ width: `${(count / analysis.maxBracketCount) * 100}%`, backgroundColor: `${CORAL}99` }}
+                    />
+                  </div>
+                  <span className="text-xs text-gray-500 ml-2 w-4 text-right">{count}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </CardContent>
