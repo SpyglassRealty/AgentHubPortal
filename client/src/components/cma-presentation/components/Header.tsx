@@ -52,7 +52,10 @@ export function Header({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  const filteredSlides = searchQuery.trim().length >= 3
+  const isNumberQuery = /^\d+$/.test(searchQuery.trim());
+  const minChars = isNumberQuery ? 1 : 3;
+
+  const filteredSlides = searchQuery.trim().length >= minChars
     ? slides.filter(s =>
         s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         String(s.number).includes(searchQuery.trim())
@@ -163,7 +166,7 @@ export function Header({
                     className="w-[220px] bg-white text-gray-900 text-sm rounded-md px-3 py-1.5 outline-none placeholder:text-gray-400"
                   />
                   {filteredSlides.length > 0 && (
-                    <div className="absolute top-full left-0 mt-1 w-[260px] bg-white border border-gray-200 rounded-md shadow-lg z-50 overflow-hidden">
+                    <div className="absolute top-full left-0 mt-1 w-[260px] bg-white border border-gray-200 rounded-md shadow-lg z-[9999] overflow-hidden">
                       {filteredSlides.map((slide, i) => (
                         <button
                           key={slide.id}
