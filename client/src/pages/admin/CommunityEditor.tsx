@@ -241,6 +241,67 @@ export default function CommunityEditor() {
           </div>
         </div>
 
+        {/* ── SEO Panel ──────────────────────────── */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <SearchIcon className="h-5 w-5" /> SEO
+            </CardTitle>
+            <CardDescription>Search engine optimization settings</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Meta Title</Label>
+              <Input
+                value={metaTitle}
+                onChange={(e) => setMetaTitle(e.target.value)}
+                placeholder={`${community.name} – Homes for Sale & Community Guide`}
+                maxLength={80}
+              />
+              <p className={`text-xs mt-1 ${charCountColor(metaTitle.length, 50, 60)}`}>
+                {metaTitle.length}/60 characters
+              </p>
+            </div>
+            <div>
+              <Label>Meta Description</Label>
+              <Textarea
+                value={metaDescription}
+                onChange={(e) => setMetaDescription(e.target.value)}
+                placeholder="Discover homes for sale, market trends, and what it's like to live in..."
+                rows={3}
+                maxLength={200}
+              />
+              <p className={`text-xs mt-1 ${charCountColor(metaDescription.length, 140, 160)}`}>
+                {metaDescription.length}/160 characters
+              </p>
+            </div>
+            <div>
+              <Label>Focus Keyword</Label>
+              <Input
+                value={focusKeyword}
+                onChange={(e) => setFocusKeyword(e.target.value)}
+                placeholder="e.g., zilker austin homes"
+              />
+            </div>
+
+            {/* Google Preview */}
+            <div className="border rounded-lg p-4 bg-white dark:bg-card">
+              <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wider">Google Preview</p>
+              <div className="space-y-1">
+                <p className="text-blue-600 dark:text-blue-400 text-lg truncate">
+                  {metaTitle || `${community.name} – Homes for Sale & Community Guide`}
+                </p>
+                <p className="text-green-700 dark:text-green-500 text-sm truncate">
+                  spyglassrealty.com/communities/{community.slug}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                  {metaDescription || `Learn about ${community.name}: homes for sale, neighborhood highlights, schools, and what it's like to live here.`}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* ── About Section ──────────────────────────── */}
         <Card>
           <CardHeader>
@@ -320,6 +381,87 @@ export default function CommunityEditor() {
             queryClient.invalidateQueries({ queryKey: ["/api/admin/communities", slug] });
           }}
         />
+
+        {/* ── Sections Manager ───────────────────── */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Content Sections</CardTitle>
+            <CardDescription>H2 content blocks for the page (drag to reorder)</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {sections.map((section, idx) => (
+              <div key={section.id} className="border rounded-lg p-4 space-y-3 relative group">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="cursor-grab active:cursor-grabbing opacity-60 hover:opacity-100"
+                      onMouseDown={(e) => {
+                        // Simple drag-and-drop implementation
+                        // This is a basic version - for production, consider using react-beautiful-dnd
+                        const startY = e.clientY;
+                        let isDragging = false;
+                        
+                        const handleMouseMove = (moveEvent: MouseEvent) => {
+                          const deltaY = moveEvent.clientY - startY;
+                          if (Math.abs(deltaY) > 10) isDragging = true;
+                        };
+
+                        const handleMouseUp = () => {
+                          document.removeEventListener('mousemove', handleMouseMove);
+                          document.removeEventListener('mouseup', handleMouseUp);
+                        };
+
+                        document.addEventListener('mousemove', handleMouseMove);
+                        document.addEventListener('mouseup', handleMouseUp);
+                      }}
+                    >
+                      <GripVertical className="h-4 w-4" />
+                    </div>
+                    <Badge variant="secondary" className="text-xs">Section {idx + 1}</Badge>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {idx > 0 && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => moveSection(idx, idx - 1)}
+                        className="h-7 w-7"
+                      >
+                        ↑
+                      </Button>
+                    )}
+                    {idx < sections.length - 1 && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => moveSection(idx, idx + 1)}
+                        className="h-7 w-7"
+                      >
+                        ↓
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSection(idx)}>
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+                <Input
+                  placeholder="Section heading (H2)"
+                  value={section.heading}
+                  onChange={(e) => updateSection(idx, "heading", e.target.value)}
+                />
+                <RichTextEditor
+                  value={section.content}
+                  onChange={(html) => updateSection(idx, "content", html)}
+                  placeholder="Section content..."
+                />
+              </div>
+            ))}
+            <Button variant="outline" onClick={addSection}>
+              <Plus className="h-4 w-4 mr-2" /> Add Section
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* ── Content Blocks Editor ─────────────────────────── */}
         {community?.id && (
