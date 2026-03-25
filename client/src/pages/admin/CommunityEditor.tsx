@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { SeoPanel } from "@/components/seo/SeoPanel";
@@ -54,6 +55,7 @@ export default function CommunityEditor() {
   const [metaDescription, setMetaDescription] = useState("");
   const [focusKeyword, setFocusKeyword] = useState("");
   const [pageTitle, setPageTitle] = useState("");
+  const [aboutHeadingLevel, setAboutHeadingLevel] = useState("h2");
   const [description, setDescription] = useState("");
   const [sections, setSections] = useState<CommunitySection[]>([]);
   const [highlights, setHighlights] = useState<string[]>([]);
@@ -75,6 +77,7 @@ export default function CommunityEditor() {
       setMetaDescription(community.metaDescription || "");
       setFocusKeyword(community.focusKeyword || "");
       setPageTitle(community.pageTitle || "");
+      setAboutHeadingLevel(community.aboutHeadingLevel || "h2");
       setDescription(community.description || "");
       setSections(community.sections || []);
       setHighlights(community.highlights || []);
@@ -97,6 +100,7 @@ export default function CommunityEditor() {
           metaDescription: metaDescription || null,
           focusKeyword: focusKeyword || null,
           pageTitle: pageTitle || null,
+          aboutHeadingLevel: aboutHeadingLevel || 'h2',
           description: description || null,
           sections: sections.length > 0 ? sections : null,
           highlights: highlights.length > 0 ? highlights : null,
@@ -111,7 +115,7 @@ export default function CommunityEditor() {
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
-  }, [slug, metaTitle, metaDescription, focusKeyword, pageTitle, description, sections, highlights, bestFor, nearbyLandmarks, featuredImageUrl, published, featured, updateMutation, toast]);
+  }, [slug, metaTitle, metaDescription, focusKeyword, pageTitle, aboutHeadingLevel, description, sections, highlights, bestFor, nearbyLandmarks, featuredImageUrl, published, featured, updateMutation, toast]);
 
   // ── Publish toggle ────────────────────────────────
   const handleTogglePublish = async () => {
@@ -298,40 +302,50 @@ export default function CommunityEditor() {
           </CardContent>
         </Card>
 
-        {/* ── Page Content ──────────────────────────── */}
+        {/* ── About Section ──────────────────────────── */}
         <Card>
           <CardHeader>
-            <CardTitle>Page Content</CardTitle>
-            <CardDescription>Customize visible page elements</CardDescription>
+            <CardTitle>About Section</CardTitle>
+            <CardDescription>Community overview that appears as the intro on the page</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label>Page Title (H1)</Label>
-              <Input
-                value={pageTitle}
-                onChange={(e) => setPageTitle(e.target.value)}
-                placeholder={`Homes for Sale in ${community?.name || 'Community'}, TX`}
-                maxLength={80}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Override the default "Homes for Sale in [Community]" heading. Leave blank to use default.
-              </p>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-2">
+                <Label>About Title</Label>
+                <Input
+                  value={pageTitle}
+                  onChange={(e) => setPageTitle(e.target.value)}
+                  placeholder={`About ${community?.name || 'Community'}`}
+                  maxLength={80}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Appears as the About section heading on the page. Leave blank to use "About {community?.name || 'Community Name'}".
+                </p>
+              </div>
+              <div>
+                <Label>Heading Level</Label>
+                <Select value={aboutHeadingLevel} onValueChange={setAboutHeadingLevel}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="h1">H1</SelectItem>
+                    <SelectItem value="h2">H2</SelectItem>
+                    <SelectItem value="h3">H3</SelectItem>
+                    <SelectItem value="h4">H4</SelectItem>
+                    <SelectItem value="h5">H5</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* ── Main Description ───────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle>About Description</CardTitle>
-            <CardDescription>Main community overview (appears as the intro on the page). Use the toolbar for headings, formatting, links, and images.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <RichTextEditor
-              value={description}
-              onChange={setDescription}
-              placeholder="Write about this community — what makes it special, what the homes are like, the lifestyle..."
-            />
+            <div>
+              <Label>About Description</Label>
+              <RichTextEditor
+                value={description}
+                onChange={setDescription}
+                placeholder="Write about this community — what makes it special, what the homes are like, the lifestyle..."
+              />
+            </div>
           </CardContent>
         </Card>
 

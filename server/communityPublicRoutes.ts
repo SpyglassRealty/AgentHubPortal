@@ -166,6 +166,7 @@ export function registerCommunityPublicRoutes(app: Express) {
         name: community.name,
         slug: community.slug,
         pageTitle: community.pageTitle,
+        aboutHeadingLevel: community.aboutHeadingLevel || 'h2',
         polygon: polygonData,
         // Pre-swap polygon to [lat, lng] for displayPolygon — matches static file format
         displayPolygon: displayPolygonData.length > 0

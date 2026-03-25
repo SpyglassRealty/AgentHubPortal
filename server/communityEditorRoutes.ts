@@ -445,6 +445,7 @@ export function registerCommunityEditorRoutes(app: Express) {
         metaDescription,
         focusKeyword,
         pageTitle,
+        aboutHeadingLevel,
         description,
         highlights,
         bestFor,
@@ -465,6 +466,7 @@ export function registerCommunityEditorRoutes(app: Express) {
       if (metaDescription !== undefined) updateData.metaDescription = metaDescription;
       if (focusKeyword !== undefined) updateData.focusKeyword = focusKeyword;
       if (pageTitle !== undefined) updateData.pageTitle = pageTitle;
+      if (aboutHeadingLevel !== undefined) updateData.aboutHeadingLevel = aboutHeadingLevel;
       if (description !== undefined) updateData.description = description;
       if (highlights !== undefined) updateData.highlights = highlights;
       if (bestFor !== undefined) updateData.bestFor = bestFor;
