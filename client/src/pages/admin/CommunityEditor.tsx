@@ -17,6 +17,10 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
@@ -55,6 +59,8 @@ export default function CommunityEditor() {
   const [metaDescription, setMetaDescription] = useState("");
   const [focusKeyword, setFocusKeyword] = useState("");
   const [urlSlug, setUrlSlug] = useState("");
+  const [originalSlug, setOriginalSlug] = useState("");
+  const [showSlugWarning, setShowSlugWarning] = useState(false);
   const [pageTitle, setPageTitle] = useState("");
   const [aboutHeadingLevel, setAboutHeadingLevel] = useState("h2");
   const [description, setDescription] = useState("");
@@ -78,6 +84,7 @@ export default function CommunityEditor() {
       setMetaDescription(community.metaDescription || "");
       setFocusKeyword(community.focusKeyword || "");
       setUrlSlug(community.customSlug || community.slug || "");
+      setOriginalSlug(community.customSlug || community.slug || "");
       setPageTitle(community.pageTitle || "");
       setAboutHeadingLevel(community.aboutHeadingLevel || "h2");
       setDescription(community.description || "");
@@ -114,11 +121,20 @@ export default function CommunityEditor() {
           featured,
         } as any,
       });
+      setOriginalSlug(urlSlug);
       toast({ title: "Saved", description: "Community content updated." });
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
   }, [slug, metaTitle, metaDescription, focusKeyword, urlSlug, pageTitle, aboutHeadingLevel, description, sections, highlights, bestFor, nearbyLandmarks, featuredImageUrl, published, featured, updateMutation, toast, community]);
+
+  const handleSaveClick = useCallback(() => {
+    if (urlSlug && urlSlug !== originalSlug) {
+      setShowSlugWarning(true);
+    } else {
+      handleSave();
+    }
+  }, [urlSlug, originalSlug, handleSave]);
 
   // ── Publish toggle ────────────────────────────────
   const handleTogglePublish = async () => {
@@ -203,6 +219,25 @@ export default function CommunityEditor() {
   }
 
   return (
+    <>
+    <AlertDialog open={showSlugWarning} onOpenChange={setShowSlugWarning}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>URL slug change detected</AlertDialogTitle>
+          <AlertDialogDescription>
+            You are changing this community's URL from <strong>/{originalSlug}</strong> to <strong>/{urlSlug}</strong>.
+            The old URL will stop working and return a 404. This change requires a Vercel rebuild to take effect.
+            Are you sure you want to proceed?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={() => { setShowSlugWarning(false); handleSave(); }}>
+            Yes, change URL
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* ── Header ──────────────────────────────── */}
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -233,7 +268,7 @@ export default function CommunityEditor() {
               {published ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
               {published ? "Unpublish" : "Publish"}
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={updateMutation.isPending}>
+            <Button size="sm" onClick={handleSaveClick} disabled={updateMutation.isPending}>
               {updateMutation.isPending ? (
                 <Loader2 className="h-4 w-4 mr-1 animate-spin" />
               ) : (
@@ -550,7 +585,7 @@ export default function CommunityEditor() {
               )}
               <span className="text-sm text-muted-foreground">{community.name}</span>
             </div>
-            <Button onClick={handleSave} disabled={updateMutation.isPending}>
+            <Button onClick={handleSaveClick} disabled={updateMutation.isPending}>
               {updateMutation.isPending ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
@@ -561,5 +596,6 @@ export default function CommunityEditor() {
           </div>
         </div>
       </div>
+    </>
   );
 }
