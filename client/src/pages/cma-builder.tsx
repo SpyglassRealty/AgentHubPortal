@@ -1197,10 +1197,6 @@ function SearchPropertiesSection({
     const map = mapRef.current;
     if (!map) return;
 
-    console.log('[MAP DEBUG] total listings received:', listings.length);
-    console.log('[MAP DEBUG] first listing coords:', listings[0]?.latitude, listings[0]?.longitude);
-    console.log('[MAP DEBUG] listings with valid coords:', listings.filter(p => p.latitude && p.longitude).length);
-
     // Clear existing markers
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
@@ -1314,10 +1310,6 @@ function SearchPropertiesSection({
       const res = await apiRequest("POST", "/api/cma/search-properties", body);
       const data = await res.json();
       const listings: PropertyData[] = data.listings || [];
-      console.log('[MAP DEBUG] handleMapSearch received listings:', listings.length);
-      if (listings.length > 0) {
-        console.log('[MAP DEBUG] first listing from API:', { lat: listings[0].latitude, lng: listings[0].longitude, address: listings[0].address });
-      }
       setMapResults(listings);
       setMapTotalResults(data.total || 0);
 

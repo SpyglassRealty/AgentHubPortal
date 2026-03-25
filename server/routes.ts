@@ -3835,11 +3835,6 @@ Respond with valid JSON in this exact format:
       let data = await response.json();
 
       console.log('[CMA Search] Results count:', (data.listings || []).length);
-      if ((data.listings || []).length > 0) {
-        const firstRaw = data.listings[0];
-        console.log('[MAP DEBUG] raw first listing map:', JSON.stringify(firstRaw?.map, null, 2));
-        console.log('[MAP DEBUG] raw first listing address coords:', { lat: firstRaw?.address?.latitude, lng: firstRaw?.address?.longitude });
-      }
 
       // FALLBACK: If structured address search returns 0 results, retry with generic search
       if (isAddressSearch && (data.listings || []).length === 0) {
