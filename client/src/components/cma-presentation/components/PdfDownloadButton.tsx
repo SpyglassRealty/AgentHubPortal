@@ -193,18 +193,18 @@ export function PdfDownloadButton({
     <>
       <Button
         variant="ghost"
-        size="icon"
         onClick={() => setShowPreview(true)}
         disabled={isGenerating}
-        className={className}
+        className={`${className} bg-[#EF4923] hover:bg-[#d4401f] text-white px-3 py-1.5 rounded-md text-sm font-medium`}
         data-testid="button-preview-pdf"
         title="Preview & Download PDF"
       >
         {isGenerating ? (
-          <Loader2 className="w-5 h-5 animate-spin" />
+          <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
         ) : (
-          <Eye className="w-5 h-5" />
+          <Eye className="w-4 h-4 mr-1.5" />
         )}
+        Preview & PDF
       </Button>
 
       <CmaPrintPreview

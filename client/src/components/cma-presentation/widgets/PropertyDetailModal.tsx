@@ -142,7 +142,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
               {property.address}
             </h2>
             <p className="text-sm text-gray-600" data-testid="modal-mls">
-              MLS# {property.mlsNumber || property.id}
+              MLS# {(property.mlsNumber || property.id || '').replace(/^ACT[-]?/i, '')}
             </p>
           </div>
           <Button
@@ -217,7 +217,7 @@ export function PropertyDetailModal({ property, onClose }: PropertyDetailModalPr
               <div className="w-full h-full flex items-center justify-center text-gray-600">
                 <div className="text-center">
                   <p className="text-lg">No photos available</p>
-                  <p className="text-sm">MLS# {property.mlsNumber || property.id}</p>
+                  <p className="text-sm">MLS# {(property.mlsNumber || property.id || '').replace(/^ACT[-]?/i, '')}</p>
                 </div>
               </div>
             )}

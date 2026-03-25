@@ -203,7 +203,7 @@ export function Header({
               className="text-xs text-gray-400"
               data-testid="text-mls-number"
             >
-              MLS# {mlsNumber}
+              MLS# {mlsNumber.replace(/^ACT[-]?/i, '')}
             </p>
           )}
         </div>
