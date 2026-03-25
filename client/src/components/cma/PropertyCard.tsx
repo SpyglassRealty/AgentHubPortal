@@ -125,18 +125,13 @@ export function PropertyCard({ property, isAdded, onAdd, variant = 'search-resul
         />
         
         <div className="flex-1 min-w-0">
-          {/* Line 1: MLS# (bold) */}
-          <p className="text-sm font-bold text-foreground mb-1">
-            MLS# {property.mlsNumber.replace(/^ACT[-]?/i, '')}
-          </p>
-          
-          {/* Line 2: Full address */}
-          <p className="text-sm text-foreground truncate mb-1" title={property.address}>
+          {/* Line 1: Address */}
+          <p className="text-sm font-medium text-foreground truncate mb-1" title={property.address}>
             {property.address}
           </p>
-          
-          {/* Line 3: Price | Beds/Baths | Sqft */}
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+
+          {/* Line 2: Price | Beds/Baths | Sqft | MLS badge */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
             <span className="font-semibold text-[#EF4923]">
               {formatPrice(displayPrice)}
             </span>
@@ -144,6 +139,11 @@ export function PropertyCard({ property, isAdded, onAdd, variant = 'search-resul
             <span>{property.beds}bd/{property.baths}ba</span>
             <span>|</span>
             <span>{formatNumber(property.sqft)} sqft</span>
+            {property.mlsNumber && (
+              <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                MLS# {property.mlsNumber.replace(/^ACT[-]?/i, '')}
+              </span>
+            )}
           </div>
         </div>
         
@@ -164,21 +164,21 @@ export function PropertyCard({ property, isAdded, onAdd, variant = 'search-resul
           
           <Button
             size="sm"
-            variant={isAdded ? "secondary" : "default"}
-            className={isAdded ? "" : "bg-[#EF4923] hover:bg-[#d4401f] text-white"}
+            variant={isAdded ? "outline" : "default"}
+            className={isAdded ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-50" : "bg-[#EF4923] hover:bg-[#d4401f] text-white"}
             disabled={isAdded}
             onClick={(e) => {
               e.stopPropagation();
               onAdd(property);
             }}
           >
-            {isAdded ? "✓ Added" : <Plus className="h-4 w-4" />}
+            {isAdded ? "✓" : <Plus className="h-4 w-4" />}
           </Button>
         </div>
       </div>
     );
   }
-  
+
   if (variant === 'compact') {
     return (
       <div className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">

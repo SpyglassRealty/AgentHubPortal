@@ -43,6 +43,8 @@ import {
   Pencil,
   MousePointer2,
   Trash2,
+  Lock,
+  Check,
 } from "lucide-react";
 import {
   Select,
@@ -485,6 +487,7 @@ function SubjectPropertyPanel({
                       <p className="font-medium truncate">{prop.address}</p>
                       <p className="text-xs text-muted-foreground">
                         {formatPrice(prop.listPrice)} · {prop.beds}bd/{prop.baths}ba · {formatNumber(prop.sqft)} sqft
+                        {prop.mlsNumber && <span className="ml-1 text-gray-400">· MLS# {normalizeMlsForDisplay(prop.mlsNumber)}</span>}
                       </p>
                     </div>
                     <Plus className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
@@ -562,12 +565,20 @@ function SubjectPropertyPanel({
 function ComparablePropertiesPanel({
   comps,
   onRemove,
+  locked = false,
 }: {
   comps: PropertyData[];
   onRemove: (index: number) => void;
+  locked?: boolean;
 }) {
   return (
-    <Card>
+    <Card className={locked ? 'relative' : ''}>
+      {locked && (
+        <div className="absolute inset-0 z-10 bg-white/60 dark:bg-black/40 rounded-lg flex flex-col items-center justify-center" style={{ pointerEvents: 'all' }}>
+          <Lock className="h-8 w-8 text-gray-300 mb-2" />
+          <p className="text-sm font-medium text-gray-400">Complete Step 1 to unlock</p>
+        </div>
+      )}
       <CardHeader className="pb-3">
         <div>
           <CardTitle className="text-base flex items-center gap-2">
@@ -640,14 +651,22 @@ function ComparablePropertiesPanel({
 function AnalysisPanel({
   subject,
   comps,
+  locked = false,
 }: {
   subject: PropertyData | null;
   comps: PropertyData[];
+  locked?: boolean;
 }) {
   // Only show analysis when we have both subject property and at least one comparable
-  if (!subject || comps.length === 0) {
+  if (locked || !subject || comps.length === 0) {
     return (
-      <Card className="opacity-50">
+      <Card className="relative">
+        <div className="absolute inset-0 z-10 bg-white/60 dark:bg-black/40 rounded-lg flex flex-col items-center justify-center">
+          <Lock className="h-8 w-8 text-gray-300 mb-2" />
+          <p className="text-sm font-medium text-gray-400">
+            {!subject ? "Set subject property first" : "Add comparables to unlock"}
+          </p>
+        </div>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-[#EF4923]" />
@@ -1871,7 +1890,7 @@ function SearchPropertiesSection({
                 <p className="text-xs mt-1">Try adjusting your search criteria or broadening your filters.</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {searchResults.map((prop, i) => {
                   const isAdded = existingMlsNumbers.has(prop.mlsNumber);
                   return (
@@ -2063,6 +2082,14 @@ export default function CmaBuilderPage() {
     [cma.comparableProperties]
   );
 
+  const isStep1Complete = Boolean(
+    cma.subjectProperty &&
+    cma.subjectProperty.address?.trim().length > 0 &&
+    cma.subjectProperty.listPrice > 0 &&
+    (cma.subjectProperty.sqft > 0)
+  );
+  const isStep2Complete = cma.comparableProperties.length > 0;
+
   if (!isNew && loadingCma) {
     return (
       <Layout>
@@ -2142,7 +2169,7 @@ export default function CmaBuilderPage() {
             <Button
               className="bg-[#EF4923] hover:bg-[#d4401f] text-white"
               onClick={handleCmaPresentation}
-              disabled={saveMutation.isPending || cma.comparableProperties.length === 0}
+              disabled={saveMutation.isPending || !isStep2Complete}
             >
               {saveMutation.isPending && postSaveRedirect?.includes('cma-presentation') ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -2165,6 +2192,49 @@ export default function CmaBuilderPage() {
           />
         </div>
 
+        {/* Step Progress Bar */}
+        <div className="flex items-center justify-center gap-0">
+          {[
+            {
+              num: 1,
+              label: "Subject property",
+              state: isStep1Complete ? 'done' : 'active',
+              sub: isStep1Complete ? "Complete ✓" : "Required first",
+            },
+            {
+              num: 2,
+              label: "Find comparables",
+              state: !isStep1Complete ? 'locked' : isStep2Complete ? 'done' : 'active',
+              sub: !isStep1Complete ? "Set subject first" : isStep2Complete ? `${cma.comparableProperties.length} comp(s) added` : "Add up to 10 comps",
+            },
+            {
+              num: 3,
+              label: "Analysis",
+              state: !isStep2Complete ? 'locked' : 'active',
+              sub: !isStep2Complete ? "Add comparables first" : "Ready to generate",
+            },
+          ].map((step, i) => (
+            <div key={step.num} className="flex items-center">
+              {i > 0 && (
+                <div className={`w-12 h-0.5 ${step.state === 'locked' ? 'bg-gray-200' : 'bg-[#EF4923]'}`} />
+              )}
+              <div className="flex flex-col items-center text-center min-w-[100px]">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                  step.state === 'done' ? 'bg-[#1D9E75] text-white' :
+                  step.state === 'active' ? 'bg-[#EF4923] text-white' :
+                  'bg-gray-200 text-gray-400'
+                }`}>
+                  {step.state === 'done' ? <Check className="h-4 w-4" /> :
+                   step.state === 'locked' ? <Lock className="h-3 w-3" /> :
+                   step.num}
+                </div>
+                <p className="text-xs font-medium mt-1">{step.label}</p>
+                <p className={`text-[10px] ${step.state === 'locked' ? 'text-gray-400' : step.state === 'done' ? 'text-[#1D9E75]' : 'text-[#EF4923]'}`}>{step.sub}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
         {/* Top panels: Subject + Comps + Analysis */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <SubjectPropertyPanel
@@ -2175,10 +2245,12 @@ export default function CmaBuilderPage() {
           <ComparablePropertiesPanel
             comps={cma.comparableProperties}
             onRemove={removeComp}
+            locked={!isStep1Complete}
           />
           <AnalysisPanel
             subject={cma.subjectProperty}
             comps={cma.comparableProperties}
+            locked={!isStep2Complete}
           />
         </div>
 
