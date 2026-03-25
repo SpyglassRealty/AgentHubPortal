@@ -3352,6 +3352,12 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // MLS# normalization: always add ACT prefix for Repliers API
+  function normalizeMlsForApi(input: string): string {
+    const bare = input.replace(/^ACT[-]?/i, '').replace(/\D/g, '');
+    return `ACT${bare}`;
+  }
+
   // Search properties for CMA comparables via Repliers API
   app.post('/api/cma/search-properties', isAuthenticated, async (req: any, res) => {
     try {
@@ -3421,11 +3427,11 @@ Respond with valid JSON in this exact format:
         console.log(`[CMA Search ENHANCED] Address search: "${search}"`);
         
         const trimmedSearch = search.trim();
-        const isMlsNumber = /^[A-Za-z]{1,5}\d{4,}$/.test(trimmedSearch);
+        const isMlsNumber = /^(ACT[-]?)?\d{6,10}$/i.test(trimmedSearch);
         
         if (isMlsNumber) {
           // Direct MLS lookup — exact match, no fuzzy, all statuses
-          params.append('mlsNumber', trimmedSearch);
+          params.append('mlsNumber', normalizeMlsForApi(trimmedSearch));
           // Do NOT append fuzzySearch for MLS lookups
           // Do NOT filter by status — listing could be active, sold, pending
           console.log('[CMA Search] MLS# detected, using mlsNumber param:', trimmedSearch);
@@ -3558,7 +3564,7 @@ Respond with valid JSON in this exact format:
               type: 'Sale',
               resultsPerPage: '5',
               pageNum: '1',
-              search: mlsClean,
+              search: normalizeMlsForApi(mlsClean),
             });
             const mlsUrl = `${baseUrl}?${mlsParams.toString()}`;
             const mlsResponse = await fetch(mlsUrl, {
@@ -3692,7 +3698,7 @@ Respond with valid JSON in this exact format:
 
       // Status handling - support multiple statuses
       const trimmedSearch = search?.trim();
-      const isMlsNumber = trimmedSearch && /^[A-Za-z]{1,5}\d{4,}$/.test(trimmedSearch);
+      const isMlsNumber = trimmedSearch && /^(ACT[-]?)?\d{6,10}$/i.test(trimmedSearch);
       const isAddressSearch = search && search.trim() && !isMlsNumber;
       
       let hasActive = false;

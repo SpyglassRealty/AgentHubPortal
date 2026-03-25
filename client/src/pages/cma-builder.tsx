@@ -236,6 +236,9 @@ function SubjectPropertyPanel({
   const [addressSearch, setAddressSearch] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<PropertyData[]>([]);
+  const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
+  const subjectInputRef = useRef<HTMLInputElement>(null);
+  const [subjectDropdownPos, setSubjectDropdownPos] = useState({ top: 0, left: 0, width: 0 });
   const [manualEntry, setManualEntry] = useState({
     streetAddress: "",
     city: "",
@@ -288,8 +291,37 @@ function SubjectPropertyPanel({
       return () => clearTimeout(timeoutId);
     } else {
       setSearchResults([]);
+      setShowSubjectDropdown(false);
     }
   }, [addressSearch]);
+
+  // Update dropdown position when results arrive
+  useEffect(() => {
+    if (searchResults.length > 0 && subjectInputRef.current) {
+      const rect = subjectInputRef.current.getBoundingClientRect();
+      setSubjectDropdownPos({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+      setShowSubjectDropdown(true);
+    } else {
+      setShowSubjectDropdown(false);
+    }
+  }, [searchResults]);
+
+  // Click-outside handler for subject dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!showSubjectDropdown) return;
+      if (subjectInputRef.current && subjectInputRef.current.contains(event.target as Node)) return;
+      const dropdown = document.querySelector('[data-subject-dropdown]');
+      if (dropdown && dropdown.contains(event.target as Node)) return;
+      setShowSubjectDropdown(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showSubjectDropdown]);
 
   const handleManualSave = () => {
     const prop: PropertyData = {
@@ -344,7 +376,7 @@ function SubjectPropertyPanel({
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm truncate">{subject.address}</p>
               {subject.mlsNumber && (
-                <p className="text-xs text-muted-foreground">MLS# {subject.mlsNumber}</p>
+                <p className="text-xs text-muted-foreground">MLS# {normalizeMlsForDisplay(subject.mlsNumber)}</p>
               )}
               <p className="text-lg font-bold text-[#EF4923] mt-1">
                 {formatPrice(subject.listPrice)}
@@ -409,10 +441,14 @@ function SubjectPropertyPanel({
           <TabsContent value="search" className="space-y-3">
             <div className="flex gap-2">
               <Input
+                ref={subjectInputRef}
                 placeholder="Enter property address or MLS#..."
                 value={addressSearch}
                 onChange={(e) => setAddressSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddressSearch()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddressSearch();
+                  if (e.key === "Escape") setShowSubjectDropdown(false);
+                }}
               />
               <Button
                 onClick={handleAddressSearch}
@@ -422,15 +458,25 @@ function SubjectPropertyPanel({
                 {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               </Button>
             </div>
-            {searchResults.length > 0 && (
-              <div className="border rounded-lg max-h-48 overflow-y-auto divide-y">
+            {showSubjectDropdown && searchResults.length > 0 && createPortal(
+              <div
+                data-subject-dropdown
+                className="fixed bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto divide-y"
+                style={{
+                  top: subjectDropdownPos.top,
+                  left: subjectDropdownPos.left,
+                  width: subjectDropdownPos.width,
+                  zIndex: 9999,
+                }}
+              >
                 {searchResults.map((prop, i) => (
-                  <div
+                  <button
                     key={i}
-                    className="p-2 hover:bg-muted cursor-pointer flex items-center justify-between text-sm"
+                    className="w-full p-2 hover:bg-gray-50 cursor-pointer flex items-center justify-between text-sm text-left"
                     onClick={() => {
                       onSet(prop);
                       setSearchResults([]);
+                      setShowSubjectDropdown(false);
                       setAddressSearch("");
                     }}
                   >
@@ -440,12 +486,11 @@ function SubjectPropertyPanel({
                         {formatPrice(prop.listPrice)} · {prop.beds}bd/{prop.baths}ba · {formatNumber(prop.sqft)} sqft
                       </p>
                     </div>
-                    <Button size="sm" variant="ghost" className="flex-shrink-0">
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
+                    <Plus className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                  </button>
                 ))}
-              </div>
+              </div>,
+              document.body
             )}
           </TabsContent>
 
@@ -775,31 +820,33 @@ function AnalysisPanel({
 const detectSearchType = (query: string): { type: 'mls' | 'zip' | 'address' | 'city' | null; value: string } => {
   const trimmed = query.trim();
   if (!trimmed) return { type: null, value: '' };
-  
+
   // Zip code — 5 digits only
   const zipPattern = /^\d{5}(-\d{4})?$/;
   if (zipPattern.test(trimmed)) return { type: 'zip', value: trimmed };
-  
-  // MLS# — can be:
-  // 1. Pure numeric: 9116957
-  // 2. ACT prefix: ACT9116957 or ACT 9116957
+
+  // MLS# — bare numeric (6-10 digits) or ACT-prefixed (with or without hyphen)
   const cleanedForMls = trimmed.replace(/\s/g, '');
-  const mlsWithAct = /^ACT\d{5,10}$/i.test(cleanedForMls);
-  const mlsNumericOnly = /^\d{6,10}$/.test(cleanedForMls);
-  
-  if (mlsWithAct) {
-    // Preserve full ACT prefix — send as-is to Repliers
-    return { type: 'mls', value: cleanedForMls.toUpperCase() }; // e.g. ACT9116957
+  if (/^(ACT[-]?)?\d{6,10}$/i.test(cleanedForMls)) {
+    return { type: 'mls', value: normalizeMlsForApi(cleanedForMls) };
   }
-  if (mlsNumericOnly) {
-    return { type: 'mls', value: cleanedForMls }; // e.g. 9116957
-  }
-  
+
   // Address — starts with number then word
   if (/^\d+\s+\w+/.test(trimmed)) return { type: 'address', value: trimmed };
-  
+
   return { type: 'city', value: trimmed };
 };
+
+// Strip ACT prefix for display — user should never see it
+function normalizeMlsForDisplay(input: string): string {
+  return input.replace(/^ACT[-]?/i, '').replace(/\D/g, '');
+}
+
+// Add ACT prefix for Repliers API calls — API requires it
+function normalizeMlsForApi(input: string): string {
+  const bare = input.replace(/^ACT[-]?/i, '').replace(/\D/g, '');
+  return `ACT${bare}`;
+}
 
 // Find Comparable Properties Section
 function SearchPropertiesSection({
@@ -1109,7 +1156,7 @@ function SearchPropertiesSection({
             <div style="min-width: 220px; font-family: system-ui, sans-serif;">
               ${((prop.photos && prop.photos.length > 0) || prop.photo) ? `<img src="${(prop.photos && prop.photos.length > 0) ? prop.photos[0] : prop.photo}" style="width: 100%; height: 100px; object-fit: cover; border-radius: 6px 6px 0 0; margin: -10px -10px 8px -10px; width: calc(100% + 20px);" />` : ''}
               <div style="font-weight: 600; font-size: 13px; margin-bottom: 2px;">${prop.address}</div>
-              ${prop.mlsNumber ? `<div style="font-size: 11px; color: #888; margin-bottom: 4px;">MLS# ${prop.mlsNumber}</div>` : ''}
+              ${prop.mlsNumber ? `<div style="font-size: 11px; color: #888; margin-bottom: 4px;">MLS# ${prop.mlsNumber.replace(/^ACT[-]?/i, '')}</div>` : ''}
               <div style="font-size: 16px; font-weight: 700; color: #EF4923; margin-bottom: 4px;">
                 ${formatPrice(prop.listPrice)}
                 ${prop.soldPrice ? `<span style="font-size: 12px; color: #666; font-weight: 400; margin-left: 4px;">Sold: ${formatPrice(prop.soldPrice)}</span>` : ''}
@@ -1472,7 +1519,7 @@ function SearchPropertiesSection({
                             <span className="font-medium text-green-600">
                               ${listing.listPrice?.toLocaleString()}
                             </span>
-                            <span># {listing.mlsNumber}</span>
+                            <span># {normalizeMlsForDisplay(listing.mlsNumber)}</span>
                           </div>
                         </div>
                       </button>
@@ -2143,9 +2190,10 @@ export default function CmaBuilderPage() {
 
   const addComp = (prop: PropertyData) => {
     setCma((prev) => {
+      const normalizedProp = { ...prop, mlsNumber: normalizeMlsForDisplay(prop.mlsNumber) };
       const updated = {
         ...prev,
-        comparableProperties: [...prev.comparableProperties, prop],
+        comparableProperties: [...prev.comparableProperties, normalizedProp],
       };
       // Auto-update status
       if (updated.subjectProperty && updated.comparableProperties.length > 0) {
@@ -2288,7 +2336,7 @@ export default function CmaBuilderPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <SubjectPropertyPanel
             subject={cma.subjectProperty}
-            onSet={(p) => updateCma({ subjectProperty: p })}
+            onSet={(p) => updateCma({ subjectProperty: { ...p, mlsNumber: normalizeMlsForDisplay(p.mlsNumber) } })}
             onClear={() => updateCma({ subjectProperty: null })}
           />
           <ComparablePropertiesPanel

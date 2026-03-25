@@ -127,7 +127,7 @@ export function PropertyCard({ property, isAdded, onAdd, variant = 'search-resul
         <div className="flex-1 min-w-0">
           {/* Line 1: MLS# (bold) */}
           <p className="text-sm font-bold text-foreground mb-1">
-            MLS# {property.mlsNumber}
+            MLS# {property.mlsNumber.replace(/^ACT[-]?/i, '')}
           </p>
           
           {/* Line 2: Full address */}
@@ -190,7 +190,7 @@ export function PropertyCard({ property, isAdded, onAdd, variant = 'search-resul
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{property.address}</p>
           {property.mlsNumber && (
-            <p className="text-xs text-muted-foreground">MLS# {property.mlsNumber}</p>
+            <p className="text-xs text-muted-foreground">MLS# {property.mlsNumber.replace(/^ACT[-]?/i, '')}</p>
           )}
           <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
             <span className="font-semibold text-foreground">{formatPrice(price)}</span>
@@ -238,7 +238,7 @@ export function PropertyCard({ property, isAdded, onAdd, variant = 'search-resul
             </h3>
             {property.mlsNumber && (
               <p className="text-xs text-muted-foreground mt-0.5">
-                MLS# {property.mlsNumber}
+                MLS# {property.mlsNumber.replace(/^ACT[-]?/i, '')}
               </p>
             )}
           </div>
