@@ -317,10 +317,14 @@ function ContentBlockEditor({
   const [isExpanded, setIsExpanded] = useState(false);
   const [localBlock, setLocalBlock] = useState(block);
 
-  // Sync local state when block identity changes (not on every update)
+  // Stable ref for onUpdate so cleanup effects always call the latest version
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
+
+  // Sync local state when block identity or server-confirmed content changes
   useEffect(() => {
     setLocalBlock(block);
-  }, [block.id]);
+  }, [block.id, block.content]);
 
   const handleFieldChange = (field: string, value: any) => {
     setLocalBlock(prev => ({ ...prev, [field]: value }));
@@ -353,12 +357,15 @@ function ContentBlockEditor({
     return () => {
       if (contentTimerRef.current) clearTimeout(contentTimerRef.current);
       if (pendingContentRef.current !== null) {
-        onUpdate({ content: pendingContentRef.current });
+        onUpdateRef.current({ content: pendingContentRef.current });
+        pendingContentRef.current = null;
       }
     };
-  }, [onUpdate]);
+  }, []);
 
   const flushAllFields = () => {
+    if (contentTimerRef.current) clearTimeout(contentTimerRef.current);
+    pendingContentRef.current = null;
     onUpdate({
       title: localBlock.title,
       content: localBlock.content,
