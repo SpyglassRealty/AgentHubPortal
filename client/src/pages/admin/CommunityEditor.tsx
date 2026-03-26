@@ -71,6 +71,7 @@ export default function CommunityEditor() {
   const [published, setPublished] = useState(false);
   const [featured, setFeatured] = useState(false);
   const [featuredImageUrl, setFeaturedImageUrl] = useState("");
+  const [communityName, setCommunityName] = useState("");
 
   // Tag input states
   const [highlightInput, setHighlightInput] = useState("");
@@ -95,6 +96,7 @@ export default function CommunityEditor() {
       setPublished(community.published ?? false);
       setFeatured(community.featured ?? false);
       setFeaturedImageUrl(community.featuredImageUrl || "");
+      setCommunityName(community.name || "");
     }
   }, [community]);
 
@@ -105,6 +107,7 @@ export default function CommunityEditor() {
       await updateMutation.mutateAsync({
         slug,
         data: {
+          name: communityName || null,
           metaTitle: metaTitle || null,
           metaDescription: metaDescription || null,
           focusKeyword: focusKeyword || null,
@@ -249,7 +252,7 @@ export default function CommunityEditor() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">{community.name}</h1>
+              <h1 className="text-2xl font-bold">{communityName}</h1>
               <p className="text-sm text-muted-foreground">/{urlSlug || community.slug} • {community.county}</p>
             </div>
           </div>
@@ -296,7 +299,7 @@ export default function CommunityEditor() {
               <Input
                 value={metaTitle}
                 onChange={(e) => setMetaTitle(e.target.value)}
-                placeholder={`${community.name} – Homes for Sale & Community Guide`}
+                placeholder={`${communityName} – Homes for Sale & Community Guide`}
                 maxLength={80}
               />
               <p className={`text-xs mt-1 ${charCountColor(metaTitle.length, 50, 60)}`}>
@@ -329,7 +332,13 @@ export default function CommunityEditor() {
               <Label>URL Slug</Label>
               <Input
                 value={urlSlug}
-                onChange={(e) => setUrlSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                onChange={(e) => {
+                  const newSlug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                  setUrlSlug(newSlug);
+                  setCommunityName(
+                    newSlug.split('-').filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+                  );
+                }}
                 placeholder={community.slug}
               />
               <p className="text-xs text-muted-foreground mt-1">
@@ -342,13 +351,13 @@ export default function CommunityEditor() {
               <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wider">Google Preview</p>
               <div className="space-y-1">
                 <p className="text-blue-600 dark:text-blue-400 text-lg truncate">
-                  {metaTitle || `${community.name} – Homes for Sale & Community Guide`}
+                  {metaTitle || `${communityName} – Homes for Sale & Community Guide`}
                 </p>
                 <p className="text-green-700 dark:text-green-500 text-sm truncate">
                   spyglassrealty.com/{urlSlug || community.slug}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                  {metaDescription || `Learn about ${community.name}: homes for sale, neighborhood highlights, schools, and what it's like to live here.`}
+                  {metaDescription || `Learn about ${communityName}: homes for sale, neighborhood highlights, schools, and what it's like to live here.`}
                 </p>
               </div>
             </div>
@@ -586,7 +595,7 @@ export default function CommunityEditor() {
               ) : (
                 <Badge variant="secondary">Draft</Badge>
               )}
-              <span className="text-sm text-muted-foreground">{community.name}</span>
+              <span className="text-sm text-muted-foreground">{communityName}</span>
             </div>
             <Button onClick={handleSaveClick} disabled={updateMutation.isPending}>
               {updateMutation.isPending ? (
