@@ -3092,13 +3092,22 @@ Respond with valid JSON in this exact format:
   // CMA (Comparative Market Analysis) Routes
   // ==========================================
 
-  // List all CMAs for the authenticated user
+  // List CMAs — admin view returns all with creator info, agent view returns own only
   app.get('/api/cma', isAuthenticated, async (req: any, res) => {
     try {
       const user = await getDbUser(req);
       if (!user) return res.status(401).json({ message: "Not authenticated" });
-      const cmaList = await storage.getCmas(user.id);
-      res.json({ cmas: cmaList });
+
+      const viewParam = req.query.view;
+      const isAdminRole = user.role === 'admin' || user.role === 'developer';
+
+      if (viewParam === 'admin' && isAdminRole) {
+        const cmaList = await storage.getAllCmasWithCreator();
+        res.json({ cmas: cmaList });
+      } else {
+        const cmaList = await storage.getCmas(user.id);
+        res.json({ cmas: cmaList });
+      }
     } catch (error) {
       console.error('[CMA] Error listing CMAs:', error);
       res.status(500).json({ message: "Failed to list CMAs" });

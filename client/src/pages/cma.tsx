@@ -26,6 +26,7 @@ import {
   Edit,
   MoreVertical,
   Building2,
+  User,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -34,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatDistanceToNow } from "date-fns";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface CmaItem {
   id: string;
@@ -43,17 +45,23 @@ interface CmaItem {
   status: string;
   createdAt: string;
   updatedAt: string;
+  creatorFirstName?: string | null;
+  creatorLastName?: string | null;
+  creatorEmail?: string | null;
 }
 
 export default function CmaPage() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const { isAdmin } = useUserRole();
+  const [viewMode, setViewMode] = useState<'admin' | 'agent'>('agent');
 
   const { data, isLoading } = useQuery<{ cmas: CmaItem[] }>({
-    queryKey: ["/api/cma"],
+    queryKey: ["/api/cma", viewMode],
     queryFn: async () => {
-      const res = await fetch("/api/cma", { credentials: "include" });
+      const params = isAdmin && viewMode === 'admin' ? '?view=admin' : '';
+      const res = await fetch(`/api/cma${params}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch CMAs");
       return res.json();
     },
@@ -96,13 +104,24 @@ export default function CmaPage() {
               Create and manage CMAs for your clients
             </p>
           </div>
-          <Button
-            className="bg-[#EF4923] hover:bg-[#d4401f] text-white"
-            onClick={() => setLocation("/cma/new")}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create CMA
-          </Button>
+          <div className="flex items-center gap-3">
+            {isAdmin && (
+              <Button
+                variant="default"
+                onClick={() => setViewMode(viewMode === 'admin' ? 'agent' : 'admin')}
+                className="min-w-[44px] min-h-[44px] bg-[#EF4923] hover:bg-[#EF4923]/90"
+              >
+                {viewMode === 'admin' ? 'Switch to Agent View' : 'Switch to Admin View'}
+              </Button>
+            )}
+            <Button
+              className="bg-[#EF4923] hover:bg-[#d4401f] text-white"
+              onClick={() => setLocation("/cma/new")}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create CMA
+            </Button>
+          </div>
         </div>
 
         {/* CMA List */}
@@ -193,6 +212,16 @@ export default function CmaPage() {
                         <Building2 className="h-4 w-4 flex-shrink-0" />
                         <span>{compCount} comparable{compCount !== 1 ? "s" : ""}</span>
                       </div>
+                      {isAdmin && viewMode === 'admin' && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <User className="h-4 w-4 flex-shrink-0" />
+                          <span className="truncate">
+                            {cma.creatorFirstName || cma.creatorLastName
+                              ? `${cma.creatorFirstName || ''} ${cma.creatorLastName || ''}`.trim()
+                              : cma.creatorEmail || 'Unknown agent'}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Calendar className="h-4 w-4 flex-shrink-0" />
                         <span>

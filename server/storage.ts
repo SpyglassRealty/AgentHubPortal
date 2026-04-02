@@ -112,6 +112,7 @@ export interface IStorage {
   
   // CMA methods
   getCmas(userId: string): Promise<Cma[]>;
+  getAllCmasWithCreator(): Promise<(Cma & { creatorFirstName: string | null; creatorLastName: string | null; creatorEmail: string | null })[]>;
   getCma(id: string, userId?: string): Promise<Cma | undefined>;
   getCmaByShareToken(token: string): Promise<Cma | undefined>;
   createCma(cma: InsertCma): Promise<Cma>;
@@ -728,6 +729,25 @@ export class DatabaseStorage implements IStorage {
   // CMA methods
   async getCmas(userId: string): Promise<Cma[]> {
     return db.select().from(cmas).where(eq(cmas.userId, userId)).orderBy(desc(cmas.updatedAt));
+  }
+
+  async getAllCmasWithCreator(): Promise<(Cma & { creatorFirstName: string | null; creatorLastName: string | null; creatorEmail: string | null })[]> {
+    const rows = await db
+      .select({
+        cma: cmas,
+        creatorFirstName: users.firstName,
+        creatorLastName: users.lastName,
+        creatorEmail: users.email,
+      })
+      .from(cmas)
+      .leftJoin(users, eq(cmas.userId, users.id))
+      .orderBy(desc(cmas.updatedAt));
+    return rows.map((row) => ({
+      ...row.cma,
+      creatorFirstName: row.creatorFirstName,
+      creatorLastName: row.creatorLastName,
+      creatorEmail: row.creatorEmail,
+    }));
   }
 
   async getCma(id: string, userId?: string): Promise<Cma | undefined> {
