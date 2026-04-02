@@ -14,7 +14,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserRole } from "@/hooks/useUserRole";
 import { useLocation } from "wouter";
 import {
   AlertDialog,
@@ -140,18 +139,17 @@ export default function CallDutyPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user, isLoading } = useAuth();
-  const userRole = useUserRole();
   const [, setLocation] = useLocation();
 
-  // Route guard: admin or developer only
+  // Route guard: must be logged in
   React.useEffect(() => {
-    if (!isLoading && user && !userRole.isAdmin) {
+    if (!isLoading && !user) {
       setLocation('/');
     }
-  }, [isLoading, user, userRole.isAdmin, setLocation]);
+  }, [isLoading, user, setLocation]);
 
   // Show nothing while loading or redirecting
-  if (isLoading || !user || !userRole.isAdmin) {
+  if (isLoading || !user) {
     return null;
   }
 
