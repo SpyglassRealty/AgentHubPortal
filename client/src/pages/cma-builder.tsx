@@ -574,7 +574,7 @@ function ComparablePropertiesPanel({
   return (
     <Card className={locked ? 'relative' : ''}>
       {locked && (
-        <div className="absolute inset-0 z-10 bg-white/60 dark:bg-black/40 rounded-lg flex flex-col items-center justify-center" style={{ pointerEvents: 'all' }}>
+        <div className="absolute inset-0 z-10 bg-white/95 dark:bg-black/90 rounded-lg flex flex-col items-center justify-center" style={{ pointerEvents: 'all' }}>
           <Lock className="h-8 w-8 text-gray-300 mb-2" />
           <p className="text-sm font-medium text-gray-400">Complete Step 1 to unlock</p>
         </div>
@@ -661,7 +661,7 @@ function AnalysisPanel({
   if (locked || !subject || comps.length === 0) {
     return (
       <Card className="relative">
-        <div className="absolute inset-0 z-10 bg-white/60 dark:bg-black/40 rounded-lg flex flex-col items-center justify-center">
+        <div className="absolute inset-0 z-10 bg-white/95 dark:bg-black/90 rounded-lg flex flex-col items-center justify-center">
           <Lock className="h-8 w-8 text-gray-300 mb-2" />
           <p className="text-sm font-medium text-gray-400">
             {!subject ? "Set subject property first" : "Add comparables to unlock"}
