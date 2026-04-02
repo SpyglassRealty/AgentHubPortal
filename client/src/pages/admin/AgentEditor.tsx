@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -43,6 +43,7 @@ export default function AgentEditor() {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const availableOffices = ["Austin", "Houston", "Corpus Christi"];
 
@@ -309,11 +310,20 @@ export default function AgentEditor() {
                 <div>
                   <label className="block text-sm font-medium mb-2">Profile Photo</label>
                   <input
+                    ref={fileInputRef}
                     type="file"
                     accept="image/*"
                     onChange={(e) => e.target.files?.[0] && handleUploadPhoto(e.target.files[0])}
-                    className="text-sm"
+                    className="hidden"
                   />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Image className="mr-2" size={16} />
+                    Upload Photo
+                  </Button>
                 </div>
               </div>
 
