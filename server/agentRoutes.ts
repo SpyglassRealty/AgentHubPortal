@@ -29,6 +29,9 @@ async function uploadAgentPhotoToVercelBlob(file: Express.Multer.File): Promise<
 
   const response = await fetch(UPLOAD_ENDPOINT, {
     method: 'POST',
+    headers: {
+      'x-upload-secret': process.env.REVALIDATE_SECRET || '',
+    },
     body: formData,
   });
 

@@ -862,7 +862,10 @@ async function uploadImageToVercelBlob(imageUrl: string, _folder = 'blog-images'
   try {
     const res = await fetch(IDX_UPLOAD_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-upload-secret': process.env.REVALIDATE_SECRET || '',
+      },
       body: JSON.stringify({ url: imageUrl }),
     });
     if (!res.ok) {

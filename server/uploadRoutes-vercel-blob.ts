@@ -48,6 +48,9 @@ async function uploadToVercelBlob(file: Express.Multer.File): Promise<{ url: str
 
   const response = await fetch(UPLOAD_ENDPOINT, {
     method: 'POST',
+    headers: {
+      'x-upload-secret': process.env.REVALIDATE_SECRET || '',
+    },
     body: formData,
   });
 
@@ -67,6 +70,7 @@ async function uploadUrlToVercelBlob(url: string): Promise<{ url: string; size: 
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'x-upload-secret': process.env.REVALIDATE_SECRET || '',
     },
     body: JSON.stringify({ url }),
   });
