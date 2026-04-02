@@ -1,50 +1,54 @@
 import { Router } from "express";
 import { eq, desc, asc, ilike, and, or, sql } from "drizzle-orm";
 import { db } from "./db";
-import { 
+import {
   agentDirectoryProfiles,
   type AgentDirectoryProfile,
   type InsertAgentDirectoryProfile
 } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
-import path from "path";
-import fs from "fs";
 import { nanoid } from "nanoid";
+import { isAuthenticated } from "./replitAuth";
 
 const router = Router();
 
 // ── File Upload Configuration ────────────────────────────────────────────
 
-// Ensure agent-photos directory exists
-const agentPhotosDir = path.join(process.cwd(), "public", "agent-photos");
-if (!fs.existsSync(agentPhotosDir)) {
-  fs.mkdirSync(agentPhotosDir, { recursive: true });
-}
+// Configuration for spyglass-idx upload endpoint (Vercel Blob proxy)
+const SPYGLASS_IDX_URL = process.env.SPYGLASS_IDX_URL || 'https://spyglass-idx.vercel.app';
+const UPLOAD_ENDPOINT = `${SPYGLASS_IDX_URL}/api/upload`;
 
-// Configure multer for agent photo uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, agentPhotosDir);
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename: agentId_timestamp_random.ext
-    const ext = path.extname(file.originalname).toLowerCase();
-    const agentId = req.body.agentId || 'temp';
-    const filename = `${agentId}_${Date.now()}_${nanoid(6)}${ext}`;
-    cb(null, filename);
+/**
+ * Upload agent photo to Vercel Blob via spyglass-idx proxy
+ */
+async function uploadAgentPhotoToVercelBlob(file: Express.Multer.File): Promise<{ url: string; size: number }> {
+  const formData = new FormData();
+  const blob = new Blob([file.buffer], { type: file.mimetype });
+  formData.append('file', blob, file.originalname);
+
+  const response = await fetch(UPLOAD_ENDPOINT, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to upload to Vercel Blob: ${response.status} ${error}`);
   }
-});
+
+  return await response.json();
+}
 
 const fileFilter = (req: any, file: any, cb: any) => {
   const allowedMimes = [
     'image/jpeg',
-    'image/jpg', 
+    'image/jpg',
     'image/png',
     'image/gif',
     'image/webp'
   ];
-  
+
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
@@ -53,10 +57,10 @@ const fileFilter = (req: any, file: any, cb: any) => {
 };
 
 const uploadPhoto = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 10 * 1024 * 1024, // 10MB limit
   },
 });
 
@@ -392,28 +396,34 @@ router.patch("/admin/agents/bulk-visibility", async (req, res) => {
   }
 });
 
-// POST /api/admin/agents/upload-photo - Upload agent photo
-router.post("/admin/agents/upload-photo", uploadPhoto.single("file"), async (req, res) => {
+// POST /api/admin/agents/upload-photo - Upload agent photo to Vercel Blob
+router.post("/admin/agents/upload-photo", isAuthenticated, uploadPhoto.single("file"), async (req: any, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
     const { agentId } = req.body;
-    
+
+    console.log(`[Agent Photo] Uploading photo: ${req.file.originalname} (${Math.round(req.file.size / 1024)}KB) for agent: ${agentId || 'new'}`);
+
+    // Upload to Vercel Blob via spyglass-idx proxy
+    const blobResult = await uploadAgentPhotoToVercelBlob(req.file);
+    const permanentUrl = blobResult.url;
+
+    console.log(`[Agent Photo] Uploaded to Vercel Blob: ${req.file.originalname} → ${permanentUrl}`);
+
     // For new agents (agentId === 'new'), just return the URL
     // The actual agent creation will happen separately
     if (agentId === 'new') {
-      const baseUrl = process.env.MISSION_CONTROL_URL || 'https://missioncontrol-tjfm.onrender.com';
-      const url = `${baseUrl}/agent-photos/${req.file.filename}`;
-      return res.json({ 
-        url,
-        filename: req.file.filename,
-        message: "Photo uploaded. It will be associated with the agent when you save."
+      return res.json({
+        url: permanentUrl,
+        filename: req.file.originalname,
+        message: "Photo uploaded to Vercel Blob. It will be associated with the agent when you save."
       });
     }
 
-    // For existing agents, update their profile
+    // For existing agents, update their profile with the permanent Blob URL
     if (agentId && agentId !== 'new') {
       const [existingAgent] = await db
         .select()
@@ -421,45 +431,25 @@ router.post("/admin/agents/upload-photo", uploadPhoto.single("file"), async (req
         .where(eq(agentDirectoryProfiles.id, agentId));
 
       if (!existingAgent) {
-        // Clean up uploaded file
-        fs.unlinkSync(req.file.path);
         return res.status(404).json({ error: "Agent not found" });
       }
 
-      // Delete old photo if it exists and is in our directory
-      if (existingAgent.headshotUrl && existingAgent.headshotUrl.includes('/agent-photos/')) {
-        const oldFilename = existingAgent.headshotUrl.split('/').pop();
-        const oldPath = path.join(agentPhotosDir, oldFilename!);
-        if (fs.existsSync(oldPath)) {
-          fs.unlinkSync(oldPath);
-        }
-      }
-
-      // Update agent with new photo URL (use full URL for production)
-      const baseUrl = process.env.MISSION_CONTROL_URL || 'https://missioncontrol-tjfm.onrender.com';
-      const url = `${baseUrl}/agent-photos/${req.file.filename}`;
+      // Update agent with permanent Vercel Blob URL
       await db
         .update(agentDirectoryProfiles)
-        .set({ 
-          headshotUrl: url,
+        .set({
+          headshotUrl: permanentUrl,
           updatedAt: new Date()
         })
         .where(eq(agentDirectoryProfiles.id, agentId));
+
+      console.log(`[Agent Photo] Updated DB for agent ${agentId}: ${permanentUrl}`);
     }
 
-    // Return full URL for production
-    const baseUrl = process.env.MISSION_CONTROL_URL || 'https://missioncontrol-tjfm.onrender.com';
-    const url = `${baseUrl}/agent-photos/${req.file.filename}`;
-    res.json({ url, filename: req.file.filename });
+    res.json({ url: permanentUrl, filename: req.file.originalname });
   } catch (error) {
-    console.error("Photo upload error:", error);
-    
-    // Clean up file if there was an error
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-    
-    res.status(500).json({ 
+    console.error("[Agent Photo] Upload error:", error);
+    res.status(500).json({
       error: "Failed to upload photo",
       details: error instanceof Error ? error.message : "Unknown error"
     });
