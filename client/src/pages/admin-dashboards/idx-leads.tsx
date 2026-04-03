@@ -20,6 +20,40 @@ import { DashboardLayout } from '@/components/admin-dashboards/dashboard-layout'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 
+class IdxLeadsErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 text-red-600 bg-red-50 rounded-lg m-4">
+          <h2 className="font-bold text-lg mb-2">IDX Leads Page Error</h2>
+          <pre className="text-sm whitespace-pre-wrap bg-white p-4 rounded border border-red-200 overflow-auto max-h-96">
+            {this.state.error?.message}
+            {'\n\n'}
+            {this.state.error?.stack}
+          </pre>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 interface IdxLead {
   id: string;
   name: string;
@@ -170,11 +204,11 @@ export default function IdxLeadsPage() {
     const csv = [
       ['Name', 'Email', 'Phone', 'Form Type', 'Status', 'Submitted', 'Property/Community', 'Message'],
       ...leads.map((lead: IdxLead) => [
-        lead.name,
-        lead.email,
+        lead.name || '',
+        lead.email || '',
         lead.phone || '',
-        lead.formType,
-        lead.status,
+        lead.formType || '',
+        lead.status || '',
         lead.submittedAt ? format(new Date(lead.submittedAt), 'yyyy-MM-dd HH:mm') : '',
         lead.listingAddress || lead.communityName || '',
         lead.message || '',
@@ -232,6 +266,7 @@ export default function IdxLeadsPage() {
   }
 
   return (
+    <IdxLeadsErrorBoundary>
     <DashboardLayout title="IDX Lead Capture" subtitle="Website lead management" icon={Home}>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -361,17 +396,17 @@ export default function IdxLeadsPage() {
                   ) : (
                     leads.map((lead: IdxLead) => (
                       <TableRow key={lead.id}>
-                        <TableCell className="font-medium">{lead.name}</TableCell>
+                        <TableCell className="font-medium">{lead.name || '—'}</TableCell>
                         <TableCell>
                           <div className="space-y-1">
-                            <div className="text-sm">{lead.email}</div>
+                            <div className="text-sm">{lead.email || '—'}</div>
                             {lead.phone && (
                               <div className="text-xs text-gray-500">{lead.phone}</div>
                             )}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{getFormTypeLabel(lead.formType)}</Badge>
+                          <Badge variant="outline">{getFormTypeLabel(lead.formType || 'contact')}</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="max-w-[200px]">
@@ -386,14 +421,14 @@ export default function IdxLeadsPage() {
                             )}
                             {lead.preferredDate && (
                               <div className="text-xs text-gray-500">
-                                {lead.preferredDate} {lead.preferredTime}
+                                {lead.preferredDate} {lead.preferredTime ?? ''}
                               </div>
                             )}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge className={getStatusColor(lead.status)}>
-                            {lead.status}
+                          <Badge className={getStatusColor(lead.status || 'new')}>
+                            {lead.status || 'new'}
                           </Badge>
                           {lead.fubSyncError && (
                             <Badge variant="destructive" className="ml-1">
@@ -419,7 +454,7 @@ export default function IdxLeadsPage() {
                               <SelectContent>
                                 {users?.filter((u: McUser) => u.role === 'agent' || u.role === 'admin').map((user: McUser) => (
                                   <SelectItem key={user.id} value={user.id}>
-                                    {user.firstName} {user.lastName}
+                                    {user.firstName || ''} {user.lastName || ''}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -453,7 +488,7 @@ export default function IdxLeadsPage() {
                               </Button>
                             )}
                             <Select
-                              value={lead.status}
+                              value={lead.status || 'new'}
                               onValueChange={(status) => handleStatusChange(lead, status)}
                             >
                               <SelectTrigger className="h-8 w-[100px]">
@@ -488,11 +523,11 @@ export default function IdxLeadsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium">Name</label>
-                    <div className="text-sm">{selectedLead.name}</div>
+                    <div className="text-sm">{selectedLead.name || '—'}</div>
                   </div>
                   <div>
                     <label className="text-sm font-medium">Email</label>
-                    <div className="text-sm">{selectedLead.email}</div>
+                    <div className="text-sm">{selectedLead.email || '—'}</div>
                   </div>
                   <div>
                     <label className="text-sm font-medium">Phone</label>
@@ -500,7 +535,7 @@ export default function IdxLeadsPage() {
                   </div>
                   <div>
                     <label className="text-sm font-medium">Form Type</label>
-                    <div className="text-sm">{getFormTypeLabel(selectedLead.formType)}</div>
+                    <div className="text-sm">{getFormTypeLabel(selectedLead.formType || 'contact')}</div>
                   </div>
                 </div>
 
@@ -519,7 +554,7 @@ export default function IdxLeadsPage() {
                       {selectedLead.mlsNumber && <div>MLS#: {selectedLead.mlsNumber}</div>}
                       {selectedLead.communityName && <div>Community: {selectedLead.communityName}</div>}
                       {selectedLead.preferredDate && (
-                        <div>Preferred: {selectedLead.preferredDate} {selectedLead.preferredTime}</div>
+                        <div>Preferred: {selectedLead.preferredDate} {selectedLead.preferredTime ?? ''}</div>
                       )}
                     </div>
                   </div>
@@ -558,5 +593,6 @@ export default function IdxLeadsPage() {
         </Dialog>
       </div>
     </DashboardLayout>
+    </IdxLeadsErrorBoundary>
   );
 }
