@@ -175,7 +175,7 @@ export default function IdxLeadsPage() {
         lead.phone || '',
         lead.formType,
         lead.status,
-        format(new Date(lead.submittedAt), 'yyyy-MM-dd HH:mm'),
+        lead.submittedAt ? format(new Date(lead.submittedAt), 'yyyy-MM-dd HH:mm') : '',
         lead.listingAddress || lead.communityName || '',
         lead.message || '',
       ]),
@@ -403,7 +403,7 @@ export default function IdxLeadsPage() {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {format(new Date(lead.submittedAt), 'MMM d, h:mm a')}
+                            {lead.submittedAt ? format(new Date(lead.submittedAt), 'MMM d, h:mm a') : '—'}
                           </div>
                         </TableCell>
                         <TableCell>
