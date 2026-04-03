@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import {
@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, RefreshCw, Search, Download, User, MessageSquare } from 'lucide-react';
+import { Loader2, RefreshCw, Search, Download, MessageSquare, Home } from 'lucide-react';
 import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/admin-dashboards/dashboard-layout';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -44,11 +44,12 @@ interface IdxLead {
   archivedAt?: string;
 }
 
-interface User {
+interface McUser {
   id: string;
   email: string;
   firstName?: string;
   lastName?: string;
+  role?: string;
 }
 
 export default function IdxLeadsPage() {
@@ -60,7 +61,7 @@ export default function IdxLeadsPage() {
   const [notes, setNotes] = useState('');
 
   // Fetch leads
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['idx-leads', statusFilter, formTypeFilter, search],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -148,7 +149,7 @@ export default function IdxLeadsPage() {
   });
 
   const handleStatusChange = (lead: IdxLead, newStatus: string) => {
-    updateLeadMutation.mutate({ id: lead.id, updates: { status: newStatus } });
+    updateLeadMutation.mutate({ id: lead.id, updates: { status: newStatus as IdxLead['status'] } });
   };
 
   const handleAssign = (lead: IdxLead, userId: string) => {
@@ -164,11 +165,11 @@ export default function IdxLeadsPage() {
   };
 
   const exportToCSV = () => {
-    if (!data?.leads) return;
+    if (leads.length === 0) return;
 
     const csv = [
       ['Name', 'Email', 'Phone', 'Form Type', 'Status', 'Submitted', 'Property/Community', 'Message'],
-      ...data.leads.map((lead: IdxLead) => [
+      ...leads.map((lead: IdxLead) => [
         lead.name,
         lead.email,
         lead.phone || '',
@@ -179,7 +180,7 @@ export default function IdxLeadsPage() {
         lead.message || '',
       ]),
     ]
-      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .map(row => row.map((cell: string) => `"${cell}"`).join(','))
       .join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -194,7 +195,7 @@ export default function IdxLeadsPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'new':
-        return 'bg-blue-500';
+        return 'bg-[#EF4923]';
       case 'contacted':
         return 'bg-yellow-500';
       case 'qualified':
@@ -219,6 +220,17 @@ export default function IdxLeadsPage() {
     }
   };
 
+  const leads = data?.leads ?? [];
+  const total = data?.total ?? 0;
+
+  if (error) {
+    return (
+      <DashboardLayout title="IDX Lead Capture" subtitle="Website lead management" icon={Home}>
+        <div className="p-6 text-red-600">Error loading leads: {(error as Error).message}</div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout title="IDX Lead Capture" subtitle="Website lead management" icon={Home}>
       <div className="space-y-6">
@@ -237,14 +249,14 @@ export default function IdxLeadsPage() {
         </div>
 
         {/* Stats Cards */}
-        {data && (
+        {!isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{data.total}</div>
+                <div className="text-2xl font-bold">{total}</div>
               </CardContent>
             </Card>
             <Card>
@@ -252,8 +264,8 @@ export default function IdxLeadsPage() {
                 <CardTitle className="text-sm font-medium">New Leads</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-600">
-                  {data.leads.filter((l: IdxLead) => l.status === 'new').length}
+                <div className="text-2xl font-bold text-[#EF4923]">
+                  {leads.filter((l: IdxLead) => l.status === 'new').length}
                 </div>
               </CardContent>
             </Card>
@@ -263,7 +275,7 @@ export default function IdxLeadsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-yellow-600">
-                  {data.leads.filter((l: IdxLead) => l.status === 'contacted').length}
+                  {leads.filter((l: IdxLead) => l.status === 'contacted').length}
                 </div>
               </CardContent>
             </Card>
@@ -273,7 +285,7 @@ export default function IdxLeadsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">
-                  {data.leads.filter((l: IdxLead) => l.fubSyncError).length}
+                  {leads.filter((l: IdxLead) => l.fubSyncError).length}
                 </div>
               </CardContent>
             </Card>
@@ -340,14 +352,14 @@ export default function IdxLeadsPage() {
                         <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                       </TableCell>
                     </TableRow>
-                  ) : data?.leads?.length === 0 ? (
+                  ) : leads.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                         No leads found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    data?.leads?.map((lead: IdxLead) => (
+                    leads.map((lead: IdxLead) => (
                       <TableRow key={lead.id}>
                         <TableCell className="font-medium">{lead.name}</TableCell>
                         <TableCell>
@@ -397,7 +409,7 @@ export default function IdxLeadsPage() {
                         <TableCell>
                           {lead.assignedTo ? (
                             <div className="text-sm">
-                              {users?.find((u: User) => u.id === lead.assignedTo)?.email || 'Unknown'}
+                              {users?.find((u: McUser) => u.id === lead.assignedTo)?.email || 'Unknown'}
                             </div>
                           ) : (
                             <Select onValueChange={(userId) => handleAssign(lead, userId)}>
@@ -405,7 +417,7 @@ export default function IdxLeadsPage() {
                                 <SelectValue placeholder="Assign..." />
                               </SelectTrigger>
                               <SelectContent>
-                                {users?.filter((u: User) => u.role === 'agent' || u.role === 'admin').map((user: User) => (
+                                {users?.filter((u: McUser) => u.role === 'agent' || u.role === 'admin').map((user: McUser) => (
                                   <SelectItem key={user.id} value={user.id}>
                                     {user.firstName} {user.lastName}
                                   </SelectItem>
