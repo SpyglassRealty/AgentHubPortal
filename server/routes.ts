@@ -6409,6 +6409,7 @@ Respond with valid JSON in this exact format:
 
       const url = new URL('https://api.followupboss.com/v1/events');
       url.searchParams.set('limit', '100');
+      url.searchParams.set('fields', 'id,type,person,occurredAt,property,description,source');
       if (req.query.type) {
         url.searchParams.set('type', req.query.type);
       }
