@@ -209,7 +209,7 @@ export default function IdxLeadsPage() {
         lead.phone || '',
         lead.formType || '',
         lead.status || '',
-        lead.submittedAt ? format(new Date(lead.submittedAt), 'yyyy-MM-dd HH:mm') : '',
+        (() => { try { return lead.submittedAt ? format(new Date(lead.submittedAt), 'yyyy-MM-dd HH:mm') : ''; } catch { return ''; } })(),
         lead.listingAddress || lead.communityName || '',
         lead.message || '',
       ]),
@@ -257,16 +257,13 @@ export default function IdxLeadsPage() {
   const leads = data?.leads ?? [];
   const total = data?.total ?? 0;
 
-  if (error) {
-    return (
+  return (
+    <IdxLeadsErrorBoundary>
+    {error ? (
       <DashboardLayout title="IDX Lead Capture" subtitle="Website lead management" icon={Home}>
         <div className="p-6 text-red-600">Error loading leads: {(error as Error).message}</div>
       </DashboardLayout>
-    );
-  }
-
-  return (
-    <IdxLeadsErrorBoundary>
+    ) : (
     <DashboardLayout title="IDX Lead Capture" subtitle="Website lead management" icon={Home}>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -438,13 +435,13 @@ export default function IdxLeadsPage() {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {lead.submittedAt ? format(new Date(lead.submittedAt), 'MMM d, h:mm a') : '—'}
+                            {(() => { try { return lead.submittedAt ? format(new Date(lead.submittedAt), 'MMM d, h:mm a') : '—'; } catch { return '—'; } })()}
                           </div>
                         </TableCell>
                         <TableCell>
                           {lead.assignedTo ? (
                             <div className="text-sm">
-                              {users?.find((u: McUser) => u.id === lead.assignedTo)?.email || 'Unknown'}
+                              {(Array.isArray(users) ? users : []).find((u: McUser) => u.id === lead.assignedTo)?.email || 'Unknown'}
                             </div>
                           ) : (
                             <Select onValueChange={(userId) => handleAssign(lead, userId)}>
@@ -452,7 +449,7 @@ export default function IdxLeadsPage() {
                                 <SelectValue placeholder="Assign..." />
                               </SelectTrigger>
                               <SelectContent>
-                                {users?.filter((u: McUser) => u.role === 'agent' || u.role === 'admin').map((user: McUser) => (
+                                {(Array.isArray(users) ? users : []).filter((u: McUser) => u.role === 'agent' || u.role === 'admin').map((user: McUser) => (
                                   <SelectItem key={user.id} value={user.id}>
                                     {user.firstName || ''} {user.lastName || ''}
                                   </SelectItem>
@@ -593,6 +590,7 @@ export default function IdxLeadsPage() {
         </Dialog>
       </div>
     </DashboardLayout>
+    )}
     </IdxLeadsErrorBoundary>
   );
 }
