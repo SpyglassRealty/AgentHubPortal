@@ -25,6 +25,7 @@ import {
   Swords,
   Rocket,
   CalendarDays,
+  Mail,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ const navItems: NavItem[] = [
   { label: "Leads", href: "/admin/dashboards/leads", icon: Target, section: "DASHBOARD" },
   { label: "IDX Leads", href: "/admin/dashboards/idx-leads", icon: Home, section: "DASHBOARD" },
   { label: "IDX Leads (FUB)", href: "/admin/dashboards/fub-dashboard", icon: Users, section: "DASHBOARD" },
+  { label: "Email Stats", href: "/admin/dashboards/email-stats", icon: Mail, section: "DASHBOARD" },
   { label: "Transactions", href: "/admin/dashboards/transactions", icon: FileText, section: "PRODUCTION" },
   { label: "Weekly Deals", href: "/admin/dashboards/weekly-deals", icon: CalendarDays, section: "PRODUCTION" },
   { label: "Listings", href: "/admin/dashboards/listings", icon: Home, section: "PRODUCTION" },

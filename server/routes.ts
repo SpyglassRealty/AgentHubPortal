@@ -6496,6 +6496,41 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // ==================== Resend Email Stats (Admin Only) ====================
+
+  // GET /api/resend/emails — Recent transactional emails (admin only)
+  app.get('/api/resend/emails', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { getResendClient } = await import('./resendClient');
+      const client = getResendClient();
+      const data = await client.getEmails(50);
+      const emails = (data.data || []).map((item: any) => ({
+        id: item.id,
+        to: item.to?.[0] || '',
+        subject: item.subject,
+        created_at: item.created_at,
+        last_event: item.last_event
+      }));
+      res.json({ emails });
+    } catch (error: any) {
+      console.error('Resend emails error:', error.message);
+      res.json({ emails: [], error: error.message });
+    }
+  });
+
+  // GET /api/resend/stats — Monthly aggregate stats (admin only)
+  app.get('/api/resend/stats', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { getResendClient } = await import('./resendClient');
+      const client = getResendClient();
+      const stats = await client.getStats();
+      res.json(stats);
+    } catch (error: any) {
+      console.error('Resend stats error:', error.message);
+      res.json({ sent: 0, delivered: 0, bounced: 0, opened: 0, bounceRate: 0, month: 'Unknown', error: error.message });
+    }
+  });
+
   // PATCH /api/users/:id/role - Update user role (developer and admin)
   app.patch('/api/users/:id/role', isAuthenticated, async (req: any, res) => {
     try {
