@@ -22,14 +22,12 @@ import RecruitingBattlecardsPage from "./recruiting-battlecards";
 import BillionTrackerPage from "./billion-tracker";
 import WeeklyDealsPage from "./weekly-deals";
 import GrowthTrajectoryPage from "./growth-trajectory";
-import FubDashboardPage from "./fub-dashboard";
 import EmailStatsPage from "./email-stats";
 
 export default function AdminDashboardsRouter() {
   return (
     <Switch>
       <Route path="/admin/dashboards" component={AdminDashboardOverview} />
-      <Route path="/admin/dashboards/fub-dashboard" component={FubDashboardPage} />
       <Route path="/admin/dashboards/email-stats" component={EmailStatsPage} />
       <Route path="/admin/dashboards/growth-trajectory" component={GrowthTrajectoryPage} />
       <Route path="/admin/dashboards/billion-tracker" component={BillionTrackerPage} />
