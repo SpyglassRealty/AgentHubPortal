@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Users, ExternalLink, Loader2 } from 'lucide-react';
+import { Users, ExternalLink } from 'lucide-react';
 import { DashboardLayout } from '@/components/admin-dashboards/dashboard-layout';
 import { KpiCard } from '@/components/admin-dashboards/kpi-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,7 +33,7 @@ interface FubEvent {
   id: number;
   type?: string;
   personName?: string;
-  person?: { name?: string; id?: number };
+  person?: { id?: number; firstName?: string; lastName?: string; email?: string };
   created?: string;
   dateCreated?: string;
 }
@@ -305,19 +305,47 @@ export default function FubDashboard() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    events.map((event) => (
-                      <TableRow key={event.id} className="min-h-[44px]">
-                        <TableCell>{getEventTypeBadge(event.type)}</TableCell>
-                        <TableCell className="text-sm">
-                          {event.person?.name || event.personName || '-'}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {(event.created || event.dateCreated)
-                            ? format(new Date(event.created || event.dateCreated!), 'MMM d, h:mm a')
-                            : '-'}
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    events.map((event) => {
+                      const personName = event.person?.firstName || event.person?.lastName
+                        ? `${event.person.firstName || ''} ${event.person.lastName || ''}`.trim()
+                        : event.person?.email || event.personName || '-';
+                      const fubPersonUrl = event.person?.id
+                        ? `https://app.followupboss.com/2/people/view/${event.person.id}`
+                        : null;
+                      return (
+                        <TableRow key={event.id} className="min-h-[44px]">
+                          <TableCell>
+                            {fubPersonUrl ? (
+                              <a href={fubPersonUrl} target="_blank" rel="noopener noreferrer" className="cursor-pointer hover:opacity-80">
+                                {getEventTypeBadge(event.type)}
+                              </a>
+                            ) : (
+                              getEventTypeBadge(event.type)
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {fubPersonUrl ? (
+                              <a
+                                href={fubPersonUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:underline text-[#EF4923] inline-flex items-center gap-1"
+                              >
+                                {personName}
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            ) : (
+                              personName
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {(event.created || event.dateCreated)
+                              ? format(new Date(event.created || event.dateCreated!), 'MMM d, h:mm a')
+                              : '-'}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>

@@ -6426,7 +6426,19 @@ Respond with valid JSON in this exact format:
       }
 
       const data = await response.json();
-      res.json({ events: data.events || [] });
+      const sanitizedEvents = (data.events || []).map((event: any) => ({
+        id: event.id,
+        type: event.type,
+        created: event.created,
+        dateCreated: event.dateCreated,
+        person: event.person ? {
+          id: event.person.id,
+          firstName: event.person.firstName,
+          lastName: event.person.lastName,
+          email: event.person.email,
+        } : null,
+      }));
+      res.json({ events: sanitizedEvents });
     } catch (error: any) {
       console.error('[Admin FUB] Events error:', error);
       res.status(500).json({ error: error.message });

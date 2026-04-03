@@ -148,8 +148,7 @@ export function DashboardLayout({
               {navItems
                 .filter((item) => item.section === section)
                 .map((item) => {
-                  const isActive = location === item.href ||
-                    (item.href !== "/admin/dashboards" && location.startsWith(item.href));
+                  const isActive = location === item.href;
                   return (
                     <Link key={item.href} href={item.href}>
                       <span
