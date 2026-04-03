@@ -28,6 +28,8 @@ export interface FubPerson {
   lastActivity?: string;
   lastLeadActivity?: string;
   assignedUserId?: number;
+  assignedUserName?: string;
+  tags?: string[];
   customFields?: Record<string, any>;
   homePurchaseAnniversary?: string;
   birthday?: string;
@@ -279,7 +281,7 @@ class FubClient {
         const params: Record<string, string> = { 
           limit: "100",
           offset: ((page - 1) * 100).toString(),
-          fields: "id,name,firstName,lastName,emails,phones,stage,source,created,lastActivity,lastLeadActivity,assignedUserId,customFields"
+          fields: "id,name,firstName,lastName,emails,phones,stage,source,created,lastActivity,lastLeadActivity,assignedUserId,assignedUserName,tags,customFields"
         };
         if (userId) params.assignedUserId = userId.toString();
 
@@ -312,6 +314,8 @@ class FubClient {
             lastActivity: person.lastActivity,
             lastLeadActivity: person.lastLeadActivity,
             assignedUserId: person.assignedUserId,
+            assignedUserName: person.assignedUserName,
+            tags: person.tags || [],
             customFields: person.customFields || {},
             homePurchaseAnniversary: person.customFields?.['Home Purchase Anniversary'] || 
                                       person.customFields?.['homePurchaseAnniversary'] ||
@@ -788,4 +792,12 @@ export async function getFubClientAsync(): Promise<FubClient | null> {
 export function resetFubClient(): void {
   fubClientInstance = null;
   lastFubApiKey = null;
+}
+
+/**
+ * Get the raw FUB API key (DB takes priority over env).
+ * Used for direct API calls outside the FubClient class.
+ */
+export function getFubApiKey(): string | null {
+  return cachedDbApiKey || process.env.FUB_API_KEY || null;
 }

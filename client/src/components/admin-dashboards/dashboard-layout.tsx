@@ -46,6 +46,7 @@ const navItems: NavItem[] = [
   { label: "Analytics", href: "/admin/dashboards/insights", icon: Lightbulb, section: "DASHBOARD" },
   { label: "Leads", href: "/admin/dashboards/leads", icon: Target, section: "DASHBOARD" },
   { label: "IDX Leads", href: "/admin/dashboards/idx-leads", icon: Home, section: "DASHBOARD" },
+  { label: "IDX Leads (FUB)", href: "/admin/dashboards/fub-dashboard", icon: Users, section: "DASHBOARD" },
   { label: "Transactions", href: "/admin/dashboards/transactions", icon: FileText, section: "PRODUCTION" },
   { label: "Weekly Deals", href: "/admin/dashboards/weekly-deals", icon: CalendarDays, section: "PRODUCTION" },
   { label: "Listings", href: "/admin/dashboards/listings", icon: Home, section: "PRODUCTION" },

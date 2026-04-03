@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { getFubClient, getFubClientAsync } from "./fubClient";
+import { getFubClient, getFubClientAsync, getFubApiKey } from "./fubClient";
 import { getRezenClient } from "./rezenClient";
 import { generateSuggestionsForUser } from "./contextEngine";
 import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema, agentProfiles } from "@shared/schema";
@@ -6355,6 +6355,143 @@ Respond with valid JSON in this exact format:
       }
     } catch (error) {
       console.error('[Admin API] Sync IDX lead to FUB error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ==========================================
+  // Admin FUB Dashboard API Endpoints
+  // ==========================================
+
+  // GET /api/fub/admin/people — All spyglass-idx tagged FUB contacts (admin only)
+  app.get('/api/fub/admin/people', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const fubClient = getFubClient();
+      if (!fubClient) {
+        return res.status(503).json({ error: 'FUB integration not configured' });
+      }
+
+      // Get ALL people (no userId filter)
+      const allPeople = await fubClient.getPeople();
+
+      // Filter to only spyglass-idx tagged contacts
+      const idxPeople = allPeople
+        .filter(p => p.tags?.some((t: string) => t.includes('spyglass-idx')))
+        .map(p => ({
+          id: p.id,
+          firstName: p.firstName,
+          lastName: p.lastName,
+          email: p.email,
+          phone: p.phone,
+          stage: p.stage,
+          assignedTo: p.assignedUserName || null,
+          tags: p.tags,
+          created: p.created,
+          lastActivity: p.lastActivity,
+        }))
+        .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime())
+        .slice(0, 500);
+
+      res.json({ people: idxPeople, total: idxPeople.length });
+    } catch (error: any) {
+      console.error('[Admin FUB] People error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/fub/admin/events — Recent FUB events (admin only)
+  app.get('/api/fub/admin/events', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const apiKey = getFubApiKey();
+      if (!apiKey) {
+        return res.status(503).json({ error: 'FUB integration not configured' });
+      }
+
+      const url = new URL('https://api.followupboss.com/v1/events');
+      url.searchParams.set('limit', '100');
+      if (req.query.type) {
+        url.searchParams.set('type', req.query.type);
+      }
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`FUB events API error ${response.status}: ${text}`);
+      }
+
+      const data = await response.json();
+      res.json({ events: data.events || [] });
+    } catch (error: any) {
+      console.error('[Admin FUB] Events error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/fub/admin/stats — Aggregated stats for dashboard (admin only)
+  app.get('/api/fub/admin/stats', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const fubClient = getFubClient();
+      const apiKey = getFubApiKey();
+      if (!fubClient || !apiKey) {
+        return res.status(503).json({ error: 'FUB integration not configured' });
+      }
+
+      // Get people data
+      const allPeople = await fubClient.getPeople();
+      const idxPeople = allPeople.filter(p => p.tags?.some((t: string) => t.includes('spyglass-idx')));
+
+      // Get events from last 7 days
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const eventsUrl = new URL('https://api.followupboss.com/v1/events');
+      eventsUrl.searchParams.set('limit', '100');
+
+      const eventsResponse = await fetch(eventsUrl.toString(), {
+        headers: {
+          'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      let recentEvents: any[] = [];
+      if (eventsResponse.ok) {
+        const eventsData = await eventsResponse.json();
+        recentEvents = (eventsData.events || []).filter((e: any) => {
+          const eventDate = new Date(e.created || e.dateCreated);
+          return eventDate >= sevenDaysAgo;
+        });
+      }
+
+      // Count new leads this week
+      const newThisWeek = idxPeople.filter(p => {
+        const created = new Date(p.created);
+        return created >= sevenDaysAgo;
+      }).length;
+
+      // Count event types
+      const countType = (type: string) => recentEvents.filter((e: any) =>
+        (e.type || '').toLowerCase().includes(type.toLowerCase())
+      ).length;
+
+      res.json({
+        totalLeads: idxPeople.length,
+        newThisWeek,
+        registrations: countType('Registration'),
+        propertyInquiries: countType('Property Inquiry'),
+        savedProperties: countType('Saved Property'),
+        savedSearches: countType('Saved Property Search'),
+        sellerLeads: countType('Seller'),
+        unsubscribes: countType('Unsubscribed'),
+      });
+    } catch (error: any) {
+      console.error('[Admin FUB] Stats error:', error);
       res.status(500).json({ error: error.message });
     }
   });
