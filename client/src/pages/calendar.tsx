@@ -14,8 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar as CalendarIcon, Clock, User, ChevronLeft, ChevronRight, AlertCircle, ExternalLink, MapPin, FileText, Users, X, Cake, Star } from "lucide-react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, parseISO, startOfWeek, endOfWeek } from "date-fns";
+import { Calendar as CalendarIcon, Clock, User, ChevronLeft, ChevronRight, AlertCircle, ExternalLink, MapPin, FileText, Users, X } from "lucide-react";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, parseISO, startOfWeek, endOfWeek } from "date-fns";
 import { useState, useMemo, useCallback, useEffect, useRef, type MouseEvent } from "react";
 import type { GoogleCalendarEvent } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,9 +23,11 @@ import { useUserRole } from "@/hooks/useUserRole";
 
 // ── Merged event type ───────────────────────────────────────────────────
 interface MergedCalendarEvent extends GoogleCalendarEvent {
-  source: 'fub' | 'google_company' | 'us_holiday' | 'birthday';
+  source: 'fub' | 'google_company' | 'google_fub' | 'google_personal' | 'us_holiday' | 'birthday';
   /** Google company calendar color keyword (training, zillow, company, admin) */
   googleColor?: string;
+  /** Calendar name from Google API */
+  calendarName?: string;
   /** Attendee RSVP status for the current user — only on google_company events */
   rsvpStatus?: 'accepted' | 'needsAction' | 'declined' | 'tentative';
   personName?: string;
@@ -40,9 +42,10 @@ interface GoogleCompanyEvent {
   end: string;
   allDay: boolean;
   calendarId: string;
+  calendarName?: string;
   description: string | null;
   color: string;
-  source: 'google_company';
+  source: 'google_company' | 'google_fub' | 'google_personal';
 }
 
 interface GoogleCompanyResponse {
@@ -75,6 +78,8 @@ const SPYGLASS_CATEGORIES = {
   company:    { hex: '#3B6D11', label: 'Company',    keywords: ['company', 'meeting'] },
   admin:      { hex: '#534AB7', label: 'Admin',      keywords: ['admin'] },
   fub:        { hex: '#7F77DD', label: 'FUB',        keywords: [] },
+  google_fub: { hex: '#9B8FEE', label: 'FUB (Cal)',  keywords: [] },
+  personal:   { hex: '#2196F3', label: 'Personal',   keywords: [] },
   birthday:   { hex: '#E91E8C', label: 'Birthday',   keywords: [] },
   us_holiday: { hex: '#888888', label: 'Holiday',    keywords: [] },
 } as const;
@@ -85,9 +90,11 @@ function categorizeEvent(event: MergedCalendarEvent): CategoryKey {
   if (event.source === 'birthday') return 'birthday';
   if (event.source === 'us_holiday') return 'us_holiday';
   if (event.source === 'fub') return 'fub';
+  if (event.source === 'google_fub') return 'google_fub';
+  if (event.source === 'google_personal') return 'personal';
   const titleLower = (event.title || '').toLowerCase();
   for (const [key, cat] of Object.entries(SPYGLASS_CATEGORIES)) {
-    if (key === 'fub' || key === 'birthday' || key === 'us_holiday') continue;
+    if (['fub', 'google_fub', 'personal', 'birthday', 'us_holiday'].includes(key)) continue;
     if (cat.keywords.some(kw => titleLower.includes(kw))) return key as CategoryKey;
   }
   return 'company';
@@ -119,8 +126,11 @@ export default function CalendarPage() {
   const { user } = useAuth();
   const { isDeveloper, isAdmin } = useUserRole();
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [calView, setCalView] = useState<'month' | 'week' | 'day' | 'schedule'>('month');
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<MergedCalendarEvent | null>(null);
+  const [currentWeekStart, setCurrentWeekStart] = useState(() => startOfWeek(new Date()));
+  const [currentDay, setCurrentDay] = useState(new Date());
   const [selectedDayEvents, setSelectedDayEvents] = useState<MergedCalendarEvent[] | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [highlightedDate, setHighlightedDate] = useState<string | null>(null);
@@ -253,8 +263,9 @@ export default function CalendarPage() {
         allDay: e.allDay,
         type: 'event' as const,
         status: 'confirmed' as const,
-        source: 'google_company' as const,
+        source: e.source as MergedCalendarEvent['source'],
         googleColor: e.color,
+        calendarName: e.calendarName,
       }))
       .filter(e => e.rsvpStatus !== 'declined');
 
@@ -417,13 +428,13 @@ export default function CalendarPage() {
   }, [allItems, currentMonth]);
 
   const fubCount = currentMonthEvents.filter(e => e.source === 'fub').length;
-  const googleCount = currentMonthEvents.filter(e => e.source === 'google_company').length;
+  const googleCount = currentMonthEvents.filter(e => e.source === 'google_company' || e.source === 'google_fub' || e.source === 'google_personal').length;
 
   // Google events breakdown by type
   const googleByType = useMemo(() => {
-    const counts: Record<string, number> = { training: 0, zillow: 0, company: 0, admin: 0 };
+    const counts: Record<string, number> = { training: 0, zillow: 0, company: 0, admin: 0, google_fub: 0, personal: 0 };
     for (const event of currentMonthEvents) {
-      if (event.source !== 'google_company') continue;
+      if (!event.source.startsWith('google_')) continue;
       const cat = categorizeEvent(event);
       if (cat in counts) counts[cat]++;
     }
@@ -527,14 +538,21 @@ export default function CalendarPage() {
               <CardHeader className="pb-2 px-3 sm:px-6">
                 <div className="flex items-center justify-between">
                   <CardTitle className="font-display text-lg sm:text-xl">
-                    {format(currentMonth, "MMMM yyyy")}
+                    {calView === 'month' && format(currentMonth, "MMMM yyyy")}
+                    {calView === 'week' && `${format(currentWeekStart, "MMM d")} – ${format(endOfWeek(currentWeekStart), "MMM d, yyyy")}`}
+                    {calView === 'day' && format(currentDay, "EEEE, MMMM d, yyyy")}
+                    {calView === 'schedule' && 'Upcoming 30 Days'}
                   </CardTitle>
                   <div className="flex gap-0.5 sm:gap-1">
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 sm:h-9 sm:w-9"
-                      onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                      onClick={() => {
+                        if (calView === 'month') setCurrentMonth(subMonths(currentMonth, 1));
+                        else if (calView === 'week') setCurrentWeekStart(prev => subWeeks(prev, 1));
+                        else if (calView === 'day') setCurrentDay(prev => subDays(prev, 1));
+                      }}
                       data-testid="button-prev-month"
                     >
                       <ChevronLeft className="h-4 w-4" />
@@ -543,7 +561,12 @@ export default function CalendarPage() {
                       variant="ghost"
                       size="sm"
                       className="h-8 px-2 sm:px-3 text-xs sm:text-sm"
-                      onClick={() => setCurrentMonth(new Date())}
+                      onClick={() => {
+                        const now = new Date();
+                        setCurrentMonth(now);
+                        setCurrentWeekStart(startOfWeek(now));
+                        setCurrentDay(now);
+                      }}
                     >
                       Today
                     </Button>
@@ -551,12 +574,33 @@ export default function CalendarPage() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 sm:h-9 sm:w-9"
-                      onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                      onClick={() => {
+                        if (calView === 'month') setCurrentMonth(addMonths(currentMonth, 1));
+                        else if (calView === 'week') setCurrentWeekStart(prev => addWeeks(prev, 1));
+                        else if (calView === 'day') setCurrentDay(prev => addDays(prev, 1));
+                      }}
                       data-testid="button-next-month"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
+                </div>
+
+                {/* ── View switcher pills ────────────────────────── */}
+                <div className="flex gap-1 mt-2">
+                  {(['month', 'week', 'day', 'schedule'] as const).map((view) => (
+                    <button
+                      key={view}
+                      className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                        calView === view
+                          ? 'bg-[#EF4923] text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                      onClick={() => setCalView(view)}
+                    >
+                      {view.charAt(0).toUpperCase() + view.slice(1)}
+                    </button>
+                  ))}
                 </div>
 
                 {/* ── Color legend row ────────────────────────────── */}
@@ -585,7 +629,8 @@ export default function CalendarPage() {
                     <Skeleton className="h-8 w-full" />
                     <Skeleton className="h-64 w-full" />
                   </div>
-                ) : (
+                ) : calView === 'month' ? (
+                  /* ── MONTH VIEW ─────────────────────────────────── */
                   <div className="grid grid-cols-7 gap-px bg-muted rounded-lg overflow-hidden">
                     {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
                       <div key={idx} className="bg-background p-1 sm:p-2 text-center text-[10px] sm:text-xs font-medium text-muted-foreground">
@@ -602,7 +647,6 @@ export default function CalendarPage() {
                       const dayItems = getItemsForDay(day);
                       const hasEvents = dayItems.length > 0;
                       const hasTraining = dayHasTraining(dayItems);
-                      // Separate birthday/holiday pills from regular events
                       const regularItems = dayItems.filter(i => i.source !== 'birthday' && i.source !== 'us_holiday');
                       const specialItems = dayItems.filter(i => i.source === 'birthday' || i.source === 'us_holiday');
                       return (
@@ -624,7 +668,6 @@ export default function CalendarPage() {
                             {format(day, 'd')}
                           </div>
                           <div className="space-y-0.5 sm:space-y-1">
-                            {/* Birthday & holiday pills — subtle, compact */}
                             {specialItems.slice(0, 2).map((item) => {
                               const category = categorizeEvent(item);
                               const hex = getCategoryHex(category);
@@ -640,7 +683,6 @@ export default function CalendarPage() {
                                 </div>
                               );
                             })}
-                            {/* Regular event pills */}
                             {regularItems.slice(0, 2).map((item, idx) => {
                               const category = categorizeEvent(item);
                               const hex = getCategoryHex(category);
@@ -680,7 +722,6 @@ export default function CalendarPage() {
                                 +{dayItems.length - 1}
                               </div>
                             )}
-                            {/* No Training Today pill */}
                             {!hasTraining && regularItems.length < 3 && specialItems.length === 0 && (
                               <div className="text-[8px] sm:text-[10px] text-gray-400 bg-gray-50 rounded px-1 py-0.5 truncate hidden sm:block">
                                 No Training
@@ -691,6 +732,277 @@ export default function CalendarPage() {
                       );
                     })}
                   </div>
+                ) : calView === 'week' ? (
+                  /* ── WEEK VIEW ──────────────────────────────────── */
+                  (() => {
+                    const weekDays = eachDayOfInterval({
+                      start: currentWeekStart,
+                      end: endOfWeek(currentWeekStart),
+                    });
+                    const TIME_SLOTS = Array.from({ length: 15 }, (_, i) => i + 7); // 7am-9pm
+
+                    return (
+                      <div className="overflow-x-auto">
+                        <div className="grid grid-cols-[60px_repeat(7,1fr)] min-w-[700px]">
+                          {/* Header row */}
+                          <div className="p-1 text-xs text-muted-foreground border-b" />
+                          {weekDays.map((wd) => (
+                            <div
+                              key={wd.toISOString()}
+                              className={`p-2 text-center border-b border-l ${
+                                isToday(wd) ? 'bg-[#EF4923]/5' : ''
+                              }`}
+                            >
+                              <div className="text-[10px] text-muted-foreground">
+                                {format(wd, 'EEE')}
+                              </div>
+                              <div className={`text-sm font-medium ${
+                                isToday(wd) ? 'h-6 w-6 mx-auto rounded-full bg-[#EF4923] text-white flex items-center justify-center' : ''
+                              }`}>
+                                {format(wd, 'd')}
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* All-day row */}
+                          <div className="p-1 text-[10px] text-muted-foreground border-b flex items-center justify-center">
+                            All day
+                          </div>
+                          {weekDays.map((wd) => {
+                            const dayEvents = allItems.filter((item) => {
+                              if (!item.allDay) return false;
+                              const itemDate = new Date(item.startDate + 'T00:00:00');
+                              return isSameDay(itemDate, wd);
+                            });
+                            return (
+                              <div key={`allday-${wd.toISOString()}`} className="p-1 border-b border-l min-h-[32px]">
+                                {dayEvents.slice(0, 2).map((item) => {
+                                  const hex = getCategoryHex(categorizeEvent(item));
+                                  return (
+                                    <div
+                                      key={item.id}
+                                      className="text-[9px] px-1 py-0.5 rounded truncate cursor-pointer hover:opacity-80 mb-0.5"
+                                      style={{ backgroundColor: `${hex}20`, color: hex }}
+                                      onClick={(e) => handleEventClick(item, e as MouseEvent)}
+                                    >
+                                      {item.title}
+                                    </div>
+                                  );
+                                })}
+                                {dayEvents.length > 2 && (
+                                  <div className="text-[9px] text-muted-foreground">+{dayEvents.length - 2}</div>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          {/* Time slot rows */}
+                          {TIME_SLOTS.map((hour) => (
+                            <>
+                              <div key={`label-${hour}`} className="p-1 text-[10px] text-muted-foreground border-b text-right pr-2 flex items-start justify-end">
+                                {hour > 12 ? `${hour - 12}pm` : hour === 12 ? '12pm' : `${hour}am`}
+                              </div>
+                              {weekDays.map((wd) => {
+                                const slotEvents = allItems.filter((item) => {
+                                  if (item.allDay) return false;
+                                  try {
+                                    const start = parseISO(item.startDate);
+                                    return isSameDay(start, wd) && start.getHours() === hour;
+                                  } catch { return false; }
+                                });
+                                return (
+                                  <div
+                                    key={`slot-${hour}-${wd.toISOString()}`}
+                                    className="border-b border-l min-h-[40px] p-0.5 relative"
+                                  >
+                                    {slotEvents.map((item) => {
+                                      const hex = getCategoryHex(categorizeEvent(item));
+                                      const pending = isPending(item);
+                                      return (
+                                        <div
+                                          key={item.id}
+                                          className={`text-[9px] px-1 py-0.5 rounded truncate cursor-pointer hover:opacity-80 mb-0.5 ${
+                                            pending ? 'border border-dashed bg-transparent' : ''
+                                          }`}
+                                          style={pending ? { borderColor: hex, color: hex } : { backgroundColor: `${hex}20`, color: hex }}
+                                          onClick={(e) => handleEventClick(item, e as MouseEvent)}
+                                          title={`${item.title} ${formatEventTime(item)}`}
+                                        >
+                                          {item.title}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })}
+                            </>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : calView === 'day' ? (
+                  /* ── DAY VIEW ───────────────────────────────────── */
+                  (() => {
+                    const TIME_SLOTS = Array.from({ length: 15 }, (_, i) => i + 7); // 7am-9pm
+                    const allDayEvents = allItems.filter((item) => {
+                      if (!item.allDay) return false;
+                      const itemDate = new Date(item.startDate + 'T00:00:00');
+                      return isSameDay(itemDate, currentDay);
+                    });
+
+                    return (
+                      <div>
+                        {/* All-day events */}
+                        {allDayEvents.length > 0 && (
+                          <div className="mb-3 p-2 bg-muted/30 rounded-lg">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">All Day</p>
+                            <div className="space-y-1">
+                              {allDayEvents.map((item) => {
+                                const hex = getCategoryHex(categorizeEvent(item));
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className="text-xs px-2 py-1.5 rounded cursor-pointer hover:opacity-80"
+                                    style={{ backgroundColor: `${hex}20`, color: hex }}
+                                    onClick={(e) => handleEventClick(item, e as MouseEvent)}
+                                  >
+                                    {item.title}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Time slots */}
+                        <div className="space-y-0">
+                          {TIME_SLOTS.map((hour) => {
+                            const slotEvents = allItems.filter((item) => {
+                              if (item.allDay) return false;
+                              try {
+                                const start = parseISO(item.startDate);
+                                return isSameDay(start, currentDay) && start.getHours() === hour;
+                              } catch { return false; }
+                            });
+
+                            return (
+                              <div key={`day-slot-${hour}`} className="flex border-b min-h-[48px]">
+                                <div className="w-16 shrink-0 p-2 text-xs text-muted-foreground text-right pr-3 border-r">
+                                  {hour > 12 ? `${hour - 12}pm` : hour === 12 ? '12pm' : `${hour}am`}
+                                </div>
+                                <div className="flex-1 p-1 space-y-1">
+                                  {slotEvents.map((item) => {
+                                    const hex = getCategoryHex(categorizeEvent(item));
+                                    const pending = isPending(item);
+                                    return (
+                                      <div
+                                        key={item.id}
+                                        className={`text-xs px-2 py-1.5 rounded cursor-pointer hover:opacity-80 ${
+                                          pending ? 'border border-dashed bg-transparent' : ''
+                                        }`}
+                                        style={pending ? { borderColor: hex, color: hex } : { backgroundColor: `${hex}20`, color: hex }}
+                                        onClick={(e) => handleEventClick(item, e as MouseEvent)}
+                                      >
+                                        <span className="font-medium">{item.title}</span>
+                                        {item.endDate && (
+                                          <span className="ml-2 opacity-70">{formatEventTime(item)}</span>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  /* ── SCHEDULE VIEW ──────────────────────────────── */
+                  (() => {
+                    const scheduleStart = new Date();
+                    const scheduleDays = eachDayOfInterval({
+                      start: scheduleStart,
+                      end: addDays(scheduleStart, 30),
+                    });
+
+                    return (
+                      <div className="space-y-0">
+                        {scheduleDays.map((day) => {
+                          const dayItems = allItems.filter((item) => {
+                            const itemDate = item.allDay
+                              ? new Date(item.startDate + 'T00:00:00')
+                              : parseISO(item.startDate);
+                            return isSameDay(itemDate, day);
+                          });
+
+                          if (dayItems.length === 0) return null;
+
+                          return (
+                            <div key={day.toISOString()} className="border-b last:border-b-0">
+                              <div className={`px-3 py-2 flex items-center gap-2 ${
+                                isToday(day) ? 'bg-[#EF4923]/5' : 'bg-muted/30'
+                              }`}>
+                                <span className={`text-sm font-medium ${
+                                  isToday(day) ? 'text-[#EF4923]' : ''
+                                }`}>
+                                  {format(day, 'EEEE, MMM d')}
+                                </span>
+                                {isToday(day) && (
+                                  <Badge className="bg-[#EF4923] text-white text-[10px] py-0">Today</Badge>
+                                )}
+                              </div>
+                              <div className="divide-y">
+                                {dayItems.map((item) => {
+                                  const hex = getCategoryHex(categorizeEvent(item));
+                                  return (
+                                    <div
+                                      key={item.id}
+                                      className="flex items-center gap-3 px-3 py-2 hover:bg-muted/30 cursor-pointer transition-colors"
+                                      onClick={() => setSelectedEvent(item)}
+                                    >
+                                      <div
+                                        className="h-2.5 w-2.5 rounded-full shrink-0"
+                                        style={{ backgroundColor: hex }}
+                                      />
+                                      <span className="text-xs text-muted-foreground w-20 shrink-0">
+                                        {item.allDay ? 'All day' : (() => {
+                                          try {
+                                            return format(parseISO(item.startDate), 'h:mm a');
+                                          } catch { return ''; }
+                                        })()}
+                                      </span>
+                                      <span className="text-sm truncate">{item.title}</span>
+                                      {item.calendarName && (
+                                        <span className="text-[10px] text-muted-foreground ml-auto shrink-0 hidden sm:inline">
+                                          {item.calendarName}
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {scheduleDays.every((day) => {
+                          const dayItems = allItems.filter((item) => {
+                            const itemDate = item.allDay
+                              ? new Date(item.startDate + 'T00:00:00')
+                              : parseISO(item.startDate);
+                            return isSameDay(itemDate, day);
+                          });
+                          return dayItems.length === 0;
+                        }) && (
+                          <p className="text-sm text-muted-foreground text-center py-8">
+                            No events in the next 30 days
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()
                 )}
               </CardContent>
             </Card>
@@ -924,6 +1236,8 @@ export default function CalendarPage() {
                 <CalendarIcon className="h-5 w-5" style={{ color: getCategoryHex(categorizeEvent(selectedEvent)) }} />
                 <span className="text-sm text-muted-foreground">
                   {selectedEvent.source === 'fub' ? 'Follow Up Boss'
+                    : selectedEvent.source === 'google_fub' ? 'FUB Calendar'
+                    : selectedEvent.source === 'google_personal' ? 'Personal Calendar'
                     : selectedEvent.source === 'birthday' ? 'Birthday'
                     : selectedEvent.source === 'us_holiday' ? 'US Holiday'
                     : 'Google Calendar'}
@@ -946,6 +1260,8 @@ export default function CalendarPage() {
                       </Badge>
                       <Badge variant="outline" className="text-[10px]">
                         {selectedEvent.source === 'fub' ? 'FUB'
+                          : selectedEvent.source === 'google_fub' ? 'FUB Cal'
+                          : selectedEvent.source === 'google_personal' ? 'Personal'
                           : selectedEvent.source === 'birthday' ? 'Birthday'
                           : selectedEvent.source === 'us_holiday' ? 'Holiday'
                           : 'Google'}

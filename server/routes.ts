@@ -6587,43 +6587,73 @@ Respond with valid JSON in this exact format:
   // Server-side block rendering endpoint
   app.post('/api/render-blocks', renderBlocks);
 
-  // ── Google Company Calendar ─────────────────────────────────────────────
-  // Fetches events from the shared Spyglass Company Events calendar
-  // using the existing service account (no user impersonation needed).
-  app.get('/api/google/company-calendar', isAuthenticated, async (_req: any, res) => {
-    const COMPANY_CALENDAR_ID =
-      'c_0eb1d92fe687aa77a4d881712dc21f4a4429c55594c3abb56ce2f768f3651b8f@group.calendar.google.com';
-
+  // ── Google Company Calendar (All User Calendars via Domain-Wide Delegation) ──
+  // Lists ALL calendars for the logged-in user via domain-wide delegation,
+  // filters out non-relevant ones, and returns merged events.
+  app.get('/api/google/company-calendar', isAuthenticated, async (req: any, res) => {
     try {
       const { google } = await import('googleapis');
       const { getGoogleCredentials } = await import('./googleCredentials');
       const credentials = getGoogleCredentials();
 
+      // Determine which user to impersonate
+      const user = await getDbUser(req);
+      let userEmail = user?.email || req.user?.claims?.email;
+
+      // Only impersonate @spyglassrealty.com emails (domain-wide delegation scope)
+      if (!userEmail || !userEmail.endsWith('@spyglassrealty.com')) {
+        userEmail = process.env.GOOGLE_CALENDAR_IMPERSONATE_USER || 'john@spyglassrealty.com';
+      }
+
+      console.log(`[Company Calendar] Impersonating: ${userEmail}`);
+
       const auth = new google.auth.JWT({
         email: credentials.client_email,
         key: credentials.private_key,
         scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
-        subject: process.env.GOOGLE_CALENDAR_IMPERSONATE_USER || 'john@spyglassrealty.com',
+        subject: userEmail,
       });
 
       const calendar = google.calendar({ version: 'v3', auth });
+
+      // List ALL calendars for this user
+      const calListRes = await calendar.calendarList.list({ maxResults: 50 });
+      const allCalendars = calListRes.data.items || [];
+      console.log(`[Company Calendar] Found ${allCalendars.length} calendars for ${userEmail}`);
+
+      // Filter calendars — exclude non-relevant ones
+      const EXCLUDED_PATTERNS = [
+        '#contacts@group.v.calendar.google.com',
+        '@import.calendar.google.com',
+        '#holiday@group.v.calendar.google.com',
+      ];
+
+      const includedCalendars = allCalendars.filter((cal) => {
+        const id = cal.id || '';
+        const summary = cal.summary || '';
+        const access = cal.accessRole || '';
+
+        // Must have at least reader access
+        if (!['owner', 'writer', 'reader'].includes(access)) return false;
+
+        // Exclude by ID patterns
+        if (EXCLUDED_PATTERNS.some((pat) => id.includes(pat))) return false;
+
+        // Exclude "Holidays in ..." calendars (Philippines, India, etc.)
+        if (/^Holidays in /i.test(summary)) return false;
+
+        return true;
+      });
+
+      console.log(`[Company Calendar] Included ${includedCalendars.length} calendars after filtering:`);
+      includedCalendars.forEach((cal) =>
+        console.log(`  - ${cal.summary} (${cal.id}) [${cal.accessRole}]`)
+      );
 
       // Current month +/- 1 month
       const now = new Date();
       const timeMin = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
       const timeMax = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59).toISOString();
-
-      const response = await calendar.events.list({
-        calendarId: COMPANY_CALENDAR_ID,
-        timeMin,
-        timeMax,
-        singleEvents: true,
-        orderBy: 'startTime',
-        maxResults: 500,
-      });
-
-      const items = response.data.items || [];
-      console.log(`[Company Calendar] Fetched ${items.length} events (${timeMin} → ${timeMax})`);
 
       const colorMap: Record<string, string> = {
         training: 'orange',
@@ -6632,27 +6662,92 @@ Respond with valid JSON in this exact format:
         admin: 'purple',
       };
 
-      const events = items.map((ev, idx) => {
-        const title = ev.summary || '(No title)';
-        const titleLower = title.toLowerCase();
-        const color =
-          Object.entries(colorMap).find(([kw]) => titleLower.includes(kw))?.[1] ?? 'gray';
+      // Fetch events from each included calendar in parallel
+      const allEventsArrays = await Promise.allSettled(
+        includedCalendars.map(async (cal) => {
+          const calId = cal.id!;
+          const calName = cal.summary || calId;
+          try {
+            const response = await calendar.events.list({
+              calendarId: calId,
+              timeMin,
+              timeMax,
+              timeZone: 'America/Chicago',
+              singleEvents: true,
+              orderBy: 'startTime',
+              maxResults: 500,
+            });
+            const items = response.data.items || [];
+            console.log(`[Company Calendar]   ${calName}: ${items.length} events`);
+            return items.map((ev, idx) => ({
+              ev,
+              idx,
+              calendarId: calId,
+              calendarName: calName,
+            }));
+          } catch (err: any) {
+            console.error(`[Company Calendar] Failed to fetch ${calName}: ${err.message}`);
+            return [];
+          }
+        })
+      );
 
-        const isAllDay = !!ev.start?.date;
+      // Flatten results and deduplicate by event ID
+      const seenIds = new Set<string>();
+      const events: Array<{
+        id: string;
+        title: string;
+        start: string;
+        end: string;
+        allDay: boolean;
+        calendarId: string;
+        calendarName: string;
+        description: string | null;
+        color: string;
+        source: 'google_fub' | 'google_company' | 'google_personal';
+      }> = [];
 
-        return {
-          id: ev.id || `company-${idx}`,
-          title,
-          start: ev.start?.dateTime || ev.start?.date || '',
-          end: ev.end?.dateTime || ev.end?.date || '',
-          allDay: isAllDay,
-          calendarId: COMPANY_CALENDAR_ID,
-          description: ev.description || null,
-          color,
-          source: 'google_company' as const,
-        };
-      });
+      for (const result of allEventsArrays) {
+        if (result.status !== 'fulfilled') continue;
+        for (const { ev, idx, calendarId, calendarName } of result.value) {
+          const eventId = ev.id || `cal-${calendarId}-${idx}`;
+          if (seenIds.has(eventId)) continue;
+          seenIds.add(eventId);
 
+          const title = ev.summary || '(No title)';
+          const titleLower = title.toLowerCase();
+          const color =
+            Object.entries(colorMap).find(([kw]) => titleLower.includes(kw))?.[1] ?? 'gray';
+
+          const isAllDay = !!ev.start?.date;
+
+          // Tag source based on calendar name
+          const calNameLower = calendarName.toLowerCase();
+          let source: 'google_fub' | 'google_company' | 'google_personal';
+          if (calNameLower.includes('follow up boss') || calNameLower.includes('fub')) {
+            source = 'google_fub';
+          } else if (calNameLower.includes('spyglass') || calNameLower.includes('company')) {
+            source = 'google_company';
+          } else {
+            source = 'google_personal';
+          }
+
+          events.push({
+            id: eventId,
+            title,
+            start: ev.start?.dateTime || ev.start?.date || '',
+            end: ev.end?.dateTime || ev.end?.date || '',
+            allDay: isAllDay,
+            calendarId,
+            calendarName,
+            description: ev.description || null,
+            color,
+            source,
+          });
+        }
+      }
+
+      console.log(`[Company Calendar] Total merged events: ${events.length}`);
       res.json({ events });
     } catch (error: any) {
       console.error('[Company Calendar] Error:', error.message);
@@ -6760,6 +6855,7 @@ Respond with valid JSON in this exact format:
         calendarId: US_HOLIDAY_CALENDAR_ID,
         timeMin,
         timeMax,
+        timeZone: 'America/Chicago',
         singleEvents: true,
         orderBy: 'startTime',
         maxResults: 100,
