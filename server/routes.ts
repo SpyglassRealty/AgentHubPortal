@@ -6663,5 +6663,127 @@ Respond with valid JSON in this exact format:
     }
   });
 
+  // ── FUB Birthdays for Calendar ─────────────────────────────────────────
+  // Returns all contacts with a birthday set, formatted as MM-DD for calendar display
+  app.get('/api/fub/birthdays', isAuthenticated, async (req: any, res) => {
+    try {
+      const fubClient = getFubClient();
+      if (!fubClient) {
+        return res.json({ birthdays: [] });
+      }
+
+      const user = await getDbUser(req);
+      if (!user) {
+        return res.json({ birthdays: [] });
+      }
+
+      let fubUserId = user.fubUserId;
+      if (!fubUserId && user.email) {
+        const fubUser = await fubClient.getUserByEmail(user.email);
+        if (fubUser) {
+          fubUserId = fubUser.id;
+          await storage.updateUserFubId(user.id, fubUserId);
+        }
+      }
+
+      if (!fubUserId) {
+        return res.json({ birthdays: [] });
+      }
+
+      // Use existing getBirthdayLeads which already paginates and parses
+      const leads = await fubClient.getBirthdayLeads(fubUserId);
+
+      const birthdays = leads
+        .filter((l: any) => l.birthday)
+        .map((l: any) => {
+          // Birthday is stored in various formats; extract MM-DD
+          const raw = l.birthday;
+          let mmdd = '';
+          // Try YYYY-MM-DD or MM-DD-YYYY or MM/DD/YYYY etc
+          const match = raw.match(/(\d{1,2})[\/\-](\d{1,2})/);
+          if (match) {
+            const part1 = parseInt(match[1], 10);
+            const part2 = parseInt(match[2], 10);
+            // If first part > 12, it's DD-MM or YYYY-MM format
+            if (part1 > 12 && part2 <= 12) {
+              mmdd = `${String(part2).padStart(2, '0')}-${String(part1).padStart(2, '0')}`;
+            } else {
+              // Check if YYYY-MM-DD format (raw starts with 4 digits)
+              const isoMatch = raw.match(/^\d{4}[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+              if (isoMatch) {
+                mmdd = `${String(parseInt(isoMatch[1], 10)).padStart(2, '0')}-${String(parseInt(isoMatch[2], 10)).padStart(2, '0')}`;
+              } else {
+                mmdd = `${String(part1).padStart(2, '0')}-${String(part2).padStart(2, '0')}`;
+              }
+            }
+          }
+          return {
+            name: l.firstName || l.name?.split(' ')[0] || l.name || 'Contact',
+            birthday: mmdd,
+          };
+        })
+        .filter((b: any) => b.birthday);
+
+      console.log(`[FUB Birthdays] Returning ${birthdays.length} birthdays`);
+      res.json({ birthdays });
+    } catch (error: any) {
+      console.error('[FUB Birthdays] Error:', error.message);
+      res.json({ birthdays: [] });
+    }
+  });
+
+  // ── US Holidays from Google Public Calendar ──────────────────────────────
+  // Fetches US holidays from Google's public holiday calendar
+  app.get('/api/google/holidays', isAuthenticated, async (_req: any, res) => {
+    const US_HOLIDAY_CALENDAR_ID = 'en.usa%23holiday%40group.v.calendar.google.com';
+
+    try {
+      const { google } = await import('googleapis');
+      const { getGoogleCredentials } = await import('./googleCredentials');
+      const credentials = getGoogleCredentials();
+
+      const auth = new google.auth.JWT({
+        email: credentials.client_email,
+        key: credentials.private_key,
+        scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
+        subject: process.env.GOOGLE_CALENDAR_IMPERSONATE_USER || 'john@spyglassrealty.com',
+      });
+
+      const calendar = google.calendar({ version: 'v3', auth });
+
+      // Current month +/- 1 month
+      const now = new Date();
+      const timeMin = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+      const timeMax = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59).toISOString();
+
+      const response = await calendar.events.list({
+        calendarId: US_HOLIDAY_CALENDAR_ID,
+        timeMin,
+        timeMax,
+        singleEvents: true,
+        orderBy: 'startTime',
+        maxResults: 100,
+      });
+
+      const items = response.data.items || [];
+      console.log(`[US Holidays] Fetched ${items.length} holidays (${timeMin} → ${timeMax})`);
+
+      const holidays = items.map((ev, idx) => ({
+        id: ev.id || `holiday-${idx}`,
+        title: ev.summary || 'Holiday',
+        start: ev.start?.dateTime || ev.start?.date || '',
+        end: ev.end?.dateTime || ev.end?.date || '',
+        allDay: !!ev.start?.date,
+        source: 'us_holiday' as const,
+      }));
+
+      res.json({ holidays });
+    } catch (error: any) {
+      console.error('[US Holidays] Error:', error.message);
+      // Don't break the calendar — return empty
+      res.json({ holidays: [] });
+    }
+  });
+
   return httpServer;
 }

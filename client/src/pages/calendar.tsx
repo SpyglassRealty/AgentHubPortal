@@ -8,30 +8,22 @@ import { AgentSelector } from "@/components/agent-selector";
 import { RefreshButton } from "@/components/ui/refresh-button";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar as CalendarIcon, Clock, User, ChevronLeft, ChevronRight, AlertCircle, ExternalLink, MapPin, FileText, Users } from "lucide-react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, parseISO } from "date-fns";
-import { useState, useMemo, type MouseEvent } from "react";
+import { Calendar as CalendarIcon, Clock, User, ChevronLeft, ChevronRight, AlertCircle, ExternalLink, MapPin, FileText, Users, X, Cake, Star } from "lucide-react";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, parseISO, startOfWeek, endOfWeek } from "date-fns";
+import { useState, useMemo, useCallback, type MouseEvent } from "react";
 import type { GoogleCalendarEvent } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 
 // ── Merged event type ───────────────────────────────────────────────────
-// Extends GoogleCalendarEvent with source tracking and Google company fields
 interface MergedCalendarEvent extends GoogleCalendarEvent {
-  source: 'fub' | 'google_company';
+  source: 'fub' | 'google_company' | 'us_holiday' | 'birthday';
   /** Google company calendar color keyword (training, zillow, company, admin) */
   googleColor?: string;
   /** Attendee RSVP status for the current user — only on google_company events */
@@ -62,26 +54,43 @@ interface FubCalendarResponse {
   message?: string;
 }
 
+interface BirthdayEntry {
+  name: string;
+  birthday: string; // MM-DD
+}
+
+interface HolidayEntry {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  allDay: boolean;
+  source: 'us_holiday';
+}
+
 // ── Spyglass color system ───────────────────────────────────────────────
-// Color coding based on keyword matching in event title
 const SPYGLASS_CATEGORIES = {
-  training: { hex: '#EF4923', label: 'Training', keywords: ['training'] },
-  zillow:   { hex: '#185FA5', label: 'Zillow',   keywords: ['zillow'] },
-  company:  { hex: '#3B6D11', label: 'Company',  keywords: ['company', 'meeting'] },
-  admin:    { hex: '#534AB7', label: 'Admin',     keywords: ['admin'] },
-  fub:      { hex: '#7F77DD', label: 'FUB',       keywords: [] },
+  training:   { hex: '#EF4923', label: 'Training',   keywords: ['training'] },
+  zillow:     { hex: '#185FA5', label: 'Zillow',     keywords: ['zillow'] },
+  company:    { hex: '#3B6D11', label: 'Company',    keywords: ['company', 'meeting'] },
+  admin:      { hex: '#534AB7', label: 'Admin',      keywords: ['admin'] },
+  fub:        { hex: '#7F77DD', label: 'FUB',        keywords: [] },
+  birthday:   { hex: '#E91E8C', label: 'Birthday',   keywords: [] },
+  us_holiday: { hex: '#888888', label: 'Holiday',    keywords: [] },
 } as const;
 
 type CategoryKey = keyof typeof SPYGLASS_CATEGORIES;
 
 function categorizeEvent(event: MergedCalendarEvent): CategoryKey {
+  if (event.source === 'birthday') return 'birthday';
+  if (event.source === 'us_holiday') return 'us_holiday';
   if (event.source === 'fub') return 'fub';
   const titleLower = (event.title || '').toLowerCase();
   for (const [key, cat] of Object.entries(SPYGLASS_CATEGORIES)) {
-    if (key === 'fub') continue;
+    if (key === 'fub' || key === 'birthday' || key === 'us_holiday') continue;
     if (cat.keywords.some(kw => titleLower.includes(kw))) return key as CategoryKey;
   }
-  return 'company'; // default Google events to company color
+  return 'company';
 }
 
 function getCategoryHex(category: CategoryKey): string {
@@ -146,7 +155,29 @@ export default function CalendarPage() {
       if (!res.ok) throw new Error("Failed to fetch Google company calendar");
       return res.json();
     },
-    staleTime: 5 * 60 * 1000, // 5 min cache
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // ── FUB Birthdays fetch ─────────────────────────────────────────────
+  const { data: birthdayData } = useQuery<{ birthdays: BirthdayEntry[] }>({
+    queryKey: ["/api/fub/birthdays"],
+    queryFn: async () => {
+      const res = await fetch("/api/fub/birthdays", { credentials: "include" });
+      if (!res.ok) return { birthdays: [] };
+      return res.json();
+    },
+    staleTime: 30 * 60 * 1000, // 30 min cache
+  });
+
+  // ── US Holidays fetch ───────────────────────────────────────────────
+  const { data: holidayData } = useQuery<{ holidays: HolidayEntry[] }>({
+    queryKey: ["/api/google/holidays"],
+    queryFn: async () => {
+      const res = await fetch("/api/google/holidays", { credentials: "include" });
+      if (!res.ok) return { holidays: [] };
+      return res.json();
+    },
+    staleTime: 60 * 60 * 1000, // 1 hour cache
   });
 
   const isLoading = fubLoading || googleLoading;
@@ -158,7 +189,50 @@ export default function CalendarPage() {
     });
   };
 
-  // ── Merge events from both sources ──────────────────────────────────
+  // ── Convert birthdays to calendar events ────────────────────────────
+  const birthdayEvents = useMemo<MergedCalendarEvent[]>(() => {
+    if (!birthdayData?.birthdays?.length) return [];
+    const year = currentMonth.getFullYear();
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+
+    return birthdayData.birthdays
+      .map((b, idx) => {
+        const [mm, dd] = b.birthday.split('-').map(Number);
+        if (!mm || !dd) return null;
+        const date = new Date(year, mm - 1, dd);
+        if (date < monthStart || date > monthEnd) return null;
+        const dateStr = format(date, 'yyyy-MM-dd');
+        return {
+          id: `birthday-${idx}-${b.birthday}`,
+          title: `${b.name}'s birthday`,
+          startDate: dateStr,
+          endDate: dateStr,
+          allDay: true,
+          type: 'event' as const,
+          status: 'confirmed' as const,
+          source: 'birthday' as const,
+        } as MergedCalendarEvent;
+      })
+      .filter((e): e is MergedCalendarEvent => e !== null);
+  }, [birthdayData, currentMonth]);
+
+  // ── Convert holidays to calendar events ─────────────────────────────
+  const holidayEvents = useMemo<MergedCalendarEvent[]>(() => {
+    if (!holidayData?.holidays?.length) return [];
+    return holidayData.holidays.map((h) => ({
+      id: h.id,
+      title: h.title,
+      startDate: h.start,
+      endDate: h.end,
+      allDay: h.allDay,
+      type: 'event' as const,
+      status: 'confirmed' as const,
+      source: 'us_holiday' as const,
+    } as MergedCalendarEvent));
+  }, [holidayData]);
+
+  // ── Merge events from all sources ──────────────────────────────────
   const allItems = useMemo<MergedCalendarEvent[]>(() => {
     const fubEvents: MergedCalendarEvent[] = (fubData?.events || [])
       .filter(e => e.status !== 'cancelled')
@@ -180,35 +254,29 @@ export default function CalendarPage() {
         source: 'google_company' as const,
         googleColor: e.color,
       }))
-      // Don't show declined events
       .filter(e => e.rsvpStatus !== 'declined');
 
-    // Merge and sort by start date
-    return [...fubEvents, ...googleEvents].sort(
+    return [...fubEvents, ...googleEvents, ...birthdayEvents, ...holidayEvents].sort(
       (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
     );
-  }, [fubData, googleData]);
+  }, [fubData, googleData, birthdayEvents, holidayEvents]);
 
   const days = eachDayOfInterval({
     start: startOfMonth(currentMonth),
     end: endOfMonth(currentMonth),
   });
 
-  const getItemsForDay = (date: Date) => {
+  const getItemsForDay = useCallback((date: Date) => {
     return allItems.filter(item => {
       const itemDate = item.allDay
         ? new Date(item.startDate + 'T00:00:00')
         : parseISO(item.startDate);
       return isSameDay(itemDate, date);
     });
-  };
+  }, [allItems]);
 
-  // Check if a day has any training event
   const dayHasTraining = (dayItems: MergedCalendarEvent[]): boolean => {
-    return dayItems.some(item => {
-      const cat = categorizeEvent(item);
-      return cat === 'training';
-    });
+    return dayItems.some(item => categorizeEvent(item) === 'training');
   };
 
   const handleEventClick = (event: MergedCalendarEvent, e: MouseEvent) => {
@@ -244,6 +312,52 @@ export default function CalendarPage() {
     }
   };
 
+  // ── This Week summary counts ────────────────────────────────────────
+  const thisWeekCounts = useMemo(() => {
+    const now = new Date();
+    const weekStart = startOfWeek(now);
+    const weekEnd = endOfWeek(now);
+
+    const weekItems = allItems.filter(item => {
+      const itemDate = item.allDay
+        ? new Date(item.startDate + 'T00:00:00')
+        : parseISO(item.startDate);
+      return itemDate >= weekStart && itemDate <= weekEnd;
+    });
+
+    let trainings = 0;
+    let fubAppts = 0;
+    let companyEvents = 0;
+    let holidays = 0;
+    let birthdays = 0;
+
+    for (const item of weekItems) {
+      const cat = categorizeEvent(item);
+      if (cat === 'training') trainings++;
+      else if (cat === 'fub') fubAppts++;
+      else if (cat === 'us_holiday') holidays++;
+      else if (cat === 'birthday') birthdays++;
+      else companyEvents++;
+    }
+
+    return { trainings, fubAppts, companyEvents, holidays, birthdays };
+  }, [allItems]);
+
+  // ── Upcoming 3 events ──────────────────────────────────────────────
+  const upcomingThree = useMemo(() => {
+    const now = new Date();
+    const monthEnd = endOfMonth(currentMonth);
+    return allItems
+      .filter(item => {
+        const itemDate = item.allDay
+          ? new Date(item.startDate + 'T23:59:59')
+          : new Date(item.startDate);
+        return itemDate >= now && itemDate <= monthEnd;
+      })
+      .slice(0, 3);
+  }, [allItems, currentMonth]);
+
+  // ── Sidebar upcoming (5 items) ─────────────────────────────────────
   const upcomingItems = allItems
     .filter(item => {
       const itemDate = item.allDay
@@ -311,7 +425,6 @@ export default function CalendarPage() {
                 value={viewAsRole}
                 onValueChange={(val) => {
                   setViewAsRole(val);
-                  // Reset agent filter when switching to agent view (agent can't filter)
                   if (val === 'agent') setSelectedAgentId(null);
                 }}
               >
@@ -437,6 +550,9 @@ export default function CalendarPage() {
                       const dayItems = getItemsForDay(day);
                       const hasEvents = dayItems.length > 0;
                       const hasTraining = dayHasTraining(dayItems);
+                      // Separate birthday/holiday pills from regular events
+                      const regularItems = dayItems.filter(i => i.source !== 'birthday' && i.source !== 'us_holiday');
+                      const specialItems = dayItems.filter(i => i.source === 'birthday' || i.source === 'us_holiday');
                       return (
                         <div
                           key={day.toISOString()}
@@ -454,7 +570,24 @@ export default function CalendarPage() {
                             {format(day, 'd')}
                           </div>
                           <div className="space-y-0.5 sm:space-y-1">
-                            {dayItems.slice(0, 2).map((item, idx) => {
+                            {/* Birthday & holiday pills — subtle, compact */}
+                            {specialItems.slice(0, 2).map((item) => {
+                              const category = categorizeEvent(item);
+                              const hex = getCategoryHex(category);
+                              return (
+                                <div
+                                  key={item.id}
+                                  className="text-[8px] sm:text-[10px] px-1 py-0.5 rounded truncate cursor-pointer hover:opacity-80"
+                                  style={{ backgroundColor: `${hex}15`, color: hex }}
+                                  title={item.title}
+                                  onClick={(e) => handleEventClick(item, e)}
+                                >
+                                  {item.title}
+                                </div>
+                              );
+                            })}
+                            {/* Regular event pills */}
+                            {regularItems.slice(0, 2).map((item, idx) => {
                               const category = categorizeEvent(item);
                               const hex = getCategoryHex(category);
                               const pending = isPending(item);
@@ -494,7 +627,7 @@ export default function CalendarPage() {
                               </div>
                             )}
                             {/* No Training Today pill */}
-                            {!hasTraining && dayItems.length < 3 && (
+                            {!hasTraining && regularItems.length < 3 && specialItems.length === 0 && (
                               <div className="text-[8px] sm:text-[10px] text-gray-400 bg-gray-50 rounded px-1 py-0.5 truncate hidden sm:block">
                                 No Training
                               </div>
@@ -507,6 +640,53 @@ export default function CalendarPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* ── Bottom Panel: This Week + Upcoming ───────────────── */}
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* This Week summary */}
+              <Card>
+                <CardContent className="py-3 px-4">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">This Week</p>
+                  <p className="text-sm">
+                    {[
+                      thisWeekCounts.trainings > 0 && `${thisWeekCounts.trainings} training${thisWeekCounts.trainings > 1 ? 's' : ''}`,
+                      thisWeekCounts.fubAppts > 0 && `${thisWeekCounts.fubAppts} FUB appt${thisWeekCounts.fubAppts > 1 ? 's' : ''}`,
+                      thisWeekCounts.companyEvents > 0 && `${thisWeekCounts.companyEvents} company event${thisWeekCounts.companyEvents > 1 ? 's' : ''}`,
+                      thisWeekCounts.holidays > 0 && `${thisWeekCounts.holidays} holiday${thisWeekCounts.holidays > 1 ? 's' : ''}`,
+                      thisWeekCounts.birthdays > 0 && `${thisWeekCounts.birthdays} birthday${thisWeekCounts.birthdays > 1 ? 's' : ''}`,
+                    ].filter(Boolean).join(' \u00B7 ') || 'No events this week'}
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Upcoming 3 */}
+              <Card>
+                <CardContent className="py-3 px-4">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Upcoming</p>
+                  {upcomingThree.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No upcoming events this month</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {upcomingThree.map(item => {
+                        const cat = categorizeEvent(item);
+                        const hex = getCategoryHex(cat);
+                        return (
+                          <div key={item.id} className="flex items-center gap-2 text-sm">
+                            <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: hex }} />
+                            <span className="text-muted-foreground text-xs shrink-0 w-12">
+                              {item.allDay
+                                ? format(new Date(item.startDate + 'T00:00:00'), 'MMM d')
+                                : format(parseISO(item.startDate), 'MMM d')}
+                            </span>
+                            <span className="truncate">{item.title}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
           {/* ── Sidebar ──────────────────────────────────────────── */}
@@ -551,7 +731,7 @@ export default function CalendarPage() {
                             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                               <CalendarIcon className="h-3 w-3" />
                               {item.allDay
-                                ? format(new Date(item.startDate + 'T00:00:00'), "MMM d") + ' · All day'
+                                ? format(new Date(item.startDate + 'T00:00:00'), "MMM d") + ' \u00B7 All day'
                                 : format(parseISO(item.startDate), "MMM d, h:mm a")
                               }
                             </div>
@@ -567,7 +747,7 @@ export default function CalendarPage() {
                             className="text-[10px] shrink-0"
                             style={{ color: hex, borderColor: `${hex}60` }}
                           >
-                            {item.source === 'fub' ? 'FUB' : SPYGLASS_CATEGORIES[category].label}
+                            {SPYGLASS_CATEGORIES[category].label}
                           </Badge>
                         </div>
                       </div>
@@ -627,225 +807,266 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* ── Event Detail Dialog ───────────────────────────────────── */}
-      <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
-        <DialogContent className="sm:max-w-md" data-testid="dialog-event-details">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 font-display">
-              <CalendarIcon className="h-5 w-5" style={{ color: selectedEvent ? getCategoryHex(categorizeEvent(selectedEvent)) : '#222' }} />
-              Event Details
-            </DialogTitle>
-            <DialogDescription>
-              {selectedEvent && (
-                <span className="flex items-center gap-2">
-                  {selectedEvent.source === 'fub' ? 'Follow Up Boss' : 'Google Calendar'}
-                  {isPending(selectedEvent) && (
-                    <Badge variant="outline" className="text-amber-600 border-amber-300 text-[10px]">Pending invite</Badge>
-                  )}
+      {/* ── Event Detail Modal (custom overlay) ─────────────────────── */}
+      {selectedEvent && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setSelectedEvent(null)}
+          data-testid="dialog-event-details-backdrop"
+        >
+          <div
+            className="relative bg-background rounded-lg shadow-xl border mx-4"
+            style={{ minWidth: '320px', maxWidth: '600px', width: '100%', maxHeight: '80vh' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button
+              className="absolute top-3 right-3 p-1 rounded-full hover:bg-muted transition-colors z-10"
+              onClick={() => setSelectedEvent(null)}
+              data-testid="button-close-modal"
+            >
+              <X className="h-5 w-5 text-muted-foreground" />
+            </button>
+
+            <div className="overflow-y-auto p-6" style={{ maxHeight: '80vh' }}>
+              {/* Header */}
+              <div className="flex items-center gap-2 mb-1">
+                <CalendarIcon className="h-5 w-5" style={{ color: getCategoryHex(categorizeEvent(selectedEvent)) }} />
+                <span className="text-sm text-muted-foreground">
+                  {selectedEvent.source === 'fub' ? 'Follow Up Boss'
+                    : selectedEvent.source === 'birthday' ? 'Birthday'
+                    : selectedEvent.source === 'us_holiday' ? 'US Holiday'
+                    : 'Google Calendar'}
                 </span>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedEvent && (() => {
-            const category = categorizeEvent(selectedEvent);
-            const hex = getCategoryHex(category);
-            return (
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold">{selectedEvent.title}</h3>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Badge style={{ backgroundColor: `${hex}20`, color: hex, borderColor: `${hex}40` }}>
-                      {SPYGLASS_CATEGORIES[category].label}
-                    </Badge>
-                    <Badge variant="outline" className="text-[10px]">
-                      {selectedEvent.source === 'fub' ? 'FUB' : 'Google'}
-                    </Badge>
-                    {isPending(selectedEvent) && (
-                      <Badge variant="outline" className="text-amber-600 border-amber-300 border-dashed">Invited</Badge>
-                    )}
-                    {selectedEvent.status === 'tentative' && (
-                      <Badge variant="outline" className="text-amber-600 border-amber-300">Tentative</Badge>
-                    )}
-                    {selectedEvent.status === 'cancelled' && (
-                      <Badge variant="outline" className="text-red-600 border-red-300">Cancelled</Badge>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-start gap-3">
-                    <CalendarIcon className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">Date & Time</p>
-                      <p className="text-muted-foreground">
-                        {selectedEvent.allDay
-                          ? format(new Date(selectedEvent.startDate + 'T00:00:00'), "EEEE, MMMM d, yyyy")
-                          : format(parseISO(selectedEvent.startDate), "EEEE, MMMM d, yyyy")
-                        }
-                      </p>
-                      <p className="text-muted-foreground">
-                        {formatEventTime(selectedEvent)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {selectedEvent.location && (
-                    <div className="flex items-start gap-3">
-                      <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">Location</p>
-                        <p className="text-muted-foreground">{selectedEvent.location}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedEvent.description && (
-                    <div className="flex items-start gap-3">
-                      <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">Description</p>
-                        <p className="text-muted-foreground whitespace-pre-wrap text-xs max-h-32 overflow-y-auto">
-                          {selectedEvent.description.replace(/<[^>]*>/g, '')}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedEvent.organizer && (
-                    <div className="flex items-start gap-3">
-                      <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">Organizer</p>
-                        <p className="text-muted-foreground">{selectedEvent.organizer}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedEvent.attendees && selectedEvent.attendees.length > 0 && (
-                    <div className="flex items-start gap-3">
-                      <Users className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">Attendees ({selectedEvent.attendees.length})</p>
-                        <div className="space-y-1 mt-1">
-                          {selectedEvent.attendees.slice(0, 5).map((a, i) => (
-                            <p key={i} className="text-muted-foreground text-xs flex items-center gap-1.5">
-                              <span className={`inline-block h-1.5 w-1.5 rounded-full ${
-                                a.responseStatus === 'accepted' ? 'bg-green-500' :
-                                a.responseStatus === 'declined' ? 'bg-red-500' :
-                                a.responseStatus === 'tentative' ? 'bg-amber-500' :
-                                'bg-gray-400'
-                              }`} />
-                              {a.displayName || a.email}
-                            </p>
-                          ))}
-                          {selectedEvent.attendees.length > 5 && (
-                            <p className="text-muted-foreground text-xs">
-                              +{selectedEvent.attendees.length - 5} more
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedEvent.personName && (
-                    <div className="flex items-start gap-3">
-                      <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">Contact</p>
-                        <p className="text-muted-foreground">{selectedEvent.personName}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex gap-3 pt-4 border-t">
-                  {selectedEvent.htmlLink && (
-                    <a
-                      href={selectedEvent.htmlLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1"
-                    >
-                      <Button variant="outline" className="w-full" data-testid="button-view-in-gcal">
-                        Open in Google Calendar
-                        <ExternalLink className="ml-2 h-4 w-4" />
-                      </Button>
-                    </a>
-                  )}
-                  <Button
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() => setSelectedEvent(null)}
-                    data-testid="button-close-modal"
-                  >
-                    Close
-                  </Button>
-                </div>
+                {isPending(selectedEvent) && (
+                  <Badge variant="outline" className="text-amber-600 border-amber-300 text-[10px]">Pending invite</Badge>
+                )}
               </div>
-            );
-          })()}
-        </DialogContent>
-      </Dialog>
+
+              {/* Title + badges */}
+              <h3 className="text-lg font-semibold mb-3">{selectedEvent.title}</h3>
+              <div className="flex items-center gap-2 mb-4">
+                {(() => {
+                  const category = categorizeEvent(selectedEvent);
+                  const hex = getCategoryHex(category);
+                  return (
+                    <>
+                      <Badge style={{ backgroundColor: `${hex}20`, color: hex, borderColor: `${hex}40` }}>
+                        {SPYGLASS_CATEGORIES[category].label}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px]">
+                        {selectedEvent.source === 'fub' ? 'FUB'
+                          : selectedEvent.source === 'birthday' ? 'Birthday'
+                          : selectedEvent.source === 'us_holiday' ? 'Holiday'
+                          : 'Google'}
+                      </Badge>
+                    </>
+                  );
+                })()}
+                {isPending(selectedEvent) && (
+                  <Badge variant="outline" className="text-amber-600 border-amber-300 border-dashed">Invited</Badge>
+                )}
+                {selectedEvent.status === 'tentative' && (
+                  <Badge variant="outline" className="text-amber-600 border-amber-300">Tentative</Badge>
+                )}
+                {selectedEvent.status === 'cancelled' && (
+                  <Badge variant="outline" className="text-red-600 border-red-300">Cancelled</Badge>
+                )}
+              </div>
+
+              {/* Content sections */}
+              <div className="space-y-3 text-sm">
+                <div className="flex items-start gap-3">
+                  <CalendarIcon className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">Date & Time</p>
+                    <p className="text-muted-foreground">
+                      {selectedEvent.allDay
+                        ? format(new Date(selectedEvent.startDate + 'T00:00:00'), "EEEE, MMMM d, yyyy")
+                        : format(parseISO(selectedEvent.startDate), "EEEE, MMMM d, yyyy")
+                      }
+                    </p>
+                    <p className="text-muted-foreground">
+                      {formatEventTime(selectedEvent)}
+                    </p>
+                  </div>
+                </div>
+
+                {selectedEvent.location && (
+                  <div className="flex items-start gap-3">
+                    <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Location</p>
+                      <p className="text-muted-foreground">{selectedEvent.location}</p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedEvent.description && (
+                  <div className="flex items-start gap-3">
+                    <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Description</p>
+                      <p className="text-muted-foreground whitespace-pre-wrap text-xs max-h-40 overflow-y-auto">
+                        {selectedEvent.description.replace(/<[^>]*>/g, '')}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedEvent.organizer && (
+                  <div className="flex items-start gap-3">
+                    <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Organizer</p>
+                      <p className="text-muted-foreground">{selectedEvent.organizer}</p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedEvent.attendees && selectedEvent.attendees.length > 0 && (
+                  <div className="flex items-start gap-3">
+                    <Users className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Attendees ({selectedEvent.attendees.length})</p>
+                      <div className="space-y-1 mt-1">
+                        {selectedEvent.attendees.slice(0, 5).map((a, i) => (
+                          <p key={i} className="text-muted-foreground text-xs flex items-center gap-1.5">
+                            <span className={`inline-block h-1.5 w-1.5 rounded-full ${
+                              a.responseStatus === 'accepted' ? 'bg-green-500' :
+                              a.responseStatus === 'declined' ? 'bg-red-500' :
+                              a.responseStatus === 'tentative' ? 'bg-amber-500' :
+                              'bg-gray-400'
+                            }`} />
+                            {a.displayName || a.email}
+                          </p>
+                        ))}
+                        {selectedEvent.attendees.length > 5 && (
+                          <p className="text-muted-foreground text-xs">
+                            +{selectedEvent.attendees.length - 5} more
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedEvent.personName && (
+                  <div className="flex items-start gap-3">
+                    <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Contact</p>
+                      <p className="text-muted-foreground">{selectedEvent.personName}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-4 mt-4 border-t">
+                {selectedEvent.htmlLink && (
+                  <a
+                    href={selectedEvent.htmlLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1"
+                  >
+                    <Button variant="outline" className="w-full" data-testid="button-view-in-gcal">
+                      Open in Google Calendar
+                      <ExternalLink className="ml-2 h-4 w-4" />
+                    </Button>
+                  </a>
+                )}
+                <Button
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={() => setSelectedEvent(null)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Day Events List Dialog ────────────────────────────────── */}
-      <Dialog open={!!selectedDayEvents} onOpenChange={() => setSelectedDayEvents(null)}>
-        <DialogContent className="sm:max-w-md" data-testid="dialog-day-events">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 font-display">
-              <CalendarIcon className="h-5 w-5 text-[#EF4923]" />
-              {selectedDate && format(selectedDate, "EEEE, MMMM d")}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedDayEvents?.length} events on this day
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-            {selectedDayEvents?.map(item => {
-              const category = categorizeEvent(item);
-              const hex = getCategoryHex(category);
-              const pending = isPending(item);
-              return (
-                <div
-                  key={item.id}
-                  className="p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors cursor-pointer"
-                  style={{ borderLeftWidth: '3px', borderLeftColor: hex }}
-                  onClick={() => {
-                    setSelectedEvent(item);
-                    setSelectedDayEvents(null);
-                  }}
-                  data-testid={`day-event-${item.id}`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">
-                        {item.title}{pending ? ' (invited)' : ''}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        {formatEventTime(item)}
-                      </div>
-                      {item.location && (
-                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                          <MapPin className="h-3 w-3" />
-                          <span className="truncate">{item.location}</span>
-                        </div>
-                      )}
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] ${pending ? 'border-dashed' : ''}`}
-                      style={{ color: hex, borderColor: `${hex}60` }}
+      {selectedDayEvents && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setSelectedDayEvents(null)}
+          data-testid="dialog-day-events-backdrop"
+        >
+          <div
+            className="relative bg-background rounded-lg shadow-xl border mx-4"
+            style={{ minWidth: '320px', maxWidth: '500px', width: '100%', maxHeight: '80vh' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="absolute top-3 right-3 p-1 rounded-full hover:bg-muted transition-colors z-10"
+              onClick={() => setSelectedDayEvents(null)}
+            >
+              <X className="h-5 w-5 text-muted-foreground" />
+            </button>
+
+            <div className="p-6">
+              <div className="flex items-center gap-2 mb-1">
+                <CalendarIcon className="h-5 w-5 text-[#EF4923]" />
+                <h3 className="text-lg font-display font-semibold">
+                  {selectedDate && format(selectedDate, "EEEE, MMMM d")}
+                </h3>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                {selectedDayEvents.length} events on this day
+              </p>
+
+              <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                {selectedDayEvents.map(item => {
+                  const category = categorizeEvent(item);
+                  const hex = getCategoryHex(category);
+                  const pending = isPending(item);
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors cursor-pointer"
+                      style={{ borderLeftWidth: '3px', borderLeftColor: hex }}
+                      onClick={() => {
+                        setSelectedEvent(item);
+                        setSelectedDayEvents(null);
+                      }}
+                      data-testid={`day-event-${item.id}`}
                     >
-                      {item.source === 'fub' ? 'FUB' : SPYGLASS_CATEGORIES[category].label}
-                    </Badge>
-                  </div>
-                </div>
-              );
-            })}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm">
+                            {item.title}{pending ? ' (invited)' : ''}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            {formatEventTime(item)}
+                          </div>
+                          {item.location && (
+                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                              <MapPin className="h-3 w-3" />
+                              <span className="truncate">{item.location}</span>
+                            </div>
+                          )}
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] ${pending ? 'border-dashed' : ''}`}
+                          style={{ color: hex, borderColor: `${hex}60` }}
+                        >
+                          {SPYGLASS_CATEGORIES[category].label}
+                        </Badge>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </Layout>
   );
 }
