@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Calendar as CalendarIcon, Clock, User, ChevronLeft, ChevronRight, AlertCircle, ExternalLink, MapPin, FileText, Users, X, Cake, Star } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, parseISO, startOfWeek, endOfWeek } from "date-fns";
-import { useState, useMemo, useCallback, type MouseEvent } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, type MouseEvent } from "react";
 import type { GoogleCalendarEvent } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -123,6 +123,8 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState<MergedCalendarEvent | null>(null);
   const [selectedDayEvents, setSelectedDayEvents] = useState<MergedCalendarEvent[] | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [highlightedDate, setHighlightedDate] = useState<string | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { lastManualRefresh, lastAutoRefresh, isLoading: isSyncing, refresh: refreshSync } = useSyncStatus('calendar');
 
   const startDate = format(startOfMonth(currentMonth), "yyyy-MM-dd");
@@ -340,8 +342,43 @@ export default function CalendarPage() {
       else companyEvents++;
     }
 
-    return { trainings, fubAppts, companyEvents, holidays, birthdays };
+    return { trainings, fubAppts, companyEvents, holidays, birthdays, weekItems };
   }, [allItems]);
+
+  // ── Highlight a date on the calendar (auto-clears after 3s) ─────────
+  const highlightDate = useCallback((dateStr: string) => {
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    setHighlightedDate(dateStr);
+    highlightTimerRef.current = setTimeout(() => setHighlightedDate(null), 3000);
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    };
+  }, []);
+
+  // ── Navigate to a date's month + highlight it ───────────────────────
+  const navigateAndHighlight = useCallback((dateStr: string) => {
+    const targetDate = new Date(dateStr + 'T00:00:00');
+    const targetMonth = startOfMonth(targetDate);
+    const currentMonthStart = startOfMonth(currentMonth);
+    if (targetMonth.getTime() !== currentMonthStart.getTime()) {
+      setCurrentMonth(targetMonth);
+    }
+    highlightDate(dateStr);
+  }, [currentMonth, highlightDate]);
+
+  // ── Handle "This Week" category click ───────────────────────────────
+  const handleWeekCategoryClick = useCallback((category: CategoryKey) => {
+    const firstEvent = thisWeekCounts.weekItems.find(item => categorizeEvent(item) === category);
+    if (!firstEvent) return;
+    const dateStr = firstEvent.allDay
+      ? firstEvent.startDate
+      : firstEvent.startDate.split('T')[0];
+    navigateAndHighlight(dateStr);
+  }, [thisWeekCounts.weekItems, navigateAndHighlight]);
 
   // ── Upcoming 3 events ──────────────────────────────────────────────
   const upcomingThree = useMemo(() => {
@@ -573,7 +610,9 @@ export default function CalendarPage() {
                           key={day.toISOString()}
                           className={`bg-background p-1.5 sm:p-2 min-h-[70px] sm:min-h-[80px] md:min-h-[100px] border-t ${
                             isToday(day) ? 'bg-[#EF4923]/5' : ''
-                          } ${hasEvents ? 'cursor-pointer hover:bg-muted/50 transition-colors active:bg-muted/70' : ''}`}
+                          } ${hasEvents ? 'cursor-pointer hover:bg-muted/50 transition-colors active:bg-muted/70' : ''} ${
+                            highlightedDate === format(day, 'yyyy-MM-dd') ? 'ring-2 ring-[#EF4923] ring-offset-1' : ''
+                          }`}
                           onClick={() => handleDayClick(day, dayItems)}
                           data-testid={`day-${format(day, 'yyyy-MM-dd')}`}
                         >
@@ -663,13 +702,27 @@ export default function CalendarPage() {
                 <CardContent className="py-3 px-4">
                   <p className="text-xs font-medium text-muted-foreground mb-1">This Week</p>
                   <p className="text-sm">
-                    {[
-                      thisWeekCounts.trainings > 0 && `${thisWeekCounts.trainings} training${thisWeekCounts.trainings > 1 ? 's' : ''}`,
-                      thisWeekCounts.fubAppts > 0 && `${thisWeekCounts.fubAppts} FUB appt${thisWeekCounts.fubAppts > 1 ? 's' : ''}`,
-                      thisWeekCounts.companyEvents > 0 && `${thisWeekCounts.companyEvents} company event${thisWeekCounts.companyEvents > 1 ? 's' : ''}`,
-                      thisWeekCounts.holidays > 0 && `${thisWeekCounts.holidays} holiday${thisWeekCounts.holidays > 1 ? 's' : ''}`,
-                      thisWeekCounts.birthdays > 0 && `${thisWeekCounts.birthdays} birthday${thisWeekCounts.birthdays > 1 ? 's' : ''}`,
-                    ].filter(Boolean).join(' \u00B7 ') || 'No events this week'}
+                    {(() => {
+                      const parts: { label: string; category: CategoryKey }[] = [];
+                      if (thisWeekCounts.trainings > 0) parts.push({ label: `${thisWeekCounts.trainings} training${thisWeekCounts.trainings > 1 ? 's' : ''}`, category: 'training' });
+                      if (thisWeekCounts.fubAppts > 0) parts.push({ label: `${thisWeekCounts.fubAppts} FUB appt${thisWeekCounts.fubAppts > 1 ? 's' : ''}`, category: 'fub' });
+                      if (thisWeekCounts.companyEvents > 0) parts.push({ label: `${thisWeekCounts.companyEvents} company event${thisWeekCounts.companyEvents > 1 ? 's' : ''}`, category: 'company' });
+                      if (thisWeekCounts.holidays > 0) parts.push({ label: `${thisWeekCounts.holidays} holiday${thisWeekCounts.holidays > 1 ? 's' : ''}`, category: 'us_holiday' });
+                      if (thisWeekCounts.birthdays > 0) parts.push({ label: `${thisWeekCounts.birthdays} birthday${thisWeekCounts.birthdays > 1 ? 's' : ''}`, category: 'birthday' });
+                      if (parts.length === 0) return 'No events this week';
+                      return parts.map((part, idx) => (
+                        <span key={part.category}>
+                          {idx > 0 && ' \u00B7 '}
+                          <span
+                            className="cursor-pointer hover:underline"
+                            style={{ color: getCategoryHex(part.category) }}
+                            onClick={() => handleWeekCategoryClick(part.category)}
+                          >
+                            {part.label}
+                          </span>
+                        </span>
+                      ));
+                    })()}
                   </p>
                 </CardContent>
               </Card>
@@ -685,9 +738,19 @@ export default function CalendarPage() {
                       {upcomingThree.map(item => {
                         const cat = categorizeEvent(item);
                         const hex = getCategoryHex(cat);
+                        const dateStr = item.allDay
+                          ? item.startDate
+                          : item.startDate.split('T')[0];
                         return (
-                          <div key={item.id} className="flex items-center gap-2 text-sm">
-                            <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: hex }} />
+                          <div
+                            key={item.id}
+                            className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded-md px-2 py-1 -mx-2 transition-colors"
+                            style={{ borderLeft: `3px solid ${hex}` }}
+                            onClick={() => {
+                              navigateAndHighlight(dateStr);
+                              setSelectedEvent(item);
+                            }}
+                          >
                             <span className="text-muted-foreground text-xs shrink-0 w-12">
                               {item.allDay
                                 ? format(new Date(item.startDate + 'T00:00:00'), 'MMM d')
@@ -842,8 +905,8 @@ export default function CalendarPage() {
           data-testid="dialog-event-details-backdrop"
         >
           <div
-            className="relative bg-background rounded-lg shadow-xl border mx-4"
-            style={{ minWidth: '320px', maxWidth: '600px', width: '100%', maxHeight: '80vh' }}
+            className="relative bg-background rounded-lg shadow-xl border mx-4 overflow-hidden"
+            style={{ minWidth: '320px', maxWidth: '600px', width: '100%' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button */}
@@ -855,7 +918,7 @@ export default function CalendarPage() {
               <X className="h-5 w-5 text-muted-foreground" />
             </button>
 
-            <div className="overflow-y-auto p-6" style={{ maxHeight: '80vh' }}>
+            <div className="overflow-y-auto overflow-x-hidden p-6" style={{ maxHeight: '80vh' }}>
               {/* Header */}
               <div className="flex items-center gap-2 mb-1">
                 <CalendarIcon className="h-5 w-5" style={{ color: getCategoryHex(categorizeEvent(selectedEvent)) }} />
@@ -934,7 +997,7 @@ export default function CalendarPage() {
                     <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
                     <div>
                       <p className="font-medium">Description</p>
-                      <p className="text-muted-foreground whitespace-pre-wrap text-xs max-h-40 overflow-y-auto">
+                      <p className="text-muted-foreground whitespace-pre-wrap text-xs max-h-40 overflow-y-auto break-words" style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                         {selectedEvent.description.replace(/<[^>]*>/g, '')}
                       </p>
                     </div>
