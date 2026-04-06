@@ -128,6 +128,7 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [calView, setCalView] = useState<'month' | 'week' | 'day' | 'schedule'>('month');
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [selectedAgentEmail, setSelectedAgentEmail] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<MergedCalendarEvent | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => startOfWeek(new Date()));
   const [currentDay, setCurrentDay] = useState(new Date());
@@ -160,12 +161,12 @@ export default function CalendarPage() {
   });
 
   // ── Google company calendar fetch ───────────────────────────────────
-  const googleCalUrl = selectedAgentId
-    ? `/api/google/company-calendar?agentId=${selectedAgentId}`
+  const googleCalUrl = selectedAgentEmail
+    ? `/api/google/company-calendar?agentEmail=${encodeURIComponent(selectedAgentEmail)}`
     : `/api/google/company-calendar`;
 
   const { data: googleData, isLoading: googleLoading, error: googleError, refetch: refetchGoogle, dataUpdatedAt: googleSyncTime } = useQuery<GoogleCompanyResponse>({
-    queryKey: ["/api/google/company-calendar", { agentId: selectedAgentId }],
+    queryKey: ["/api/google/company-calendar", { agentEmail: selectedAgentEmail }],
     queryFn: async () => {
       const res = await fetch(googleCalUrl, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch Google company calendar");
@@ -492,7 +493,7 @@ export default function CalendarPage() {
                 value={viewAsRole}
                 onValueChange={(val) => {
                   setViewAsRole(val);
-                  if (val === 'agent') setSelectedAgentId(null);
+                  if (val === 'agent') { setSelectedAgentId(null); setSelectedAgentEmail(null); }
                 }}
               >
                 <SelectTrigger className="w-[160px] h-9 text-sm" data-testid="select-view-as-role">
@@ -509,7 +510,10 @@ export default function CalendarPage() {
             {canSeeAllAgents && (
               <AgentSelector
                 selectedAgentId={selectedAgentId}
-                onAgentChange={setSelectedAgentId}
+                onAgentChange={(id, email) => {
+                  setSelectedAgentId(id);
+                  setSelectedAgentEmail(email);
+                }}
               />
             )}
             <RefreshButton

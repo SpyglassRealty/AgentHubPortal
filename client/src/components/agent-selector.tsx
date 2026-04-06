@@ -15,7 +15,7 @@ interface Agent {
 
 interface AgentSelectorProps {
   selectedAgentId: string | null;
-  onAgentChange: (agentId: string | null) => void;
+  onAgentChange: (agentId: string | null, agentEmail: string | null) => void;
 }
 
 export function AgentSelector({ selectedAgentId, onAgentChange }: AgentSelectorProps) {
@@ -85,7 +85,7 @@ export function AgentSelector({ selectedAgentId, onAgentChange }: AgentSelectorP
                 !selectedAgentId && "bg-accent"
               )}
               onClick={() => {
-                onAgentChange(null);
+                onAgentChange(null, null);
                 setOpen(false);
                 setSearchQuery("");
               }}
@@ -112,7 +112,7 @@ export function AgentSelector({ selectedAgentId, onAgentChange }: AgentSelectorP
                     selectedAgentId === agent.id.toString() && "bg-accent"
                   )}
                   onClick={() => {
-                    onAgentChange(agent.id.toString());
+                    onAgentChange(agent.id.toString(), agent.email);
                     setOpen(false);
                     setSearchQuery("");
                   }}

@@ -503,7 +503,7 @@ export default function LeadsPage() {
             {user?.isSuperAdmin && (
               <AgentSelector
                 selectedAgentId={selectedAgentId}
-                onAgentChange={setSelectedAgentId}
+                onAgentChange={(id) => setSelectedAgentId(id)}
               />
             )}
           </div>

@@ -798,7 +798,7 @@ export default function EmailPage() {
     queryClient.invalidateQueries({ queryKey: ['/api/gmail/unread-counts'] });
   };
 
-  const handleAgentChange = (agentId: string | null) => {
+  const handleAgentChange = (agentId: string | null, _agentEmail: string | null) => {
     setSelectedAgentId(agentId);
     setSelectedMessageId(null);
     setPageTokens([]);

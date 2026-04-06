@@ -109,7 +109,7 @@ export default function ReportsPage() {
             {user?.isSuperAdmin && (
               <AgentSelector 
                 selectedAgentId={selectedAgentId}
-                onAgentChange={setSelectedAgentId}
+                onAgentChange={(id) => setSelectedAgentId(id)}
               />
             )}
             <RefreshButton

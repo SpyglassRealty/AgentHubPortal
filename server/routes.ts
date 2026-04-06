@@ -6597,30 +6597,25 @@ Respond with valid JSON in this exact format:
       const credentials = getGoogleCredentials();
 
       // Determine which user to impersonate
-      const agentId = req.query.agentId as string | undefined;
-      let userEmail: string | undefined;
+      const agentEmail = req.query.agentEmail as string | undefined;
 
-      if (agentId) {
-        // Look up the selected agent's email from agent_directory_profiles
-        const [agentRow] = await db
-          .select({ email: agentDirectoryProfiles.email })
-          .from(agentDirectoryProfiles)
-          .where(eq(agentDirectoryProfiles.id, agentId))
-          .limit(1);
-        if (agentRow?.email?.endsWith('@spyglassrealty.com')) {
-          userEmail = agentRow.email;
-        }
-        console.log(`[Company Calendar] Agent ID ${agentId} resolved to email: ${agentRow?.email || 'not found'}`);
+      // Use agentEmail directly if it's a valid @spyglassrealty.com address
+      let userEmail: string | undefined;
+      if (agentEmail?.endsWith('@spyglassrealty.com')) {
+        userEmail = agentEmail;
       }
 
-      // Fall back to logged-in user if no agent selected or agent email not found
+      // Fall back to logged-in user if no agent selected or agent email not valid
       if (!userEmail) {
         const user = await getDbUser(req);
-        userEmail = user?.email || req.user?.claims?.email;
+        const loggedInEmail = user?.email || req.user?.claims?.email;
+        if (loggedInEmail?.endsWith('@spyglassrealty.com')) {
+          userEmail = loggedInEmail;
+        }
       }
 
-      // Only impersonate @spyglassrealty.com emails (domain-wide delegation scope)
-      if (!userEmail || !userEmail.endsWith('@spyglassrealty.com')) {
+      // Final fallback to default impersonation user
+      if (!userEmail) {
         userEmail = process.env.GOOGLE_CALENDAR_IMPERSONATE_USER || 'john@spyglassrealty.com';
       }
 
