@@ -160,10 +160,14 @@ export default function CalendarPage() {
   });
 
   // ── Google company calendar fetch ───────────────────────────────────
+  const googleCalUrl = selectedAgentId
+    ? `/api/google/company-calendar?agentId=${selectedAgentId}`
+    : `/api/google/company-calendar`;
+
   const { data: googleData, isLoading: googleLoading, error: googleError, refetch: refetchGoogle, dataUpdatedAt: googleSyncTime } = useQuery<GoogleCompanyResponse>({
-    queryKey: ["/api/google/company-calendar"],
+    queryKey: ["/api/google/company-calendar", { agentId: selectedAgentId }],
     queryFn: async () => {
-      const res = await fetch("/api/google/company-calendar", { credentials: "include" });
+      const res = await fetch(googleCalUrl, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch Google company calendar");
       return res.json();
     },

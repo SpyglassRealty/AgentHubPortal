@@ -5,7 +5,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { getFubClient, getFubClientAsync, getFubApiKey } from "./fubClient";
 import { getRezenClient } from "./rezenClient";
 import { generateSuggestionsForUser } from "./contextEngine";
-import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema, agentProfiles } from "@shared/schema";
+import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema, agentProfiles, agentDirectoryProfiles } from "@shared/schema";
 import { getGoogleCalendarEvents } from "./googleCalendarClient";
 import { extractPhotosFromRepliersList, debugPhotoFields } from "./lib/repliers-photo-utils";
 import { renderBlocks } from "./renderBlockRoutes";
@@ -6597,8 +6597,27 @@ Respond with valid JSON in this exact format:
       const credentials = getGoogleCredentials();
 
       // Determine which user to impersonate
-      const user = await getDbUser(req);
-      let userEmail = user?.email || req.user?.claims?.email;
+      const agentId = req.query.agentId as string | undefined;
+      let userEmail: string | undefined;
+
+      if (agentId) {
+        // Look up the selected agent's email from agent_directory_profiles
+        const [agentRow] = await db
+          .select({ email: agentDirectoryProfiles.email })
+          .from(agentDirectoryProfiles)
+          .where(eq(agentDirectoryProfiles.id, agentId))
+          .limit(1);
+        if (agentRow?.email?.endsWith('@spyglassrealty.com')) {
+          userEmail = agentRow.email;
+        }
+        console.log(`[Company Calendar] Agent ID ${agentId} resolved to email: ${agentRow?.email || 'not found'}`);
+      }
+
+      // Fall back to logged-in user if no agent selected or agent email not found
+      if (!userEmail) {
+        const user = await getDbUser(req);
+        userEmail = user?.email || req.user?.claims?.email;
+      }
 
       // Only impersonate @spyglassrealty.com emails (domain-wide delegation scope)
       if (!userEmail || !userEmail.endsWith('@spyglassrealty.com')) {
