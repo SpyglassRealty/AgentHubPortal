@@ -367,16 +367,31 @@ export default function CalendarPage() {
     })
     .slice(0, 5);
 
-  // Quick stats by source
-  const fubCount = allItems.filter(e => e.source === 'fub').length;
-  const googleCount = allItems.filter(e => e.source === 'google_company').length;
+  // Quick stats — filtered to current displayed month only
+  const currentMonthEvents = useMemo(() => {
+    const month = currentMonth.getMonth();
+    const year = currentMonth.getFullYear();
+    return allItems.filter(event => {
+      const eventDate = event.allDay
+        ? new Date(event.startDate + 'T00:00:00')
+        : parseISO(event.startDate);
+      return eventDate.getMonth() === month && eventDate.getFullYear() === year;
+    });
+  }, [allItems, currentMonth]);
 
-  // Stats by category
-  const eventsByCategory = allItems.reduce<Record<string, number>>((acc, item) => {
-    const cat = categorizeEvent(item);
-    acc[cat] = (acc[cat] || 0) + 1;
-    return acc;
-  }, {});
+  const fubCount = currentMonthEvents.filter(e => e.source === 'fub').length;
+  const googleCount = currentMonthEvents.filter(e => e.source === 'google_company').length;
+
+  // Google events breakdown by type
+  const googleByType = useMemo(() => {
+    const counts: Record<string, number> = { training: 0, zillow: 0, company: 0, admin: 0 };
+    for (const event of currentMonthEvents) {
+      if (event.source !== 'google_company') continue;
+      const cat = categorizeEvent(event);
+      if (cat in counts) counts[cat]++;
+    }
+    return counts;
+  }, [currentMonthEvents]);
 
   // Pending event check (dashed border)
   const isPending = (event: MergedCalendarEvent): boolean => {
@@ -765,8 +780,17 @@ export default function CalendarPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">This Month</span>
                   <Badge className="bg-[#222222]">
-                    {allItems.length} events
+                    {currentMonthEvents.length} events
                   </Badge>
+                </div>
+
+                {/* By source */}
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: SPYGLASS_CATEGORIES.company.hex }} />
+                    Google Calendar
+                  </span>
+                  <span className="font-medium">{googleCount}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground flex items-center gap-1.5">
@@ -775,30 +799,33 @@ export default function CalendarPage() {
                   </span>
                   <span className="font-medium">{fubCount}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: SPYGLASS_CATEGORIES.company.hex }} />
-                    Google
-                  </span>
-                  <span className="font-medium">{googleCount}</span>
-                </div>
+
+                {/* Divider */}
                 <div className="border-t pt-2 mt-2" />
-                {Object.entries(eventsByCategory)
-                  .sort(([, a], [, b]) => b - a)
-                  .map(([cat, count]) => (
-                    <div key={cat} className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                        <div
-                          className="h-2 w-2 rounded-full"
-                          style={{ backgroundColor: SPYGLASS_CATEGORIES[cat as CategoryKey]?.hex || '#999' }}
-                        />
-                        {SPYGLASS_CATEGORIES[cat as CategoryKey]?.label || cat}
-                      </span>
-                      <span className="font-medium">{count}</span>
-                    </div>
-                  ))
-                }
-                {Object.keys(eventsByCategory).length === 0 && !isLoading && (
+
+                {/* Google events by type */}
+                {googleCount > 0 && (
+                  <>
+                    <p className="text-xs font-medium text-muted-foreground">Google by type</p>
+                    {Object.entries(googleByType)
+                      .filter(([, count]) => count > 0)
+                      .sort(([, a], [, b]) => b - a)
+                      .map(([cat, count]) => (
+                        <div key={cat} className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                            <div
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: SPYGLASS_CATEGORIES[cat as CategoryKey]?.hex || '#999' }}
+                            />
+                            {SPYGLASS_CATEGORIES[cat as CategoryKey]?.label || cat}
+                          </span>
+                          <span className="font-medium">{count}</span>
+                        </div>
+                      ))
+                    }
+                  </>
+                )}
+                {currentMonthEvents.length === 0 && !isLoading && (
                   <p className="text-sm text-muted-foreground text-center">No events this month</p>
                 )}
               </CardContent>
