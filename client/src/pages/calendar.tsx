@@ -14,6 +14,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Calendar as CalendarIcon, Clock, User, ChevronLeft, ChevronRight, AlertCircle, ExternalLink, MapPin, FileText, Users } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, parseISO } from "date-fns";
 import { useState, useMemo, type MouseEvent } from "react";
@@ -81,14 +88,21 @@ function getCategoryHex(category: CategoryKey): string {
   return SPYGLASS_CATEGORIES[category].hex;
 }
 
+// ── Role label helpers ──────────────────────────────────────────────────
+function roleLabel(role: string): string {
+  return role === 'developer' ? 'Developer' : role === 'admin' ? 'Admin' : 'Agent';
+}
+
 // ── Role badge component ────────────────────────────────────────────────
-function RoleBadge({ role }: { role: string }) {
-  const label = role === 'developer' ? 'Developer' : role === 'admin' ? 'Admin' : 'Agent';
+function RoleBadge({ role, viewAsRole }: { role: string; viewAsRole?: string }) {
   const styles = role === 'developer'
     ? 'bg-[#534AB7] text-white'
     : role === 'admin'
     ? 'bg-[#222222] text-white'
     : 'bg-gray-100 text-gray-700';
+  const label = viewAsRole && viewAsRole !== role
+    ? `${roleLabel(role)} (viewing as ${roleLabel(viewAsRole)})`
+    : roleLabel(role);
   return <Badge className={`${styles} text-xs`}>{label}</Badge>;
 }
 
@@ -105,8 +119,10 @@ export default function CalendarPage() {
   const startDate = format(startOfMonth(currentMonth), "yyyy-MM-dd");
   const endDate = format(endOfMonth(currentMonth), "yyyy-MM-dd");
 
-  const effectiveRole = user?.role || 'agent';
-  const canSeeAllAgents = isAdmin || isDeveloper;
+  const actualRole = user?.role || 'agent';
+  const [viewAsRole, setViewAsRole] = useState<string>(actualRole);
+
+  const canSeeAllAgents = viewAsRole === 'admin' || viewAsRole === 'developer';
 
   // ── FUB calendar fetch ──────────────────────────────────────────────
   const fubUrl = selectedAgentId
@@ -278,7 +294,7 @@ export default function CalendarPage() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl sm:text-3xl font-display font-bold" data-testid="text-calendar-title">Calendar</h1>
-              <RoleBadge role={effectiveRole} />
+              <RoleBadge role={actualRole} viewAsRole={viewAsRole} />
             </div>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">
               {selectedAgentId
@@ -289,6 +305,27 @@ export default function CalendarPage() {
             </p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            {/* Role switcher — developer sees all 3, admin sees admin+agent, agent sees nothing */}
+            {(isDeveloper || (isAdmin && !isDeveloper)) && (
+              <Select
+                value={viewAsRole}
+                onValueChange={(val) => {
+                  setViewAsRole(val);
+                  // Reset agent filter when switching to agent view (agent can't filter)
+                  if (val === 'agent') setSelectedAgentId(null);
+                }}
+              >
+                <SelectTrigger className="w-[160px] h-9 text-sm" data-testid="select-view-as-role">
+                  <span className="text-muted-foreground mr-1">View as:</span>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {isDeveloper && <SelectItem value="developer">Developer</SelectItem>}
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="agent">Agent</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
             {canSeeAllAgents && (
               <AgentSelector
                 selectedAgentId={selectedAgentId}
