@@ -11,6 +11,7 @@
 
 const REPLIERS_API_URL = process.env.REPLIERS_API_URL || 'https://api.repliers.io';
 const REPLIERS_API_KEY = process.env.REPLIERS_API_KEY || process.env.IDX_GRID_API_KEY || '';
+const REPLIERS_BOARD_ID = process.env.REPLIERS_BOARD_ID || '53'; // ACTRIS/Unlock MLS
 
 /** Timeout for Repliers API calls (ms). */
 const REPLIERS_TIMEOUT_MS = 8_000;
@@ -195,7 +196,10 @@ async function repliersRequest<T>({
   headers: customHeaders 
 }: RepliersRequestOptions): Promise<T> {
   const url = new URL(endpoint, REPLIERS_API_URL);
-  
+
+  // Always scope to ACTRIS board
+  url.searchParams.set('boardId', REPLIERS_BOARD_ID);
+
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined) {
