@@ -113,11 +113,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
       <div className="p-6 border-b border-sidebar-border">
-        <Link href="/">
+        <Link href="/dashboard">
           <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
-            <img 
-              src="/spyglass-logo.png" 
-              alt="Spyglass Realty" 
+            <img
+              src="/spyglass-logo.png"
+              alt="Spyglass Realty"
               className="h-8 w-auto"
             />
             <div className="flex flex-col">
@@ -194,7 +194,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <SidebarContent />
               </SheetContent>
             </Sheet>
-            <Link href="/">
+            <Link href="/dashboard">
               <span className="font-display font-bold text-base sm:text-lg cursor-pointer hover:opacity-80 transition-opacity">Mission Control</span>
             </Link>
           </div>
