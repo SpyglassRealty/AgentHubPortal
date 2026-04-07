@@ -82,7 +82,7 @@ export default function HeroStatsBar({ data, isLoading }: HeroStatsBarProps) {
       bgColor: "bg-emerald-500/10",
     },
     {
-      label: "Avg Days on Market",
+      label: "Active Listing DOM",
       value: data?.avgDom || 0,
       formatter: (n: number) => `${n}`,
       icon: Clock,
