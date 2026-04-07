@@ -38,19 +38,8 @@ export function registerGmailRoutes(app: Express) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Determine which email to impersonate
-      let targetEmail = user.email;
-
-      // Super admin can view another agent's email by providing agentId (user DB id)
-      const requestedAgentId = req.query.agentId as string;
-      if (requestedAgentId && user.isSuperAdmin) {
-        const targetUser = await storage.getUser(requestedAgentId);
-        if (targetUser?.email) {
-          targetEmail = targetUser.email;
-        } else {
-          return res.status(404).json({ message: "Agent not found or has no email" });
-        }
-      }
+      // Always use the caller's own email — no cross-agent access
+      const targetEmail = user.email;
 
       if (!targetEmail) {
         return res.json({ 
@@ -95,17 +84,7 @@ export function registerGmailRoutes(app: Express) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      let targetEmail = user.email;
-
-      const requestedAgentId = req.query.agentId as string;
-      if (requestedAgentId && user.isSuperAdmin) {
-        const targetUser = await storage.getUser(requestedAgentId);
-        if (targetUser?.email) {
-          targetEmail = targetUser.email;
-        } else {
-          return res.status(404).json({ message: "Agent not found or has no email" });
-        }
-      }
+      const targetEmail = user.email;
 
       if (!targetEmail) {
         return res.status(400).json({ message: "No email address linked to your account" });
@@ -136,24 +115,14 @@ export function registerGmailRoutes(app: Express) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      let targetEmail = user.email;
-
-      const requestedAgentId = req.query.agentId as string;
-      if (requestedAgentId && user.isSuperAdmin) {
-        const targetUser = await storage.getUser(requestedAgentId);
-        if (targetUser?.email) {
-          targetEmail = targetUser.email;
-        } else {
-          return res.status(404).json({ message: "Agent not found or has no email" });
-        }
-      }
+      const targetEmail = user.email;
 
       if (!targetEmail) {
-        return res.json({ 
-          primary: 0, 
-          promotions: 0, 
-          social: 0, 
-          forums: 0 
+        return res.json({
+          primary: 0,
+          promotions: 0,
+          social: 0,
+          forums: 0
         });
       }
 
@@ -180,17 +149,8 @@ export function registerGmailRoutes(app: Express) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Determine sender email (super admin can send on behalf of agents)
-      let senderEmail = user.email;
-      const { agentId } = req.body;
-      if (agentId && user.isSuperAdmin) {
-        const targetUser = await storage.getUser(agentId);
-        if (targetUser?.email) {
-          senderEmail = targetUser.email;
-        } else {
-          return res.status(404).json({ message: "Agent not found or has no email" });
-        }
-      }
+      // Always send as the caller's own email — no cross-agent access
+      const senderEmail = user.email;
 
       if (!senderEmail) {
         return res.status(400).json({ message: "No email address linked to your account" });
@@ -233,16 +193,7 @@ export function registerGmailRoutes(app: Express) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      let senderEmail = user.email;
-      const { agentId } = req.body;
-      if (agentId && user.isSuperAdmin) {
-        const targetUser = await storage.getUser(agentId);
-        if (targetUser?.email) {
-          senderEmail = targetUser.email;
-        } else {
-          return res.status(404).json({ message: "Agent not found or has no email" });
-        }
-      }
+      const senderEmail = user.email;
 
       if (!senderEmail) {
         return res.status(400).json({ message: "No email address linked to your account" });

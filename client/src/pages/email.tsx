@@ -1,16 +1,13 @@
 import { useState, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import Layout from "@/components/layout";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { AgentSelector } from "@/components/agent-selector";
 import { RefreshButton } from "@/components/ui/refresh-button";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
-import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -25,7 +22,6 @@ import {
   Search,
   ExternalLink,
   ArrowLeft,
-  ChevronDown,
   Inbox,
   MailOpen,
   Tag,
@@ -270,14 +266,12 @@ function ComposeEmailSheet({
   onOpenChange,
   compose,
   setCompose,
-  agentId,
   onSent,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   compose: ComposeState;
   setCompose: React.Dispatch<React.SetStateAction<ComposeState>>;
-  agentId: string | null;
   onSent: () => void;
 }) {
   const { toast } = useToast();
@@ -298,7 +292,6 @@ function ComposeEmailSheet({
           to: compose.to,
           cc: compose.cc || undefined,
           subject: compose.subject,
-          agentId: agentId || undefined,
         });
       } else {
         // New compose or forward
@@ -312,7 +305,6 @@ function ComposeEmailSheet({
           bcc: compose.bcc || undefined,
           subject: compose.subject,
           body: fullBody,
-          agentId: agentId || undefined,
         });
       }
     },
@@ -502,22 +494,17 @@ function ComposeEmailSheet({
 // ── Email Detail View ────────────────────────────────────────────
 function EmailDetail({
   messageId,
-  agentId,
   onBack,
   onCompose,
 }: {
   messageId: string;
-  agentId: string | null;
   onBack: () => void;
   onCompose: (compose: ComposeState) => void;
 }) {
-  const queryParams = new URLSearchParams();
-  if (agentId) queryParams.set('agentId', agentId);
-  const queryString = queryParams.toString();
-  const url = `/api/gmail/message/${messageId}${queryString ? `?${queryString}` : ''}`;
+  const url = `/api/gmail/message/${messageId}`;
 
   const { data, isLoading, error } = useQuery<MessageResponse>({
-    queryKey: ['/api/gmail/message', messageId, agentId],
+    queryKey: ['/api/gmail/message', messageId],
     queryFn: async () => {
       const res = await fetch(url, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch message');
@@ -697,9 +684,7 @@ function EmptyState({ hasSearch }: { hasSearch: boolean }) {
 
 // ── Main Page ────────────────────────────────────────────────────
 export default function EmailPage() {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -713,7 +698,6 @@ export default function EmailPage() {
   const buildInboxUrl = useCallback(() => {
     const params = new URLSearchParams();
     params.set('maxResults', '20');
-    if (selectedAgentId) params.set('agentId', selectedAgentId);
     // Combine category filter with optional search query
     const categoryQuery = `category:${activeCategory}`;
     const q = searchQuery ? `${categoryQuery} ${searchQuery}` : categoryQuery;
@@ -721,12 +705,12 @@ export default function EmailPage() {
     const currentPageToken = pageTokens[pageTokens.length - 1];
     if (currentPageToken) params.set('pageToken', currentPageToken);
     return `/api/gmail/inbox?${params.toString()}`;
-  }, [selectedAgentId, searchQuery, activeCategory, pageTokens]);
+  }, [searchQuery, activeCategory, pageTokens]);
 
   const inboxUrl = buildInboxUrl();
 
   const { data: inboxData, isLoading, error, refetch } = useQuery<InboxResponse>({
-    queryKey: ['/api/gmail/inbox', { agentId: selectedAgentId, q: searchQuery, category: activeCategory, pageTokens }],
+    queryKey: ['/api/gmail/inbox', { q: searchQuery, category: activeCategory, pageTokens }],
     queryFn: async () => {
       const res = await fetch(inboxUrl, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch inbox');
@@ -742,12 +726,9 @@ export default function EmailPage() {
 
   // Fetch unread counts for category tabs
   const { data: unreadCounts } = useQuery<CategoryUnreadCounts>({
-    queryKey: ['/api/gmail/unread-counts', { agentId: selectedAgentId }],
+    queryKey: ['/api/gmail/unread-counts'],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (selectedAgentId) params.set('agentId', selectedAgentId);
-      const url = `/api/gmail/unread-counts${params.toString() ? `?${params.toString()}` : ''}`;
-      const res = await fetch(url, { credentials: 'include' });
+      const res = await fetch('/api/gmail/unread-counts', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch unread counts');
       return res.json();
     },
@@ -798,12 +779,6 @@ export default function EmailPage() {
     queryClient.invalidateQueries({ queryKey: ['/api/gmail/unread-counts'] });
   };
 
-  const handleAgentChange = (agentId: string | null, _agentEmail: string | null) => {
-    setSelectedAgentId(agentId);
-    setSelectedMessageId(null);
-    setPageTokens([]);
-  };
-
   const handleMessageClick = (messageId: string) => {
     setSelectedMessageId(messageId);
   };
@@ -838,12 +813,6 @@ export default function EmailPage() {
                 <Plus className="h-4 w-4 mr-1.5" />
                 Compose
               </Button>
-              {user?.isSuperAdmin && (
-                <AgentSelector
-                  selectedAgentId={selectedAgentId}
-                  onAgentChange={handleAgentChange}
-                />
-              )}
               <RefreshButton
                 onRefresh={handleRefresh}
                 lastManualRefresh={lastManualRefresh}
@@ -1004,7 +973,6 @@ export default function EmailPage() {
             {selectedMessageId ? (
               <EmailDetail
                 messageId={selectedMessageId}
-                agentId={selectedAgentId}
                 onBack={() => setSelectedMessageId(null)}
                 onCompose={handleCompose}
               />
@@ -1025,7 +993,6 @@ export default function EmailPage() {
         onOpenChange={setComposeOpen}
         compose={compose}
         setCompose={setCompose}
-        agentId={selectedAgentId}
         onSent={handleSent}
       />
     </Layout>
