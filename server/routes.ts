@@ -6587,14 +6587,87 @@ Respond with valid JSON in this exact format:
   // Server-side block rendering endpoint
   app.post('/api/render-blocks', renderBlocks);
 
-  // ── Google Company Calendar (All User Calendars via Domain-Wide Delegation) ──
-  // Lists ALL calendars for the logged-in user via domain-wide delegation,
-  // filters out non-relevant ones, and returns merged events.
+  // ── Google Company Calendar (RBAC: Developer=all, Admin/Agent=company only) ──
+  // Developer: Lists ALL calendars for the impersonated user via domain-wide delegation
+  // Admin/Agent: Spyglass Company Events shared calendar only via service account
+  const COMPANY_CALENDAR_ID = 'c_0eb1d92fe687aa77a4d881712dc21f4a4429c55594c3abb56ce2f768f3651b8f@group.calendar.google.com';
+
   app.get('/api/google/company-calendar', isAuthenticated, async (req: any, res) => {
     try {
       const { google } = await import('googleapis');
       const { getGoogleCredentials } = await import('./googleCredentials');
       const credentials = getGoogleCredentials();
+
+      // Get user role for RBAC
+      const dbUser = await getDbUser(req);
+      const role = dbUser?.role || 'agent'; // Default to most restrictive
+
+      // Shared time range: current month +/- 1 month
+      const now = new Date();
+      const timeMin = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+      const timeMax = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59).toISOString();
+
+      const colorMap: Record<string, string> = {
+        training: 'orange',
+        zillow: 'blue',
+        company: 'green',
+        admin: 'purple',
+      };
+
+      // ── Non-developer path: Company Events calendar only ──
+      if (role !== 'developer') {
+        console.log(`[Company Calendar] Role=${role} — fetching Spyglass Company Events only`);
+
+        const impersonateUser = process.env.GOOGLE_CALENDAR_IMPERSONATE_USER || 'john@spyglassrealty.com';
+        const auth = new google.auth.JWT({
+          email: credentials.client_email,
+          key: credentials.private_key,
+          scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
+          subject: impersonateUser,
+        });
+
+        const calendar = google.calendar({ version: 'v3', auth });
+
+        const response = await calendar.events.list({
+          calendarId: COMPANY_CALENDAR_ID,
+          timeMin,
+          timeMax,
+          timeZone: 'America/Chicago',
+          singleEvents: true,
+          orderBy: 'startTime',
+          maxResults: 500,
+        });
+
+        const items = response.data.items || [];
+        console.log(`[Company Calendar] Spyglass Company Events: ${items.length} events`);
+
+        const events = items.map((ev, idx) => {
+          const title = ev.summary || '(No title)';
+          const titleLower = title.toLowerCase();
+          const color =
+            Object.entries(colorMap).find(([kw]) => titleLower.includes(kw))?.[1] ?? 'gray';
+          const isAllDay = !!ev.start?.date;
+
+          return {
+            id: ev.id || `cal-company-${idx}`,
+            title,
+            start: ev.start?.dateTime || ev.start?.date || '',
+            end: ev.end?.dateTime || ev.end?.date || '',
+            allDay: isAllDay,
+            calendarId: COMPANY_CALENDAR_ID,
+            calendarName: 'Spyglass Company Events',
+            description: ev.description || null,
+            color,
+            source: 'google_company' as const,
+          };
+        });
+
+        console.log(`[Company Calendar] Total events for ${role}: ${events.length}`);
+        return res.json({ events });
+      }
+
+      // ── Developer path: ALL calendars via domain-wide delegation (unchanged) ──
+      console.log(`[Company Calendar] Role=developer — fetching all calendars`);
 
       // Determine which user to impersonate
       const agentEmail = req.query.agentEmail as string | undefined;
@@ -6607,8 +6680,7 @@ Respond with valid JSON in this exact format:
 
       // Fall back to logged-in user if no agent selected or agent email not valid
       if (!userEmail) {
-        const user = await getDbUser(req);
-        const loggedInEmail = user?.email || req.user?.claims?.email;
+        const loggedInEmail = dbUser?.email || req.user?.claims?.email;
         if (loggedInEmail?.endsWith('@spyglassrealty.com')) {
           userEmail = loggedInEmail;
         }
@@ -6663,18 +6735,6 @@ Respond with valid JSON in this exact format:
       includedCalendars.forEach((cal) =>
         console.log(`  - ${cal.summary} (${cal.id}) [${cal.accessRole}]`)
       );
-
-      // Current month +/- 1 month
-      const now = new Date();
-      const timeMin = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-      const timeMax = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59).toISOString();
-
-      const colorMap: Record<string, string> = {
-        training: 'orange',
-        zillow: 'blue',
-        company: 'green',
-        admin: 'purple',
-      };
 
       // Fetch events from each included calendar in parallel
       const allEventsArrays = await Promise.allSettled(
