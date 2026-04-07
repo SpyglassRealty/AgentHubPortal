@@ -1225,21 +1225,25 @@ export async function registerRoutes(
         'REPLIERS-API-KEY': apiKey
       };
 
+      // Scope to Austin MSA counties (same as other market-pulse routes)
+      const msaAreas = ['Travis', 'Williamson', 'Hays', 'Bastrop', 'Caldwell'];
+      const areaParams = msaAreas.map(a => `area=${encodeURIComponent(a)}`).join('&');
+
       // Get aggregates on class field
-      const aggregatesUrl = `https://api.repliers.io/listings?aggregates=class,details.propertyType&listings=false&status=A&type=Sale&pageNum=1&resultsPerPage=1`;
+      const aggregatesUrl = `https://api.repliers.io/listings?aggregates=class,details.propertyType&listings=false&status=A&type=Sale&pageNum=1&resultsPerPage=1&${areaParams}`;
       const aggregatesResponse = await fetch(aggregatesUrl, { headers });
-      
+
       if (!aggregatesResponse.ok) {
         const text = await aggregatesResponse.text();
         console.error('[Market Pulse] Aggregates error:', text.substring(0, 500));
         return res.status(aggregatesResponse.status).json({ message: "Failed to fetch property types" });
       }
-      
+
       const aggregatesData = await aggregatesResponse.json();
       console.log('[Market Pulse] Aggregates:', JSON.stringify(aggregatesData.aggregates, null, 2));
-      
+
       // Also get a sample listing to see field structure
-      const sampleUrl = `https://api.repliers.io/listings?status=A&type=Sale&class=Residential&pageNum=1&resultsPerPage=1`;
+      const sampleUrl = `https://api.repliers.io/listings?status=A&type=Sale&class=Residential&pageNum=1&resultsPerPage=1&${areaParams}`;
       const sampleResponse = await fetch(sampleUrl, { headers });
       let sampleListing = null;
       if (sampleResponse.ok) {
