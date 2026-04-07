@@ -221,28 +221,33 @@ const suggestionRules: SuggestionRule[] = [
 
 export async function generateSuggestionsForUser(userId: string, fubUserId: number | null): Promise<void> {
   const fubClient = getFubClient();
-  if (!fubClient || !fubUserId) {
-    return;
-  }
 
   try {
-    const [deals, calendarData, profile] = await Promise.all([
-      fubClient.getDeals(fubUserId),
-      [], // TODO: Fix getEvents method
-      storage.getAgentProfile(userId)
-    ]);
+    // Always fetch profile data (no FUB needed)
+    const profile = await storage.getAgentProfile(userId);
 
-    const tasks = calendarData.filter ? calendarData.filter((e: any) => e.type === 'task') : [];
-    const events = calendarData.filter ? calendarData.filter((e: any) => e.type !== 'task') : [];
+    // Only fetch FUB data if fubClient and fubUserId exist
+    let deals: FubDeal[] = [];
+    let appointments: any[] = [];
+    let tasks: any[] = [];
+    if (fubClient && fubUserId) {
+      const now = new Date();
+      const weekAhead = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const dateStr = now.toISOString().split('T')[0];
+      const weekStr = weekAhead.toISOString().split('T')[0];
+      [deals, appointments, tasks] = await Promise.all([
+        fubClient.getDeals(fubUserId),
+        fubClient.getAppointments(fubUserId, dateStr, weekStr),
+        fubClient.getTasks(fubUserId, dateStr, weekStr)
+      ]);
+    }
 
     const contextData: ContextData = {
       deals,
       tasks,
-      events: Array.isArray(calendarData) ? calendarData : [],
+      events: appointments,
       profile: profile || null
     };
-
-    await storage.clearUserSuggestions(userId);
 
     const allSuggestions: InsertContextSuggestion[] = [];
 
@@ -257,6 +262,7 @@ export async function generateSuggestionsForUser(userId: string, fubUserId: numb
     allSuggestions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
     if (allSuggestions.length > 0) {
+      await storage.clearUserSuggestions(userId);
       await storage.createSuggestions(allSuggestions);
     }
   } catch (error) {
