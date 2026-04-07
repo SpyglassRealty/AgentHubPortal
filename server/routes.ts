@@ -4764,7 +4764,7 @@ Respond with valid JSON in this exact format:
       const newUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active&minListDate=${minListDate7}&${areaParams}`;
 
       // Get a sample of active listings for DOM + price stats
-      const sampleUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=100&sortBy=daysOnMarketDesc&${areaParams}&fields=listPrice,daysOnMarket,details`;
+      const sampleUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=100&sortBy=createdOnDesc&${areaParams}&fields=listPrice,daysOnMarket,details`;
 
       // Closed last 30d sample for sold stats
       const closedSampleUrl = `${baseUrl}?listings=true&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate}&resultsPerPage=100&sortBy=lastStatusDesc&${areaParams}&fields=soldPrice,listPrice,daysOnMarket,details`;
