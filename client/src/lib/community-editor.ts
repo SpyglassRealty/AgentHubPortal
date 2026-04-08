@@ -86,10 +86,11 @@ export function useAdminCommunities(
   seoFilter: string = "",
   sortBy: string = "name",
   sortDir: string = "asc",
-  source: string = ""
+  source: string = "",
+  type: string = ""
 ) {
   return useQuery<CommunitiesResponse>({
-    queryKey: ["admin-communities", search, filter, page, county, hasContent, seoFilter, sortBy, sortDir, source],
+    queryKey: ["admin-communities", search, filter, page, county, hasContent, seoFilter, sortBy, sortDir, source, type],
     queryFn: () => {
       const params = new URLSearchParams({
         search,
@@ -103,6 +104,7 @@ export function useAdminCommunities(
       if (sortBy !== "name") params.set("sortBy", sortBy);
       if (sortDir !== "asc") params.set("sortDir", sortDir);
       if (source) params.set("source", source);
+      if (type) params.set("type", type);
       return fetchJson(`/api/admin/communities?${params}`);
     },
     staleTime: 30_000,

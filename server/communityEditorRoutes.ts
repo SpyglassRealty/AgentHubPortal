@@ -258,6 +258,7 @@ export function registerCommunityEditorRoutes(app: Express) {
       const sortBy = (req.query.sortBy as string) || "name"; // name | updated | seo_score
       const sortDir = (req.query.sortDir as string) || "asc"; // asc | desc
       const source = (req.query.source as string) || ""; // "liveby" | "spyglass" | ""
+      const type = (req.query.type as string) || ""; // "polygon" | "zip" | "city" | "neighborhood" | "district" | ""
       const page = Math.max(1, parseInt((req.query.page as string) || "1", 10));
       const limit = Math.min(Math.max(1, parseInt((req.query.limit as string) || "50", 10)), 200);
       const offset = (page - 1) * limit;
@@ -331,6 +332,10 @@ export function registerCommunityEditorRoutes(app: Express) {
         conditions.push(inArray(communities.locationType, ["neighborhood", "district"]));
       } else if (source === "spyglass") {
         conditions.push(inArray(communities.locationType, ["polygon", "snippet"]));
+      }
+
+      if (type) {
+        conditions.push(eq(communities.locationType, type));
       }
 
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

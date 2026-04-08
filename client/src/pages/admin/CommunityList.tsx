@@ -62,7 +62,7 @@ export default function CommunityList() {
     window.history.replaceState(null, "", newUrl);
   };
 
-  const { data, isLoading } = useAdminCommunities(search, filter, page, county, hasContent, seoFilter, sortBy, sortDir, source);
+  const { data, isLoading } = useAdminCommunities(search, filter, page, county, hasContent, seoFilter, sortBy, sortDir, source, type);
 
   const communities = data?.communities || [];
   const pagination = data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 1 };
