@@ -598,7 +598,7 @@ export default function PolygonManager() {
     }
   };
 
-  const livebyCount = communities.filter(c => c.livebyLocationId != null).length;
+  const livebyCount = communities.filter(c => c.locationType === 'neighborhood').length;
   const drawnCount = communities.filter(c => c.locationType === 'polygon').length;
 
   const filteredCommunities = communities.filter((c) => {
@@ -610,7 +610,7 @@ export default function PolygonManager() {
     if (!matchesSearch) return false;
 
     // Apply source filter
-    if (sourceFilter === 'liveby' && c.livebyLocationId == null) return false;
+    if (sourceFilter === 'liveby' && c.locationType !== 'neighborhood') return false;
     if (sourceFilter === 'drawn' && c.locationType !== 'polygon') return false;
 
     // Then apply locationType-based filtering
