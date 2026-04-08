@@ -3,7 +3,7 @@ import { isAuthenticated } from "./replitAuth";
 import { storage } from "./storage";
 import { db } from "./db";
 import { communities } from "@shared/schema";
-import { eq, ilike, and, or, sql, desc, asc, count } from "drizzle-orm";
+import { eq, ilike, and, or, sql, desc, asc, count, inArray } from "drizzle-orm";
 import type { User } from "@shared/schema";
 import { makeRepliersRequest } from "./lib/repliers-api";
 
@@ -257,6 +257,7 @@ export function registerCommunityEditorRoutes(app: Express) {
       const seoFilter = req.query.seoFilter as string; // "good" | "poor" | undefined
       const sortBy = (req.query.sortBy as string) || "name"; // name | updated | seo_score
       const sortDir = (req.query.sortDir as string) || "asc"; // asc | desc
+      const source = (req.query.source as string) || ""; // "liveby" | "spyglass" | ""
       const page = Math.max(1, parseInt((req.query.page as string) || "1", 10));
       const limit = Math.min(Math.max(1, parseInt((req.query.limit as string) || "50", 10)), 200);
       const offset = (page - 1) * limit;
@@ -326,6 +327,12 @@ export function registerCommunityEditorRoutes(app: Express) {
         );
       }
 
+      if (source === "liveby") {
+        conditions.push(inArray(communities.locationType, ["neighborhood", "district"]));
+      } else if (source === "spyglass") {
+        conditions.push(inArray(communities.locationType, ["polygon", "snippet"]));
+      }
+
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
       // Build order clause based on sortBy and sortDir
@@ -363,7 +370,7 @@ export function registerCommunityEditorRoutes(app: Express) {
           orderClause = direction(communities.name);
       }
 
-      const [rows, totalResult] = await Promise.all([
+      const [rows, totalResult, livebyCountResult, spyglassCountResult] = await Promise.all([
         db
           .select({
             id: communities.id,
@@ -388,9 +395,19 @@ export function registerCommunityEditorRoutes(app: Express) {
           .select({ total: count() })
           .from(communities)
           .where(whereClause),
+        db
+          .select({ total: count() })
+          .from(communities)
+          .where(inArray(communities.locationType, ["neighborhood", "district"])),
+        db
+          .select({ total: count() })
+          .from(communities)
+          .where(inArray(communities.locationType, ["polygon", "snippet"])),
       ]);
 
       const total = totalResult[0]?.total || 0;
+      const livebyTotal = livebyCountResult[0]?.total || 0;
+      const spyglassTotal = spyglassCountResult[0]?.total || 0;
 
       // Get distinct counties for the filter dropdown
       const countyRows = await db
@@ -408,6 +425,10 @@ export function registerCommunityEditorRoutes(app: Express) {
           totalPages: Math.ceil(Number(total) / limit),
         },
         counties: countyRows.map((r) => r.county).filter(Boolean),
+        sourceCounts: {
+          liveby: Number(livebyTotal),
+          spyglass: Number(spyglassTotal),
+        },
       });
     } catch (error) {
       console.error("[Community Editor] Error listing communities:", error);

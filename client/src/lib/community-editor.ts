@@ -51,6 +51,10 @@ export interface CommunitiesResponse {
     totalPages: number;
   };
   counties: string[];
+  sourceCounts?: {
+    liveby: number;
+    spyglass: number;
+  };
 }
 
 // ── API helpers ──────────────────────────────────────
@@ -81,10 +85,11 @@ export function useAdminCommunities(
   hasContent: string = "",
   seoFilter: string = "",
   sortBy: string = "name",
-  sortDir: string = "asc"
+  sortDir: string = "asc",
+  source: string = ""
 ) {
   return useQuery<CommunitiesResponse>({
-    queryKey: ["admin-communities", search, filter, page, county, hasContent, seoFilter, sortBy, sortDir],
+    queryKey: ["admin-communities", search, filter, page, county, hasContent, seoFilter, sortBy, sortDir, source],
     queryFn: () => {
       const params = new URLSearchParams({
         search,
@@ -97,6 +102,7 @@ export function useAdminCommunities(
       if (seoFilter) params.set("seoFilter", seoFilter);
       if (sortBy !== "name") params.set("sortBy", sortBy);
       if (sortDir !== "asc") params.set("sortDir", sortDir);
+      if (source) params.set("source", source);
       return fetchJson(`/api/admin/communities?${params}`);
     },
     staleTime: 30_000,

@@ -37,6 +37,7 @@ export default function CommunityList() {
   const [type, setType] = useState(urlParams.get("type") || "");
   const [hasContent, setHasContent] = useState(urlParams.get("hasContent") || "");
   const [seoFilter, setSeoFilter] = useState(urlParams.get("seoFilter") || "");
+  const [source, setSource] = useState(urlParams.get("source") || "");
   const [sortBy, setSortBy] = useState(urlParams.get("sortBy") || "name");
   const [sortDir, setSortDir] = useState(urlParams.get("sortDir") || "asc");
   const [page, setPage] = useState(Math.max(1, parseInt(urlParams.get("page") || "1", 10)));
@@ -46,9 +47,9 @@ export default function CommunityList() {
   // Update URL when filters change
   const updateUrl = (newParams: Record<string, string | number>) => {
     const params = new URLSearchParams();
-    const allParams = { 
-      search, filter, county, type, hasContent, seoFilter, sortBy, sortDir, page: 1,
-      ...newParams 
+    const allParams = {
+      search, filter, county, type, hasContent, seoFilter, source, sortBy, sortDir, page: 1,
+      ...newParams
     };
     
     Object.entries(allParams).forEach(([key, value]) => {
@@ -61,7 +62,7 @@ export default function CommunityList() {
     window.history.replaceState(null, "", newUrl);
   };
 
-  const { data, isLoading } = useAdminCommunities(search, filter, page, county, hasContent, seoFilter, sortBy, sortDir);
+  const { data, isLoading } = useAdminCommunities(search, filter, page, county, hasContent, seoFilter, sortBy, sortDir, source);
 
   const communities = data?.communities || [];
   const pagination = data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 1 };
@@ -161,15 +162,11 @@ export default function CommunityList() {
               {Number(pagination.total).toLocaleString()} communities
             </Badge>
           )}
-          {communities.length > 0 && (() => {
-            const livebyN = communities.filter(c => c.locationType === 'neighborhood').length;
-            const spyglassN = communities.length - livebyN;
-            return (
-              <span className="text-xs text-muted-foreground ml-2">
-                {livebyN} LiveBy&nbsp;&nbsp;|&nbsp;&nbsp;{spyglassN} Spyglass
-              </span>
-            );
-          })()}
+          {data?.sourceCounts && (
+            <span className="text-xs text-muted-foreground ml-2">
+              {Number(data.sourceCounts.liveby).toLocaleString()} LiveBy&nbsp;&nbsp;|&nbsp;&nbsp;{Number(data.sourceCounts.spyglass).toLocaleString()} Spyglass
+            </span>
+          )}
         </div>
 
         {/* Filters & Bulk Actions */}
@@ -263,6 +260,24 @@ export default function CommunityList() {
                   <SelectItem value="all">All Content</SelectItem>
                   <SelectItem value="true">Has sections</SelectItem>
                   <SelectItem value="false">No sections</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={source || "all"}
+                onValueChange={(v) => {
+                  const newSource = v === "all" ? "" : v;
+                  setSource(newSource);
+                  setPage(1);
+                  updateUrl({ source: newSource, page: 1 });
+                }}
+              >
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sources</SelectItem>
+                  <SelectItem value="liveby">LiveBy</SelectItem>
+                  <SelectItem value="spyglass">Spyglass</SelectItem>
                 </SelectContent>
               </Select>
               <Select
@@ -436,7 +451,7 @@ export default function CommunityList() {
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => setLocation(`/admin/communities/${c.slug}`)}
                         >
-                          {c.locationType === 'neighborhood' ? (
+                          {['neighborhood', 'district'].includes(c.locationType ?? '') ? (
                             <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 20, background: '#dbeafe', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>LiveBy</span>
                           ) : (
                             <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 20, background: '#ffedd5', color: '#c2410c', border: '1px solid #fed7aa' }}>Spyglass</span>
