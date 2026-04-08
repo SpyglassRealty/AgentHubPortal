@@ -18,6 +18,23 @@ Admin CMS for Spyglass Realty. Express + React frontend. This repo is ONLY for t
 
 ---
 
+## Agent Routing — Always @-mention
+
+Every prompt must start with an @-mention:
+
+```
+@.claude/agents/qa-auditor.md          → audits, greps, read-only checks
+@.claude/agents/spyglass-architect.md  → specs, plans, analysis only
+@.claude/agents/spyglass-code-builder.md → all code changes, commits, pushes
+```
+
+**Terminal workflow (current):**
+- Mission Control prompts → paste into terminal at `~/clawd/AgentHubPortal`
+- Spyglass IDX prompts → paste into terminal at `~/clawd/spyglass-idx`
+- Never paste an MC prompt into the IDX terminal and vice versa
+
+---
+
 ## Database
 
 - ORM: Drizzle (schema at `shared/schema.ts`)
@@ -88,6 +105,14 @@ client/src/components/community/ContentBlocksEditor.tsx — Content blocks UI
 - **Render deploys take 7-10 min** — don't report READY before live status
 - **Migrations don't auto-run** — must be run manually via `node -e`
 - **DB credentials must NEVER appear in output**
+
+---
+
+## Pitfalls
+
+- **Repliers polygon POST — strip boardId** — boardId must NOT be included with polygon map body (POST). Returns 0 results. Strip before POST call.
+- **Repliers /locations?type=schoolDistrict — strip boardId** — boardId has no meaning for school district lookups. Always strip boardId from schoolDistrict queries.
+- **Never cross-deploy** — this repo is Render only. IDX changes go through `~/clawd/spyglass-idx`.
 
 ---
 
