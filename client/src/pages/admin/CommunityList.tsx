@@ -161,6 +161,15 @@ export default function CommunityList() {
               {Number(pagination.total).toLocaleString()} communities
             </Badge>
           )}
+          {communities.length > 0 && (() => {
+            const livebyN = communities.filter(c => c.locationType === 'neighborhood').length;
+            const spyglassN = communities.length - livebyN;
+            return (
+              <span className="text-xs text-muted-foreground ml-2">
+                {livebyN} LiveBy&nbsp;&nbsp;|&nbsp;&nbsp;{spyglassN} Spyglass
+              </span>
+            );
+          })()}
         </div>
 
         {/* Filters & Bulk Actions */}
@@ -374,6 +383,7 @@ export default function CommunityList() {
                     <TableHead className="w-[30%]">Name</TableHead>
                     <TableHead>County</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead>Source</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>SEO</TableHead>
                     <TableHead>Last Updated</TableHead>
@@ -412,17 +422,27 @@ export default function CommunityList() {
                         >
                           {c.county || "—"}
                         </TableCell>
-                        <TableCell 
+                        <TableCell
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => setLocation(`/admin/communities/${c.slug}`)}
                         >
                           <Badge variant="secondary">
-                            {c.locationType === 'polygon' ? 'Neighborhood' : 
+                            {c.locationType === 'polygon' ? 'Neighborhood' :
                              c.locationType === 'zip' ? 'Zip Code' :
                              c.locationType === 'city' ? 'City' : 'Other'}
                           </Badge>
                         </TableCell>
-                        <TableCell 
+                        <TableCell
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => setLocation(`/admin/communities/${c.slug}`)}
+                        >
+                          {c.locationType === 'neighborhood' ? (
+                            <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 20, background: '#dbeafe', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>LiveBy</span>
+                          ) : (
+                            <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 20, background: '#ffedd5', color: '#c2410c', border: '1px solid #fed7aa' }}>Spyglass</span>
+                          )}
+                        </TableCell>
+                        <TableCell
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => setLocation(`/admin/communities/${c.slug}`)}
                         >

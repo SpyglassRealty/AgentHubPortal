@@ -11,6 +11,7 @@ export interface CommunityListItem {
   featured: boolean | null;
   updatedAt: string | null;
   metaTitle: string | null;
+  locationType: string | null;
 }
 
 export interface CommunitySection {

@@ -377,6 +377,7 @@ export function registerCommunityEditorRoutes(app: Express) {
             metaDescription: communities.metaDescription,
             focusKeyword: communities.focusKeyword,
             description: communities.description,
+            locationType: communities.locationType,
           })
           .from(communities)
           .where(whereClause)
