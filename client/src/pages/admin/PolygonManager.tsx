@@ -114,6 +114,7 @@ export default function PolygonManager() {
   const [deleteTarget, setDeleteTarget] = useState<CommunityPolygon | null>(null);
   const [drawnPolygon, setDrawnPolygon] = useState<[number, number][] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'liveby' | 'drawn'>('all');
   const [livebySearchQuery, setLivebySearchQuery] = useState("");
   const [livebyResults, setLivebyResults] = useState<LiveByLocation[]>([]);
   const [selectedLivebyLocation, setSelectedLivebyLocation] = useState<LiveByLocation | null>(null);
@@ -597,19 +598,26 @@ export default function PolygonManager() {
     }
   };
 
+  const livebyCount = communities.filter(c => c.livebyLocationId != null).length;
+  const drawnCount = communities.filter(c => c.locationType === 'polygon').length;
+
   const filteredCommunities = communities.filter((c) => {
     // First apply search filtering
     const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.slug.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (c.county || "").toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     if (!matchesSearch) return false;
-    
+
+    // Apply source filter
+    if (sourceFilter === 'liveby' && c.livebyLocationId == null) return false;
+    if (sourceFilter === 'drawn' && c.locationType !== 'polygon') return false;
+
     // Then apply locationType-based filtering
     if (c.locationType === 'neighborhood') {
       return true; // Always show LiveBy communities regardless of polygon count
     }
-    
+
     // Hide polygon/snippet communities with 0 points
     return c.polygon && c.polygon.length > 0;
   });
@@ -635,6 +643,31 @@ export default function PolygonManager() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
               />
+            </div>
+            <div className="flex gap-1 mt-2">
+              {(['all', 'liveby', 'drawn'] as const).map((f) => {
+                const label = f === 'all' ? `All ${communities.length}` : f === 'liveby' ? `LiveBy ${livebyCount}` : `Drawn ${drawnCount}`;
+                const active = sourceFilter === f;
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setSourceFilter(f)}
+                    style={{
+                      flex: 1,
+                      fontSize: 11,
+                      fontWeight: 500,
+                      padding: '3px 0',
+                      borderRadius: 6,
+                      border: active ? 'none' : '1px solid #e2e8f0',
+                      background: active ? '#EF4923' : 'transparent',
+                      color: active ? '#fff' : '#64748b',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </CardHeader>
           <CardContent className="flex-1 overflow-hidden p-0">
