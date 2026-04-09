@@ -23,7 +23,18 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Search, ArrowLeft, ChevronLeft, ChevronRight, MapPin, Loader2, AlertTriangle, CheckCircle, Eye, EyeOff, Star, X, ChevronUp, ChevronDown } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Search, ArrowLeft, ChevronLeft, ChevronRight, MapPin, Loader2, AlertTriangle, CheckCircle, Eye, EyeOff, Star, X, ChevronUp, ChevronDown, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function CommunityList() {
   const [, setLocation] = useLocation();
@@ -43,6 +54,12 @@ export default function CommunityList() {
   const [page, setPage] = useState(Math.max(1, parseInt(urlParams.get("page") || "1", 10)));
   const [selectedCommunities, setSelectedCommunities] = useState<string[]>([]);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Delete state
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Update URL when filters change
   const updateUrl = (newParams: Record<string, string | number>) => {
@@ -134,7 +151,7 @@ export default function CommunityList() {
       });
       
       setSelectedCommunities([]);
-      // Refetch data would be nice here, but we don't have access to refetch
+      queryClient.invalidateQueries({ queryKey: ['admin-communities'] });
     } catch (error) {
       toast({
         title: 'Error',
@@ -144,7 +161,85 @@ export default function CommunityList() {
     }
   };
 
+  const handleDeleteCommunity = async (id: number) => {
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/communities/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Delete failed' }));
+        throw new Error(err.message);
+      }
+      toast({
+        title: 'Community deleted',
+        description: 'The community has been permanently deleted.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['admin-communities'] });
+    } catch (error: any) {
+      toast({
+        title: 'Delete failed',
+        description: error.message || 'Failed to delete community',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteTarget(null);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const selectedIds = communities
+        .filter(c => selectedCommunities.includes(c.slug))
+        .map(c => c.id);
+
+      const results = await Promise.allSettled(
+        selectedIds.map(id =>
+          fetch(`/api/admin/communities/${id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+          }).then(res => {
+            if (!res.ok) throw new Error(`Failed to delete community ${id}`);
+            return res;
+          })
+        )
+      );
+
+      const succeeded = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected').length;
+
+      if (failed === 0) {
+        toast({
+          title: 'Communities deleted',
+          description: `${succeeded} communities permanently deleted.`,
+        });
+      } else {
+        toast({
+          title: 'Partial delete',
+          description: `${succeeded} deleted, ${failed} failed. Refresh to see current state.`,
+          variant: 'destructive',
+        });
+      }
+
+      setSelectedCommunities([]);
+      queryClient.invalidateQueries({ queryKey: ['admin-communities'] });
+    } catch (error) {
+      toast({
+        title: 'Delete failed',
+        description: 'Failed to delete communities',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowBulkDeleteConfirm(false);
+    }
+  };
+
   return (
+    <>
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
@@ -357,6 +452,15 @@ export default function CommunityList() {
                         <EyeOff className="h-4 w-4 mr-1" />
                         Unpublish All
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setShowBulkDeleteConfirm(true)}
+                        className="text-red-600 border-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete Selected ({selectedCommunities.length})
+                      </Button>
                     </div>
                   </div>
                   <Button
@@ -402,6 +506,7 @@ export default function CommunityList() {
                     <TableHead>Status</TableHead>
                     <TableHead>SEO</TableHead>
                     <TableHead>Last Updated</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -496,11 +601,21 @@ export default function CommunityList() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell 
+                        <TableCell
                           className="text-muted-foreground text-sm cursor-pointer hover:bg-muted/50"
                           onClick={() => setLocation(`/admin/communities/${c.slug}`)}
                         >
                           {formatDate(c.updatedAt)}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={() => setDeleteTarget({ id: c.id, name: c.name })}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
   );
@@ -548,5 +663,55 @@ export default function CommunityList() {
           </div>
         )}
       </div>
+
+      {/* Single Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Community</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete "{deleteTarget?.name}"?
+              This will remove all community data, content blocks, and SEO settings.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTarget && handleDeleteCommunity(deleteTarget.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedCommunities.length} Communities</AlertDialogTitle>
+            <AlertDialogDescription>
+              Delete {selectedCommunities.length} selected communities? This cannot be undone.
+              Vercel CMS will take over automatically.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete {selectedCommunities.length} Communities
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
