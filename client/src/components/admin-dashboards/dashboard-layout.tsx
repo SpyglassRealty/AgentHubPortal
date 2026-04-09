@@ -25,6 +25,10 @@ import {
   Swords,
   Rocket,
   CalendarDays,
+  Sun,
+  Activity,
+  UserPlus,
+  Calculator,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -38,10 +42,13 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
+  { label: "Morning Brief", href: "/admin/dashboards/morning-brief", icon: Sun, section: "BRIEFING" },
   { label: "$1B Tracker", href: "/admin/dashboards/billion-tracker", icon: Rocket, section: "GROWTH" },
   { label: "Growth Trajectory", href: "/admin/dashboards/growth-trajectory", icon: TrendingUp, section: "GROWTH" },
   { label: "Retention Risk", href: "/admin/dashboards/retention-risk", icon: Shield, section: "GROWTH" },
   { label: "Battle Cards", href: "/admin/dashboards/recruiting-battlecards", icon: Swords, section: "GROWTH" },
+  { label: "Commission Calc", href: "/admin/dashboards/commission-calculator", icon: Calculator, section: "GROWTH" },
+  // { label: "Recruiting Pipeline", href: "/admin/dashboards/recruiting-pipeline", icon: UserPlus, section: "GROWTH" },
   { label: "Overview", href: "/admin/dashboards", icon: LayoutDashboard, section: "DASHBOARD" },
   { label: "Analytics", href: "/admin/dashboards/insights", icon: Lightbulb, section: "DASHBOARD" },
   { label: "Leads", href: "/admin/dashboards/leads", icon: Target, section: "DASHBOARD" },
@@ -55,6 +62,8 @@ const navItems: NavItem[] = [
   { label: "Trends", href: "/admin/dashboards/network/trends", icon: TrendingUp, section: "NETWORK" },
   { label: "RevShare", href: "/admin/dashboards/network/revshare", icon: Share2, section: "NETWORK" },
   { label: "Members", href: "/admin/dashboards/network/members", icon: Users, section: "NETWORK" },
+  { label: "Weekly Scorecard", href: "/admin/dashboards/weekly-scorecard", icon: CalendarDays, section: "PRODUCTION" },
+  { label: "Activity Heatmap", href: "/admin/dashboards/activity-heatmap", icon: Activity, section: "TEAM" },
   { label: "Agent Insights", href: "/admin/dashboards/agent-insights", icon: Target, section: "TEAM" },
   { label: "Member Mgmt", href: "/admin/dashboards/member-management", icon: UserCog, section: "TEAM" },
   { label: "Team Tasks", href: "/admin/dashboards/team-tasks", icon: ListTodo, section: "TEAM" },

@@ -22,11 +22,20 @@ import RecruitingBattlecardsPage from "./recruiting-battlecards";
 import BillionTrackerPage from "./billion-tracker";
 import WeeklyDealsPage from "./weekly-deals";
 import GrowthTrajectoryPage from "./growth-trajectory";
+import CommissionCalculatorPage from "./commission-calculator";
+import MorningBriefPage from "./morning-brief";
+import WeeklyScorecardPage from "./weekly-scorecard";
+import ActivityHeatmapPage from "./activity-heatmap";
 
 export default function AdminDashboardsRouter() {
   return (
     <Switch>
       <Route path="/admin/dashboards" component={AdminDashboardOverview} />
+      <Route path="/admin/dashboards/morning-brief" component={MorningBriefPage} />
+      <Route path="/admin/dashboards/weekly-scorecard" component={WeeklyScorecardPage} />
+      <Route path="/admin/dashboards/activity-heatmap" component={ActivityHeatmapPage} />
+      <Route path="/admin/dashboards/commission-calculator" component={CommissionCalculatorPage} />
+      {/* <Route path="/admin/dashboards/recruiting-pipeline" component={RecruitingPipelinePage} /> */}
       <Route path="/admin/dashboards/growth-trajectory" component={GrowthTrajectoryPage} />
       <Route path="/admin/dashboards/billion-tracker" component={BillionTrackerPage} />
       <Route path="/admin/dashboards/retention-risk" component={RetentionRiskPage} />
