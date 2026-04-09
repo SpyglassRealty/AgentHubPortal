@@ -9,3 +9,4 @@ vite.config.ts.*
 .env*.local
 .credentials/
 .env
+.claude/settings.local.json
