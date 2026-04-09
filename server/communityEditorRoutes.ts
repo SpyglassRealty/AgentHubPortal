@@ -172,27 +172,31 @@ export function registerCommunityEditorRoutes(app: Express) {
     }
   });
 
-  // ── DELETE /api/admin/communities/:id — delete entire community (polygon/snippet only) ──
+  // ── DELETE /api/admin/communities/:id — delete entire community ──
   app.delete("/api/admin/communities/:id", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const user = req.dbUser;
 
-      // Block delete for LiveBy neighborhood communities
       const community = await db.query.communities.findFirst({
         where: eq(communities.id, id)
       });
       if (!community) return res.status(404).json({ message: "Community not found" });
-      if (community.locationType === 'neighborhood') {
-        return res.status(403).json({ message: "Cannot delete LiveBy neighborhood communities" });
+
+      // Log Blob URLs for future cleanup (no delete endpoint available yet)
+      // TODO: Blob cleanup — needs DELETE endpoint on IDX or direct BLOB_READ_WRITE_TOKEN
+      const blobUrls: string[] = [];
+      if (community.heroImage?.includes('blob.vercel-storage.com')) {
+        blobUrls.push(community.heroImage);
+      }
+      if (community.featuredImageUrl?.includes('blob.vercel-storage.com')) {
+        blobUrls.push(community.featuredImageUrl);
+      }
+      if (blobUrls.length > 0) {
+        console.log(`[Community Editor] Orphaned Blob URLs for deleted community ${community.slug}:`, blobUrls);
       }
 
-      // Only allow delete for manually created communities
-      if (!['polygon', 'snippet'].includes(community.locationType)) {
-        return res.status(403).json({ message: "Can only delete polygon or snippet communities" });
-      }
-
-      // Use raw SQL for reliable deletion
+      // Use raw SQL for reliable deletion (community_content_blocks cascade automatically)
       await db.execute(
         sql`DELETE FROM communities WHERE id = ${id}`
       );
