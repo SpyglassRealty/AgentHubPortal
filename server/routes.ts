@@ -253,6 +253,20 @@ export async function registerRoutes(
     }
   })();
 
+  // Admin-only middleware
+  const isAdmin = async (req: any, res: any, next: any) => {
+    try {
+      const user = await getDbUser(req);
+      if (!user || (user.role !== 'admin' && user.role !== 'developer')) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      next();
+    } catch (error) {
+      console.error('[Admin Auth] Error:', error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  };
+
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -2044,7 +2058,7 @@ export async function registerRoutes(
   });
 
   // Debug endpoint for FUB user status
-  app.get('/api/fub/debug/user-status', isAuthenticated, async (req: any, res) => {
+  app.get('/api/fub/debug/user-status', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const user = await getDbUser(req);
       const fubClient = getFubClient();
@@ -2066,7 +2080,7 @@ export async function registerRoutes(
   });
 
   // Debug endpoint to list all FUB users
-  app.get('/api/fub/debug/all-users', isAuthenticated, async (req: any, res) => {
+  app.get('/api/fub/debug/all-users', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const fubClient = getFubClient();
       if (!fubClient) {
@@ -5742,20 +5756,6 @@ Respond with valid JSON in this exact format:
       next();
     } catch (error) {
       console.error('[Developer Auth] Error:', error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  };
-
-  // Admin-only middleware
-  const isAdmin = async (req: any, res: any, next: any) => {
-    try {
-      const user = await getDbUser(req);
-      if (!user || (user.role !== 'admin' && user.role !== 'developer')) {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-      next();
-    } catch (error) {
-      console.error('[Admin Auth] Error:', error);
       res.status(500).json({ error: "Internal server error" });
     }
   };
