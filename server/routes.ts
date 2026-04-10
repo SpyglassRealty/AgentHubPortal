@@ -2979,8 +2979,8 @@ Respond with valid JSON in this exact format:
     }
   });
 
-  // GET /api/resources/:id/download - public file download (no auth)
-  app.get('/api/resources/:id/download', async (req: any, res) => {
+  // GET /api/resources/:id/download - authenticated file download
+  app.get('/api/resources/:id/download', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
 
