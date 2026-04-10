@@ -5684,27 +5684,6 @@ Respond with valid JSON in this exact format:
     }
   });
 
-  // DEBUG: Authentication status check (no auth required)
-  app.get('/api/debug/auth-status', async (req: any, res) => {
-    try {
-      const authStatus = {
-        isAuthenticated: req.isAuthenticated?.(),
-        hasUser: !!req.user,
-        sessionId: req.sessionID,
-        userProvider: req.user?.provider,
-        userEmail: req.user?.claims?.email || req.user?.email,
-        sessionCookies: !!req.headers.cookie,
-        timestamp: new Date().toISOString()
-      };
-      
-      console.log('[Auth Debug] Authentication status:', authStatus);
-      res.json(authStatus);
-    } catch (error) {
-      console.error('[Auth Debug] Error:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
   // Environment variables check endpoint (dev/staging only)
   if (process.env.NODE_ENV !== 'production') {
     app.get('/api/debug/env-check', isAuthenticated, async (req: any, res) => {

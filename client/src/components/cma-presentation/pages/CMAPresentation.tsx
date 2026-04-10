@@ -278,35 +278,6 @@ function CmaPresentationInner({ cmaData, id }: { cmaData: any; id: string }) {
     return result;
   }, [agentProfileData]);
 
-  // Debug: Direct API test on component mount
-  useEffect(() => {
-    const testAPI = async () => {
-      try {
-        console.log('[CMA Debug] Testing direct API calls...');
-        
-        // Test agent profile API
-        const agentResponse = await fetch('/api/agent-profile');
-        const agentData = await agentResponse.json();
-        console.log('[CMA Debug] Direct agent profile API test:', {
-          status: agentResponse.status,
-          statusText: agentResponse.statusText,
-          data: agentData
-        });
-        
-        // Test auth status
-        const authResponse = await fetch('/api/debug/auth-status');
-        if (authResponse.ok) {
-          const authData = await authResponse.json();
-          console.log('[CMA Debug] Auth status:', authData);
-        }
-      } catch (error) {
-        console.error('[CMA Debug] API tests failed:', error);
-      }
-    };
-    
-    testAPI();
-  }, []);
-
   // Normalize status checking both status and lastStatus fields
   // Per RESO Standard: Sale statuses (Active/Pending/Closed) vs Rental statuses (Leasing)
   // lastStatus="Sld" indicates a sold property, "Lsd" indicates leased (rental)
