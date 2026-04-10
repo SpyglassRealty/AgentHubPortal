@@ -153,33 +153,6 @@ export async function registerRoutes(
 ): Promise<Server> {
   await setupAuth(app);
 
-  // TEMPORARY ADMIN FIX - REMOVE AFTER USE
-  app.get('/api/admin-fix/grant-clawd-admin', async (req, res) => {
-    try {
-      const result = await db.query(
-        `UPDATE users SET role = 'admin' WHERE email = 'clawd@spyglassrealty.com' RETURNING id, email, role`
-      );
-      
-      if (result.rows.length > 0) {
-        res.json({ 
-          success: true, 
-          message: "Admin access granted to clawd@spyglassrealty.com",
-          user: result.rows[0] 
-        });
-      } else {
-        res.json({ 
-          success: false, 
-          message: "User clawd@spyglassrealty.com not found" 
-        });
-      }
-    } catch (err: any) {
-      res.status(500).json({ 
-        success: false, 
-        error: err.message 
-      });
-    }
-  });
-
   // One-time coordinate backfill migration
   (async () => {
     try {
@@ -5638,59 +5611,6 @@ Respond with valid JSON in this exact format:
   // Register Multicam Podcast Editor routes
   app.use('/api/admin/multicam', multicamRoutes);
 
-  // ==========================================
-  // DEBUG ENDPOINT FOR DATABASE DIAGNOSIS
-  // ==========================================
-  
-  app.get('/api/debug/db-check', async (req: any, res) => {
-    try {
-      // Get all agent_profiles columns from actual database
-      const cols = await db.execute(sql`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = 'agent_profiles' 
-        ORDER BY ordinal_position
-      `);
-      
-      // Get database connection info
-      const dbInfo = await db.execute(sql`
-        SELECT current_database(), current_user
-      `);
-      
-      // Check specifically for phone column
-      const phoneCheck = await db.execute(sql`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = 'agent_profiles' AND column_name = 'phone'
-      `);
-      
-      // Get sample data
-      const sampleData = await db.execute(sql`
-        SELECT user_id, title, phone, 
-               LENGTH(headshot_url) as headshot_len, 
-               LENGTH(bio) as bio_len 
-        FROM agent_profiles 
-        LIMIT 3
-      `);
-      
-      res.json({
-        database: dbInfo.rows[0],
-        columns: cols.rows.map((r: any) => r.column_name),
-        columnCount: cols.rows.length,
-        phoneColumnExists: phoneCheck.rows.length > 0,
-        phoneCheckResult: phoneCheck.rows,
-        sampleData: sampleData.rows,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Debug endpoint error:', error);
-      res.status(500).json({ 
-        error: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  });
-
   // Image proxy for PDF generation - fetches external images as base64 for React-PDF
   app.get("/api/proxy-image", async (req: any, res: any) => {
     try {
@@ -6041,39 +5961,6 @@ Respond with valid JSON in this exact format:
       });
     } catch (error) {
       console.error('[Debug] User permissions check error:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Temporary endpoint to set current user as super admin (for Trisha)
-  app.post('/api/debug/make-me-admin', isAuthenticated, async (req: any, res) => {
-    try {
-      const sessionUserId = req.user?.claims?.sub;
-      const email = req.user?.claims?.email;
-      let user = await storage.getUser(sessionUserId);
-      if (!user && email) {
-        user = await storage.getUserByEmail(email);
-      }
-      
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-      
-      // Set as super admin
-      const updatedUser = await storage.updateUser(user.id, { isSuperAdmin: true });
-      
-      console.log(`[Debug] Set user ${user.email} as super admin`);
-      
-      res.json({
-        success: true,
-        user: {
-          id: updatedUser?.id,
-          email: updatedUser?.email,
-          isSuperAdmin: updatedUser?.isSuperAdmin
-        }
-      });
-    } catch (error) {
-      console.error('[Debug] Make admin error:', error);
       res.status(500).json({ error: error.message });
     }
   });
