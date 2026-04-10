@@ -6403,13 +6403,18 @@ Respond with valid JSON in this exact format:
       const { getResendClient } = await import('./resendClient');
       const client = getResendClient();
       const data = await client.getEmails(50);
-      const emails = (data.data || []).map((item: any) => ({
+      const user = await getDbUser(req);
+      let emails = (data.data || []).map((item: any) => ({
         id: item.id,
         to: item.to?.[0] || '',
         subject: item.subject,
         created_at: item.created_at,
         last_event: item.last_event
       }));
+      // Super admins and developers see all; admins see only their own
+      if (!user?.isSuperAdmin && user?.role !== 'developer') {
+        emails = emails.filter((e: any) => e.to === user?.email);
+      }
       res.json({ emails });
     } catch (error: any) {
       console.error('Resend emails error:', error.message);
