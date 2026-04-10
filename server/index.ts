@@ -1,4 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
+import helmet from "helmet";
+import cors from "cors";
 import { registerRoutes } from "./routes";
 import path from "path";
 import { serveStatic } from "./static";
@@ -73,6 +75,28 @@ app.use((req, res, next) => {
 
   next();
 });
+
+// Security headers
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// CORS — restrict to known origins
+app.use(cors({
+  origin: (origin, callback) => {
+    const allowed = [
+      'https://missioncontrol-tjfm.onrender.com',
+      'https://spyglass-idx.vercel.app',
+      'https://spyglassrealty.com',
+      'https://www.spyglassrealty.com',
+    ];
+    if (!origin || allowed.includes(origin) ||
+        /^http:\/\/localhost(:\d+)?$/.test(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
 
 (async () => {
   await registerRoutes(httpServer, app);
