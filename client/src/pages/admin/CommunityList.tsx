@@ -61,6 +61,11 @@ export default function CommunityList() {
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Unpublish state
+  const [unpublishTarget, setUnpublishTarget] = useState<{ slug: string; name: string } | null>(null);
+  const [showUnpublishAllConfirm, setShowUnpublishAllConfirm] = useState(false);
+  const [isUnpublishing, setIsUnpublishing] = useState(false);
+
   // Update URL when filters change
   const updateUrl = (newParams: Record<string, string | number>) => {
     const params = new URLSearchParams();
@@ -238,6 +243,62 @@ export default function CommunityList() {
     }
   };
 
+  const handleUnpublishAll = async () => {
+    setIsUnpublishing(true);
+    try {
+      const res = await fetch('/api/admin/communities/unpublish-all', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Failed to unpublish communities' }));
+        throw new Error(err.message);
+      }
+      const result = await res.json();
+      toast({
+        title: result.count === 0 ? 'No published communities found' : `${result.count} communities unpublished`,
+        description: result.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ['admin-communities'] });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to unpublish communities',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUnpublishing(false);
+      setShowUnpublishAllConfirm(false);
+    }
+  };
+
+  const handleUnpublishCommunity = async (slug: string, name: string) => {
+    setIsUnpublishing(true);
+    try {
+      const res = await fetch(`/api/admin/communities/${slug}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ published: false }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Failed to unpublish' }));
+        throw new Error(err.message);
+      }
+      toast({ title: 'Community unpublished', description: `${name} is now a draft.` });
+      queryClient.invalidateQueries({ queryKey: ['admin-communities'] });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to unpublish',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUnpublishing(false);
+      setUnpublishTarget(null);
+    }
+  };
+
   return (
     <>
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
@@ -261,6 +322,17 @@ export default function CommunityList() {
             <span className="text-xs text-muted-foreground ml-2">
               {Number(data.sourceCounts.liveby).toLocaleString()} LiveBy&nbsp;&nbsp;|&nbsp;&nbsp;{Number(data.sourceCounts.spyglass).toLocaleString()} Spyglass
             </span>
+          )}
+          {pagination.total > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="ml-2 text-yellow-700 border-yellow-500 hover:bg-yellow-50"
+              onClick={() => setShowUnpublishAllConfirm(true)}
+            >
+              <EyeOff className="h-4 w-4 mr-1" />
+              Unpublish All
+            </Button>
           )}
         </div>
 
@@ -608,14 +680,26 @@ export default function CommunityList() {
                           {formatDate(c.updatedAt)}
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={() => setDeleteTarget({ id: c.id, name: c.name })}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            {c.published && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-yellow-600"
+                                onClick={() => setUnpublishTarget({ slug: c.slug, name: c.name })}
+                              >
+                                <EyeOff className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => setDeleteTarget({ id: c.id, name: c.name })}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
   );
@@ -708,6 +792,49 @@ export default function CommunityList() {
             >
               {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Delete {selectedCommunities.length} Communities
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* Single Unpublish Confirmation */}
+      <AlertDialog open={!!unpublishTarget} onOpenChange={(open) => !open && setUnpublishTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unpublish Community</AlertDialogTitle>
+            <AlertDialogDescription>
+              Unpublish "{unpublishTarget?.name}"? It will become a draft and no longer appear on the site.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUnpublishing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => unpublishTarget && handleUnpublishCommunity(unpublishTarget.slug, unpublishTarget.name)}
+              disabled={isUnpublishing}
+            >
+              {isUnpublishing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Unpublish
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Unpublish All Confirmation */}
+      <AlertDialog open={showUnpublishAllConfirm} onOpenChange={setShowUnpublishAllConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unpublish All Communities</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will unpublish all published communities. They will become drafts and no longer appear on the site. This cannot be undone. Proceed?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUnpublishing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleUnpublishAll}
+              disabled={isUnpublishing}
+            >
+              {isUnpublishing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Unpublish All
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
