@@ -528,6 +528,36 @@ export function registerCommunityEditorRoutes(app: Express) {
     }
   });
 
+  // ── POST /api/admin/communities/unpublish-all — unpublish every published community ──
+  app.post("/api/admin/communities/unpublish-all", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const user = req.dbUser;
+
+      const unpublished = await db
+        .update(communities)
+        .set({
+          published: false,
+          updatedAt: new Date(),
+          updatedBy: user?.email || "admin",
+        })
+        .where(eq(communities.published, true))
+        .returning({ slug: communities.slug });
+
+      const count = unpublished.length;
+
+      if (count === 0) {
+        console.log(`[Community Editor] Unpublish-all requested by ${user?.email} — no published communities found`);
+        return res.json({ count: 0, message: "No published communities found" });
+      }
+
+      console.log(`[Community Editor] Unpublished all (${count} communities) by ${user?.email}`);
+      res.json({ count, message: `${count} communities unpublished` });
+    } catch (error) {
+      console.error("[Community Editor] Error unpublishing all communities:", error);
+      res.status(500).json({ message: "Failed to unpublish communities" });
+    }
+  });
+
   // ── POST /api/admin/communities/:slug/publish — toggle publish ──
   app.post("/api/admin/communities/:slug/publish", isAuthenticated, requireSuperAdmin, async (req: any, res) => {
     try {
