@@ -76,8 +76,56 @@ app.use((req, res, next) => {
   next();
 });
 
-// Security headers
-app.use(helmet({ contentSecurityPolicy: false }));
+// Security headers — CSP in Report-Only mode (logs violations, never blocks)
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      reportOnly: true,
+      directives: {
+        // default-src: inherited → 'self'
+        // base-uri: inherited → 'self'
+        // object-src: inherited → 'none'
+        // font-src: inherited → 'self' https: data:
+        // script-src-attr: inherited → 'none'
+
+        "script-src": ["'self'", "'unsafe-inline'"],
+
+        "style-src": ["'self'", "'unsafe-inline'"],
+
+        "img-src": [
+          "'self'",
+          "data:",
+          "https://api.mapbox.com",
+          "https://img.youtube.com",
+          "https://images.unsplash.com",
+          "https://via.placeholder.com",
+          "https://www.greatschools.org",
+          "https://cdn.repliers.io",
+          "https://*.public.blob.vercel-storage.com",
+        ],
+
+        "connect-src": [
+          "'self'",
+          "https://api.mapbox.com",
+          "https://events.mapbox.com",
+        ],
+
+        "frame-src": [
+          "'self'",
+          "https://beacon.realtyhack.com",
+          "https://docs.google.com",
+          "https://www.youtube.com",
+          "https://player.vimeo.com",
+          "https://mission-control-contract-conduit.onrender.com",
+          "https://*.replit.app",
+        ],
+
+        "worker-src": ["'self'", "blob:"],
+      },
+    },
+  })
+);
 
 // CORS — restrict to known origins
 app.use(cors({
