@@ -4611,8 +4611,8 @@ Respond with valid JSON in this exact format:
     }
   });
 
-  // Serve file from database storage (public access for CMA viewers)
-  app.get('/api/agent-resources/:id/file', async (req: any, res) => {
+  // Serve file from database storage
+  app.get('/api/agent-resources/:id/file', isAuthenticated, async (req: any, res) => {
     try {
       const resource = await storage.getAgentResource(req.params.id);
       if (!resource || !resource.fileData) {
