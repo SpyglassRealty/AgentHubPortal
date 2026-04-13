@@ -42,6 +42,16 @@ import {
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Search,
   Users,
   Bell,
@@ -185,6 +195,7 @@ export default function SavedSearchAgent() {
   const [showCreateSearch, setShowCreateSearch] = useState(false);
   const [showMessageDialog, setShowMessageDialog] = useState(false);
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
+  const [deleteSearchTarget, setDeleteSearchTarget] = useState<string | null>(null);
 
   // ── Look up the current user's Repliers agent ID ────────────────────────
 
@@ -698,11 +709,7 @@ export default function SavedSearchAgent() {
                                                 size="sm"
                                                 variant="ghost"
                                                 className="text-destructive hover:text-destructive"
-                                                onClick={() => {
-                                                  if (confirm("Delete this saved search?")) {
-                                                    deleteSearchMutation.mutate(search.searchId);
-                                                  }
-                                                }}
+                                                onClick={() => setDeleteSearchTarget(search.searchId)}
                                                 disabled={deleteSearchMutation.isPending}
                                               >
                                                 <Trash2 className="h-4 w-4" />
@@ -975,6 +982,30 @@ export default function SavedSearchAgent() {
           isSending={sendMessageMutation.isPending}
         />
       </div>
+
+      <AlertDialog open={!!deleteSearchTarget} onOpenChange={(open) => !open && setDeleteSearchTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Saved Search</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this saved search? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteSearchTarget) {
+                  deleteSearchMutation.mutate(deleteSearchTarget);
+                  setDeleteSearchTarget(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }

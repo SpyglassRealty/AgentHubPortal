@@ -24,6 +24,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -621,6 +631,7 @@ export default function RedirectManager() {
   const [selectedRedirect, setSelectedRedirect] = useState<Redirect | undefined>();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Redirect | null>(null);
   const { toast } = useToast();
 
   const { data, isLoading, error, refetch } = useRedirects(search, filter, page);
@@ -654,33 +665,23 @@ export default function RedirectManager() {
     }
   };
 
-  const handleDelete = async (redirect: Redirect) => {
-    if (!confirm(`Are you sure you want to delete the redirect from ${redirect.sourceUrl}?`)) {
-      return;
-    }
+  const handleDelete = (redirect: Redirect) => {
+    setDeleteTarget(redirect);
+  };
 
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      const response = await fetch(`/api/admin/redirects/${redirect.id}`, {
+      const response = await fetch(`/api/admin/redirects/${deleteTarget.id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete redirect');
-      }
-
-      toast({
-        title: 'Redirect Deleted',
-        description: redirect.sourceUrl,
-      });
-
+      if (!response.ok) throw new Error('Failed to delete redirect');
+      toast({ title: 'Redirect Deleted', description: deleteTarget.sourceUrl });
+      setDeleteTarget(null);
       refetch();
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete redirect',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to delete redirect', variant: 'destructive' });
     }
   };
 
@@ -904,6 +905,22 @@ export default function RedirectManager() {
             </div>
           </div>
         )}
+
+        <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Redirect</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete the redirect from{' '}
+                <strong>{deleteTarget?.sourceUrl}</strong>? This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* ── Redirect Form Dialog ──────────────────── */}
         <RedirectFormDialog

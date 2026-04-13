@@ -20,6 +20,16 @@ import {
   Type,
   Link,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export interface ContentBlock {
   id: number;
@@ -52,6 +62,7 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const [deleteBlockTarget, setDeleteBlockTarget] = useState<number | null>(null);
 
   // ── Fetch blocks ──────────────────────────────
   useEffect(() => {
@@ -200,8 +211,6 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
 
   // ── Delete block ──────────────────────────────
   const deleteBlock = async (blockId: number) => {
-    if (!confirm('Are you sure you want to delete this block?')) return;
-
     try {
       const response = await fetch(`/api/admin/communities/${communityId}/content-blocks/${blockId}`, {
         method: 'DELETE',
@@ -244,6 +253,7 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -283,7 +293,7 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
               index={index}
               totalBlocks={blocks.length}
               onUpdate={(updates) => updateBlock(block.id, updates)}
-              onDelete={() => deleteBlock(block.id)}
+              onDelete={() => setDeleteBlockTarget(block.id)}
               onMoveUp={() => index > 0 && moveBlock(index, index - 1)}
               onMoveDown={() => index < blocks.length - 1 && moveBlock(index, index + 1)}
             />
@@ -291,6 +301,24 @@ export function ContentBlocksEditor({ communityId, onSave }: ContentBlocksEditor
         )}
       </CardContent>
     </Card>
+
+      <AlertDialog open={!!deleteBlockTarget} onOpenChange={(open) => !open && setDeleteBlockTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Block</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this block? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (deleteBlockTarget !== null) deleteBlock(deleteBlockTarget); }}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
