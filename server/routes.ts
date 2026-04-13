@@ -5824,14 +5824,15 @@ Respond with valid JSON in this exact format:
     try {
       const leadData = req.body;
       
-      // Validate webhook secret if configured
+      // Validate webhook secret — fail closed if not configured
       const webhookSecret = process.env.IDX_WEBHOOK_SECRET;
-      if (webhookSecret) {
-        const providedSecret = req.headers['x-webhook-secret'];
-        if (providedSecret !== webhookSecret) {
-          console.warn('[IDX Webhook] Invalid webhook secret provided');
-          return res.status(401).json({ error: 'Unauthorized' });
-        }
+      if (!webhookSecret) {
+        return res.status(401).json({ error: 'Webhook secret not configured' });
+      }
+      const providedSecret = req.headers['x-webhook-secret'];
+      if (providedSecret !== webhookSecret) {
+        console.warn('[IDX Webhook] Invalid webhook secret provided');
+        return res.status(401).json({ error: 'Unauthorized' });
       }
       
       // Store the lead
