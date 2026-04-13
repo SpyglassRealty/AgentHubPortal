@@ -1,5 +1,3 @@
-import { OpenAI } from 'openai';
-
 export interface ExtractedDocumentTerms {
   // Core Transaction Details
   propertyAddress?: string;
@@ -74,14 +72,9 @@ export interface DocumentScanResult {
  * Uses OpenAI Vision API to extract terms from uploaded PDFs and images
  */
 export class DocumentAIScanner {
-  private openai: OpenAI;
   private baseURL: string;
 
   constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY || '',
-      dangerouslyAllowBrowser: true // For client-side usage
-    });
     this.baseURL = process.env.NEXT_PUBLIC_API_URL || '';
   }
 
@@ -134,159 +127,6 @@ export class DocumentAIScanner {
         fileName: file.name
       };
     }
-  }
-
-  /**
-   * Extract terms from document text using AI
-   */
-  private async extractTermsFromText(documentText: string, transactionType: string): Promise<ExtractedDocumentTerms> {
-    const prompt = this.buildExtractionPrompt(transactionType);
-    
-    const completion = await this.openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: prompt.systemPrompt
-        },
-        {
-          role: "user", 
-          content: `Extract terms from this real estate document:\n\n${documentText}`
-        }
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.1, // Low temperature for consistent extraction
-    });
-
-    const extractedData = JSON.parse(completion.choices[0].message.content || '{}');
-    
-    // Add missing fields analysis
-    const missingFields = this.analyzeMissingFields(extractedData, transactionType);
-    
-    return {
-      ...extractedData,
-      missingFields,
-      confidence: this.calculateConfidenceScores(extractedData)
-    };
-  }
-
-  /**
-   * Build extraction prompt based on transaction type
-   */
-  private buildExtractionPrompt(transactionType: string) {
-    const baseSystemPrompt = `You are an expert real estate transaction processor. Extract key terms from real estate documents with high accuracy. 
-
-    CRITICAL INSTRUCTIONS:
-    - Return ONLY valid JSON, no markdown or explanations
-    - Use null for missing fields, don't guess
-    - Extract exact values as they appear in document  
-    - For dates, use ISO format (YYYY-MM-DD)
-    - For currency, return numbers without $ symbols
-    - Assign confidence scores 0-100 for each extracted field
-    - Classify document type accurately`;
-
-    const purchaseAgreementFields = `
-    Extract these fields for Purchase Agreement:
-    {
-      "documentType": "purchase_agreement",
-      "propertyAddress": "full address as written",
-      "purchasePrice": numeric_value_only,
-      "earnestMoney": numeric_value_only,
-      "closingDate": "YYYY-MM-DD",
-      "optionPeriodDays": number_of_days,
-      "optionFee": numeric_value_only,
-      "buyerName": ["array", "of", "buyer", "names"],
-      "sellerName": ["array", "of", "seller", "names"],
-      "listingAgent": "agent name and company",
-      "sellingAgent": "agent name and company",
-      "cashDown": numeric_value_only,
-      "loanAmount": numeric_value_only,
-      "lenderName": "lender name if specified",
-      "titleCompany": "title company name",
-      "inspectionPeriodDays": number_of_days,
-      "appraisalContingency": boolean,
-      "financingContingency": boolean,
-      "sellerConcessions": numeric_value_only,
-      "contractDate": "YYYY-MM-DD",
-      "effectiveDate": "YYYY-MM-DD"
-    }`;
-
-    const listingAgreementFields = `
-    Extract these fields for Listing Agreement:
-    {
-      "documentType": "listing_agreement",
-      "propertyAddress": "full address as written",
-      "listingPrice": numeric_value_only,
-      "commissionRate": percentage_as_decimal,
-      "listingPeriodStart": "YYYY-MM-DD",
-      "listingPeriodEnd": "YYYY-MM-DD",
-      "sellerName": ["array", "of", "seller", "names"],
-      "listingAgent": "agent name and company",
-      "brokerageName": "brokerage company name",
-      "exclusions": ["items", "excluded", "from", "sale"],
-      "inclusions": ["items", "included", "in", "sale"]
-    }`;
-
-    return {
-      systemPrompt: baseSystemPrompt + (transactionType === 'Listing Agreement' ? listingAgreementFields : purchaseAgreementFields)
-    };
-  }
-
-  /**
-   * Analyze missing required fields based on compliance requirements
-   */
-  private analyzeMissingFields(extractedData: any, transactionType: string): string[] {
-    const requiredFields = {
-      'Purchase Agreement': [
-        'propertyAddress', 'purchasePrice', 'closingDate', 
-        'buyerName', 'sellerName', 'earnestMoney'
-      ],
-      'Listing Agreement': [
-        'propertyAddress', 'listingPrice', 'listingPeriodStart',
-        'listingPeriodEnd', 'sellerName', 'listingAgent', 'commissionRate'
-      ]
-    };
-
-    const required = requiredFields[transactionType as keyof typeof requiredFields] || [];
-    const missing: string[] = [];
-
-    required.forEach(field => {
-      if (!extractedData[field] || extractedData[field] === null || extractedData[field] === '') {
-        missing.push(field);
-      }
-    });
-
-    return missing;
-  }
-
-  /**
-   * Calculate confidence scores for extracted data
-   */
-  private calculateConfidenceScores(extractedData: any): Record<string, number> {
-    const confidence: Record<string, number> = {};
-    
-    Object.keys(extractedData).forEach(key => {
-      const value = extractedData[key];
-      
-      if (value === null || value === undefined || value === '') {
-        confidence[key] = 0;
-      } else if (Array.isArray(value)) {
-        confidence[key] = value.length > 0 ? 85 : 0;
-      } else if (typeof value === 'number') {
-        confidence[key] = value > 0 ? 95 : 50;
-      } else if (typeof value === 'string') {
-        // Higher confidence for longer, more specific strings
-        if (value.length > 10) confidence[key] = 90;
-        else if (value.length > 5) confidence[key] = 75;
-        else confidence[key] = 60;
-      } else if (typeof value === 'boolean') {
-        confidence[key] = 80;
-      } else {
-        confidence[key] = 70;
-      }
-    });
-
-    return confidence;
   }
 
   /**
