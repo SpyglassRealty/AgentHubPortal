@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import path from "path";
 import { serveStatic } from "./static";
@@ -147,6 +148,44 @@ app.use(cors({
 }));
 
 (async () => {
+  // --- Rate Limiting (3 tiers) ---
+
+  // Tier 1: Auth limiter (strictest) — 10 req / 15min per IP
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many login attempts, please try again later" },
+  });
+
+  // Tier 2: Proxy limiter (moderate) — 60 req / 1min per IP
+  const proxyLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many requests, please slow down" },
+  });
+
+  // Tier 3: General limiter (baseline) — 200 req / 1min per IP
+  const generalLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Rate limit exceeded" },
+  });
+
+  app.use(generalLimiter);
+  app.use("/api/auth/google", authLimiter);
+  app.use("/api/fub", proxyLimiter);
+  app.use("/api/rezen", proxyLimiter);
+  app.use("/api/market-pulse", proxyLimiter);
+  app.use("/api/market-pulse/test", proxyLimiter);
+  app.use("/api/company-listings", proxyLimiter);
+  app.use("/api/idx/leads/webhook", proxyLimiter);
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
