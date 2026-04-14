@@ -2025,8 +2025,7 @@ export async function registerRoutes(
       }
       
       const allAgents = await fubClient.getAllAgents();
-      console.log('[FUB Debug] All FUB users:', allAgents.map(a => ({ id: a.id, email: a.email, name: a.name })));
-      
+
       res.json({
         totalUsers: allAgents.length,
         users: allAgents.map(a => ({ id: a.id, email: a.email, name: a.name }))
