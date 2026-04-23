@@ -30,6 +30,16 @@ app.use(
 
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
+// SEO-MC-NOINDEX — Block search indexing on admin CMS
+app.use((_req, res, next) => {
+  res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
+  next();
+});
+
+app.get("/robots.txt", (_req, res) => {
+  res.type("text/plain").send("User-agent: *\nDisallow: /\n");
+});
+
 // Serve static files from public directory with proper options
 app.use(express.static(path.join(process.cwd(), 'public'), {
   maxAge: '1d',
