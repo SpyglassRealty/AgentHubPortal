@@ -1729,3 +1729,15 @@ export const communityContentBlocks = pgTable("community_content_blocks", {
 export type CommunityContentBlock = typeof communityContentBlocks.$inferSelect;
 export type InsertCommunityContentBlock = typeof communityContentBlocks.$inferInsert;
 
+export const pulseCommunityAllowlist = pgTable("pulse_community_allowlist", {
+  slug: varchar("slug", { length: 100 }).primaryKey().references(() => communities.slug, { onDelete: "cascade" }),
+  county: varchar("county", { length: 50 }).notNull(),
+  source: varchar("source", { length: 50 }).notNull().default("live-site-county-tabs-2026-04"),
+  addedAt: timestamp("added_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_pulse_allowlist_county").on(table.county),
+]);
+
+export type PulseCommunityAllowlist = typeof pulseCommunityAllowlist.$inferSelect;
+export type InsertPulseCommunityAllowlist = typeof pulseCommunityAllowlist.$inferInsert;
+
