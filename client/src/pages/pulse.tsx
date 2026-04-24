@@ -198,15 +198,15 @@ export default function PulsePage() {
                   {selectedCommunity ? (
                     <>
                       <span className="text-[#EF4923] font-medium">{selectedCommunity.name}</span>
-                      {" "}neighborhood · powered by Spyglass
+                      {" "}neighborhood · powered by Spyglass Realty
                     </>
                   ) : filterLabel ? (
                     <>
                       <span className="text-[#EF4923] font-medium">{filterLabel}</span>
-                      {" "}market intelligence — {zipData.length} zip{zipData.length !== 1 ? "s" : ""} · powered by Spyglass
+                      {" "}market intelligence — {zipData.length} zip{zipData.length !== 1 ? "s" : ""} · powered by Spyglass Realty
                     </>
                   ) : (
-                    "Austin Metro market intelligence — 50+ data layers powered by Spyglass"
+                    "Austin Metro market intelligence — 50+ data layers powered by Spyglass Realty"
                   )}
                 </p>
               </div>

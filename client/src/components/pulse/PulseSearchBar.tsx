@@ -68,17 +68,6 @@ export default function PulseSearchBar({
         },
       });
     }
-    for (const z of results.zips) {
-      items.push({
-        type: "zip",
-        label: z.zip,
-        sublabel: z.neighborhood ? `${z.neighborhood} · ${z.city}, ${z.county} County` : `${z.city}, ${z.county} County`,
-        action: () => {
-          onZipSelect(z.zip);
-          closeDropdown();
-        },
-      });
-    }
     for (const n of results.neighborhoods) {
       items.push({
         type: "neighborhood",
@@ -86,6 +75,17 @@ export default function PulseSearchBar({
         sublabel: `${n.zip} · ${n.city}, ${n.county} County`,
         action: () => {
           onZipSelect(n.zip);
+          closeDropdown();
+        },
+      });
+    }
+    for (const z of results.zips) {
+      items.push({
+        type: "zip",
+        label: z.zip,
+        sublabel: z.neighborhood ? `${z.neighborhood} · ${z.city}, ${z.county} County` : `${z.city}, ${z.county} County`,
+        action: () => {
+          onZipSelect(z.zip);
           closeDropdown();
         },
       });
@@ -298,7 +298,7 @@ export default function PulseSearchBar({
             </div>
           ) : (
             <>
-              {/* Communities */}
+              {/* Neighborhoods — polygon-scoped communities */}
               {results?.communities && results.communities.length > 0 && (
                 <div>
                   <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/50">
@@ -327,6 +327,43 @@ export default function PulseSearchBar({
                           <span className="font-semibold">{comm.name}</span>
                           <span className="ml-2 text-xs text-muted-foreground">
                             {comm.county} County{comm.containingZip ? ` · ZIP ${comm.containingZip}` : ""}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* ZIP Areas — legacy ZIP_META neighborhood labels */}
+              {results?.neighborhoods && results.neighborhoods.length > 0 && (
+                <div>
+                  <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/50">
+                    Zip Areas
+                  </div>
+                  {results.neighborhoods.map((n) => {
+                    itemIndex++;
+                    const idx = itemIndex;
+                    return (
+                      <button
+                        key={`${n.zip}-${n.neighborhood}`}
+                        id={`pulse-search-option-${idx}`}
+                        role="option"
+                        aria-selected={highlightedIndex === idx}
+                        onClick={() => items[idx]?.action()}
+                        onMouseEnter={() => setHighlightedIndex(idx)}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors",
+                          highlightedIndex === idx
+                            ? "bg-[#EF4923]/8 text-foreground"
+                            : "hover:bg-accent/50 text-foreground"
+                        )}
+                      >
+                        {getIcon("neighborhood")}
+                        <div className="min-w-0 flex-1">
+                          <span className="font-semibold">{n.neighborhood}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {n.zip} · {n.city}
                           </span>
                         </div>
                       </button>
@@ -364,43 +401,6 @@ export default function PulseSearchBar({
                           <span className="font-semibold">{z.zip}</span>
                           <span className="ml-2 text-xs text-muted-foreground">
                             {z.neighborhood ? `${z.neighborhood} · ${z.city}` : z.city}, {z.county} Co.
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Neighborhoods */}
-              {results?.neighborhoods && results.neighborhoods.length > 0 && (
-                <div>
-                  <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/50">
-                    Neighborhoods
-                  </div>
-                  {results.neighborhoods.map((n) => {
-                    itemIndex++;
-                    const idx = itemIndex;
-                    return (
-                      <button
-                        key={`${n.zip}-${n.neighborhood}`}
-                        id={`pulse-search-option-${idx}`}
-                        role="option"
-                        aria-selected={highlightedIndex === idx}
-                        onClick={() => items[idx]?.action()}
-                        onMouseEnter={() => setHighlightedIndex(idx)}
-                        className={cn(
-                          "w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors",
-                          highlightedIndex === idx
-                            ? "bg-[#EF4923]/8 text-foreground"
-                            : "hover:bg-accent/50 text-foreground"
-                        )}
-                      >
-                        {getIcon("neighborhood")}
-                        <div className="min-w-0 flex-1">
-                          <span className="font-semibold">{n.neighborhood}</span>
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            {n.zip} · {n.city}
                           </span>
                         </div>
                       </button>
