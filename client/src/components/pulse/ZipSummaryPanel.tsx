@@ -17,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import ForecastGauge from "./ForecastGauge";
 import DemographicsSection from "./DemographicsSection";
 import SchoolsSection from "./SchoolsSection";
+import ScopeBadge from "./ScopeBadge";
 import { generatePulseReport } from "./generateReport";
 import type { ZipSummary } from "./types";
 
@@ -47,6 +48,7 @@ const MOCK_SUMMARY: ZipSummary = {
 
 interface ZipSummaryPanelProps {
   zipCode: string;
+  communitySlug?: string | null;
   lat?: number;
   lng?: number;
   onClose: () => void;
@@ -55,6 +57,7 @@ interface ZipSummaryPanelProps {
 
 export default function ZipSummaryPanel({
   zipCode,
+  communitySlug,
   lat,
   lng,
   onClose,
@@ -65,12 +68,13 @@ export default function ZipSummaryPanel({
 
   // Try the V2 API, fall back to mock
   const { data: summary, isLoading } = useQuery<ZipSummary>({
-    queryKey: ["/api/pulse/v2/zip", zipCode, "summary"],
+    queryKey: ["/api/pulse/v2/zip", zipCode, "summary", communitySlug ?? ""],
     queryFn: async () => {
       try {
-        const res = await fetch(`/api/pulse/v2/zip/${zipCode}/summary`, {
-          credentials: "include",
-        });
+        const url = communitySlug
+          ? `/api/pulse/v2/zip/${zipCode}/summary?communitySlug=${encodeURIComponent(communitySlug)}`
+          : `/api/pulse/v2/zip/${zipCode}/summary`;
+        const res = await fetch(url, { credentials: "include" });
         if (!res.ok) throw new Error("API not ready");
         const raw = await res.json();
         // Map V2 response shape to ZipSummary type
@@ -100,6 +104,7 @@ export default function ZipSummaryPanel({
           homeValueGrowthYoY: raw.metrics?.home_value_growth_yoy ?? -2.3,
           medianIncome: raw.metrics?.median_income ?? 78500,
           population: raw.metrics?.population ?? 52340,
+          scope: raw.scope,
         } as ZipSummary;
       } catch {
         // Return mock data with the selected zip
@@ -173,6 +178,11 @@ export default function ZipSummaryPanel({
               <p className="text-sm text-muted-foreground mt-0.5">
                 {summary.county}, {summary.state}
               </p>
+              {summary.scope && summary.scope.type === "community" && (
+                <div className="mt-1.5">
+                  <ScopeBadge scope={summary.scope} />
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-1">
               {/* Period toggle */}

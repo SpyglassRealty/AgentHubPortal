@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Layout from "@/components/layout";
-import { Activity, PanelLeftClose, PanelLeftOpen, MapPin, X } from "lucide-react";
+import { Activity, PanelLeftClose, PanelLeftOpen, MapPin, X, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DataLayerSidebar,
@@ -15,6 +15,7 @@ import {
   NeighborhoodExplorer,
 } from "@/components/pulse";
 import type { OverviewData, ZipHeatmapItem, TrendMonth } from "@/components/pulse";
+import type { CommunityMatch } from "@/components/pulse/PulseSearchBar";
 
 // Map the frontend layer IDs to V2 backend layer IDs
 // Frontend uses kebab-case (home-value), backend uses snake_case (home_value)
@@ -25,6 +26,7 @@ function toBackendLayerId(frontendId: string): string {
 // ─── Main Pulse V2 Page ──────────────────────────────────────
 export default function PulsePage() {
   const [selectedZip, setSelectedZip] = useState<string | null>(null);
+  const [selectedCommunity, setSelectedCommunity] = useState<CommunityMatch | null>(null);
   const [selectedLayerId, setSelectedLayerId] = useState("home-value");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [period, setPeriod] = useState<"yearly" | "monthly">("yearly");
@@ -34,6 +36,17 @@ export default function PulsePage() {
 
   const handleZipSelect = useCallback((zip: string) => {
     setSelectedZip(zip);
+    setSelectedCommunity(null);
+    setTimeout(() => {
+      mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  }, []);
+
+  const handleCommunitySelect = useCallback((community: CommunityMatch) => {
+    setSelectedCommunity(community);
+    setSelectedZip(community.containingZip ?? null);
+    setFilteredZips(null);
+    setFilterLabel(null);
     setTimeout(() => {
       mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 100);
@@ -43,6 +56,7 @@ export default function PulsePage() {
     setFilteredZips(zips);
     setFilterLabel(label);
     setSelectedZip(null);
+    setSelectedCommunity(null);
     setTimeout(() => {
       mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 100);
@@ -60,9 +74,19 @@ export default function PulsePage() {
   // Detect if we should show the special AffordabilityChart
   const isAffordabilityLayer = selectedLayerId === "salary-to-afford";
 
+  const communitySlug = selectedCommunity?.slug ?? null;
+
   // Fetch overview
   const { data: overview, isLoading: overviewLoading } = useQuery<OverviewData>({
-    queryKey: ["/api/pulse/overview"],
+    queryKey: ["/api/pulse/overview", communitySlug ?? ""],
+    queryFn: async () => {
+      const url = communitySlug
+        ? `/api/pulse/overview?communitySlug=${encodeURIComponent(communitySlug)}`
+        : `/api/pulse/overview`;
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch overview");
+      return res.json();
+    },
     staleTime: 1000 * 60 * 10,
   });
 
@@ -71,7 +95,15 @@ export default function PulsePage() {
     zipData: ZipHeatmapItem[];
     total: number;
   }>({
-    queryKey: ["/api/pulse/heatmap"],
+    queryKey: ["/api/pulse/heatmap", communitySlug ?? ""],
+    queryFn: async () => {
+      const url = communitySlug
+        ? `/api/pulse/heatmap?communitySlug=${encodeURIComponent(communitySlug)}`
+        : `/api/pulse/heatmap`;
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch heatmap");
+      return res.json();
+    },
     staleTime: 1000 * 60 * 10,
   });
 
@@ -98,7 +130,15 @@ export default function PulsePage() {
   const { data: trendsData, isLoading: trendsLoading } = useQuery<{
     trends: TrendMonth[];
   }>({
-    queryKey: ["/api/pulse/trends"],
+    queryKey: ["/api/pulse/trends", communitySlug ?? ""],
+    queryFn: async () => {
+      const url = communitySlug
+        ? `/api/pulse/trends?communitySlug=${encodeURIComponent(communitySlug)}`
+        : `/api/pulse/trends`;
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch trends");
+      return res.json();
+    },
     staleTime: 1000 * 60 * 10,
   });
 
@@ -155,7 +195,12 @@ export default function PulsePage() {
                   Pulse
                 </h1>
                 <p className="text-muted-foreground mt-1">
-                  {filterLabel ? (
+                  {selectedCommunity ? (
+                    <>
+                      <span className="text-[#EF4923] font-medium">{selectedCommunity.name}</span>
+                      {" "}neighborhood · powered by Spyglass
+                    </>
+                  ) : filterLabel ? (
                     <>
                       <span className="text-[#EF4923] font-medium">{filterLabel}</span>
                       {" "}market intelligence — {zipData.length} zip{zipData.length !== 1 ? "s" : ""} · powered by Spyglass
@@ -189,6 +234,7 @@ export default function PulsePage() {
           onZipSelect={handleZipSelect}
           onFilterZips={handleFilterZips}
           onClearFilter={handleClearFilter}
+          onCommunitySelect={handleCommunitySelect}
           activeFilter={filterLabel}
         />
 
@@ -246,17 +292,37 @@ export default function PulsePage() {
             </Button>
           </div>
 
-          {/* Center: Map (no zip selected) OR Zip Summary + Chart (zip selected) */}
-          {selectedZip ? (
+          {/* Center: community-no-zip placeholder | zip summary + chart | map + chart */}
+          {selectedCommunity && !selectedZip ? (
+            /* Community selected but containingZip is null — ZIP-level data unavailable */
+            <div className="flex-1 flex items-center justify-center p-8">
+              <div className="text-center max-w-sm">
+                <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-950/30 flex items-center justify-center mx-auto mb-3">
+                  <Navigation className="h-6 w-6 text-purple-500" />
+                </div>
+                <p className="font-medium text-foreground">{selectedCommunity.name}</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  ZIP-level data unavailable for this neighborhood's location.
+                </p>
+                <button
+                  onClick={() => setSelectedCommunity(null)}
+                  className="mt-4 text-xs text-muted-foreground hover:text-foreground underline"
+                >
+                  Clear selection
+                </button>
+              </div>
+            </div>
+          ) : selectedZip ? (
             /* When a zip is selected: replace map area with summary + chart side by side */
             <div className="flex-1 flex min-w-0">
               {/* Zip Summary Panel — left half of center */}
               <div className="w-[380px] flex-shrink-0 border-r border-border overflow-auto">
                 <ZipSummaryPanel
                   zipCode={selectedZip}
+                  communitySlug={communitySlug}
                   lat={selectedZipCoords?.lat}
                   lng={selectedZipCoords?.lng}
-                  onClose={() => setSelectedZip(null)}
+                  onClose={() => { setSelectedZip(null); setSelectedCommunity(null); }}
                   className="h-full border-0 rounded-none"
                 />
               </div>
@@ -272,6 +338,7 @@ export default function PulsePage() {
                   <HistoricalChart
                     selectedLayerId={selectedLayerId}
                     selectedZip={selectedZip}
+                    communitySlug={communitySlug}
                     filteredZips={filteredZips}
                     filterLabel={filterLabel}
                     period={period}
@@ -305,6 +372,7 @@ export default function PulsePage() {
                   <HistoricalChart
                     selectedLayerId={selectedLayerId}
                     selectedZip={selectedZip}
+                    communitySlug={communitySlug}
                     filteredZips={filteredZips}
                     filterLabel={filterLabel}
                     period={period}

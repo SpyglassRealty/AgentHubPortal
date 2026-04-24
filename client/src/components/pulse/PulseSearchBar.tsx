@@ -1,18 +1,29 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, X, MapPin, Building2, Map, Navigation } from "lucide-react";
+import { Search, X, MapPin, Building2, Map, Navigation, Landmark } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+export interface CommunityMatch {
+  slug: string;
+  name: string;
+  county: string;
+  centroid: { lat: number; lng: number } | null;
+  polygon: number[][] | null;
+  containingZip: string | null;
+}
 
 interface SearchResult {
   zips: { zip: string; city: string; county: string; neighborhood: string | null }[];
   cities: { city: string; county: string; zips: string[] }[];
   counties: { county: string; zips: string[] }[];
   neighborhoods: { neighborhood: string; zip: string; city: string; county: string }[];
+  communities: CommunityMatch[];
 }
 
 interface PulseSearchBarProps {
   onZipSelect: (zip: string) => void;
   onFilterZips: (zips: string[], label: string) => void;
   onClearFilter: () => void;
+  onCommunitySelect?: (community: CommunityMatch) => void;
   activeFilter: string | null;
   className?: string;
 }
@@ -21,6 +32,7 @@ export default function PulseSearchBar({
   onZipSelect,
   onFilterZips,
   onClearFilter,
+  onCommunitySelect,
   activeFilter,
   className,
 }: PulseSearchBarProps) {
@@ -45,6 +57,17 @@ export default function PulseSearchBar({
     if (!results) return [];
     const items: { type: string; label: string; sublabel: string; action: () => void }[] = [];
 
+    for (const comm of results.communities) {
+      items.push({
+        type: "community",
+        label: comm.name,
+        sublabel: `${comm.county} County`,
+        action: () => {
+          onCommunitySelect?.(comm);
+          closeDropdown();
+        },
+      });
+    }
     for (const z of results.zips) {
       items.push({
         type: "zip",
@@ -90,7 +113,7 @@ export default function PulseSearchBar({
       });
     }
     return items;
-  }, [results, onZipSelect, onFilterZips, closeDropdown]);
+  }, [results, onZipSelect, onFilterZips, onCommunitySelect, closeDropdown]);
 
   // Fetch search results with debounce
   useEffect(() => {
@@ -170,13 +193,16 @@ export default function PulseSearchBar({
     (results.zips.length > 0 ||
       results.cities.length > 0 ||
       results.counties.length > 0 ||
-      results.neighborhoods.length > 0);
+      results.neighborhoods.length > 0 ||
+      results.communities.length > 0);
 
   const items = flatItems();
   let itemIndex = -1;
 
   const getIcon = (type: string) => {
     switch (type) {
+      case "community":
+        return <Landmark className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />;
       case "zip":
         return <MapPin className="h-3.5 w-3.5 text-[#EF4923] flex-shrink-0" />;
       case "neighborhood":
@@ -272,6 +298,43 @@ export default function PulseSearchBar({
             </div>
           ) : (
             <>
+              {/* Communities */}
+              {results?.communities && results.communities.length > 0 && (
+                <div>
+                  <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/50">
+                    Neighborhoods
+                  </div>
+                  {results.communities.map((comm) => {
+                    itemIndex++;
+                    const idx = itemIndex;
+                    return (
+                      <button
+                        key={comm.slug}
+                        id={`pulse-search-option-${idx}`}
+                        role="option"
+                        aria-selected={highlightedIndex === idx}
+                        onClick={() => items[idx]?.action()}
+                        onMouseEnter={() => setHighlightedIndex(idx)}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors",
+                          highlightedIndex === idx
+                            ? "bg-[#EF4923]/8 text-foreground"
+                            : "hover:bg-accent/50 text-foreground"
+                        )}
+                      >
+                        {getIcon("community")}
+                        <div className="min-w-0 flex-1">
+                          <span className="font-semibold">{comm.name}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {comm.county} County{comm.containingZip ? ` · ZIP ${comm.containingZip}` : ""}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Zip Codes */}
               {results?.zips && results.zips.length > 0 && (
                 <div>

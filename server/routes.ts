@@ -103,6 +103,7 @@ import OpenAI from "openai";
 import { getLatestTrainingVideo } from "./vimeoClient";
 import { SPYGLASS_OFFICES, DEFAULT_OFFICE, getOfficeConfig } from "./config/offices";
 import { registerPulseV2Routes } from "./pulseV2Routes";
+import { getCommunityPolygon } from "./lib/pulsePolygon";
 import { registerAdminRoutes } from "./adminRoutes";
 import { registerGmailRoutes } from "./gmailRoutes";
 import { registerXanoRoutes } from "./xanoProxy";
@@ -4651,54 +4652,64 @@ Respond with valid JSON in this exact format:
   };
 
   // GET /api/pulse/overview — Metro-wide stats
-  app.get('/api/pulse/overview', isAuthenticated, async (_req: any, res) => {
+  app.get('/api/pulse/overview', isAuthenticated, async (req: any, res) => {
     try {
+      const communitySlug = (req.query.communitySlug as string) || null;
       const headers = pulseHeaders();
       const baseUrl = 'https://api.repliers.io/listings';
 
+      let community: { polygon: number[][]; name: string; containingZip: string | null } | null = null;
+      if (communitySlug) {
+        community = await getCommunityPolygon(communitySlug);
+        if (!community) return res.status(400).json({ error: 'Community not found or not Pulse-eligible' });
+      }
+
       // Build shared area params (Repliers uses 'area' not 'county')
       const areaParams = PULSE_MSA_AREAS.map(a => `area=${encodeURIComponent(a)}`).join('&');
+      // Area mode: append areaParams + boardId=53. Polygon mode: no scope params, no boardId.
+      const scopeParams = community ? '' : `&${areaParams}&boardId=53`;
+      const ring = community?.polygon;
+      const postHeaders = { ...headers, 'Content-Type': 'application/json' };
 
-      // Active listings count + aggregates for median price
-      const activeUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active&${areaParams}`;
-      // Pending
-      const pendingUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Pending&${areaParams}`;
-      // Active Under Contract
-      const aucUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active%20Under%20Contract&${areaParams}`;
+      // NOTE: Do NOT include boardId on polygon POST body — Repliers returns 0 results.
+      // See CLAUDE.md "Repliers polygon POST — strip boardId" pitfall.
+      const doFetch = (url: string) => ring
+        ? fetch(url, { method: 'POST', headers: postHeaders, body: JSON.stringify({ map: [ring] }) })
+        : fetch(url, { headers });
 
       // Closed last 30 days
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const minSoldDate = thirtyDaysAgo.toISOString().split('T')[0];
-      const closedUrl = `${baseUrl}?listings=false&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate}&${areaParams}`;
 
       // Closed last 90 days (for more accurate absorption rate)
       const ninetyDaysAgo = new Date();
       ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
       const minSoldDate90 = ninetyDaysAgo.toISOString().split('T')[0];
-      const closed90Url = `${baseUrl}?listings=false&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate90}&${areaParams}`;
 
       // New last 7 days
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const minListDate7 = sevenDaysAgo.toISOString().split('T')[0];
-      const newUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active&minListDate=${minListDate7}&${areaParams}`;
 
-      // Get a sample of active listings for DOM + price stats
-      const sampleUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=100&sortBy=createdOnDesc&${areaParams}&fields=listPrice,daysOnMarket,details`;
-
-      // Closed last 30d sample for sold stats
-      const closedSampleUrl = `${baseUrl}?listings=true&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate}&resultsPerPage=100&sortBy=lastStatusDesc&${areaParams}&fields=soldPrice,listPrice,daysOnMarket,details`;
+      const activeUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active${scopeParams}`;
+      const pendingUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Pending${scopeParams}`;
+      const aucUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active%20Under%20Contract${scopeParams}`;
+      const closedUrl = `${baseUrl}?listings=false&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate}${scopeParams}`;
+      const closed90Url = `${baseUrl}?listings=false&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate90}${scopeParams}`;
+      const newUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active&minListDate=${minListDate7}${scopeParams}`;
+      const sampleUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=100&sortBy=createdOnDesc${scopeParams}&fields=listPrice,daysOnMarket,details`;
+      const closedSampleUrl = `${baseUrl}?listings=true&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate}&resultsPerPage=100&sortBy=lastStatusDesc${scopeParams}&fields=soldPrice,listPrice,daysOnMarket,details`;
 
       const [activeRes, pendingRes, aucRes, closedRes, closed90Res, newRes, sampleRes, closedSampleRes] = await Promise.all([
-        fetch(activeUrl, { headers }),
-        fetch(pendingUrl, { headers }),
-        fetch(aucUrl, { headers }),
-        fetch(closedUrl, { headers }),
-        fetch(closed90Url, { headers }),
-        fetch(newUrl, { headers }),
-        fetch(sampleUrl, { headers }),
-        fetch(closedSampleUrl, { headers }),
+        doFetch(activeUrl),
+        doFetch(pendingUrl),
+        doFetch(aucUrl),
+        doFetch(closedUrl),
+        doFetch(closed90Url),
+        doFetch(newUrl),
+        doFetch(sampleUrl),
+        doFetch(closedSampleUrl),
       ]);
 
       const activeData = activeRes.ok ? await activeRes.json() : { count: 0 };
@@ -4771,17 +4782,33 @@ Respond with valid JSON in this exact format:
   });
 
   // GET /api/pulse/heatmap — Zip-level data for choropleth
-  app.get('/api/pulse/heatmap', isAuthenticated, async (_req: any, res) => {
+  app.get('/api/pulse/heatmap', isAuthenticated, async (req: any, res) => {
     try {
+      const communitySlug = (req.query.communitySlug as string) || null;
       const headers = pulseHeaders();
       const baseUrl = 'https://api.repliers.io/listings';
       const areaParams = PULSE_MSA_AREAS.map(a => `area=${encodeURIComponent(a)}`).join('&');
 
+      let community: { polygon: number[][]; name: string; containingZip: string | null } | null = null;
+      if (communitySlug) {
+        community = await getCommunityPolygon(communitySlug);
+        if (!community) return res.status(400).json({ error: 'Community not found or not Pulse-eligible' });
+      }
+
+      const scopeParams = community ? '' : `&${areaParams}&boardId=53`;
+      const ring = community?.polygon;
+      const postHeaders = { ...headers, 'Content-Type': 'application/json' };
+      // NOTE: Do NOT include boardId on polygon POST body — Repliers returns 0 results.
+      // See CLAUDE.md "Repliers polygon POST — strip boardId" pitfall.
+      const doFetch = (url: string) => ring
+        ? fetch(url, { method: 'POST', headers: postHeaders, body: JSON.stringify({ map: [ring] }) })
+        : fetch(url, { headers });
+
       // Active listings aggregated by zip (Repliers uses address.zip path)
-      const url = `${baseUrl}?aggregates=address.zip&listings=false&type=Sale&standardStatus=Active&${areaParams}`;
+      const url = `${baseUrl}?aggregates=address.zip&listings=false&type=Sale&standardStatus=Active${scopeParams}`;
       console.log(`[Pulse Heatmap] Fetching: ${url}`);
 
-      const response = await fetch(url, { headers });
+      const response = await doFetch(url);
       if (!response.ok) {
         const text = await response.text();
         console.error('[Pulse Heatmap] API error:', response.status, text.substring(0, 300));
@@ -4799,8 +4826,8 @@ Respond with valid JSON in this exact format:
       const samplePages = [1, 5, 10, 20, 30, 50, 70, 90, 110, 130].filter(p => p <= maxPage);
       
       const pricePromises = samplePages.map(pageNum => {
-        const priceUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=100&pageNum=${pageNum}&${areaParams}&fields=listPrice,address,daysOnMarket,details`;
-        return fetch(priceUrl, { headers }).then(r => r.ok ? r.json() : { listings: [] });
+        const priceUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=100&pageNum=${pageNum}${scopeParams}&fields=listPrice,address,daysOnMarket,details`;
+        return doFetch(priceUrl).then(r => r.ok ? r.json() : { listings: [] });
       });
       const priceResults = await Promise.all(pricePromises);
       const priceData = { listings: priceResults.flatMap(r => r.listings || []) };
@@ -4883,20 +4910,41 @@ Respond with valid JSON in this exact format:
   app.get('/api/pulse/zip/:zipCode', isAuthenticated, async (req: any, res) => {
     try {
       const { zipCode } = req.params;
+      const communitySlug = (req.query.communitySlug as string) || null;
       const headers = pulseHeaders();
       const baseUrl = 'https://api.repliers.io/listings';
 
-      // Active listings in this zip
-      const activeUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&zip=${zipCode}&resultsPerPage=50&sortBy=listPriceDesc&fields=listPrice,daysOnMarket,livingArea,address,details,subdivision`;
+      let community: { polygon: number[][]; name: string; containingZip: string | null } | null = null;
+      if (communitySlug) {
+        community = await getCommunityPolygon(communitySlug);
+        if (!community) return res.status(400).json({ error: 'Community not found or not Pulse-eligible' });
+      }
+
+      const ring = community?.polygon;
+      const postHeaders = { ...headers, 'Content-Type': 'application/json' };
+      // NOTE: Do NOT include boardId on polygon POST body — Repliers returns 0 results.
+      // See CLAUDE.md "Repliers polygon POST — strip boardId" pitfall.
+      const doFetch = (url: string) => ring
+        ? fetch(url, { method: 'POST', headers: postHeaders, body: JSON.stringify({ map: [ring] }) })
+        : fetch(url, { headers });
+
       // Closed last 30 days
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const minSoldDate = thirtyDaysAgo.toISOString().split('T')[0];
-      const closedUrl = `${baseUrl}?listings=true&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate}&zip=${zipCode}&resultsPerPage=50&sortBy=lastStatusDesc`;
+
+      // Active listings (polygon if communitySlug, else zip-scoped)
+      const activeUrl = community
+        ? `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=50&sortBy=listPriceDesc&fields=listPrice,daysOnMarket,livingArea,address,details,subdivision`
+        : `${baseUrl}?listings=true&type=Sale&standardStatus=Active&zip=${zipCode}&resultsPerPage=50&sortBy=listPriceDesc&fields=listPrice,daysOnMarket,livingArea,address,details,subdivision&boardId=53`;
+      // Closed last 30 days
+      const closedUrl = community
+        ? `${baseUrl}?listings=true&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate}&resultsPerPage=50&sortBy=lastStatusDesc`
+        : `${baseUrl}?listings=true&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate}&zip=${zipCode}&resultsPerPage=50&sortBy=lastStatusDesc&boardId=53`;
 
       const [activeRes, closedRes] = await Promise.all([
-        fetch(activeUrl, { headers }),
-        fetch(closedUrl, { headers }),
+        doFetch(activeUrl),
+        doFetch(closedUrl),
       ]);
 
       const activeData = activeRes.ok ? await activeRes.json() : { listings: [], count: 0 };
@@ -4972,11 +5020,27 @@ Respond with valid JSON in this exact format:
 
   // GET /api/pulse/trends — Market trends for last 6 months
   // Uses Repliers statistics endpoint for accurate median/avg across full dataset
-  app.get('/api/pulse/trends', isAuthenticated, async (_req: any, res) => {
+  app.get('/api/pulse/trends', isAuthenticated, async (req: any, res) => {
     try {
+      const communitySlug = (req.query.communitySlug as string) || null;
       const headers = pulseHeaders();
       const baseUrl = 'https://api.repliers.io/listings';
       const areaParams = PULSE_MSA_AREAS.map(a => `area=${encodeURIComponent(a)}`).join('&');
+
+      let community: { polygon: number[][]; name: string; containingZip: string | null } | null = null;
+      if (communitySlug) {
+        community = await getCommunityPolygon(communitySlug);
+        if (!community) return res.status(400).json({ error: 'Community not found or not Pulse-eligible' });
+      }
+
+      const scopeParams = community ? '' : `&${areaParams}&boardId=53`;
+      const ring = community?.polygon;
+      const postHeaders = { ...headers, 'Content-Type': 'application/json' };
+      // NOTE: Do NOT include boardId on polygon POST body — Repliers returns 0 results.
+      // See CLAUDE.md "Repliers polygon POST — strip boardId" pitfall.
+      const doFetch = (url: string) => ring
+        ? fetch(url, { method: 'POST', headers: postHeaders, body: JSON.stringify({ map: [ring] }) })
+        : fetch(url, { headers });
 
       const now = new Date();
       // Build month labels for the 6-month window
@@ -4993,16 +5057,16 @@ Respond with valid JSON in this exact format:
 
       // Single API call: server-side statistics with monthly grouping
       // Gets median sold price, avg days on market, and closed count across the FULL dataset
-      const statsUrl = `${baseUrl}?status=U&lastStatus=Sld&type=Sale&minSoldDate=${minSoldDate}&${areaParams}&statistics=med-soldPrice,avg-daysOnMarket,cnt-closed,grp-mth&listings=false`;
+      const statsUrl = `${baseUrl}?status=U&lastStatus=Sld&type=Sale&minSoldDate=${minSoldDate}${scopeParams}&statistics=med-soldPrice,avg-daysOnMarket,cnt-closed,grp-mth&listings=false`;
 
       // Active inventory (current snapshot)
-      const activeUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active&${areaParams}`;
+      const activeUrl = `${baseUrl}?listings=false&type=Sale&standardStatus=Active${scopeParams}`;
 
       console.log(`[Pulse Trends] Fetching statistics: ${statsUrl}`);
 
       const [statsRes, activeRes] = await Promise.all([
-        fetch(statsUrl, { headers }),
-        fetch(activeUrl, { headers }),
+        doFetch(statsUrl),
+        doFetch(activeUrl),
       ]);
 
       if (!statsRes.ok) {
@@ -5041,6 +5105,54 @@ Respond with valid JSON in this exact format:
   // GET /api/pulse/compare — Compare zip codes
   app.get('/api/pulse/compare', isAuthenticated, async (req: any, res) => {
     try {
+      const communitySlug = (req.query.communitySlug as string) || null;
+      const headers = pulseHeaders();
+      const baseUrl = 'https://api.repliers.io/listings';
+
+      // Community polygon mode: single polygon query returned as one-item comparison
+      if (communitySlug) {
+        const community = await getCommunityPolygon(communitySlug);
+        if (!community) return res.status(400).json({ error: 'Community not found or not Pulse-eligible' });
+
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const minSoldDate = thirtyDaysAgo.toISOString().split('T')[0];
+        // NOTE: Do NOT include boardId on polygon POST body — Repliers returns 0 results.
+        // See CLAUDE.md "Repliers polygon POST — strip boardId" pitfall.
+        const postHeaders = { ...headers, 'Content-Type': 'application/json' };
+        const mapBody = JSON.stringify({ map: [community.polygon] });
+        const doPost = (url: string) => fetch(url, { method: 'POST', headers: postHeaders, body: mapBody });
+
+        const activeUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&resultsPerPage=50&fields=listPrice,daysOnMarket,details`;
+        const closedUrl = `${baseUrl}?listings=false&type=Sale&status=U&lastStatus=Sld&minSoldDate=${minSoldDate}`;
+        const [activeRes, closedRes] = await Promise.all([doPost(activeUrl), doPost(closedUrl)]);
+        const activeData = activeRes.ok ? await activeRes.json() : { listings: [], count: 0 };
+        const closedData = closedRes.ok ? await closedRes.json() : { count: 0 };
+        const listings = activeData.listings || [];
+        const prices = listings.map((l: any) => l.listPrice).filter((p: any) => p > 0).sort((a: number, b: number) => a - b);
+        const medianPrice = prices.length > 0 ? prices[Math.floor(prices.length / 2)] : 0;
+        const doms = listings.map((l: any) => l.daysOnMarket || l.dom || 0).filter((d: number) => d > 0);
+        const avgDom = doms.length > 0 ? Math.round(doms.reduce((a: number, b: number) => a + b, 0) / doms.length) : 0;
+        const ppsfs = listings
+          .map((l: any) => ({ price: l.listPrice, sqft: parseFloat(l.details?.sqft) || 0 }))
+          .filter((l: any) => l.price > 0 && l.sqft > 0)
+          .map((l: any) => l.price / l.sqft);
+        const avgPricePerSqft = ppsfs.length > 0 ? Math.round(ppsfs.reduce((a: number, b: number) => a + b, 0) / ppsfs.length) : 0;
+        console.log(`[Pulse Compare] Community polygon mode: "${community.name}"`);
+        return res.json({
+          comparisons: [{
+            zip: community.containingZip || 'community',
+            communitySlug,
+            communityName: community.name,
+            activeCount: activeData.count || listings.length,
+            closedLast30: closedData.count || 0,
+            medianPrice,
+            avgDom,
+            avgPricePerSqft,
+          }],
+        });
+      }
+
       const zipsParam = (req.query.zips as string) || '';
       const zips = zipsParam.split(',').map((z: string) => z.trim()).filter(Boolean);
 
@@ -5051,14 +5163,11 @@ Respond with valid JSON in this exact format:
         return res.status(400).json({ message: 'Maximum 5 zip codes for comparison' });
       }
 
-      const headers = pulseHeaders();
-      const baseUrl = 'https://api.repliers.io/listings';
-
       const results = await Promise.all(zips.map(async (zip: string) => {
-        const activeUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&zip=${zip}&resultsPerPage=50&fields=listPrice,daysOnMarket,details`;
+        const activeUrl = `${baseUrl}?listings=true&type=Sale&standardStatus=Active&zip=${zip}&resultsPerPage=50&fields=listPrice,daysOnMarket,details&boardId=53`;
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const closedUrl = `${baseUrl}?listings=false&type=Sale&status=U&lastStatus=Sld&minSoldDate=${thirtyDaysAgo.toISOString().split('T')[0]}&zip=${zip}`;
+        const closedUrl = `${baseUrl}?listings=false&type=Sale&status=U&lastStatus=Sld&minSoldDate=${thirtyDaysAgo.toISOString().split('T')[0]}&zip=${zip}&boardId=53`;
 
         const [activeRes, closedRes] = await Promise.all([
           fetch(activeUrl, { headers }),
