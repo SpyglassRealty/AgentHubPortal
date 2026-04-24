@@ -745,6 +745,24 @@ for (const [zip, meta] of Object.entries(ZIP_META)) {
   COUNTIES_TO_ZIPS.get(countyKey)!.push(zip);
 }
 
+export function resolveContainingZip(centroid: { lat: number; lng: number } | null): string | null {
+  if (!centroid) return null;
+  let minDist = Infinity;
+  let containingZip: string | null = null;
+  for (const [zip, meta] of Object.entries(ZIP_META)) {
+    if (meta.lat === undefined || meta.lng === undefined) continue;
+    const dlat = centroid.lat - meta.lat;
+    const dlng = centroid.lng - meta.lng;
+    const dist = Math.sqrt(dlat * dlat + dlng * dlng);
+    if (dist < minDist) {
+      minDist = dist;
+      containingZip = zip;
+    }
+  }
+  if (minDist > 0.2) containingZip = null;
+  return containingZip;
+}
+
 // ─── Register Routes ────────────────────────────────────────────────
 
 export function registerPulseV2Routes(app: Express): void {
@@ -810,6 +828,7 @@ export function registerPulseV2Routes(app: Express): void {
   app.get("/api/pulse/v2/layer/:layerId/timeseries", isAuthenticated, async (req: Request, res: Response) => {
     const { layerId } = req.params;
     const zip = (req.query.zip as string) || "78704";
+    const communitySlug = (req.query.communitySlug as string) || null;
     const period = ((req.query.period as string) || "yearly") as "monthly" | "yearly";
 
     const layer = LAYER_MAP.get(layerId);
@@ -820,11 +839,25 @@ export function registerPulseV2Routes(app: Express): void {
     try {
       const data = await queryTimeseries(layer, zip, period);
 
+      let scope: { type: "zip" | "community"; zip: string; communitySlug?: string; communityName?: string } = { type: "zip", zip };
+      if (communitySlug) {
+        try {
+          const { rows } = await pool.query(
+            `SELECT c.name FROM communities c
+             INNER JOIN pulse_community_allowlist a ON c.slug = a.slug
+             WHERE c.slug = $1 LIMIT 1`,
+            [communitySlug]
+          );
+          if (rows.length > 0) scope = { type: "community", zip, communitySlug, communityName: rows[0].name as string };
+        } catch { /* scope stays as zip */ }
+      }
+
       res.json({
         layerId,
         zip,
         period,
         data,
+        scope,
         meta: {
           unit: layer.unit,
           source: layer.source,
@@ -843,6 +876,7 @@ export function registerPulseV2Routes(app: Express): void {
   // ═══════════════════════════════════════════════════════════════════
   app.get("/api/pulse/v2/zip/:zip/summary", isAuthenticated, async (req: Request, res: Response) => {
     const { zip } = req.params;
+    const communitySlug = (req.query.communitySlug as string) || null;
     const meta = ZIP_META[zip];
 
     try {
@@ -880,6 +914,19 @@ export function registerPulseV2Routes(app: Express): void {
       const now = new Date();
       const dataDate = now.toLocaleString("en-US", { month: "short", year: "numeric" });
 
+      let scope: { type: "zip" | "community"; zip: string; communitySlug?: string; communityName?: string } = { type: "zip", zip };
+      if (communitySlug) {
+        try {
+          const { rows } = await pool.query(
+            `SELECT c.name FROM communities c
+             INNER JOIN pulse_community_allowlist a ON c.slug = a.slug
+             WHERE c.slug = $1 LIMIT 1`,
+            [communitySlug]
+          );
+          if (rows.length > 0) scope = { type: "community", zip, communitySlug, communityName: rows[0].name as string };
+        } catch { /* scope stays as zip */ }
+      }
+
       res.json({
         zip,
         county: meta?.county || "Travis",
@@ -888,6 +935,7 @@ export function registerPulseV2Routes(app: Express): void {
         state: "Texas",
         source: "Zillow / US Census Bureau / Redfin",
         dataDate,
+        scope,
         forecast: {
           value: forecastVal,
           direction: forecastVal >= 0 ? "up" : "down",
