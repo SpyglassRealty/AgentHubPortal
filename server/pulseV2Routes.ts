@@ -12,6 +12,7 @@
 import type { Express, Request, Response } from "express";
 import { isAuthenticated } from "./replitAuth";
 import { pool } from "./db";
+import { getRepliersStats, type RepliersScope } from "./lib/pulseRepliersStats";
 
 // ─── Layer Catalog ──────────────────────────────────────────────────────
 
@@ -47,15 +48,15 @@ const LAYER_CATALOG: Category[] = [
     id: "popular",
     label: "Popular Data",
     layers: [
-      { id: "home_value", label: "Home Value", source: "zillow", description: "The area's typical home value (Zillow Home Value Index — ZHVI), reflecting the estimated market value for middle-tier homes.", unit: "currency", table: "pulse_zillow_data", column: "home_value", dateColumn: "date" },
-      { id: "home_value_growth_yoy", label: "Home Value Growth (YoY)", source: "zillow", description: "Year-over-year percentage change in typical home value.", unit: "percent", table: "pulse_zillow_data", column: "home_value", dateColumn: "date" },
-      { id: "for_sale_inventory", label: "For Sale Inventory", source: "redfin", description: "Number of active listings on the market in a given month.", unit: "number", table: "pulse_redfin_data", column: "inventory", dateColumn: "period_start" },
+      { id: "home_value", label: "Home Value", source: "repliers", description: "The area's typical home value (Zillow Home Value Index — ZHVI), reflecting the estimated market value for middle-tier homes.", unit: "currency", table: "pulse_zillow_data", column: "home_value", dateColumn: "date" },
+      { id: "home_value_growth_yoy", label: "Home Value Growth (YoY)", source: "repliers", description: "Year-over-year percentage change in typical home value.", unit: "percent", table: "pulse_zillow_data", column: "home_value", dateColumn: "date" },
+      { id: "for_sale_inventory", label: "For Sale Inventory", source: "repliers", description: "Number of active listings on the market in a given month.", unit: "number", table: "pulse_redfin_data", column: "inventory", dateColumn: "period_start" },
       { id: "home_price_forecast", label: "Home Price Forecast", source: "calculated", description: "Projected home value change over the next 12 months based on trend analysis.", unit: "percent", table: "pulse_metrics", column: "price_forecast", dateColumn: "date" },
-      { id: "home_value_growth_5yr", label: "Home Value Growth (5-Year)", source: "zillow", description: "Cumulative home value percentage change over the last five years.", unit: "percent", table: "pulse_zillow_data", column: "home_value", dateColumn: "date" },
-      { id: "home_value_growth_mom", label: "Home Value Growth (MoM)", source: "zillow", description: "Month-over-month percentage change in typical home value.", unit: "percent", table: "pulse_zillow_data", column: "home_value", dateColumn: "date" },
+      { id: "home_value_growth_5yr", label: "Home Value Growth (5-Year)", source: "repliers", description: "Cumulative home value percentage change over the last five years.", unit: "percent", table: "pulse_zillow_data", column: "home_value", dateColumn: "date" },
+      { id: "home_value_growth_mom", label: "Home Value Growth (MoM)", source: "repliers", description: "Month-over-month percentage change in typical home value.", unit: "percent", table: "pulse_zillow_data", column: "home_value", dateColumn: "date" },
       { id: "overvalued_pct", label: "Overvalued %", source: "calculated", description: "Percentage a market is overvalued relative to its long-term value-to-income ratio average.", unit: "percent", table: "pulse_metrics", column: "overvalued_pct", dateColumn: "date" },
-      { id: "days_on_market", label: "Days on Market", source: "redfin", description: "Median number of days homes stay on the market before going under contract.", unit: "days", table: "pulse_redfin_data", column: "median_dom", dateColumn: "period_start" },
-      { id: "home_sales", label: "Home Sales", source: "redfin", description: "Number of homes that closed/sold during the period.", unit: "number", table: "pulse_redfin_data", column: "homes_sold", dateColumn: "period_start" },
+      { id: "days_on_market", label: "Days on Market", source: "repliers", description: "Median number of days homes stay on the market before going under contract.", unit: "days", table: "pulse_redfin_data", column: "median_dom", dateColumn: "period_start" },
+      { id: "home_sales", label: "Home Sales", source: "repliers", description: "Number of homes that closed/sold during the period.", unit: "number", table: "pulse_redfin_data", column: "homes_sold", dateColumn: "period_start" },
       { id: "cap_rate", label: "Cap Rate", source: "calculated", description: "Capitalization rate — net operating income divided by property value. Higher is better for investors.", unit: "percent", table: "pulse_metrics", column: "cap_rate", dateColumn: "date" },
       { id: "long_term_growth_score", label: "Long-Term Growth Score", source: "calculated", description: "Composite score (0-100) measuring an area's long-term growth potential based on price appreciation, demographics, and economic fundamentals.", unit: "score", table: "pulse_metrics", column: "growth_score", dateColumn: "date" },
     ],
@@ -763,6 +764,379 @@ export function resolveContainingZip(centroid: { lat: number; lng: number } | nu
   return containingZip;
 }
 
+// ─── Repliers-backed layer migration ────────────────────────────────
+// These 7 layers are served by Repliers real-time statistics API.
+// No DB fallback, no mock. Returns value: null on empty/error.
+
+const REPLIERS_LAYERS = new Set([
+  "home_value",
+  "home_value_growth_yoy",
+  "home_value_growth_5yr",
+  "home_value_growth_mom",
+  "for_sale_inventory",
+  "days_on_market",
+  "home_sales",
+]);
+
+function isoMonthsAgo(months: number): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() - months);
+  d.setDate(1);
+  return d.toISOString().split("T")[0];
+}
+
+function isoDaysAgo(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().split("T")[0];
+}
+
+function isoYearsAgo(years: number): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - years);
+  d.setMonth(0);
+  d.setDate(1);
+  return d.toISOString().split("T")[0];
+}
+
+// Local polygon lookup — avoids circular import with lib/pulsePolygon.ts
+// (pulsePolygon imports resolveContainingZip from this file)
+async function lookupCommunityPolygon(slug: string): Promise<{
+  polygon: number[][];
+  name: string;
+  containingZip: string | null;
+} | null> {
+  const { rows } = await pool.query(
+    `SELECT c.name, c.polygon, c.centroid
+     FROM communities c
+     INNER JOIN pulse_community_allowlist a ON c.slug = a.slug
+     WHERE c.slug = $1 LIMIT 1`,
+    [slug]
+  );
+  if (!rows.length || !rows[0].polygon || rows[0].polygon.length < 3) return null;
+  const ring: number[][] = [...rows[0].polygon];
+  const first = ring[0], last = ring[ring.length - 1];
+  if (first[0] !== last[0] || first[1] !== last[1]) ring.push(first);
+  const centroid = rows[0].centroid as { lat: number; lng: number } | null;
+  return { polygon: ring, name: rows[0].name as string, containingZip: resolveContainingZip(centroid) };
+}
+
+async function resolveRepliersScope(
+  zip: string,
+  communitySlug: string | null
+): Promise<{ scope: RepliersScope; communityName?: string; containingZip?: string | null }> {
+  if (communitySlug) {
+    const community = await lookupCommunityPolygon(communitySlug);
+    if (community) {
+      return {
+        scope: { type: "polygon", ring: community.polygon },
+        communityName: community.name,
+        containingZip: community.containingZip,
+      };
+    }
+  }
+  return { scope: { type: "zip", zip: zip || "78704" } };
+}
+
+async function getRepliersLayerValue(
+  layerId: string,
+  scope: RepliersScope
+): Promise<{ value: number | null; source: string }> {
+  try {
+    switch (layerId) {
+
+      case "home_value": {
+        // statistics=med-soldPrice, U/Sld, 12mo
+        // reads: statistics.soldPrice.med
+        const r = await getRepliersStats({
+          scope, statistics: ["med-soldPrice"],
+          filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoMonthsAgo(12) },
+          listings: false,
+        });
+        const v = r?.statistics?.soldPrice?.med ?? null;
+        return { value: v != null ? Math.round(v) : null, source: v != null ? "repliers" : "repliers-empty" };
+      }
+
+      case "home_value_growth_yoy": {
+        // statistics=med-soldPrice,grp-yr, U/Sld, 25mo
+        // reads: statistics.soldPrice.yr[currYr].med vs yr[prevYr].med
+        // compute: (curr.med - prev.med) / prev.med * 100
+        const r = await getRepliersStats({
+          scope, statistics: ["med-soldPrice", "grp-yr"],
+          filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoMonthsAgo(25) },
+          listings: false,
+        });
+        const yr = r?.statistics?.soldPrice?.yr as Record<string, { med?: number }> | undefined;
+        if (!yr) return { value: null, source: "repliers-empty" };
+        const years = Object.keys(yr).sort();
+        if (years.length < 2) return { value: null, source: "repliers-empty" };
+        const curr = yr[years[years.length - 1]]?.med;
+        const prev = yr[years[years.length - 2]]?.med;
+        if (!curr || !prev) return { value: null, source: "repliers-empty" };
+        return { value: parseFloat(((curr - prev) / prev * 100).toFixed(1)), source: "repliers" };
+      }
+
+      case "home_value_growth_5yr": {
+        // statistics=med-soldPrice,grp-yr, U/Sld, 6yr window
+        // reads: yr[latest].med vs yr[latest-5].med
+        // compute: (latest.med - base.med) / base.med * 100
+        const r = await getRepliersStats({
+          scope, statistics: ["med-soldPrice", "grp-yr"],
+          filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoYearsAgo(6) },
+          listings: false,
+        });
+        const yr = r?.statistics?.soldPrice?.yr as Record<string, { med?: number }> | undefined;
+        if (!yr) return { value: null, source: "repliers-empty" };
+        const years = Object.keys(yr).sort();
+        if (years.length < 2) return { value: null, source: "repliers-empty" };
+        const latest = years[years.length - 1];
+        const target = String(parseInt(latest) - 5);
+        const baseYear = years.includes(target) ? target : years[0];
+        const latestMed = yr[latest]?.med, baseMed = yr[baseYear]?.med;
+        if (!latestMed || !baseMed) return { value: null, source: "repliers-empty" };
+        return { value: parseFloat(((latestMed - baseMed) / baseMed * 100).toFixed(1)), source: "repliers" };
+      }
+
+      case "home_value_growth_mom": {
+        // statistics=med-soldPrice,grp-mth, U/Sld, 3mo
+        // reads: mth[currMth].med vs mth[prevMth].med
+        // compute: (curr.med - prev.med) / prev.med * 100
+        const r = await getRepliersStats({
+          scope, statistics: ["med-soldPrice", "grp-mth"],
+          filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoMonthsAgo(3) },
+          listings: false,
+        });
+        const mth = r?.statistics?.soldPrice?.mth as Record<string, { med?: number }> | undefined;
+        if (!mth) return { value: null, source: "repliers-empty" };
+        const months = Object.keys(mth).sort();
+        if (months.length < 2) return { value: null, source: "repliers-empty" };
+        const curr = mth[months[months.length - 1]]?.med;
+        const prev = mth[months[months.length - 2]]?.med;
+        if (!curr || !prev) return { value: null, source: "repliers-empty" };
+        return { value: parseFloat(((curr - prev) / prev * 100).toFixed(1)), source: "repliers" };
+      }
+
+      case "for_sale_inventory": {
+        // statistics=cnt-available, status=A
+        // reads: statistics.available.mth[latestMonthKey] — bare number (not {count})
+        const r = await getRepliersStats({
+          scope, statistics: ["cnt-available"],
+          filters: { status: "A", type: "Sale" },
+          listings: false,
+        });
+        const mth = r?.statistics?.available?.mth as Record<string, number> | undefined;
+        if (!mth) return { value: null, source: "repliers-empty" };
+        const months = Object.keys(mth).sort();
+        if (!months.length) return { value: null, source: "repliers-empty" };
+        const v = mth[months[months.length - 1]];
+        return { value: typeof v === "number" ? v : null, source: v != null ? "repliers" : "repliers-empty" };
+      }
+
+      case "days_on_market": {
+        // statistics=med-daysOnMarket, U/Sld, 90-day window
+        // reads: statistics.daysOnMarket.med
+        // NOTE: status=A rejected by Repliers for DOM — must use U/Sld
+        const r = await getRepliersStats({
+          scope, statistics: ["med-daysOnMarket"],
+          filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoDaysAgo(90) },
+          listings: false,
+        });
+        const v = r?.statistics?.daysOnMarket?.med ?? null;
+        return { value: v != null ? Math.round(v) : null, source: v != null ? "repliers" : "repliers-empty" };
+      }
+
+      case "home_sales": {
+        // statistics=med-soldPrice,cnt-closed,grp-mth, U/Sld, 12mo
+        // reads: statistics.closed.count — top-level period total
+        // (shares query with home_value; cnt-closed nests as { count, mth, yr })
+        const r = await getRepliersStats({
+          scope, statistics: ["med-soldPrice", "cnt-closed", "grp-mth"],
+          filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoMonthsAgo(12) },
+          listings: false,
+        });
+        const v = r?.statistics?.closed?.count ?? null;
+        return { value: v != null ? Math.round(v) : null, source: v != null ? "repliers" : "repliers-empty" };
+      }
+
+      default:
+        return { value: null, source: "repliers-error" };
+    }
+  } catch (err: any) {
+    console.error(`[pulseRepliersValue] ${layerId} error:`, err.message);
+    return { value: null, source: "repliers-error" };
+  }
+}
+
+async function getRepliersLayerTimeseries(
+  layerId: string,
+  scope: RepliersScope,
+  period: "monthly" | "yearly"
+): Promise<{ data: { date: string; value: number }[]; source: string }> {
+  const empty = (source: string) => ({ data: [] as { date: string; value: number }[], source });
+
+  try {
+    switch (layerId) {
+
+      case "home_value": {
+        if (period === "yearly") {
+          // statistics=med-soldPrice,grp-yr, U/Sld, 10yr
+          // reads: statistics.soldPrice.yr[YYYY].med
+          const r = await getRepliersStats({
+            scope, statistics: ["med-soldPrice", "grp-yr"],
+            filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoYearsAgo(10) },
+            listings: false,
+          });
+          const yr = r?.statistics?.soldPrice?.yr as Record<string, { med?: number }> | undefined;
+          if (!yr) return empty("repliers-empty");
+          const data = Object.entries(yr)
+            .filter(([, v]) => v?.med != null)
+            .map(([date, v]) => ({ date, value: Math.round(v.med!) }))
+            .sort((a, b) => a.date.localeCompare(b.date));
+          return { data, source: "repliers" };
+        } else {
+          // statistics=med-soldPrice,grp-mth, U/Sld, 5yr
+          // reads: statistics.soldPrice.mth[YYYY-MM].med
+          const r = await getRepliersStats({
+            scope, statistics: ["med-soldPrice", "grp-mth"],
+            filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoYearsAgo(5) },
+            listings: false,
+          });
+          const mth = r?.statistics?.soldPrice?.mth as Record<string, { med?: number }> | undefined;
+          if (!mth) return empty("repliers-empty");
+          const data = Object.entries(mth)
+            .filter(([, v]) => v?.med != null)
+            .map(([date, v]) => ({ date, value: Math.round(v.med!) }))
+            .sort((a, b) => a.date.localeCompare(b.date));
+          return { data, source: "repliers" };
+        }
+      }
+
+      case "home_value_growth_yoy": {
+        // same source as home_value yearly (11yr window for 10yr of YoY points)
+        // reads: statistics.soldPrice.yr[YYYY].med
+        // compute each point: (yr[Y].med - yr[Y-1].med) / yr[Y-1].med * 100
+        const r = await getRepliersStats({
+          scope, statistics: ["med-soldPrice", "grp-yr"],
+          filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoYearsAgo(11) },
+          listings: false,
+        });
+        const yr = r?.statistics?.soldPrice?.yr as Record<string, { med?: number }> | undefined;
+        if (!yr) return empty("repliers-empty");
+        const years = Object.keys(yr).sort();
+        const data: { date: string; value: number }[] = [];
+        for (let i = 1; i < years.length; i++) {
+          const curr = yr[years[i]]?.med, prev = yr[years[i - 1]]?.med;
+          if (curr != null && prev != null && prev !== 0)
+            data.push({ date: years[i], value: parseFloat(((curr - prev) / prev * 100).toFixed(1)) });
+        }
+        return { data, source: data.length ? "repliers" : "repliers-empty" };
+      }
+
+      case "home_value_growth_5yr": {
+        // same source as home_value yearly (15yr window for ~10yr of 5yr-growth points)
+        // reads: statistics.soldPrice.yr[YYYY].med
+        // compute each point: (yr[Y].med - yr[Y-5].med) / yr[Y-5].med * 100
+        const r = await getRepliersStats({
+          scope, statistics: ["med-soldPrice", "grp-yr"],
+          filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoYearsAgo(15) },
+          listings: false,
+        });
+        const yr = r?.statistics?.soldPrice?.yr as Record<string, { med?: number }> | undefined;
+        if (!yr) return empty("repliers-empty");
+        const years = Object.keys(yr).sort();
+        const data: { date: string; value: number }[] = [];
+        for (let i = 5; i < years.length; i++) {
+          const curr = yr[years[i]]?.med, base = yr[years[i - 5]]?.med;
+          if (curr != null && base != null && base !== 0)
+            data.push({ date: years[i], value: parseFloat(((curr - base) / base * 100).toFixed(1)) });
+        }
+        return { data, source: data.length ? "repliers" : "repliers-empty" };
+      }
+
+      case "home_value_growth_mom": {
+        // same source as home_value monthly (5yr window)
+        // reads: statistics.soldPrice.mth[YYYY-MM].med
+        // compute each point: (mth[M].med - mth[M-1].med) / mth[M-1].med * 100
+        const r = await getRepliersStats({
+          scope, statistics: ["med-soldPrice", "grp-mth"],
+          filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoYearsAgo(5) },
+          listings: false,
+        });
+        const mth = r?.statistics?.soldPrice?.mth as Record<string, { med?: number }> | undefined;
+        if (!mth) return empty("repliers-empty");
+        const months = Object.keys(mth).sort();
+        const data: { date: string; value: number }[] = [];
+        for (let i = 1; i < months.length; i++) {
+          const curr = mth[months[i]]?.med, prev = mth[months[i - 1]]?.med;
+          if (curr != null && prev != null && prev !== 0)
+            data.push({ date: months[i], value: parseFloat(((curr - prev) / prev * 100).toFixed(1)) });
+        }
+        return { data, source: data.length ? "repliers" : "repliers-empty" };
+      }
+
+      case "for_sale_inventory": {
+        // statistics=cnt-available, status=A
+        // reads: statistics.available.mth[YYYY-MM] — bare number (NOT {count})
+        // truncate to most recent 24 months (monitoring ramp-up before that)
+        const r = await getRepliersStats({
+          scope, statistics: ["cnt-available"],
+          filters: { status: "A", type: "Sale" },
+          listings: false,
+        });
+        const mth = r?.statistics?.available?.mth as Record<string, number> | undefined;
+        if (!mth) return empty("repliers-empty");
+        const cutoff = isoMonthsAgo(24).substring(0, 7);
+        const data = Object.entries(mth)
+          .filter(([date, v]) => date >= cutoff && typeof v === "number")
+          .map(([date, v]) => ({ date, value: v }))
+          .sort((a, b) => a.date.localeCompare(b.date));
+        return { data, source: data.length ? "repliers" : "repliers-empty" };
+      }
+
+      case "days_on_market": {
+        // statistics=med-daysOnMarket,grp-mth, U/Sld, 5yr
+        // reads: statistics.daysOnMarket.mth[YYYY-MM].med
+        // NOTE: status=A rejected by Repliers for DOM — must use U/Sld
+        const r = await getRepliersStats({
+          scope, statistics: ["med-daysOnMarket", "grp-mth"],
+          filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoYearsAgo(5) },
+          listings: false,
+        });
+        const mth = r?.statistics?.daysOnMarket?.mth as Record<string, { med?: number }> | undefined;
+        if (!mth) return empty("repliers-empty");
+        const data = Object.entries(mth)
+          .filter(([, v]) => v?.med != null)
+          .map(([date, v]) => ({ date, value: Math.round(v.med!) }))
+          .sort((a, b) => a.date.localeCompare(b.date));
+        return { data, source: data.length ? "repliers" : "repliers-empty" };
+      }
+
+      case "home_sales": {
+        // statistics=cnt-closed,grp-mth, U/Sld, 5yr
+        // reads: statistics.closed.mth[YYYY-MM].count — NOT a bare number
+        const r = await getRepliersStats({
+          scope, statistics: ["cnt-closed", "grp-mth"],
+          filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoYearsAgo(5) },
+          listings: false,
+        });
+        const mth = r?.statistics?.closed?.mth as Record<string, { count?: number }> | undefined;
+        if (!mth) return empty("repliers-empty");
+        const data = Object.entries(mth)
+          .filter(([, v]) => v?.count != null)
+          .map(([date, v]) => ({ date, value: v.count! }))
+          .sort((a, b) => a.date.localeCompare(b.date));
+        return { data, source: data.length ? "repliers" : "repliers-empty" };
+      }
+
+      default:
+        return empty("repliers-error");
+    }
+  } catch (err: any) {
+    console.error(`[pulseRepliersTimeseries] ${layerId} error:`, err.message);
+    return empty("repliers-error");
+  }
+}
+
 // ─── Register Routes ────────────────────────────────────────────────
 
 export function registerPulseV2Routes(app: Express): void {
@@ -823,7 +1197,39 @@ export function registerPulseV2Routes(app: Express): void {
   });
 
   // ═══════════════════════════════════════════════════════════════════
-  // 3. GET /api/pulse/v2/layer/:layerId/timeseries
+  // 3a. GET /api/pulse/v2/layer/:layerId/value — Single-scope value
+  //     Repliers-backed layers only. Accepts ?zip=X or ?communitySlug=Y.
+  // ═══════════════════════════════════════════════════════════════════
+  app.get("/api/pulse/v2/layer/:layerId/value", isAuthenticated, async (req: Request, res: Response) => {
+    const { layerId } = req.params;
+    const zip = (req.query.zip as string) || "78704";
+    const communitySlug = (req.query.communitySlug as string) || null;
+
+    const layer = LAYER_MAP.get(layerId);
+    if (!layer) return res.status(404).json({ error: `Unknown layer: ${layerId}` });
+    if (!REPLIERS_LAYERS.has(layerId)) {
+      return res.status(400).json({ error: `Layer ${layerId} is not Repliers-backed` });
+    }
+
+    const { scope, communityName, containingZip } = await resolveRepliersScope(zip, communitySlug);
+
+    const scopeField = communitySlug && communityName
+      ? { type: "community", zip: containingZip ?? zip, communitySlug, communityName }
+      : { type: "zip", zip };
+
+    const { value, source } = await getRepliersLayerValue(layerId, scope);
+
+    res.json({
+      layerId,
+      value,
+      label: value != null ? formatLabel(value, layer.unit) : "—",
+      scope: scopeField,
+      meta: { unit: layer.unit, source, description: layer.description },
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 3b. GET /api/pulse/v2/layer/:layerId/timeseries
   // ═══════════════════════════════════════════════════════════════════
   app.get("/api/pulse/v2/layer/:layerId/timeseries", isAuthenticated, async (req: Request, res: Response) => {
     const { layerId } = req.params;
@@ -837,6 +1243,20 @@ export function registerPulseV2Routes(app: Express): void {
     }
 
     try {
+      // Repliers-backed layers use real-time stats API instead of DB/mock
+      if (REPLIERS_LAYERS.has(layerId)) {
+        const { scope, communityName, containingZip } = await resolveRepliersScope(zip, communitySlug);
+        const scopeField = communitySlug && communityName
+          ? { type: "community", zip: containingZip ?? zip, communitySlug, communityName }
+          : { type: "zip", zip };
+        const { data, source } = await getRepliersLayerTimeseries(layerId, scope, period);
+        return res.json({
+          layerId, zip, period, data, scope: scopeField,
+          meta: { unit: layer.unit, source, description: layer.description, count: data.length },
+        });
+      }
+
+      // Non-Repliers layers: existing DB/mock path
       const data = await queryTimeseries(layer, zip, period);
 
       let scope: { type: "zip" | "community"; zip: string; communitySlug?: string; communityName?: string } = { type: "zip", zip };
@@ -853,17 +1273,8 @@ export function registerPulseV2Routes(app: Express): void {
       }
 
       res.json({
-        layerId,
-        zip,
-        period,
-        data,
-        scope,
-        meta: {
-          unit: layer.unit,
-          source: layer.source,
-          description: layer.description,
-          count: data.length,
-        },
+        layerId, zip, period, data, scope,
+        meta: { unit: layer.unit, source: layer.source, description: layer.description, count: data.length },
       });
     } catch (err: any) {
       console.error(`[Pulse V2] timeseries/${layerId} error:`, err);
@@ -1500,5 +1911,5 @@ export function registerPulseV2Routes(app: Express): void {
     res.json({ county: req.params.county, zips });
   });
 
-  console.log("[Pulse V2] Registered 12 route groups under /api/pulse/v2/*");
+  console.log("[Pulse V2] Registered 13 route groups under /api/pulse/v2/* (7 layers Repliers-backed)");
 }
