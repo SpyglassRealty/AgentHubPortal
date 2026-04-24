@@ -15,6 +15,13 @@ export interface DataLayerCategory {
   layers: DataLayer[];
 }
 
+export interface ScopeInfo {
+  type: "zip" | "community";
+  zip: string;
+  communitySlug?: string;
+  communityName?: string;
+}
+
 export interface ZipSummary {
   zipCode: string;
   county: string;
@@ -41,6 +48,7 @@ export interface ZipSummary {
   homeValueGrowthYoY: number;
   medianIncome: number;
   population: number;
+  scope?: ScopeInfo;
 }
 
 export interface TimeseriesPoint {
@@ -56,6 +64,7 @@ export interface TimeseriesData {
   data: TimeseriesPoint[];
   average: number;
   unit: string;
+  scope?: ScopeInfo;
 }
 
 export interface MapLayerData {

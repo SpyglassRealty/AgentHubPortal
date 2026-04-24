@@ -39,6 +39,7 @@ import {
 } from "recharts";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getLayerById, formatLayerValue, LAYER_CATEGORIES } from "./data-layers";
+import ScopeBadge from "./ScopeBadge";
 import type { TimeseriesData, TimeseriesPoint, DataLayer } from "./types";
 
 // ─── Mock timeseries data ─────────────────────────────────────
@@ -189,6 +190,7 @@ function generateAveragedTimeseries(
 interface HistoricalChartProps {
   selectedLayerId: string;
   selectedZip: string | null;
+  communitySlug?: string | null;
   filteredZips?: string[] | null;
   filterLabel?: string | null;
   period: "yearly" | "monthly";
@@ -199,6 +201,7 @@ interface HistoricalChartProps {
 export default function HistoricalChart({
   selectedLayerId,
   selectedZip,
+  communitySlug,
   filteredZips,
   filterLabel,
   period,
@@ -218,7 +221,7 @@ export default function HistoricalChart({
 
   // Fetch timeseries — falls back to mock
   const { data: timeseries, isLoading } = useQuery<TimeseriesData>({
-    queryKey: ["/api/pulse/v2/layer", selectedLayerId, "timeseries", selectedZip, filteredZips?.join(","), period],
+    queryKey: ["/api/pulse/v2/layer", selectedLayerId, "timeseries", selectedZip, filteredZips?.join(","), period, communitySlug ?? ""],
     queryFn: async () => {
       // When a city/county filter is active (no specific zip selected),
       // compute an average across all filtered zips
@@ -226,12 +229,15 @@ export default function HistoricalChart({
         return generateAveragedTimeseries(selectedLayerId, period, filteredZips!);
       }
 
-      // Convert frontend layer ID (kebab-case) to backend (snake_case) 
+      // Convert frontend layer ID (kebab-case) to backend (snake_case)
       const backendLayerId = selectedLayerId.replace(/-/g, "_");
       const zip = selectedZip || "78704";
       try {
+        const slugParam = communitySlug
+          ? `&communitySlug=${encodeURIComponent(communitySlug)}`
+          : "";
         const res = await fetch(
-          `/api/pulse/v2/layer/${backendLayerId}/timeseries?zip=${zip}&period=${period}`,
+          `/api/pulse/v2/layer/${backendLayerId}/timeseries?zip=${zip}&period=${period}${slugParam}`,
           { credentials: "include" }
         );
         if (!res.ok) throw new Error("API not ready");
@@ -248,6 +254,7 @@ export default function HistoricalChart({
           data,
           average: Math.round(avg * 100) / 100,
           unit: raw.meta?.unit || layer?.unit || "number",
+          scope: raw.scope,
         } as TimeseriesData;
       } catch {
         return generateMockTimeseries(selectedLayerId, period, selectedZip);
@@ -318,6 +325,11 @@ export default function HistoricalChart({
               <p className="text-xs text-muted-foreground mt-0.5">
                 Austin Metro Average
               </p>
+            )}
+            {timeseries?.scope && timeseries.scope.type === "community" && (
+              <div className="mt-1">
+                <ScopeBadge scope={timeseries.scope} />
+              </div>
             )}
           </div>
           <Button

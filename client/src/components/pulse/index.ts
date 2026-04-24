@@ -10,5 +10,7 @@ export { default as MarketTrends } from "./MarketTrends";
 export { default as NeighborhoodExplorer } from "./NeighborhoodExplorer";
 export { default as SchoolsSection } from "./SchoolsSection";
 export { default as DemographicsSection } from "./DemographicsSection";
+export { default as ScopeBadge } from "./ScopeBadge";
+export type { CommunityMatch } from "./PulseSearchBar";
 export * from "./types";
 export * from "./data-layers";
