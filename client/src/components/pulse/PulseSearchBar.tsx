@@ -2,11 +2,21 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, X, MapPin, Building2, Map, Navigation } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface CommunityMatch {
+  slug: string;
+  name: string;
+  county: string;
+  centroid: { lat: number; lng: number } | null;
+  polygon: number[][] | null;
+  containingZip: string | null;
+}
+
 interface SearchResult {
   zips: { zip: string; city: string; county: string; neighborhood: string | null }[];
   cities: { city: string; county: string; zips: string[] }[];
   counties: { county: string; zips: string[] }[];
   neighborhoods: { neighborhood: string; zip: string; city: string; county: string }[];
+  communities: CommunityMatch[];
 }
 
 interface PulseSearchBarProps {
@@ -170,7 +180,8 @@ export default function PulseSearchBar({
     (results.zips.length > 0 ||
       results.cities.length > 0 ||
       results.counties.length > 0 ||
-      results.neighborhoods.length > 0);
+      results.neighborhoods.length > 0 ||
+      results.communities.length > 0);
 
   const items = flatItems();
   let itemIndex = -1;
