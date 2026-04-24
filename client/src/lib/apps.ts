@@ -233,8 +233,7 @@ export const apps: AppDefinition[] = [
 
 export const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-  { label: "My Performance", icon: TrendingUp, href: "/my-performance" },
-  { label: "Weekly Deals", icon: Briefcase, href: "/weekly-deals" },
+  { label: "Deal Hub", icon: Building2, href: "https://deals.spyglassrealty.com/dashboard", external: true },
   { label: "Calendar", icon: Calendar, href: "/calendar" },
   { label: "Email", icon: Mail, href: "/email" },
   { label: "Reports", icon: BarChart3, href: "/reports" },

@@ -138,21 +138,28 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         }).map((item) => {
           const isActive = location === item.href;
           const itemId = item.href.replace("/", "") || "home";
-          return (
+          const inner = (
+            <div
+              onClick={() => setIsMobileOpen(false)}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors cursor-pointer group ${
+                isActive
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                  : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+              }`}
+              data-testid={`nav-${itemId}`}
+            >
+              <item.icon className={`h-5 w-5 ${isActive ? 'text-sidebar-primary' : ''}`} />
+              <span className="font-medium">{item.label}</span>
+              {isActive && <ChevronRight className="ml-auto h-4 w-4 text-sidebar-primary" />}
+            </div>
+          );
+          return (item as any).external ? (
+            <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer">
+              {inner}
+            </a>
+          ) : (
             <Link key={item.href} href={item.href}>
-              <div
-                onClick={() => setIsMobileOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors cursor-pointer group ${
-                  isActive 
-                    ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
-                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
-                }`}
-                data-testid={`nav-${itemId}`}
-              >
-                <item.icon className={`h-5 w-5 ${isActive ? 'text-sidebar-primary' : ''}`} />
-                <span className="font-medium">{item.label}</span>
-                {isActive && <ChevronRight className="ml-auto h-4 w-4 text-sidebar-primary" />}
-              </div>
+              {inner}
             </Link>
           );
         })}
