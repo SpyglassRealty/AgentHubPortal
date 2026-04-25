@@ -100,8 +100,8 @@ export default function ZipSummaryPanel({
             mortgageRates: raw.scores?.mortgageRates ?? 42,
             inventory: raw.scores?.inventory ?? 67,
           },
-          homeValue: raw.metrics?.home_value ?? 585000,
-          homeValueGrowthYoY: raw.metrics?.home_value_growth_yoy ?? -2.3,
+          homeValue: raw.metrics?.home_value ?? null,
+          homeValueGrowthYoY: raw.metrics?.home_value_growth_yoy ?? null,
           medianIncome: raw.metrics?.median_income ?? 78500,
           population: raw.metrics?.population ?? 52340,
           scope: raw.scope,
@@ -281,11 +281,18 @@ export default function ZipSummaryPanel({
 
           {/* Key Stats */}
           <div className="grid grid-cols-2 gap-2 pt-1">
-            <KeyStat label="Home Value" value={formatCurrency(summary.homeValue)} />
+            <KeyStat
+              label="Home Value"
+              value={summary.homeValue != null ? formatCurrency(summary.homeValue) : "—"}
+            />
             <KeyStat
               label="YoY Growth"
-              value={`${summary.homeValueGrowthYoY >= 0 ? "+" : ""}${summary.homeValueGrowthYoY.toFixed(1)}%`}
-              color={summary.homeValueGrowthYoY >= 0 ? "text-emerald-500" : "text-red-500"}
+              value={summary.homeValueGrowthYoY != null
+                ? `${summary.homeValueGrowthYoY >= 0 ? "+" : ""}${summary.homeValueGrowthYoY.toFixed(1)}%`
+                : "—"}
+              color={summary.homeValueGrowthYoY != null
+                ? (summary.homeValueGrowthYoY >= 0 ? "text-emerald-500" : "text-red-500")
+                : undefined}
             />
             <KeyStat label="Median Income" value={formatCurrency(summary.medianIncome)} />
             <KeyStat label="Population" value={summary.population.toLocaleString()} />

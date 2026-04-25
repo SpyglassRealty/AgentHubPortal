@@ -44,8 +44,8 @@ export interface ZipSummary {
     mortgageRates: number;
     inventory: number;
   };
-  homeValue: number;
-  homeValueGrowthYoY: number;
+  homeValue: number | null;
+  homeValueGrowthYoY: number | null;
   medianIncome: number;
   population: number;
   scope?: ScopeInfo;

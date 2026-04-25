@@ -23,7 +23,8 @@ function getScoreColor(value: number): RGB {
   return RED;
 }
 
-function formatCurrency(n: number): string {
+function formatCurrency(n: number | null | undefined): string {
+  if (n == null) return "—";
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
   return `$${n.toLocaleString()}`;
@@ -254,7 +255,9 @@ export function generatePulseReport(summary: ZipSummary): void {
   doc.text("Key Statistics", margin, y);
   y += 3;
 
-  const yoyText = `${summary.homeValueGrowthYoY >= 0 ? "+" : ""}${summary.homeValueGrowthYoY.toFixed(1)}%`;
+  const yoyText = summary.homeValueGrowthYoY != null
+    ? `${summary.homeValueGrowthYoY >= 0 ? "+" : ""}${summary.homeValueGrowthYoY.toFixed(1)}%`
+    : "—";
 
   autoTable(doc, {
     startY: y,

@@ -768,6 +768,11 @@ export function resolveContainingZip(centroid: { lat: number; lng: number } | nu
 // These 7 layers are served by Repliers real-time statistics API.
 // No DB fallback, no mock. Returns value: null on empty/error.
 
+// Minimum sold-transaction count required to surface a statistic.
+// Buckets below this threshold return null with source: "low-volume".
+// Applies to sold-based layers only — not for_sale_inventory.
+const MIN_SAMPLE_COUNT = 3;
+
 const REPLIERS_LAYERS = new Set([
   "home_value",
   "home_value_growth_yoy",
@@ -841,57 +846,66 @@ async function resolveRepliersScope(
 async function getRepliersLayerValue(
   layerId: string,
   scope: RepliersScope
-): Promise<{ value: number | null; source: string }> {
+): Promise<{ value: number | null; source: string; count?: number }> {
   try {
     switch (layerId) {
 
       case "home_value": {
-        // statistics=med-soldPrice, U/Sld, 12mo
-        // reads: statistics.soldPrice.med
+        // statistics=med-soldPrice+cnt-closed, U/Sld, 12mo
+        // reads: statistics.soldPrice.med; count gate via statistics.closed.count
         const r = await getRepliersStats({
-          scope, statistics: ["med-soldPrice"],
+          scope, statistics: ["med-soldPrice", "cnt-closed"],
           filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoMonthsAgo(12) },
           listings: false,
         });
+        const soldCount = (r?.statistics?.closed?.count ?? 0) as number;
+        if (soldCount < MIN_SAMPLE_COUNT) return { value: null, source: "low-volume", count: soldCount };
         const v = r?.statistics?.soldPrice?.med ?? null;
         return { value: v != null ? Math.round(v) : null, source: v != null ? "repliers" : "repliers-empty" };
       }
 
       case "home_value_growth_yoy": {
         // statistics=med-soldPrice,grp-yr, U/Sld, 25mo
-        // reads: statistics.soldPrice.yr[currYr].med vs yr[prevYr].med
-        // compute: (curr.med - prev.med) / prev.med * 100
+        // reads: soldPrice.yr[currYr] vs yr[prevYr]; count from bucket.count
         const r = await getRepliersStats({
           scope, statistics: ["med-soldPrice", "grp-yr"],
           filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoMonthsAgo(25) },
           listings: false,
         });
-        const yr = r?.statistics?.soldPrice?.yr as Record<string, { med?: number }> | undefined;
+        const yr = r?.statistics?.soldPrice?.yr as Record<string, { med?: number; count?: number }> | undefined;
         if (!yr) return { value: null, source: "repliers-empty" };
         const years = Object.keys(yr).sort();
         if (years.length < 2) return { value: null, source: "repliers-empty" };
-        const curr = yr[years[years.length - 1]]?.med;
-        const prev = yr[years[years.length - 2]]?.med;
+        const currBucket = yr[years[years.length - 1]];
+        const prevBucket = yr[years[years.length - 2]];
+        const currCount = currBucket?.count ?? 0;
+        const prevCount = prevBucket?.count ?? 0;
+        if (currCount < MIN_SAMPLE_COUNT || prevCount < MIN_SAMPLE_COUNT)
+          return { value: null, source: "low-volume", count: Math.min(currCount, prevCount) };
+        const curr = currBucket?.med, prev = prevBucket?.med;
         if (!curr || !prev) return { value: null, source: "repliers-empty" };
         return { value: parseFloat(((curr - prev) / prev * 100).toFixed(1)), source: "repliers" };
       }
 
       case "home_value_growth_5yr": {
         // statistics=med-soldPrice,grp-yr, U/Sld, 6yr window
-        // reads: yr[latest].med vs yr[latest-5].med
-        // compute: (latest.med - base.med) / base.med * 100
+        // reads: yr[latest].med vs yr[latest-5].med; both buckets need count >= MIN_SAMPLE_COUNT
         const r = await getRepliersStats({
           scope, statistics: ["med-soldPrice", "grp-yr"],
           filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoYearsAgo(6) },
           listings: false,
         });
-        const yr = r?.statistics?.soldPrice?.yr as Record<string, { med?: number }> | undefined;
+        const yr = r?.statistics?.soldPrice?.yr as Record<string, { med?: number; count?: number }> | undefined;
         if (!yr) return { value: null, source: "repliers-empty" };
         const years = Object.keys(yr).sort();
         if (years.length < 2) return { value: null, source: "repliers-empty" };
         const latest = years[years.length - 1];
         const target = String(parseInt(latest) - 5);
         const baseYear = years.includes(target) ? target : years[0];
+        const latestCount = yr[latest]?.count ?? 0;
+        const baseCount = yr[baseYear]?.count ?? 0;
+        if (latestCount < MIN_SAMPLE_COUNT || baseCount < MIN_SAMPLE_COUNT)
+          return { value: null, source: "low-volume", count: Math.min(latestCount, baseCount) };
         const latestMed = yr[latest]?.med, baseMed = yr[baseYear]?.med;
         if (!latestMed || !baseMed) return { value: null, source: "repliers-empty" };
         return { value: parseFloat(((latestMed - baseMed) / baseMed * 100).toFixed(1)), source: "repliers" };
@@ -899,25 +913,29 @@ async function getRepliersLayerValue(
 
       case "home_value_growth_mom": {
         // statistics=med-soldPrice,grp-mth, U/Sld, 3mo
-        // reads: mth[currMth].med vs mth[prevMth].med
-        // compute: (curr.med - prev.med) / prev.med * 100
+        // reads: mth[currMth] vs mth[prevMth]; both buckets need count >= MIN_SAMPLE_COUNT
         const r = await getRepliersStats({
           scope, statistics: ["med-soldPrice", "grp-mth"],
           filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoMonthsAgo(3) },
           listings: false,
         });
-        const mth = r?.statistics?.soldPrice?.mth as Record<string, { med?: number }> | undefined;
+        const mth = r?.statistics?.soldPrice?.mth as Record<string, { med?: number; count?: number }> | undefined;
         if (!mth) return { value: null, source: "repliers-empty" };
         const months = Object.keys(mth).sort();
         if (months.length < 2) return { value: null, source: "repliers-empty" };
-        const curr = mth[months[months.length - 1]]?.med;
-        const prev = mth[months[months.length - 2]]?.med;
+        const currBucket = mth[months[months.length - 1]];
+        const prevBucket = mth[months[months.length - 2]];
+        const currCount = currBucket?.count ?? 0;
+        const prevCount = prevBucket?.count ?? 0;
+        if (currCount < MIN_SAMPLE_COUNT || prevCount < MIN_SAMPLE_COUNT)
+          return { value: null, source: "low-volume", count: Math.min(currCount, prevCount) };
+        const curr = currBucket?.med, prev = prevBucket?.med;
         if (!curr || !prev) return { value: null, source: "repliers-empty" };
         return { value: parseFloat(((curr - prev) / prev * 100).toFixed(1)), source: "repliers" };
       }
 
       case "for_sale_inventory": {
-        // statistics=cnt-available, status=A
+        // statistics=cnt-available, status=A — exempt from count threshold
         // reads: statistics.available.mth[latestMonthKey] — bare number (not {count})
         const r = await getRepliersStats({
           scope, statistics: ["cnt-available"],
@@ -933,28 +951,30 @@ async function getRepliersLayerValue(
       }
 
       case "days_on_market": {
-        // statistics=med-daysOnMarket, U/Sld, 90-day window
-        // reads: statistics.daysOnMarket.med
-        // NOTE: status=A rejected by Repliers for DOM — must use U/Sld
+        // statistics=med-daysOnMarket+cnt-closed, U/Sld, 90-day window
+        // NOTE: status=A rejected by Repliers for DOM stats — must use U/Sld
         const r = await getRepliersStats({
-          scope, statistics: ["med-daysOnMarket"],
+          scope, statistics: ["med-daysOnMarket", "cnt-closed"],
           filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoDaysAgo(90) },
           listings: false,
         });
+        const soldCount = (r?.statistics?.closed?.count ?? 0) as number;
+        if (soldCount < MIN_SAMPLE_COUNT) return { value: null, source: "low-volume", count: soldCount };
         const v = r?.statistics?.daysOnMarket?.med ?? null;
         return { value: v != null ? Math.round(v) : null, source: v != null ? "repliers" : "repliers-empty" };
       }
 
       case "home_sales": {
-        // statistics=med-soldPrice,cnt-closed,grp-mth, U/Sld, 12mo
+        // statistics=cnt-closed,grp-mth, U/Sld, 12mo
         // reads: statistics.closed.count — top-level period total
-        // (shares query with home_value; cnt-closed nests as { count, mth, yr })
+        // count IS the value; if the period total < MIN_SAMPLE_COUNT the trend is not meaningful
         const r = await getRepliersStats({
-          scope, statistics: ["med-soldPrice", "cnt-closed", "grp-mth"],
+          scope, statistics: ["cnt-closed", "grp-mth"],
           filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoMonthsAgo(12) },
           listings: false,
         });
         const v = r?.statistics?.closed?.count ?? null;
+        if (v != null && v < MIN_SAMPLE_COUNT) return { value: null, source: "low-volume", count: v };
         return { value: v != null ? Math.round(v) : null, source: v != null ? "repliers" : "repliers-empty" };
       }
 
@@ -986,46 +1006,47 @@ async function getRepliersLayerTimeseries(
             filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoYearsAgo(10) },
             listings: false,
           });
-          const yr = r?.statistics?.soldPrice?.yr as Record<string, { med?: number }> | undefined;
+          const yr = r?.statistics?.soldPrice?.yr as Record<string, { med?: number; count?: number }> | undefined;
           if (!yr) return empty("repliers-empty");
           const data = Object.entries(yr)
-            .filter(([, v]) => v?.med != null)
+            .filter(([, v]) => v?.med != null && (v?.count ?? 0) >= MIN_SAMPLE_COUNT)
             .map(([date, v]) => ({ date, value: Math.round(v.med!) }))
             .sort((a, b) => a.date.localeCompare(b.date));
-          return { data, source: "repliers" };
+          return { data, source: data.length ? "repliers" : "repliers-empty" };
         } else {
           // statistics=med-soldPrice,grp-mth, U/Sld, 5yr
-          // reads: statistics.soldPrice.mth[YYYY-MM].med
+          // reads: statistics.soldPrice.mth[YYYY-MM].{med, count}
           const r = await getRepliersStats({
             scope, statistics: ["med-soldPrice", "grp-mth"],
             filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoYearsAgo(5) },
             listings: false,
           });
-          const mth = r?.statistics?.soldPrice?.mth as Record<string, { med?: number }> | undefined;
+          const mth = r?.statistics?.soldPrice?.mth as Record<string, { med?: number; count?: number }> | undefined;
           if (!mth) return empty("repliers-empty");
           const data = Object.entries(mth)
-            .filter(([, v]) => v?.med != null)
+            .filter(([, v]) => v?.med != null && (v?.count ?? 0) >= MIN_SAMPLE_COUNT)
             .map(([date, v]) => ({ date, value: Math.round(v.med!) }))
             .sort((a, b) => a.date.localeCompare(b.date));
-          return { data, source: "repliers" };
+          return { data, source: data.length ? "repliers" : "repliers-empty" };
         }
       }
 
       case "home_value_growth_yoy": {
         // same source as home_value yearly (11yr window for 10yr of YoY points)
-        // reads: statistics.soldPrice.yr[YYYY].med
-        // compute each point: (yr[Y].med - yr[Y-1].med) / yr[Y-1].med * 100
+        // both yr[Y] and yr[Y-1] must have count >= MIN_SAMPLE_COUNT to emit the point
         const r = await getRepliersStats({
           scope, statistics: ["med-soldPrice", "grp-yr"],
           filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoYearsAgo(11) },
           listings: false,
         });
-        const yr = r?.statistics?.soldPrice?.yr as Record<string, { med?: number }> | undefined;
+        const yr = r?.statistics?.soldPrice?.yr as Record<string, { med?: number; count?: number }> | undefined;
         if (!yr) return empty("repliers-empty");
         const years = Object.keys(yr).sort();
         const data: { date: string; value: number }[] = [];
         for (let i = 1; i < years.length; i++) {
-          const curr = yr[years[i]]?.med, prev = yr[years[i - 1]]?.med;
+          const currB = yr[years[i]], prevB = yr[years[i - 1]];
+          if ((currB?.count ?? 0) < MIN_SAMPLE_COUNT || (prevB?.count ?? 0) < MIN_SAMPLE_COUNT) continue;
+          const curr = currB?.med, prev = prevB?.med;
           if (curr != null && prev != null && prev !== 0)
             data.push({ date: years[i], value: parseFloat(((curr - prev) / prev * 100).toFixed(1)) });
         }
@@ -1034,19 +1055,20 @@ async function getRepliersLayerTimeseries(
 
       case "home_value_growth_5yr": {
         // same source as home_value yearly (15yr window for ~10yr of 5yr-growth points)
-        // reads: statistics.soldPrice.yr[YYYY].med
-        // compute each point: (yr[Y].med - yr[Y-5].med) / yr[Y-5].med * 100
+        // both yr[Y] and yr[Y-5] must have count >= MIN_SAMPLE_COUNT to emit the point
         const r = await getRepliersStats({
           scope, statistics: ["med-soldPrice", "grp-yr"],
           filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoYearsAgo(15) },
           listings: false,
         });
-        const yr = r?.statistics?.soldPrice?.yr as Record<string, { med?: number }> | undefined;
+        const yr = r?.statistics?.soldPrice?.yr as Record<string, { med?: number; count?: number }> | undefined;
         if (!yr) return empty("repliers-empty");
         const years = Object.keys(yr).sort();
         const data: { date: string; value: number }[] = [];
         for (let i = 5; i < years.length; i++) {
-          const curr = yr[years[i]]?.med, base = yr[years[i - 5]]?.med;
+          const currB = yr[years[i]], baseB = yr[years[i - 5]];
+          if ((currB?.count ?? 0) < MIN_SAMPLE_COUNT || (baseB?.count ?? 0) < MIN_SAMPLE_COUNT) continue;
+          const curr = currB?.med, base = baseB?.med;
           if (curr != null && base != null && base !== 0)
             data.push({ date: years[i], value: parseFloat(((curr - base) / base * 100).toFixed(1)) });
         }
@@ -1055,19 +1077,20 @@ async function getRepliersLayerTimeseries(
 
       case "home_value_growth_mom": {
         // same source as home_value monthly (5yr window)
-        // reads: statistics.soldPrice.mth[YYYY-MM].med
-        // compute each point: (mth[M].med - mth[M-1].med) / mth[M-1].med * 100
+        // both mth[M] and mth[M-1] must have count >= MIN_SAMPLE_COUNT to emit the point
         const r = await getRepliersStats({
           scope, statistics: ["med-soldPrice", "grp-mth"],
           filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoYearsAgo(5) },
           listings: false,
         });
-        const mth = r?.statistics?.soldPrice?.mth as Record<string, { med?: number }> | undefined;
+        const mth = r?.statistics?.soldPrice?.mth as Record<string, { med?: number; count?: number }> | undefined;
         if (!mth) return empty("repliers-empty");
         const months = Object.keys(mth).sort();
         const data: { date: string; value: number }[] = [];
         for (let i = 1; i < months.length; i++) {
-          const curr = mth[months[i]]?.med, prev = mth[months[i - 1]]?.med;
+          const currB = mth[months[i]], prevB = mth[months[i - 1]];
+          if ((currB?.count ?? 0) < MIN_SAMPLE_COUNT || (prevB?.count ?? 0) < MIN_SAMPLE_COUNT) continue;
+          const curr = currB?.med, prev = prevB?.med;
           if (curr != null && prev != null && prev !== 0)
             data.push({ date: months[i], value: parseFloat(((curr - prev) / prev * 100).toFixed(1)) });
         }
@@ -1075,7 +1098,7 @@ async function getRepliersLayerTimeseries(
       }
 
       case "for_sale_inventory": {
-        // statistics=cnt-available, status=A
+        // statistics=cnt-available, status=A — exempt from count threshold
         // reads: statistics.available.mth[YYYY-MM] — bare number (NOT {count})
         // truncate to most recent 24 months (monitoring ramp-up before that)
         const r = await getRepliersStats({
@@ -1095,17 +1118,17 @@ async function getRepliersLayerTimeseries(
 
       case "days_on_market": {
         // statistics=med-daysOnMarket,grp-mth, U/Sld, 5yr
-        // reads: statistics.daysOnMarket.mth[YYYY-MM].med
+        // reads: statistics.daysOnMarket.mth[YYYY-MM].{med, count}
         // NOTE: status=A rejected by Repliers for DOM — must use U/Sld
         const r = await getRepliersStats({
           scope, statistics: ["med-daysOnMarket", "grp-mth"],
           filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoYearsAgo(5) },
           listings: false,
         });
-        const mth = r?.statistics?.daysOnMarket?.mth as Record<string, { med?: number }> | undefined;
+        const mth = r?.statistics?.daysOnMarket?.mth as Record<string, { med?: number; count?: number }> | undefined;
         if (!mth) return empty("repliers-empty");
         const data = Object.entries(mth)
-          .filter(([, v]) => v?.med != null)
+          .filter(([, v]) => v?.med != null && (v?.count ?? 0) >= MIN_SAMPLE_COUNT)
           .map(([date, v]) => ({ date, value: Math.round(v.med!) }))
           .sort((a, b) => a.date.localeCompare(b.date));
         return { data, source: data.length ? "repliers" : "repliers-empty" };
@@ -1113,7 +1136,8 @@ async function getRepliersLayerTimeseries(
 
       case "home_sales": {
         // statistics=cnt-closed,grp-mth, U/Sld, 5yr
-        // reads: statistics.closed.mth[YYYY-MM].count — NOT a bare number
+        // reads: statistics.closed.mth[YYYY-MM].count
+        // omit buckets where count < MIN_SAMPLE_COUNT — a single transaction is not a trend
         const r = await getRepliersStats({
           scope, statistics: ["cnt-closed", "grp-mth"],
           filters: { status: "U", lastStatus: "Sld", type: "Sale", minSoldDate: isoYearsAgo(5) },
@@ -1122,7 +1146,7 @@ async function getRepliersLayerTimeseries(
         const mth = r?.statistics?.closed?.mth as Record<string, { count?: number }> | undefined;
         if (!mth) return empty("repliers-empty");
         const data = Object.entries(mth)
-          .filter(([, v]) => v?.count != null)
+          .filter(([, v]) => v?.count != null && v.count >= MIN_SAMPLE_COUNT)
           .map(([date, v]) => ({ date, value: v.count! }))
           .sort((a, b) => a.date.localeCompare(b.date));
         return { data, source: data.length ? "repliers" : "repliers-empty" };
@@ -1217,14 +1241,19 @@ export function registerPulseV2Routes(app: Express): void {
       ? { type: "community", zip: containingZip ?? zip, communitySlug, communityName }
       : { type: "zip", zip };
 
-    const { value, source } = await getRepliersLayerValue(layerId, scope);
+    const { value, source, count } = await getRepliersLayerValue(layerId, scope);
 
     res.json({
       layerId,
       value,
       label: value != null ? formatLabel(value, layer.unit) : "—",
       scope: scopeField,
-      meta: { unit: layer.unit, source, description: layer.description },
+      meta: {
+        unit: layer.unit,
+        source,
+        description: layer.description,
+        ...(count !== undefined && { count }),
+      },
     });
   });
 
