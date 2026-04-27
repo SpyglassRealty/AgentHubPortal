@@ -265,20 +265,22 @@ function SubjectPropertyPanel({
       const beds = prop.beds || 0;
       const baths = prop.baths || 0;
       const sqft = prop.sqft || 0;
+      // Mirror handleSearch body structure exactly — integers only, no maxBeds/maxBaths, no propertyType default
       const body: any = {
-        statuses: ["A", "U", "S"],
+        page: 1,
         limit: 25,
-        propertyType: "Single Family Residence",
+        statuses: ["A", "U", "S"],
         dateSoldDays: 180,
       };
       if (zip) body.zip = zip;
-      if (beds > 0) { body.minBeds = Math.max(1, beds - 1); body.maxBeds = beds + 1; }
-      if (baths > 0) { body.minBaths = Math.max(1, baths - 0.5); body.maxBaths = baths + 0.5; }
+      if (beds > 0) body.minBeds = Math.max(1, beds - 1);
+      if (baths > 0) body.minBaths = Math.max(1, Math.floor(baths) - 1 || 1);
       if (sqft > 0) { body.minSqft = Math.round(sqft * 0.75); body.maxSqft = Math.round(sqft * 1.25); }
       const res = await apiRequest("POST", "/api/cma/search-properties", body);
       const data = await res.json();
       return data.listings || [];
-    } catch {
+    } catch (e) {
+      console.error('[AutoFetch] Error:', e);
       return [];
     }
   };
