@@ -271,8 +271,7 @@ export default function CalendarPage() {
         source: e.source as MergedCalendarEvent['source'],
         googleColor: e.color,
         calendarName: e.calendarName,
-      }))
-      .filter(e => e.rsvpStatus !== 'declined');
+      }));
 
     return [...fubEvents, ...googleEvents, ...birthdayEvents, ...holidayEvents].sort(
       (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
@@ -330,37 +329,6 @@ export default function CalendarPage() {
     }
   };
 
-  // ── This Week summary counts ────────────────────────────────────────
-  const thisWeekCounts = useMemo(() => {
-    const now = new Date();
-    const weekStart = startOfWeek(now);
-    const weekEnd = endOfWeek(now);
-
-    const weekItems = allItems.filter(item => {
-      const itemDate = item.allDay
-        ? new Date(item.startDate + 'T00:00:00')
-        : parseISO(item.startDate);
-      return itemDate >= weekStart && itemDate <= weekEnd;
-    });
-
-    let trainings = 0;
-    let fubAppts = 0;
-    let companyEvents = 0;
-    let holidays = 0;
-    let birthdays = 0;
-
-    for (const item of weekItems) {
-      const cat = categorizeEvent(item);
-      if (cat === 'training') trainings++;
-      else if (cat === 'fub') fubAppts++;
-      else if (cat === 'us_holiday') holidays++;
-      else if (cat === 'birthday') birthdays++;
-      else companyEvents++;
-    }
-
-    return { trainings, fubAppts, companyEvents, holidays, birthdays, weekItems };
-  }, [allItems]);
-
   // ── Highlight a date on the calendar (auto-clears after 3s) ─────────
   const highlightDate = useCallback((dateStr: string) => {
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
@@ -385,30 +353,6 @@ export default function CalendarPage() {
     }
     highlightDate(dateStr);
   }, [currentMonth, highlightDate]);
-
-  // ── Handle "This Week" category click ───────────────────────────────
-  const handleWeekCategoryClick = useCallback((category: CategoryKey) => {
-    const firstEvent = thisWeekCounts.weekItems.find(item => categorizeEvent(item) === category);
-    if (!firstEvent) return;
-    const dateStr = firstEvent.allDay
-      ? firstEvent.startDate
-      : firstEvent.startDate.split('T')[0];
-    navigateAndHighlight(dateStr);
-  }, [thisWeekCounts.weekItems, navigateAndHighlight]);
-
-  // ── Upcoming 3 events ──────────────────────────────────────────────
-  const upcomingThree = useMemo(() => {
-    const now = new Date();
-    const monthEnd = endOfMonth(currentMonth);
-    return allItems
-      .filter(item => {
-        const itemDate = item.allDay
-          ? new Date(item.startDate + 'T23:59:59')
-          : new Date(item.startDate);
-        return itemDate >= now && itemDate <= monthEnd;
-      })
-      .slice(0, 3);
-  }, [allItems, currentMonth]);
 
   // ── Sidebar upcoming (5 items) ─────────────────────────────────────
   const upcomingItems = allItems
@@ -446,10 +390,6 @@ export default function CalendarPage() {
     return counts;
   }, [currentMonthEvents]);
 
-  // Pending event check (dashed border)
-  const isPending = (event: MergedCalendarEvent): boolean => {
-    return event.source === 'google_company' && event.rsvpStatus === 'needsAction';
-  };
 
   if (error) {
     return (
@@ -613,22 +553,17 @@ export default function CalendarPage() {
 
                 {/* ── Color legend row ────────────────────────────── */}
                 <div className="flex flex-wrap gap-3 sm:gap-5 mt-2 text-[10px] sm:text-xs">
-                  {Object.entries(SPYGLASS_CATEGORIES).map(([key, cat]) => (
-                    <div key={key} className="flex items-center gap-1.5">
-                      <div
-                        className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full"
-                        style={{ backgroundColor: cat.hex }}
-                      />
-                      <span className="text-muted-foreground">{cat.label}</span>
-                    </div>
-                  ))}
-                  <div className="flex items-center gap-1.5">
-                    <div
-                      className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full border-2 border-dashed"
-                      style={{ borderColor: '#EF4923' }}
-                    />
-                    <span className="text-muted-foreground">Pending invite</span>
-                  </div>
+                  {Object.entries(SPYGLASS_CATEGORIES)
+                    .filter(([key]) => viewAsRole === 'developer' || (key !== 'google_fub' && key !== 'personal'))
+                    .map(([key, cat]) => (
+                      <div key={key} className="flex items-center gap-1.5">
+                        <div
+                          className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full"
+                          style={{ backgroundColor: cat.hex }}
+                        />
+                        <span className="text-muted-foreground">{cat.label}</span>
+                      </div>
+                    ))}
                 </div>
               </CardHeader>
               <CardContent className="px-2 sm:px-6">
@@ -694,27 +629,21 @@ export default function CalendarPage() {
                             {regularItems.slice(0, 2).map((item, idx) => {
                               const category = categorizeEvent(item);
                               const hex = getCategoryHex(category);
-                              const pending = isPending(item);
                               return (
                                 <div
                                   key={item.id}
-                                  className={`text-[9px] sm:text-xs p-1 sm:p-1.5 rounded truncate cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity min-h-[24px] sm:min-h-[28px] ${
-                                    pending ? 'border-2 border-dashed bg-transparent' : 'border'
-                                  } ${idx > 0 ? 'hidden sm:block' : ''}`}
-                                  style={pending ? {
-                                    borderColor: hex,
-                                    color: hex,
-                                  } : {
+                                  className={`text-[9px] sm:text-xs p-1 sm:p-1.5 rounded truncate cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity min-h-[24px] sm:min-h-[28px] border ${idx > 0 ? 'hidden sm:block' : ''}`}
+                                  style={{
                                     backgroundColor: `${hex}20`,
                                     color: hex,
                                     borderColor: `${hex}40`
                                   }}
-                                  title={item.title + (pending ? ' (invited)' : '')}
+                                  title={item.title}
                                   onClick={(e) => handleEventClick(item, e)}
                                   data-testid={`event-${item.id}`}
                                 >
                                   <span className="hidden sm:inline">
-                                    {item.title}{pending ? ' (invited)' : ''}
+                                    {item.title}
                                   </span>
                                   <span className="sm:hidden">{item.title.substring(0, 6)}..</span>
                                 </div>
@@ -825,14 +754,11 @@ export default function CalendarPage() {
                                   >
                                     {slotEvents.map((item) => {
                                       const hex = getCategoryHex(categorizeEvent(item));
-                                      const pending = isPending(item);
                                       return (
                                         <div
                                           key={item.id}
-                                          className={`text-[9px] px-1 py-0.5 rounded truncate cursor-pointer hover:opacity-80 mb-0.5 ${
-                                            pending ? 'border border-dashed bg-transparent' : ''
-                                          }`}
-                                          style={pending ? { borderColor: hex, color: hex } : { backgroundColor: `${hex}20`, color: hex }}
+                                          className="text-[9px] px-1 py-0.5 rounded truncate cursor-pointer hover:opacity-80 mb-0.5"
+                                          style={{ backgroundColor: `${hex}20`, color: hex }}
                                           onClick={(e) => handleEventClick(item, e as MouseEvent)}
                                           title={`${item.title} ${formatEventTime(item)}`}
                                         >
@@ -902,14 +828,11 @@ export default function CalendarPage() {
                                 <div className="flex-1 p-1 space-y-1">
                                   {slotEvents.map((item) => {
                                     const hex = getCategoryHex(categorizeEvent(item));
-                                    const pending = isPending(item);
                                     return (
                                       <div
                                         key={item.id}
-                                        className={`text-xs px-2 py-1.5 rounded cursor-pointer hover:opacity-80 ${
-                                          pending ? 'border border-dashed bg-transparent' : ''
-                                        }`}
-                                        style={pending ? { borderColor: hex, color: hex } : { backgroundColor: `${hex}20`, color: hex }}
+                                        className="text-xs px-2 py-1.5 rounded cursor-pointer hover:opacity-80"
+                                        style={{ backgroundColor: `${hex}20`, color: hex }}
                                         onClick={(e) => handleEventClick(item, e as MouseEvent)}
                                       >
                                         <span className="font-medium">{item.title}</span>
@@ -1014,77 +937,6 @@ export default function CalendarPage() {
                 )}
               </CardContent>
             </Card>
-
-            {/* ── Bottom Panel: This Week + Upcoming ───────────────── */}
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* This Week summary */}
-              <Card>
-                <CardContent className="py-3 px-4">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">This Week</p>
-                  <p className="text-sm">
-                    {(() => {
-                      const parts: { label: string; category: CategoryKey }[] = [];
-                      if (thisWeekCounts.trainings > 0) parts.push({ label: `${thisWeekCounts.trainings} training${thisWeekCounts.trainings > 1 ? 's' : ''}`, category: 'training' });
-                      if (thisWeekCounts.fubAppts > 0) parts.push({ label: `${thisWeekCounts.fubAppts} FUB appt${thisWeekCounts.fubAppts > 1 ? 's' : ''}`, category: 'fub' });
-                      if (thisWeekCounts.companyEvents > 0) parts.push({ label: `${thisWeekCounts.companyEvents} company event${thisWeekCounts.companyEvents > 1 ? 's' : ''}`, category: 'company' });
-                      if (thisWeekCounts.holidays > 0) parts.push({ label: `${thisWeekCounts.holidays} holiday${thisWeekCounts.holidays > 1 ? 's' : ''}`, category: 'us_holiday' });
-                      if (thisWeekCounts.birthdays > 0) parts.push({ label: `${thisWeekCounts.birthdays} birthday${thisWeekCounts.birthdays > 1 ? 's' : ''}`, category: 'birthday' });
-                      if (parts.length === 0) return 'No events this week';
-                      return parts.map((part, idx) => (
-                        <span key={part.category}>
-                          {idx > 0 && ' \u00B7 '}
-                          <span
-                            className="cursor-pointer hover:underline"
-                            style={{ color: getCategoryHex(part.category) }}
-                            onClick={() => handleWeekCategoryClick(part.category)}
-                          >
-                            {part.label}
-                          </span>
-                        </span>
-                      ));
-                    })()}
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Upcoming 3 */}
-              <Card>
-                <CardContent className="py-3 px-4">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Upcoming</p>
-                  {upcomingThree.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No upcoming events this month</p>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {upcomingThree.map(item => {
-                        const cat = categorizeEvent(item);
-                        const hex = getCategoryHex(cat);
-                        const dateStr = item.allDay
-                          ? item.startDate
-                          : item.startDate.split('T')[0];
-                        return (
-                          <div
-                            key={item.id}
-                            className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded-md px-2 py-1 -mx-2 transition-colors"
-                            style={{ borderLeft: `3px solid ${hex}` }}
-                            onClick={() => {
-                              navigateAndHighlight(dateStr);
-                              setSelectedEvent(item);
-                            }}
-                          >
-                            <span className="text-muted-foreground text-xs shrink-0 w-12">
-                              {item.allDay
-                                ? format(new Date(item.startDate + 'T00:00:00'), 'MMM d')
-                                : format(parseISO(item.startDate), 'MMM d')}
-                            </span>
-                            <span className="truncate">{item.title}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
           </div>
 
           {/* ── Sidebar ──────────────────────────────────────────── */}
@@ -1112,7 +964,6 @@ export default function CalendarPage() {
                   upcomingItems.map(item => {
                     const category = categorizeEvent(item);
                     const hex = getCategoryHex(category);
-                    const pending = isPending(item);
                     return (
                       <div
                         key={item.id}
@@ -1124,7 +975,7 @@ export default function CalendarPage() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm truncate">
-                              {item.title}{pending ? ' (invited)' : ''}
+                              {item.title}
                             </p>
                             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                               <CalendarIcon className="h-3 w-3" />
@@ -1250,9 +1101,6 @@ export default function CalendarPage() {
                     : selectedEvent.source === 'us_holiday' ? 'US Holiday'
                     : 'Google Calendar'}
                 </span>
-                {isPending(selectedEvent) && (
-                  <Badge variant="outline" className="text-amber-600 border-amber-300 text-[10px]">Pending invite</Badge>
-                )}
               </div>
 
               {/* Title + badges */}
@@ -1277,9 +1125,6 @@ export default function CalendarPage() {
                     </>
                   );
                 })()}
-                {isPending(selectedEvent) && (
-                  <Badge variant="outline" className="text-amber-600 border-amber-300 border-dashed">Invited</Badge>
-                )}
                 {selectedEvent.status === 'tentative' && (
                   <Badge variant="outline" className="text-amber-600 border-amber-300">Tentative</Badge>
                 )}
@@ -1437,7 +1282,6 @@ export default function CalendarPage() {
                 {selectedDayEvents.map(item => {
                   const category = categorizeEvent(item);
                   const hex = getCategoryHex(category);
-                  const pending = isPending(item);
                   return (
                     <div
                       key={item.id}
@@ -1452,7 +1296,7 @@ export default function CalendarPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm">
-                            {item.title}{pending ? ' (invited)' : ''}
+                            {item.title}
                           </p>
                           <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                             <Clock className="h-3 w-3" />
@@ -1467,7 +1311,7 @@ export default function CalendarPage() {
                         </div>
                         <Badge
                           variant="outline"
-                          className={`text-[10px] ${pending ? 'border-dashed' : ''}`}
+                          className="text-[10px]"
                           style={{ color: hex, borderColor: `${hex}60` }}
                         >
                           {SPYGLASS_CATEGORIES[category].label}
