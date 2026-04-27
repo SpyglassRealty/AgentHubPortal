@@ -2487,7 +2487,7 @@ export default function CmaBuilderPage() {
           <ComparablePropertiesPanel
             comps={cma.comparableProperties}
             onRemove={removeComp}
-            locked={!isStep1Complete}
+            locked={!cma.subjectProperty}
           />
           <AnalysisPanel
             subject={cma.subjectProperty}
@@ -2527,7 +2527,7 @@ export default function CmaBuilderPage() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {autoFetchResults.map((prop, i) => {
-                  const isAdded = existingMlsNumbers.has(prop.mlsNumber);
+                  const isAdded = existingMlsNumbers.has(normalizeMlsForDisplay(prop.mlsNumber));
                   return (
                     <PropertyCard
                       key={i}
