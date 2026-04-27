@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   X,
   Share2,
-  Download,
   MapPin,
   TrendingUp,
   TrendingDown,
@@ -18,7 +17,6 @@ import ForecastGauge from "./ForecastGauge";
 import DemographicsSection from "./DemographicsSection";
 import SchoolsSection from "./SchoolsSection";
 import ScopeBadge from "./ScopeBadge";
-import { generatePulseReport } from "./generateReport";
 import type { ZipSummary } from "./types";
 
 // ─── Mock data for when API isn't ready ──────────────────────
@@ -297,15 +295,6 @@ export default function ZipSummaryPanel({
             <KeyStat label="Median Income" value={formatCurrency(summary.medianIncome)} />
             <KeyStat label="Population" value={summary.population.toLocaleString()} />
           </div>
-
-          {/* Download Report */}
-          <Button
-            className="w-full bg-[#EF4923] hover:bg-[#d4411f] text-white text-sm"
-            onClick={() => generatePulseReport(summary)}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Download Report
-          </Button>
 
           {/* ─── Demographics ──────────────────────────── */}
           <Separator />
