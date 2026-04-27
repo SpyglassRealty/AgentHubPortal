@@ -266,10 +266,10 @@ function SubjectPropertyPanel({
       const baths = prop.baths || 0;
       const sqft = prop.sqft || 0;
       const body: any = {
-        statuses: ["A", "U", "C"],
+        statuses: ["A", "U", "S"],
         limit: 25,
         propertyType: "Single Family",
-        closedDateRange: 180,
+        dateSoldDays: 180,
       };
       if (zip) body.zip = zip;
       if (beds > 0) { body.minBeds = Math.max(1, beds - 1); body.maxBeds = beds + 1; }
