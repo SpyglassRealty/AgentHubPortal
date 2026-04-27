@@ -85,6 +85,9 @@ function scoreColor(v: number): RGB {
   return RED;
 }
 
+const safeNum = (n: number | null | undefined, fallback = 0): number =>
+  Number.isFinite(n as number) ? (n as number) : fallback;
+
 function fmtVal(v: number | null | undefined, unit: string): string {
   if (v == null) return "—";
   switch (unit) {
@@ -140,7 +143,37 @@ async function fetchSummary(scope: ReportScope): Promise<ZipSummary | null> {
       ? `/api/pulse/v2/zip/${scope.zip}/summary?communitySlug=${encodeURIComponent(slug)}`
       : `/api/pulse/v2/zip/${scope.zip}/summary`;
     const res = await fetch(url, { credentials: "include" });
-    return res.ok ? res.json() : null;
+    if (!res.ok) return null;
+    const raw = await res.json();
+    // Map raw API shape → ZipSummary (field names differ between API and client type)
+    return {
+      zipCode:    raw.zip ?? scope.zip,
+      county:     raw.county ? `${raw.county} County` : "",
+      metro:      raw.metro ?? "",
+      state:      raw.state ?? "",
+      source:     raw.source ?? "",
+      dataDate:   raw.dataDate ?? "",
+      forecast: {
+        value:     safeNum(raw.forecast?.value),
+        label:     "Home Price Forecast",
+        direction: raw.forecast?.direction ?? "flat",
+      },
+      investorScore:   0,
+      growthScore:     0,
+      bestMonthToBuy:  raw.bestMonthBuy  ?? "—",
+      bestMonthToSell: raw.bestMonthSell ?? "—",
+      scores: {
+        recentAppreciation: safeNum(raw.scores?.appreciation),
+        daysOnMarket:       safeNum(raw.scores?.daysOnMarket),
+        mortgageRates:      safeNum(raw.scores?.mortgageRates),
+        inventory:          safeNum(raw.scores?.inventory),
+      },
+      homeValue:          raw.metrics?.home_value ?? null,
+      homeValueGrowthYoY: raw.metrics?.home_value_growth_yoy ?? null,
+      medianIncome:       safeNum(raw.metrics?.median_income),
+      population:         safeNum(raw.metrics?.population),
+      scope:              raw.scope,
+    } as ZipSummary;
   } catch { return null; }
 }
 
@@ -197,7 +230,8 @@ function addFooter(doc: jsPDF, page: number, total: number, scope: ReportScope):
 
 function drawScoreBar(doc: jsPDF, x: number, y: number, label: string, value: number, width: number): void {
   const lw = 52, bh = 5, bs = 9, bw = width - lw - bs - 8;
-  const col = scoreColor(value);
+  const sv  = safeNum(value);
+  const col = scoreColor(sv);
   doc.setFontSize(8.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...GRAY);
@@ -205,14 +239,14 @@ function drawScoreBar(doc: jsPDF, x: number, y: number, label: string, value: nu
   doc.setFillColor(230, 230, 230);
   doc.roundedRect(x + lw, y, bw, bh, 2, 2, "F");
   doc.setFillColor(...col);
-  doc.roundedRect(x + lw, y, Math.max((value / 100) * bw, 4), bh, 2, 2, "F");
+  doc.roundedRect(x + lw, y, Math.max((sv / 100) * bw, 4), bh, 2, 2, "F");
   const bx = x + lw + bw + 3, by = y - 2;
   doc.setFillColor(...col);
   doc.circle(bx + bs / 2, by + bs / 2, bs / 2, "F");
   doc.setFontSize(6.5);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...WHITE);
-  doc.text(String(value), bx + bs / 2, by + bs / 2 + 1, { align: "center" });
+  doc.text(String(Math.round(sv)), bx + bs / 2, by + bs / 2 + 1, { align: "center" });
 }
 
 function drawStatCard(doc: jsPDF, label: string, value: string, x: number, y: number, w: number, h: number): void {
@@ -248,7 +282,8 @@ function drawMiniChart(
   doc.setLineWidth(0.2);
   doc.rect(cx, cy, cw, ch, "FD");
 
-  if (!data || data.length < 2) {
+  const finiteData = data ? data.filter(d => Number.isFinite(d.value)) : [];
+  if (finiteData.length < 2) {
     doc.setFontSize(7);
     doc.setFont("helvetica", "italic");
     doc.setTextColor(...GRAY);
@@ -256,7 +291,7 @@ function drawMiniChart(
     return;
   }
 
-  const vals = data.map(d => d.value);
+  const vals = finiteData.map(d => d.value);
   const lo   = Math.min(...vals);
   const hi   = Math.max(...vals);
   const rng  = hi - lo || 1;
@@ -278,8 +313,8 @@ function drawMiniChart(
   }
 
   // Map each point to pixel coordinates
-  const pts = data.map((d, i) => ({
-    px: cx + (i / (data.length - 1)) * cw,
+  const pts = finiteData.map((d, i) => ({
+    px: cx + (i / (finiteData.length - 1)) * cw,
     py: cy + ch * (1 - (d.value - lo) / rng),
   }));
 
@@ -309,16 +344,16 @@ function drawMiniChart(
   // X-axis date labels (~5 evenly spaced + always show last year)
   doc.setFontSize(5);
   doc.setTextColor(...GRAY);
-  const step = Math.max(1, Math.floor(data.length / 5));
+  const step = Math.max(1, Math.floor(finiteData.length / 5));
   const shownLast = new Set<number>();
-  for (let i = 0; i < data.length; i += step) {
-    const px = cx + (i / (data.length - 1)) * cw;
-    doc.text(data[i].date.slice(0, 4), px, cy + ch + 4.5, { align: "center" });
+  for (let i = 0; i < finiteData.length; i += step) {
+    const px = cx + (i / (finiteData.length - 1)) * cw;
+    doc.text(finiteData[i].date.slice(0, 4), px, cy + ch + 4.5, { align: "center" });
     shownLast.add(i);
   }
-  const lastIdx = data.length - 1;
+  const lastIdx = finiteData.length - 1;
   if (!shownLast.has(lastIdx)) {
-    doc.text(data[lastIdx].date.slice(0, 4), cx + cw, cy + ch + 4.5, { align: "right" });
+    doc.text(finiteData[lastIdx].date.slice(0, 4), cx + cw, cy + ch + 4.5, { align: "right" });
   }
 }
 
