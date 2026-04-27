@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Layout from "@/components/layout";
-import { Activity, PanelLeftClose, PanelLeftOpen, MapPin, X, Navigation, FileDown, Loader2 } from "lucide-react";
+import { Activity, PanelLeftClose, PanelLeftOpen, MapPin, X, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { generatePulseReport, type ReportScope } from "@/components/pulse/generateReport";
 import {
@@ -190,10 +190,6 @@ export default function PulsePage() {
     return { type: "zip", zip: selectedZip };
   }, [selectedZip, selectedCommunity]);
 
-  const reportDisabledReason = !selectedZip
-    ? (selectedCommunity ? "ZIP data unavailable for this neighborhood" : "Select a ZIP code or neighborhood to generate a report")
-    : null;
-
   const handleDownloadReport = useCallback(async () => {
     if (!reportScope || isGeneratingReport) return;
     setIsGeneratingReport(true);
@@ -237,33 +233,18 @@ export default function PulsePage() {
                   )}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                {overview?.lastUpdated && (
-                  <p className="text-xs text-muted-foreground">
-                    Updated{" "}
-                    {new Date(overview.lastUpdated).toLocaleString("en-US", {
-                      hour: "numeric",
-                      minute: "2-digit",
-                      hour12: true,
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </p>
-                )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!reportScope || isGeneratingReport}
-                  title={reportDisabledReason ?? "Download Pulse PDF report"}
-                  onClick={handleDownloadReport}
-                  className="gap-1.5 text-xs border-[#EF4923]/40 text-[#EF4923] hover:bg-[#EF4923]/8 hover:border-[#EF4923] disabled:opacity-40"
-                >
-                  {isGeneratingReport
-                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Generating…</>
-                    : <><FileDown className="h-3.5 w-3.5" />Download Report</>
-                  }
-                </Button>
-              </div>
+              {overview?.lastUpdated && (
+                <p className="text-xs text-muted-foreground">
+                  Updated{" "}
+                  {new Date(overview.lastUpdated).toLocaleString("en-US", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                    hour12: true,
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -385,6 +366,8 @@ export default function PulsePage() {
                     filterLabel={filterLabel}
                     period={period}
                     onPeriodChange={setPeriod}
+                    onDownloadReport={handleDownloadReport}
+                    isGeneratingReport={isGeneratingReport}
                     className="h-full border-0 rounded-none"
                   />
                 )}
@@ -419,6 +402,8 @@ export default function PulsePage() {
                     filterLabel={filterLabel}
                     period={period}
                     onPeriodChange={setPeriod}
+                    onDownloadReport={handleDownloadReport}
+                    isGeneratingReport={isGeneratingReport}
                     className="h-full border-0 rounded-none"
                   />
                 )}

@@ -2,6 +2,8 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Download,
+  FileDown,
+  Loader2,
   LineChart as LineChartIcon,
   ScatterChart as ScatterIcon,
   Info,
@@ -195,6 +197,8 @@ interface HistoricalChartProps {
   filterLabel?: string | null;
   period: "yearly" | "monthly";
   onPeriodChange: (period: "yearly" | "monthly") => void;
+  onDownloadReport?: () => void;
+  isGeneratingReport?: boolean;
   className?: string;
 }
 
@@ -206,6 +210,8 @@ export default function HistoricalChart({
   filterLabel,
   period,
   onPeriodChange,
+  onDownloadReport,
+  isGeneratingReport = false,
   className = "",
 }: HistoricalChartProps) {
   const [chartType, setChartType] = useState<"line" | "scatter">("line");
@@ -332,15 +338,30 @@ export default function HistoricalChart({
               </div>
             )}
           </div>
-          <Button
-            size="sm"
-            onClick={handleDownload}
-            disabled={!selectedLayerId}
-            className="bg-[#EF4923] hover:bg-[#d4411f] text-white text-xs h-7 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Download className="h-3 w-3 mr-1" />
-            Download Data
-          </Button>
+          <div className="flex flex-col gap-1.5 shrink-0">
+            <Button
+              size="sm"
+              onClick={handleDownload}
+              disabled={!selectedLayerId}
+              className="bg-[#EF4923] hover:bg-[#d4411f] text-white text-xs h-7 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="h-3 w-3 mr-1" />
+              Download Data
+            </Button>
+            {onDownloadReport !== undefined && (
+              <Button
+                size="sm"
+                onClick={onDownloadReport}
+                disabled={isGeneratingReport || !selectedZip}
+                className="bg-[#EF4923] hover:bg-[#d4411f] text-white text-xs h-7 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isGeneratingReport
+                  ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Generating…</>
+                  : <><FileDown className="h-3 w-3 mr-1" />Download Report</>
+                }
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Description */}
