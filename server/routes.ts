@@ -6588,6 +6588,7 @@ Respond with valid JSON in this exact format:
 
       // Determine which user to impersonate
       const agentEmail = req.query.agentEmail as string | undefined;
+      const loggedInEmail = (dbUser?.email || req.user?.claims?.email) as string | undefined;
 
       // Use agentEmail directly if it's a valid @spyglassrealty.com address
       let userEmail: string | undefined;
@@ -6597,7 +6598,6 @@ Respond with valid JSON in this exact format:
 
       // Fall back to logged-in user if no agent selected or agent email not valid
       if (!userEmail) {
-        const loggedInEmail = dbUser?.email || req.user?.claims?.email;
         if (loggedInEmail?.endsWith('@spyglassrealty.com')) {
           userEmail = loggedInEmail;
         }
@@ -6740,8 +6740,23 @@ Respond with valid JSON in this exact format:
         }
       }
 
-      console.log(`[Company Calendar] Total merged events: ${events.length}`);
-      res.json({ events });
+      const isGenuineImpersonation =
+        !!userEmail &&
+        !!loggedInEmail &&
+        userEmail.toLowerCase() !== loggedInEmail.toLowerCase();
+
+      const filteredEvents = isGenuineImpersonation
+        ? events.filter((e) => e.source !== 'google_personal' && e.source !== 'google_fub')
+        : events;
+
+      if (isGenuineImpersonation) {
+        console.log(
+          `[Company Calendar] Impersonation strip: ${events.length - filteredEvents.length} personal/fub events removed (loggedIn=${loggedInEmail}, viewing=${userEmail})`
+        );
+      }
+
+      console.log(`[Company Calendar] Total merged events: ${filteredEvents.length}`);
+      res.json({ events: filteredEvents });
     } catch (error: any) {
       console.error('[Company Calendar] Error:', error.message);
       res.status(503).json({
