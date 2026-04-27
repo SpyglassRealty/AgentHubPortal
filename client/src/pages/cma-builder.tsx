@@ -230,14 +230,17 @@ function SubjectPropertyPanel({
   subject,
   onSet,
   onClear,
+  onAutoFetchResults,
 }: {
   subject: PropertyData | null;
   onSet: (p: PropertyData) => void;
   onClear: () => void;
+  onAutoFetchResults: (results: PropertyData[]) => void;
 }) {
   const [mode, setMode] = useState<"search" | "manual">("search");
   const [addressSearch, setAddressSearch] = useState("");
   const [searching, setSearching] = useState(false);
+  const [fetchingComps, setFetchingComps] = useState(false);
   const [searchResults, setSearchResults] = useState<PropertyData[]>([]);
   const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
   const subjectInputRef = useRef<HTMLInputElement>(null);
@@ -255,6 +258,30 @@ function SubjectPropertyPanel({
     baths: "",
     sqft: "",
   });
+
+  const fetchAutoComps = async (prop: PropertyData): Promise<PropertyData[]> => {
+    try {
+      const zip = prop.zip || prop.address?.match(/\d{5}/)?.[0] || "";
+      const beds = prop.beds || 0;
+      const baths = prop.baths || 0;
+      const sqft = prop.sqft || 0;
+      const body: any = {
+        statuses: ["A", "U", "C"],
+        limit: 25,
+        propertyType: "Single Family",
+        closedDateRange: 180,
+      };
+      if (zip) body.zip = zip;
+      if (beds > 0) { body.minBeds = Math.max(1, beds - 1); body.maxBeds = beds + 1; }
+      if (baths > 0) { body.minBaths = Math.max(1, baths - 0.5); body.maxBaths = baths + 0.5; }
+      if (sqft > 0) { body.minSqft = Math.round(sqft * 0.75); body.maxSqft = Math.round(sqft * 1.25); }
+      const res = await apiRequest("POST", "/api/cma/search-properties", body);
+      const data = await res.json();
+      return data.listings || [];
+    } catch {
+      return [];
+    }
+  };
 
   const fetchMapboxSuggestions = async (query: string) => {
     try {
@@ -362,7 +389,7 @@ function SubjectPropertyPanel({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showSubjectDropdown]);
 
-  const handleManualSave = () => {
+  const handleManualSave = async () => {
     const prop: PropertyData = {
       mlsNumber: "",
       address: `${manualEntry.streetAddress}, ${manualEntry.city}, ${manualEntry.state} ${manualEntry.zip}`,
@@ -377,7 +404,14 @@ function SubjectPropertyPanel({
       propertyType: "Residential",
       status: "Manual Entry",
     };
-    onSet(prop);
+    setFetchingComps(true);
+    try {
+      const results = await fetchAutoComps(prop);
+      onSet(prop);
+      onAutoFetchResults(results);
+    } finally {
+      setFetchingComps(false);
+    }
   };
 
   if (subject) {
@@ -522,6 +556,7 @@ function SubjectPropertyPanel({
                           setShowSubjectDropdown(false);
                           setAddressSearch("");
                           setSearched(false);
+                          fetchAutoComps(prop).then(onAutoFetchResults);
                         }}
                       >
                         <div className="min-w-0">
@@ -637,9 +672,13 @@ function SubjectPropertyPanel({
             <Button
               className="w-full bg-[#EF4923] hover:bg-[#d4401f] text-white"
               onClick={handleManualSave}
-              disabled={!manualEntry.streetAddress || !manualEntry.city}
+              disabled={!manualEntry.streetAddress || !manualEntry.city || fetchingComps}
             >
-              Set as Subject Property
+              {fetchingComps ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />Fetching Comps...</>
+              ) : (
+                "Set as Subject Property & Fetch Comps"
+              )}
             </Button>
           </TabsContent>
         </Tabs>
@@ -2120,6 +2159,7 @@ export default function CmaBuilderPage() {
     status: "draft",
   });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [autoFetchResults, setAutoFetchResults] = useState<PropertyData[]>([]);
 
   // Load existing CMA
   const { data: existingCma, isLoading: loadingCma } = useQuery({
@@ -2439,7 +2479,8 @@ export default function CmaBuilderPage() {
           <SubjectPropertyPanel
             subject={cma.subjectProperty}
             onSet={(p) => updateCma({ subjectProperty: { ...p, mlsNumber: normalizeMlsForDisplay(p.mlsNumber) } })}
-            onClear={() => updateCma({ subjectProperty: null })}
+            onClear={() => { updateCma({ subjectProperty: null }); setAutoFetchResults([]); }}
+            onAutoFetchResults={setAutoFetchResults}
           />
           <ComparablePropertiesPanel
             comps={cma.comparableProperties}
@@ -2452,6 +2493,53 @@ export default function CmaBuilderPage() {
             locked={!isStep2Complete}
           />
         </div>
+
+        {/* Auto-fetched Suggested Comparables */}
+        {autoFetchResults.length > 0 && cma.subjectProperty && (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-[#EF4923]" />
+                  Suggested Comparables (auto-fetched)
+                  <Badge variant="secondary">{autoFetchResults.length}</Badge>
+                </CardTitle>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {(() => {
+                  const p = cma.subjectProperty!;
+                  const zip = p.zip || p.address?.match(/\d{5}/)?.[0] || "";
+                  const beds = p.beds || 0;
+                  const baths = p.baths || 0;
+                  const sqft = p.sqft || 0;
+                  const parts: string[] = [];
+                  if (zip) parts.push(zip);
+                  if (beds > 0) parts.push(`${Math.max(1, beds - 1)}–${beds + 1} beds`);
+                  if (baths > 0) parts.push(`${baths} baths`);
+                  if (sqft > 0) parts.push(`${formatNumber(Math.round(sqft * 0.75))}–${formatNumber(Math.round(sqft * 1.25))} sqft`);
+                  parts.push("Active/Pending/Closed 180 days");
+                  return parts.join(" · ");
+                })()}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {autoFetchResults.map((prop, i) => {
+                  const isAdded = existingMlsNumbers.has(prop.mlsNumber);
+                  return (
+                    <PropertyCard
+                      key={i}
+                      property={prop}
+                      isAdded={isAdded}
+                      onAdd={addComp}
+                      variant="dropdown"
+                    />
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Search Properties (includes MLS paste) */}
         <SearchPropertiesSection
