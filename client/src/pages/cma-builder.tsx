@@ -268,18 +268,15 @@ function SubjectPropertyPanel({
       const body: any = {
         statuses: ["A", "U", "S"],
         limit: 25,
-        propertyType: "Single Family",
+        propertyType: "Single Family Residence",
         dateSoldDays: 180,
       };
       if (zip) body.zip = zip;
       if (beds > 0) { body.minBeds = Math.max(1, beds - 1); body.maxBeds = beds + 1; }
       if (baths > 0) { body.minBaths = Math.max(1, baths - 0.5); body.maxBaths = baths + 0.5; }
       if (sqft > 0) { body.minSqft = Math.round(sqft * 0.75); body.maxSqft = Math.round(sqft * 1.25); }
-      console.log('[AutoFetch] Subject prop:', JSON.stringify({ zip: prop.zip, beds: prop.beds, baths: prop.baths, sqft: prop.sqft, address: prop.address }));
-      console.log('[AutoFetch] Request body:', JSON.stringify(body));
       const res = await apiRequest("POST", "/api/cma/search-properties", body);
       const data = await res.json();
-      console.log('[AutoFetch] Response:', JSON.stringify(data).slice(0, 500));
       return data.listings || [];
     } catch {
       return [];
@@ -2483,7 +2480,7 @@ export default function CmaBuilderPage() {
             subject={cma.subjectProperty}
             onSet={(p) => updateCma({ subjectProperty: { ...p, mlsNumber: normalizeMlsForDisplay(p.mlsNumber) } })}
             onClear={() => { updateCma({ subjectProperty: null }); setAutoFetchResults([]); }}
-            onAutoFetchResults={(results) => { console.log('[AutoFetch] Setting results:', results.length); setAutoFetchResults(results); }}
+            onAutoFetchResults={setAutoFetchResults}
           />
           <ComparablePropertiesPanel
             comps={cma.comparableProperties}
