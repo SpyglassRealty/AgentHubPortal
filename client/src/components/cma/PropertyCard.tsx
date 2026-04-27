@@ -139,6 +139,12 @@ export function PropertyCard({ property, isAdded, onAdd, variant = 'search-resul
             <span>{property.beds}bd/{property.baths}ba</span>
             <span>|</span>
             <span>{formatNumber(property.sqft)} sqft</span>
+            {property.yearBuilt && property.yearBuilt > 0 && (
+              <>
+                <span>|</span>
+                <span>{property.yearBuilt}</span>
+              </>
+            )}
             {property.mlsNumber && (
               <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
                 MLS# {property.mlsNumber.replace(/^ACT[-]?/i, '')}
