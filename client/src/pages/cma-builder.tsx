@@ -242,6 +242,9 @@ function SubjectPropertyPanel({
   const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
   const subjectInputRef = useRef<HTMLInputElement>(null);
   const [subjectDropdownPos, setSubjectDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+  const [searched, setSearched] = useState(false);
+  const [mapboxSuggestions, setMapboxSuggestions] = useState<Array<{placeName: string; streetAddress: string; city: string; state: string; zip: string}>>([]);
+  const mapboxTokenRef = useRef<string | null>(null);
   const [manualEntry, setManualEntry] = useState({
     streetAddress: "",
     city: "",
@@ -253,10 +256,38 @@ function SubjectPropertyPanel({
     sqft: "",
   });
 
+  const fetchMapboxSuggestions = async (query: string) => {
+    try {
+      if (!mapboxTokenRef.current) {
+        const tokenRes = await fetch("/api/mapbox-token");
+        const tokenData = await tokenRes.json();
+        if (tokenData.token) mapboxTokenRef.current = tokenData.token;
+      }
+      if (!mapboxTokenRef.current) return;
+      const res = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxTokenRef.current}&types=address&country=US&limit=5`
+      );
+      const data = await res.json();
+      const suggestions = (data.features || []).map((f: any) => {
+        const ctx: Array<{id: string; text: string; short_code?: string}> = f.context || [];
+        const city = ctx.find((c) => c.id.startsWith("place."))?.text || "";
+        const regionCode = ctx.find((c) => c.id.startsWith("region."))?.short_code || "";
+        const state = regionCode.replace("US-", "") || "TX";
+        const zip = ctx.find((c) => c.id.startsWith("postcode."))?.text || "";
+        return { placeName: f.place_name as string, streetAddress: (f.text as string) || "", city, state, zip };
+      });
+      setMapboxSuggestions(suggestions);
+    } catch {
+      // silently fail — geocoding is best-effort
+    }
+  };
+
   const handleAddressSearch = async (query?: string) => {
     const searchQuery = query || addressSearch;
     if (!searchQuery.trim()) return;
     setSearching(true);
+    setSearched(false);
+    setMapboxSuggestions([]);
     try {
       const detected = detectSearchType(searchQuery);
       
@@ -277,9 +308,15 @@ function SubjectPropertyPanel({
       
       const res = await apiRequest("POST", "/api/cma/search-properties", body);
       const data = await res.json();
-      setSearchResults(data.listings || []);
+      const listings: PropertyData[] = data.listings || [];
+      setSearchResults(listings);
+      setSearched(true);
+      if (listings.length === 0) {
+        await fetchMapboxSuggestions(searchQuery);
+      }
     } catch {
       setSearchResults([]);
+      setSearched(true);
     } finally {
       setSearching(false);
     }
@@ -287,6 +324,8 @@ function SubjectPropertyPanel({
 
   // Debounced autocomplete effect
   useEffect(() => {
+    setSearched(false);
+    setMapboxSuggestions([]);
     if (addressSearch.length >= 3) {
       const timeoutId = setTimeout(() => {
         handleAddressSearch(addressSearch);
@@ -481,6 +520,7 @@ function SubjectPropertyPanel({
                       setSearchResults([]);
                       setShowSubjectDropdown(false);
                       setAddressSearch("");
+                      setSearched(false);
                     }}
                   >
                     <div className="min-w-0">
@@ -495,6 +535,51 @@ function SubjectPropertyPanel({
                 ))}
               </div>,
               document.body
+            )}
+            {searched && !searching && searchResults.length === 0 && (
+              <div className="space-y-2">
+                <div className="border rounded-lg p-3 text-sm text-center space-y-2">
+                  <p className="text-muted-foreground">No MLS listings found for this address.</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setMode("manual")}
+                  >
+                    Use Manual Entry instead
+                  </Button>
+                </div>
+                {mapboxSuggestions.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground px-1">Address suggestions (not in MLS):</p>
+                    <div className="border rounded-lg max-h-48 overflow-y-auto divide-y">
+                      {mapboxSuggestions.map((s, i) => (
+                        <div
+                          key={i}
+                          className="p-2 hover:bg-muted cursor-pointer text-sm"
+                          onClick={() => {
+                            setManualEntry({
+                              streetAddress: s.streetAddress,
+                              city: s.city,
+                              state: s.state || "TX",
+                              zip: s.zip,
+                              listPrice: "",
+                              beds: "",
+                              baths: "",
+                              sqft: "",
+                            });
+                            setMode("manual");
+                            setSearchResults([]);
+                            setMapboxSuggestions([]);
+                            setSearched(false);
+                          }}
+                        >
+                          <p className="truncate">{s.placeName}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </TabsContent>
 
