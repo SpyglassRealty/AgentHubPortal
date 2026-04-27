@@ -6,7 +6,7 @@ import { getFubClient, getFubClientAsync, getFubApiKey } from "./fubClient";
 import { getRezenClient } from "./rezenClient";
 import { generateSuggestionsForUser } from "./contextEngine";
 import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema, agentProfiles, agentDirectoryProfiles } from "@shared/schema";
-import { getGoogleCalendarEvents } from "./googleCalendarClient";
+import { getGoogleCalendarEvents, CALL_DUTY_CALENDAR_ID } from "./googleCalendarClient";
 import { extractPhotosFromRepliersList, debugPhotoFields } from "./lib/repliers-photo-utils";
 import { renderBlocks } from "./renderBlockRoutes";
 import multer from 'multer';
@@ -6715,7 +6715,9 @@ Respond with valid JSON in this exact format:
           // Tag source based on calendar name
           const calNameLower = calendarName.toLowerCase();
           let source: 'google_fub' | 'google_company' | 'google_personal';
-          if (calNameLower.includes('follow up boss') || calNameLower.includes('fub')) {
+          if (calendarId === CALL_DUTY_CALENDAR_ID) {
+            source = 'google_company';
+          } else if (calNameLower.includes('follow up boss') || calNameLower.includes('fub')) {
             source = 'google_fub';
           } else if (calNameLower.includes('spyglass') || calNameLower.includes('company')) {
             source = 'google_company';

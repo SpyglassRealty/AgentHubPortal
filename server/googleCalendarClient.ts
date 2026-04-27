@@ -16,7 +16,7 @@ import type { GoogleCalendarEvent } from '@shared/schema';
 // ── Constants ────────────────────────────────────────────────────────────
 
 /** Shared "Call Duty" calendar — all shift events go here */
-const CALL_DUTY_CALENDAR_ID = 'c_efca76ba29cbe0b028fc4951141ce67d9abefc25ab5e1ab0c1cf92d8ca9a402e@group.calendar.google.com';
+export const CALL_DUTY_CALENDAR_ID = 'c_efca76ba29cbe0b028fc4951141ce67d9abefc25ab5e1ab0c1cf92d8ca9a402e@group.calendar.google.com';
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
