@@ -253,10 +253,11 @@ function SubjectPropertyPanel({
     city: "",
     state: "TX",
     zip: "",
-    listPrice: "",
     beds: "",
     baths: "",
     sqft: "",
+    yearBuilt: "",
+    lotSizeAcres: "",
   });
 
   const fetchAutoComps = async (prop: PropertyData): Promise<PropertyData[]> => {
@@ -265,6 +266,8 @@ function SubjectPropertyPanel({
       const beds = prop.beds || 0;
       const baths = prop.baths || 0;
       const sqft = prop.sqft || 0;
+      const lotSizeAcres = prop.lotSizeAcres || 0;
+      const yearBuilt = prop.yearBuilt || 0;
       // Mirror handleSearch body structure exactly — integers only, no maxBeds/maxBaths, no propertyType default
       const body: any = {
         page: 1,
@@ -276,6 +279,8 @@ function SubjectPropertyPanel({
       if (beds > 0) body.minBeds = Math.max(1, beds - 1);
       if (baths > 0) body.minBaths = Math.max(1, Math.floor(baths) - 1 || 1);
       if (sqft > 0) { body.minSqft = Math.round(sqft * 0.75); body.maxSqft = Math.round(sqft * 1.25); }
+      if (lotSizeAcres > 0) { body.minLotAcres = +(lotSizeAcres * 0.5).toFixed(4); body.maxLotAcres = +(lotSizeAcres * 2).toFixed(4); }
+      if (yearBuilt > 0) { body.minYearBuilt = yearBuilt - 10; body.maxYearBuilt = yearBuilt + 10; }
       const res = await apiRequest("POST", "/api/cma/search-properties", body);
       const data = await res.json();
       return data.listings || [];
@@ -399,10 +404,12 @@ function SubjectPropertyPanel({
       city: manualEntry.city,
       state: manualEntry.state,
       zip: manualEntry.zip,
-      listPrice: parseInt(manualEntry.listPrice) || 0,
+      listPrice: 0,
       beds: parseInt(manualEntry.beds) || 0,
       baths: parseInt(manualEntry.baths) || 0,
       sqft: parseInt(manualEntry.sqft) || 0,
+      lotSizeAcres: parseFloat(manualEntry.lotSizeAcres) || null,
+      yearBuilt: parseInt(manualEntry.yearBuilt) || null,
       propertyType: "Residential",
       status: "Manual Entry",
     };
@@ -586,10 +593,11 @@ function SubjectPropertyPanel({
                             city: s.city,
                             state: s.state || "TX",
                             zip: s.zip,
-                            listPrice: "",
                             beds: "",
                             baths: "",
                             sqft: "",
+                            yearBuilt: "",
+                            lotSizeAcres: "",
                           });
                           setMode("manual");
                           setSearchResults([]);
@@ -645,13 +653,7 @@ function SubjectPropertyPanel({
                 onChange={(e) => setManualEntry({ ...manualEntry, zip: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-4 gap-2">
-              <Input
-                placeholder="List Price"
-                type="number"
-                value={manualEntry.listPrice}
-                onChange={(e) => setManualEntry({ ...manualEntry, listPrice: e.target.value })}
-              />
+            <div className="grid grid-cols-3 gap-2">
               <Input
                 placeholder="Beds"
                 type="number"
@@ -669,6 +671,21 @@ function SubjectPropertyPanel({
                 type="number"
                 value={manualEntry.sqft}
                 onChange={(e) => setManualEntry({ ...manualEntry, sqft: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                placeholder="Year Built"
+                type="number"
+                value={manualEntry.yearBuilt}
+                onChange={(e) => setManualEntry({ ...manualEntry, yearBuilt: e.target.value })}
+              />
+              <Input
+                placeholder="Lot Size (acres)"
+                type="number"
+                step="0.01"
+                value={manualEntry.lotSizeAcres}
+                onChange={(e) => setManualEntry({ ...manualEntry, lotSizeAcres: e.target.value })}
               />
             </div>
             <Button
@@ -2318,8 +2335,7 @@ export default function CmaBuilderPage() {
   const isStep1Complete = Boolean(
     cma.subjectProperty &&
     cma.subjectProperty.address?.trim().length > 0 &&
-    cma.subjectProperty.listPrice > 0 &&
-    (cma.subjectProperty.sqft > 0)
+    cma.subjectProperty.city?.trim().length > 0
   );
   const isStep2Complete = cma.comparableProperties.length > 0;
 
