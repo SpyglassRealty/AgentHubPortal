@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Layout from "@/components/layout";
-import { Activity, PanelLeftClose, PanelLeftOpen, MapPin, X, Navigation } from "lucide-react";
+import { Activity, PanelLeftClose, PanelLeftOpen, MapPin, X, Navigation, FileDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { generatePulseReport, type ReportScope } from "@/components/pulse/generateReport";
 import {
   DataLayerSidebar,
   ZipSummaryPanel,
@@ -32,6 +33,7 @@ export default function PulsePage() {
   const [period, setPeriod] = useState<"yearly" | "monthly">("yearly");
   const [filteredZips, setFilteredZips] = useState<string[] | null>(null);
   const [filterLabel, setFilterLabel] = useState<string | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const mapSectionRef = useRef<HTMLDivElement>(null);
 
   const handleZipSelect = useCallback((zip: string) => {
@@ -179,6 +181,31 @@ export default function PulsePage() {
     return allZipData.filter(item => filterSet.has(item.zip));
   }, [allZipData, filteredZips]);
 
+  // Report scope — requires a ZIP (set when community containingZip resolves)
+  const reportScope: ReportScope | null = useMemo(() => {
+    if (!selectedZip) return null;
+    if (selectedCommunity) {
+      return { type: "community", communitySlug: selectedCommunity.slug, name: selectedCommunity.name, zip: selectedZip };
+    }
+    return { type: "zip", zip: selectedZip };
+  }, [selectedZip, selectedCommunity]);
+
+  const reportDisabledReason = !selectedZip
+    ? (selectedCommunity ? "ZIP data unavailable for this neighborhood" : "Select a ZIP code or neighborhood to generate a report")
+    : null;
+
+  const handleDownloadReport = useCallback(async () => {
+    if (!reportScope || isGeneratingReport) return;
+    setIsGeneratingReport(true);
+    try {
+      await generatePulseReport(reportScope, overview ?? null);
+    } catch (err) {
+      console.error("[Pulse] PDF generation failed:", err);
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  }, [reportScope, isGeneratingReport, overview]);
+
   return (
     <Layout>
       <div className="max-w-[1600px] mx-auto space-y-6">
@@ -210,18 +237,33 @@ export default function PulsePage() {
                   )}
                 </p>
               </div>
-              {overview?.lastUpdated && (
-                <p className="text-xs text-muted-foreground">
-                  Updated{" "}
-                  {new Date(overview.lastUpdated).toLocaleString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                    hour12: true,
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </p>
-              )}
+              <div className="flex items-center gap-3">
+                {overview?.lastUpdated && (
+                  <p className="text-xs text-muted-foreground">
+                    Updated{" "}
+                    {new Date(overview.lastUpdated).toLocaleString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                      hour12: true,
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </p>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!reportScope || isGeneratingReport}
+                  title={reportDisabledReason ?? "Download Pulse PDF report"}
+                  onClick={handleDownloadReport}
+                  className="gap-1.5 text-xs border-[#EF4923]/40 text-[#EF4923] hover:bg-[#EF4923]/8 hover:border-[#EF4923] disabled:opacity-40"
+                >
+                  {isGeneratingReport
+                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Generating…</>
+                    : <><FileDown className="h-3.5 w-3.5" />Download Report</>
+                  }
+                </Button>
+              </div>
             </div>
           </div>
         </div>
