@@ -287,14 +287,13 @@ function SubjectPropertyPanel({
     if (!searchQuery.trim()) return;
     setSearching(true);
     setSearched(false);
-    setMapboxSuggestions([]);
     try {
       const detected = detectSearchType(searchQuery);
-      
+
       let body: any = {
         statuses: ["A", "U"], // Include active AND sold/unavailable (subject may be sold)
       };
-      
+
       if (detected.type === 'mls') {
         // MLS number search - search by exact MLS
         body.mlsNumbers = [detected.value];
@@ -305,15 +304,12 @@ function SubjectPropertyPanel({
         body.limit = 5;
         body.fuzzySearch = true;
       }
-      
+
       const res = await apiRequest("POST", "/api/cma/search-properties", body);
       const data = await res.json();
       const listings: PropertyData[] = data.listings || [];
       setSearchResults(listings);
       setSearched(true);
-      if (listings.length === 0) {
-        await fetchMapboxSuggestions(searchQuery);
-      }
     } catch {
       setSearchResults([]);
       setSearched(true);
@@ -322,24 +318,25 @@ function SubjectPropertyPanel({
     }
   };
 
-  // Debounced autocomplete effect
+  // Debounced autocomplete effect — fires MLS search and Mapbox geocoding in parallel
   useEffect(() => {
     setSearched(false);
-    setMapboxSuggestions([]);
     if (addressSearch.length >= 3) {
       const timeoutId = setTimeout(() => {
         handleAddressSearch(addressSearch);
+        fetchMapboxSuggestions(addressSearch);
       }, 300);
       return () => clearTimeout(timeoutId);
     } else {
       setSearchResults([]);
+      setMapboxSuggestions([]);
       setShowSubjectDropdown(false);
     }
   }, [addressSearch]);
 
-  // Update dropdown position when results arrive
+  // Update dropdown position when MLS results or Mapbox suggestions arrive
   useEffect(() => {
-    if (searchResults.length > 0 && subjectInputRef.current) {
+    if ((searchResults.length > 0 || mapboxSuggestions.length > 0) && subjectInputRef.current) {
       const rect = subjectInputRef.current.getBoundingClientRect();
       setSubjectDropdownPos({
         top: rect.bottom + window.scrollY + 4,
@@ -347,10 +344,10 @@ function SubjectPropertyPanel({
         width: rect.width,
       });
       setShowSubjectDropdown(true);
-    } else {
+    } else if (searchResults.length === 0 && mapboxSuggestions.length === 0) {
       setShowSubjectDropdown(false);
     }
-  }, [searchResults]);
+  }, [searchResults, mapboxSuggestions]);
 
   // Click-outside handler for subject dropdown
   useEffect(() => {
@@ -500,10 +497,10 @@ function SubjectPropertyPanel({
                 {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               </Button>
             </div>
-            {showSubjectDropdown && searchResults.length > 0 && createPortal(
+            {showSubjectDropdown && (searchResults.length > 0 || mapboxSuggestions.length > 0) && createPortal(
               <div
                 data-subject-dropdown
-                className="fixed bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto divide-y"
+                className="fixed bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-y-auto"
                 style={{
                   top: subjectDropdownPos.top,
                   left: subjectDropdownPos.left,
@@ -511,74 +508,79 @@ function SubjectPropertyPanel({
                   zIndex: 9999,
                 }}
               >
-                {searchResults.map((prop, i) => (
-                  <button
-                    key={i}
-                    className="w-full p-2 hover:bg-gray-50 cursor-pointer flex items-center justify-between text-sm text-left"
-                    onClick={() => {
-                      onSet(prop);
-                      setSearchResults([]);
-                      setShowSubjectDropdown(false);
-                      setAddressSearch("");
-                      setSearched(false);
-                    }}
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{prop.address}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatPrice(prop.listPrice)} · {prop.beds}bd/{prop.baths}ba · {formatNumber(prop.sqft)} sqft
-                        {prop.mlsNumber && <span className="ml-1 text-gray-400">· MLS# {normalizeMlsForDisplay(prop.mlsNumber)}</span>}
-                      </p>
-                    </div>
-                    <Plus className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                  </button>
-                ))}
+                {searchResults.length > 0 && (
+                  <>
+                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-gray-50 border-b sticky top-0">MLS Listings</div>
+                    {searchResults.map((prop, i) => (
+                      <button
+                        key={i}
+                        className="w-full p-2 hover:bg-orange-50 cursor-pointer flex items-center justify-between text-sm text-left border-b last:border-b-0 group"
+                        onClick={() => {
+                          onSet(prop);
+                          setSearchResults([]);
+                          setMapboxSuggestions([]);
+                          setShowSubjectDropdown(false);
+                          setAddressSearch("");
+                          setSearched(false);
+                        }}
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium truncate group-hover:text-[#EF4923]">{prop.address}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatPrice(prop.listPrice)} · {prop.beds}bd/{prop.baths}ba · {formatNumber(prop.sqft)} sqft
+                            {prop.mlsNumber && <span className="ml-1 text-gray-400">· MLS# {normalizeMlsForDisplay(prop.mlsNumber)}</span>}
+                          </p>
+                        </div>
+                        <Plus className="h-4 w-4 flex-shrink-0 text-muted-foreground group-hover:text-[#EF4923]" />
+                      </button>
+                    ))}
+                  </>
+                )}
+                {mapboxSuggestions.length > 0 && (
+                  <>
+                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-gray-50 border-b sticky top-0">Address suggestions (not in MLS)</div>
+                    {mapboxSuggestions.map((s, i) => (
+                      <button
+                        key={i}
+                        className="w-full p-2 hover:bg-orange-50 cursor-pointer flex items-center text-sm text-left border-b last:border-b-0 group"
+                        onClick={() => {
+                          setManualEntry({
+                            streetAddress: s.streetAddress,
+                            city: s.city,
+                            state: s.state || "TX",
+                            zip: s.zip,
+                            listPrice: "",
+                            beds: "",
+                            baths: "",
+                            sqft: "",
+                          });
+                          setMode("manual");
+                          setSearchResults([]);
+                          setMapboxSuggestions([]);
+                          setShowSubjectDropdown(false);
+                          setSearched(false);
+                          setAddressSearch("");
+                        }}
+                      >
+                        <MapPin className="h-4 w-4 mr-2 flex-shrink-0 text-muted-foreground group-hover:text-[#EF4923]" />
+                        <p className="truncate group-hover:text-[#EF4923]">{s.placeName}</p>
+                      </button>
+                    ))}
+                  </>
+                )}
               </div>,
               document.body
             )}
-            {searched && !searching && searchResults.length === 0 && (
-              <div className="space-y-2">
-                <div className="border rounded-lg p-3 text-sm text-center space-y-2">
-                  <p className="text-muted-foreground">No MLS listings found for this address.</p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setMode("manual")}
-                  >
-                    Use Manual Entry instead
-                  </Button>
-                </div>
-                {mapboxSuggestions.length > 0 && (
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground px-1">Address suggestions (not in MLS):</p>
-                    <div className="border rounded-lg max-h-48 overflow-y-auto divide-y">
-                      {mapboxSuggestions.map((s, i) => (
-                        <div
-                          key={i}
-                          className="p-2 hover:bg-muted cursor-pointer text-sm"
-                          onClick={() => {
-                            setManualEntry({
-                              streetAddress: s.streetAddress,
-                              city: s.city,
-                              state: s.state || "TX",
-                              zip: s.zip,
-                              listPrice: "",
-                              beds: "",
-                              baths: "",
-                              sqft: "",
-                            });
-                            setMode("manual");
-                            setSearchResults([]);
-                            setMapboxSuggestions([]);
-                            setSearched(false);
-                          }}
-                        >
-                          <p className="truncate">{s.placeName}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+            {searched && !searching && searchResults.length === 0 && mapboxSuggestions.length === 0 && (
+              <div className="border rounded-lg p-3 text-sm text-center space-y-2">
+                <p className="text-muted-foreground">No MLS listings found for this address.</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setMode("manual")}
+                >
+                  Use Manual Entry instead
+                </Button>
               </div>
             )}
           </TabsContent>
