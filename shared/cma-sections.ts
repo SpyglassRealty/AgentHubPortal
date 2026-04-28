@@ -115,6 +115,45 @@ export interface CMAComparable {
   county?: string;
   area?: string;
   originalListPrice?: number;
+  taxes?: number;
+  offMarketDate?: string;
+  schoolDistrict?: string;
+  schoolHigh?: string;
+  schoolMiddle?: string;
+  schoolElementary?: string;
+  cooling?: string;
+  heating?: string;
+  appliances?: string;
+  fireplace?: string;
+  fireplaceCount?: number;
+  flooring?: string;
+  foundation?: string;
+  roof?: string;
+  pool?: string;
+  parkingSpaces?: number;
+  parkingFeatures?: string;
+  lotFeatures?: string;
+  exteriorFeatures?: string;
+  interiorFeatures?: string;
+  laundry?: string;
+  sewer?: string;
+  utilities?: string;
+  constructionMaterials?: string;
+  fencing?: string;
+  patioFeatures?: string;
+  levels?: string;
+  waterSource?: string;
+  windowFeatures?: string;
+  securityFeatures?: string;
+  ownership?: string;
+  propertyCondition?: string;
+  directionFaces?: string;
+  coveredSpaces?: number;
+  otherStructures?: string;
+  disclosures?: string;
+  greenEnergy?: string;
+  communityFeatures?: string;
+  accessibilityFeatures?: string;
 }
 
 export interface CMAAgentInfo {
