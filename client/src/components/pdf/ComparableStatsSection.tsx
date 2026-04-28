@@ -21,9 +21,14 @@ export function ComparableStatsSection({ data }: ComparableStatsSectionProps) {
     c.status.toLowerCase().includes('sold') || c.status.toLowerCase().includes('closed')
   ).length;
   
-  const pendingCount = comparables.filter(c => 
+  const pendingCount = comparables.filter(c =>
     c.status.toLowerCase().includes('pending')
   ).length;
+
+  const withSqft = comparables.filter(c => (c.sqft || 0) > 0);
+  const avgSqft = withSqft.length > 0
+    ? Math.round(withSqft.reduce((sum, c) => sum + c.sqft, 0) / withSqft.length)
+    : 0;
 
   return (
     <Page size="LETTER" style={styles.page}>
@@ -119,9 +124,7 @@ export function ComparableStatsSection({ data }: ComparableStatsSectionProps) {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <Text style={{ fontSize: 11, color: MEDIUM_GRAY }}>Avg. Square Footage</Text>
             <Text style={{ fontSize: 11, fontWeight: 600, color: SPYGLASS_NAVY }}>
-              {comparables.length > 0 
-                ? Math.round(comparables.reduce((sum, c) => sum + (c.sqft || 0), 0) / comparables.length).toLocaleString()
-                : '-'} sq ft
+              {avgSqft > 0 ? avgSqft.toLocaleString() : '-'} sq ft
             </Text>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>

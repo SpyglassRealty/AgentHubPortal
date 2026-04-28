@@ -12,6 +12,8 @@ import { ChapterHeaderSection } from './ChapterHeaderSection';
 import { SummaryComparablesSection } from './SummaryComparablesSection';
 import { PropertyDetailsSection } from './PropertyDetailsSection';
 import { ComparableStatsSection } from './ComparableStatsSection';
+import { SoldPropertyAnalysisSection } from './SoldPropertyAnalysisSection';
+import { TimeToSellSection } from './TimeToSellSection';
 
 interface CMAPdfDocumentProps {
   data: CMAReportData;
@@ -112,7 +114,13 @@ export function CMAPdfDocument({
       
       case 'comparable_stats':
         return <ComparableStatsSection key={sectionId} data={data} />;
-      
+
+      case 'sold_property_analysis':
+        return <SoldPropertyAnalysisSection key={sectionId} data={data} />;
+
+      case 'time_to_sell':
+        return <TimeToSellSection key={sectionId} data={data} />;
+
       default:
         return null;
     }
@@ -136,3 +144,5 @@ export { ChapterHeaderSection } from './ChapterHeaderSection';
 export { SummaryComparablesSection } from './SummaryComparablesSection';
 export { PropertyDetailsSection } from './PropertyDetailsSection';
 export { ComparableStatsSection } from './ComparableStatsSection';
+export { SoldPropertyAnalysisSection } from './SoldPropertyAnalysisSection';
+export { TimeToSellSection } from './TimeToSellSection';

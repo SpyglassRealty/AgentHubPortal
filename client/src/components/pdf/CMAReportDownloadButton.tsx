@@ -99,6 +99,12 @@ export function CMAReportDownloadButton({ cma, disabled = false }: CMAReportDown
           description: c.description || undefined,
           listDate: c.listDate || undefined,
           soldDate: c.soldDate || undefined,
+          garageSpaces: (c as any).garageSpaces || undefined,
+          subdivision: (c as any).subdivision || undefined,
+          stories: (c as any).stories || undefined,
+          county: (c as any).county || undefined,
+          area: (c as any).area || undefined,
+          originalListPrice: (c as any).originalPrice || c.listPrice || undefined,
         };
       });
 

@@ -114,29 +114,77 @@ export function PropertyDetailsSection({ property, index, company }: PropertyDet
           </View>
 
           <View style={[styles.card, { marginTop: 16, padding: 12 }]}>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
-              <View style={{ width: '45%' }}>
-                <Text style={{ fontSize: 10, color: MEDIUM_GRAY }}>Price/Sq Ft</Text>
-                <Text style={{ fontSize: 12, fontWeight: 600, color: SPYGLASS_ORANGE }}>
-                  ${property.pricePerSqft || '-'}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              <View style={{ width: '30%' }}>
+                <Text style={{ fontSize: 9, color: MEDIUM_GRAY }}>Price/Sq Ft</Text>
+                <Text style={{ fontSize: 11, fontWeight: 600, color: SPYGLASS_ORANGE }}>
+                  {property.pricePerSqft ? `$${property.pricePerSqft}` : '-'}
                 </Text>
               </View>
-              <View style={{ width: '45%' }}>
-                <Text style={{ fontSize: 10, color: MEDIUM_GRAY }}>Days on Market</Text>
-                <Text style={{ fontSize: 12, fontWeight: 600, color: SPYGLASS_NAVY }}>
-                  {property.daysOnMarket || '-'} days
+              <View style={{ width: '30%' }}>
+                <Text style={{ fontSize: 9, color: MEDIUM_GRAY }}>Days on Market</Text>
+                <Text style={{ fontSize: 11, fontWeight: 600, color: SPYGLASS_NAVY }}>
+                  {property.daysOnMarket != null ? `${property.daysOnMarket}` : '-'}
                 </Text>
               </View>
-              <View style={{ width: '45%' }}>
-                <Text style={{ fontSize: 10, color: MEDIUM_GRAY }}>Lot Size</Text>
-                <Text style={{ fontSize: 12, fontWeight: 600, color: SPYGLASS_NAVY }}>
-                  {property.lotSize ? formatNumber(property.lotSize) + ' sq ft' : '-'}
+              <View style={{ width: '30%' }}>
+                <Text style={{ fontSize: 9, color: MEDIUM_GRAY }}>List Price</Text>
+                <Text style={{ fontSize: 11, fontWeight: 600, color: SPYGLASS_NAVY }}>
+                  {property.listPrice ? `$${formatPrice(property.listPrice)}` : '-'}
                 </Text>
               </View>
-              <View style={{ width: '45%' }}>
-                <Text style={{ fontSize: 10, color: MEDIUM_GRAY }}>Distance</Text>
-                <Text style={{ fontSize: 12, fontWeight: 600, color: SPYGLASS_NAVY }}>
-                  {property.distance ? property.distance.toFixed(2) + ' mi' : '-'}
+              <View style={{ width: '30%' }}>
+                <Text style={{ fontSize: 9, color: MEDIUM_GRAY }}>Orig. List Price</Text>
+                <Text style={{ fontSize: 11, fontWeight: 600, color: SPYGLASS_NAVY }}>
+                  {property.originalListPrice ? `$${formatPrice(property.originalListPrice)}` : '-'}
+                </Text>
+              </View>
+              <View style={{ width: '30%' }}>
+                <Text style={{ fontSize: 9, color: MEDIUM_GRAY }}>Sold Date</Text>
+                <Text style={{ fontSize: 11, fontWeight: 600, color: SPYGLASS_NAVY }}>
+                  {property.soldDate || '-'}
+                </Text>
+              </View>
+              <View style={{ width: '30%' }}>
+                <Text style={{ fontSize: 9, color: MEDIUM_GRAY }}>Lot Size</Text>
+                <Text style={{ fontSize: 11, fontWeight: 600, color: SPYGLASS_NAVY }}>
+                  {property.lotSize ? `${formatNumber(property.lotSize)} sf` : '-'}
+                </Text>
+              </View>
+              <View style={{ width: '30%' }}>
+                <Text style={{ fontSize: 9, color: MEDIUM_GRAY }}>Acres</Text>
+                <Text style={{ fontSize: 11, fontWeight: 600, color: SPYGLASS_NAVY }}>
+                  {property.lotSize ? (property.lotSize / 43560).toFixed(3) : '-'}
+                </Text>
+              </View>
+              <View style={{ width: '30%' }}>
+                <Text style={{ fontSize: 9, color: MEDIUM_GRAY }}>Garage</Text>
+                <Text style={{ fontSize: 11, fontWeight: 600, color: SPYGLASS_NAVY }}>
+                  {property.garageSpaces != null ? `${property.garageSpaces}` : '-'}
+                </Text>
+              </View>
+              <View style={{ width: '30%' }}>
+                <Text style={{ fontSize: 9, color: MEDIUM_GRAY }}>County</Text>
+                <Text style={{ fontSize: 11, fontWeight: 600, color: SPYGLASS_NAVY }}>
+                  {property.county || '-'}
+                </Text>
+              </View>
+              <View style={{ width: '30%' }}>
+                <Text style={{ fontSize: 9, color: MEDIUM_GRAY }}>Area</Text>
+                <Text style={{ fontSize: 11, fontWeight: 600, color: SPYGLASS_NAVY }}>
+                  {property.area || '-'}
+                </Text>
+              </View>
+              <View style={{ width: '30%' }}>
+                <Text style={{ fontSize: 9, color: MEDIUM_GRAY }}>Subdivision</Text>
+                <Text style={{ fontSize: 11, fontWeight: 600, color: SPYGLASS_NAVY }}>
+                  {property.subdivision || '-'}
+                </Text>
+              </View>
+              <View style={{ width: '30%' }}>
+                <Text style={{ fontSize: 9, color: MEDIUM_GRAY }}>Stories</Text>
+                <Text style={{ fontSize: 11, fontWeight: 600, color: SPYGLASS_NAVY }}>
+                  {property.stories != null ? `${property.stories}` : '-'}
                 </Text>
               </View>
             </View>
@@ -146,15 +194,28 @@ export function PropertyDetailsSection({ property, index, company }: PropertyDet
         {additionalPhotos.length > 0 && (
           <View style={{ flex: 1, gap: 6 }}>
             {additionalPhotos.map((photo, idx) => (
-              <Image 
-                key={idx} 
-                src={photo} 
-                style={{ width: '100%', height: 70, objectFit: 'cover', borderRadius: 4 }} 
+              <Image
+                key={idx}
+                src={photo}
+                style={{ width: '100%', height: 70, objectFit: 'cover', borderRadius: 4 }}
               />
             ))}
           </View>
         )}
       </View>
+
+      {property.description && (
+        <View style={[styles.card, { marginTop: 16, padding: 12 }]}>
+          <Text style={{ fontSize: 10, fontWeight: 600, color: SPYGLASS_NAVY, marginBottom: 6 }}>
+            Remarks
+          </Text>
+          <Text style={{ fontSize: 9, color: MEDIUM_GRAY, lineHeight: 1.5 }}>
+            {property.description.length > 600
+              ? property.description.slice(0, 600) + '...'
+              : property.description}
+          </Text>
+        </View>
+      )}
     </Page>
   );
 }

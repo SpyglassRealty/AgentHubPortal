@@ -32,6 +32,8 @@ export const CMA_REPORT_SECTIONS: CmaSectionConfig[] = [
   { id: 'online_valuation', name: 'Online Valuation Analysis', category: 'analysis', defaultEnabled: false, icon: 'Globe' },
   { id: 'price_per_sqft', name: 'Average Price Per Sq. Ft.', category: 'analysis', defaultEnabled: true, icon: 'BarChart' },
   { id: 'comparable_stats', name: 'Comparable Property Statistics', category: 'analysis', defaultEnabled: true, icon: 'PieChart' },
+  { id: 'sold_property_analysis', name: 'Sold Property Analysis', category: 'analysis', defaultEnabled: true, icon: 'BarChart2' },
+  { id: 'time_to_sell', name: 'Time to Sell', category: 'analysis', defaultEnabled: true, icon: 'Clock' },
 ];
 
 export type CmaSectionId = typeof CMA_REPORT_SECTIONS[number]['id'];
@@ -107,6 +109,12 @@ export interface CMAComparable {
   description?: string;      // MLS property description ("About This Home")
   listDate?: string;         // Date property was listed
   soldDate?: string;         // Date property was sold (for closed properties)
+  garageSpaces?: number;
+  subdivision?: string;
+  stories?: number;
+  county?: string;
+  area?: string;
+  originalListPrice?: number;
 }
 
 export interface CMAAgentInfo {
