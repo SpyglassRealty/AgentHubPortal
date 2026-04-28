@@ -675,7 +675,7 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
             
             // Sold price percentage
             const listPrice = comp.listPrice || comp.price;
-            const soldPrice = comp.soldPrice;
+            const soldPrice = comp.soldPrice || (comp as any).closePrice || null;
             const soldPct = (listPrice && soldPrice) ? (soldPrice / listPrice) * 100 : null;
             const soldPctColor = soldPct ? (soldPct >= 100 ? 'text-green-600' : soldPct >= 95 ? 'text-gray-900' : 'text-red-600') : '';
             
@@ -787,11 +787,11 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                       </div>
                     ) : null}
 
-                    {comp.soldPrice ? (
+                    {soldPrice ? (
                       <div className="flex justify-between">
                         <span className="text-gray-500">Sold Price</span>
                         <span>
-                          ${comp.soldPrice.toLocaleString()}
+                          ${soldPrice.toLocaleString()}
                           {soldPct !== null ? (
                             <span className={`ml-1 ${soldPctColor}`}>({soldPct.toFixed(1)}%)</span>
                           ) : null}
