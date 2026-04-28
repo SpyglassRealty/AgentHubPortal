@@ -7,6 +7,7 @@ import { getRezenClient } from "./rezenClient";
 import { generateSuggestionsForUser } from "./contextEngine";
 import { type User, saveContentIdeaSchema, updateContentIdeaStatusSchema, agentProfiles, agentDirectoryProfiles } from "@shared/schema";
 import { getGoogleCalendarEvents, CALL_DUTY_CALENDAR_ID } from "./googleCalendarClient";
+import { COMPANY_CALENDAR_ID, SHARED_CALENDAR_MAP } from "./calendarRegistry";
 import { extractPhotosFromRepliersList, debugPhotoFields } from "./lib/repliers-photo-utils";
 import { renderBlocks } from "./renderBlockRoutes";
 import multer from 'multer';
@@ -6507,7 +6508,6 @@ Respond with valid JSON in this exact format:
   // ── Google Company Calendar (RBAC: Developer=all, Admin/Agent=company only) ──
   // Developer: Lists ALL calendars for the impersonated user via domain-wide delegation
   // Admin/Agent: Spyglass Company Events shared calendar only via service account
-  const COMPANY_CALENDAR_ID = 'c_0eb1d92fe687aa77a4d881712dc21f4a4429c55594c3abb56ce2f768f3651b8f@group.calendar.google.com';
 
   app.get('/api/google/company-calendar', isAuthenticated, async (req: any, res) => {
     try {
@@ -6747,15 +6747,17 @@ Respond with valid JSON in this exact format:
 
           const isAllDay = !!ev.start?.date;
 
-          // Tag source based on calendar name
+          // Tag source: registry lookup first (explicit ID-based for known shared calendars),
+          // then FUB substring fallback (FUB calendars use varied naming),
+          // else personal.
+          // Registry: SHARED_CALENDARS in ./calendarRegistry.
           const calNameLower = calendarName.toLowerCase();
           let source: 'google_fub' | 'google_company' | 'google_personal';
-          if (calendarId === CALL_DUTY_CALENDAR_ID) {
-            source = 'google_company';
+          const sharedEntry = SHARED_CALENDAR_MAP.get(calendarId);
+          if (sharedEntry) {
+            source = sharedEntry.sourceTag;
           } else if (calNameLower.includes('follow up boss') || calNameLower.includes('fub')) {
             source = 'google_fub';
-          } else if (calNameLower.includes('spyglass') || calNameLower.includes('company')) {
-            source = 'google_company';
           } else {
             source = 'google_personal';
           }
