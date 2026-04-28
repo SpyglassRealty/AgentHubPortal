@@ -6519,10 +6519,13 @@ Respond with valid JSON in this exact format:
       const dbUser = await getDbUser(req);
       const role = dbUser?.role || 'agent'; // Default to most restrictive
 
-      // Shared time range: current month +/- 1 month
+      // Shared time range: previous month → 12 months ahead (13-month window)
+      // Wide window prevents truncation of recurring events. maxResults bumped to 2500
+      // (Google API max) below to handle larger payloads. Pagination via nextPageToken
+      // is the correct long-term fix when calendar volume grows beyond that.
       const now = new Date();
       const timeMin = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-      const timeMax = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59).toISOString();
+      const timeMax = new Date(now.getFullYear(), now.getMonth() + 13, 0, 23, 59, 59).toISOString();
 
       const colorMap: Record<string, string> = {
         training: 'orange',
@@ -6552,7 +6555,10 @@ Respond with valid JSON in this exact format:
           timeZone: 'America/Chicago',
           singleEvents: true,
           orderBy: 'startTime',
-          maxResults: 500,
+          // maxResults: 2500 is Google API max. Pagination via nextPageToken
+          // is the correct long-term fix when company calendar volume grows.
+          // TODO: implement nextPageToken loop if events approach this limit.
+          maxResults: 2500,
         });
 
         const items = response.data.items || [];
@@ -6692,7 +6698,10 @@ Respond with valid JSON in this exact format:
               timeZone: 'America/Chicago',
               singleEvents: true,
               orderBy: 'startTime',
-              maxResults: 500,
+              // maxResults: 2500 is Google API max. Pagination via nextPageToken
+              // is the correct long-term fix when company calendar volume grows.
+              // TODO: implement nextPageToken loop if events approach this limit.
+              maxResults: 2500,
             });
             const items = response.data.items || [];
             console.log(`[Company Calendar]   ${calName}: ${items.length} events`);
@@ -6880,10 +6889,11 @@ Respond with valid JSON in this exact format:
 
       const calendar = google.calendar({ version: 'v3', auth });
 
-      // Current month +/- 1 month
+      // Previous month → 12 months ahead (13-month window)
+      // Matches company calendar window so holidays render across the full forward range.
       const now = new Date();
       const timeMin = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-      const timeMax = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59).toISOString();
+      const timeMax = new Date(now.getFullYear(), now.getMonth() + 13, 0, 23, 59, 59).toISOString();
 
       const response = await calendar.events.list({
         calendarId: US_HOLIDAY_CALENDAR_ID,
