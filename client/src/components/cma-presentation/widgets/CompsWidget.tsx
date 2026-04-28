@@ -772,115 +772,60 @@ function SideBySideComparison({ comparables, subjectProperty, geocodedCoords, ma
                   {/* Listing Details */}
                   <div className="pt-4 border-t border-gray-200 space-y-1 text-xs">
                     <div className="font-medium">Listing Details</div>
-                    
-                    {/* DEBUG: Log full comp object */}
-                    {(() => {
-                      console.log(`🔍 FULL COMP OBJECT - ${comp.address}:`, comp);
-                      return null;
-                    })()}
-                    
-                    {/* List Price */}
-                    {listPrice && (
-                      <div>List Price: ${listPrice.toLocaleString()}</div>
-                    )}
-                    
-                    {/* Listing Date - RESO compliant MM/DD/YYYY format */}
-                    <div>
-                      Listing Date: {comp.listDate ? (() => {
-                        const date = new Date(comp.listDate);
-                        if (isNaN(date.getTime())) return '—';
-                        const mm = String(date.getMonth() + 1).padStart(2, '0');
-                        const dd = String(date.getDate()).padStart(2, '0');
-                        const yyyy = date.getFullYear();
-                        return `${mm}/${dd}/${yyyy}`;
-                      })() : '—'}
-                    </div>
-                    
-                    {/* Price per square foot */}
-                    {compPrice && compSqft && (
-                      <div>$/Sqft: ${Math.round(compPrice / compSqft)}</div>
-                    )}
-                    
-                    {/* Days on Market - use extractDOM utility prioritizing simpleDaysOnMarket */}
+
+                    {comp.originalPrice ? (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Orig. Price</span>
+                        <span>${comp.originalPrice.toLocaleString()}</span>
+                      </div>
+                    ) : null}
+
+                    {listPrice ? (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">List Price</span>
+                        <span>${listPrice.toLocaleString()}</span>
+                      </div>
+                    ) : null}
+
+                    {comp.soldPrice ? (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Sold Price</span>
+                        <span>
+                          ${comp.soldPrice.toLocaleString()}
+                          {soldPct !== null ? (
+                            <span className={`ml-1 ${soldPctColor}`}>({soldPct.toFixed(1)}%)</span>
+                          ) : null}
+                        </span>
+                      </div>
+                    ) : null}
+
+                    {(compSqft && compSqft > 0 && (comp.soldPrice || listPrice)) ? (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Price/Sq. Ft.</span>
+                        <span>${Math.round((comp.soldPrice || listPrice!) / compSqft)}</span>
+                      </div>
+                    ) : null}
+
+                    {(comp.soldDate || (comp as any).closeDate) ? (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Sold Date</span>
+                        <span>{(() => {
+                          const raw = comp.soldDate || (comp as any).closeDate;
+                          const date = new Date(raw);
+                          if (isNaN(date.getTime())) return '—';
+                          return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
+                        })()}</span>
+                      </div>
+                    ) : null}
+
                     {(() => {
                       const dom = extractDOM(comp);
-                      return dom !== null && (
-                        <div>Days on Market: {dom}</div>
-                      );
-                    })()}
-                    
-                    {/* Original List Price - RESO compliant label, show only if different from list price */}
-                    {comp.originalPrice && comp.originalPrice !== listPrice && (
-                      <div>
-                        Original List Price: ${comp.originalPrice.toLocaleString()}
-                      </div>
-                    )}
-                    
-                    {/* Lot Size - HIDE ROW if no data (per Daryl's requirement) */}
-                    {(() => {
-                      let lotSizeText = null;
-                      
-                      // Priority 1: lot.acres if available
-                      if (comp.lot?.acres && comp.lot.acres > 0) {
-                        lotSizeText = `${comp.lot.acres.toFixed(2)} acres`;
-                      }
-                      // Priority 2: lot.squareFeet if available  
-                      else if (comp.lot?.squareFeet && comp.lot.squareFeet > 0) {
-                        lotSizeText = `${comp.lot.squareFeet.toLocaleString()} sqft`;
-                      }
-                      // Priority 3: lotSizeAcres field
-                      else if (comp.lotSizeAcres && comp.lotSizeAcres > 0) {
-                        lotSizeText = `${comp.lotSizeAcres.toFixed(2)} acres`;
-                      }
-                      // Priority 4: lotSizeSquareFeet field  
-                      else if (comp.lotSizeSquareFeet && comp.lotSizeSquareFeet > 0) {
-                        lotSizeText = `${comp.lotSizeSquareFeet.toLocaleString()} sqft`;
-                      }
-                      // Priority 5: lotSize field (legacy)
-                      else if (comp.lotSize && comp.lotSize > 0) {
-                        lotSizeText = `${comp.lotSize.toLocaleString()} sqft`;
-                      }
-                      
-                      // ONLY show row if we have data - HIDE entirely if null/undefined/0
-                      return lotSizeText ? (
-                        <div>Lot Size: {lotSizeText}</div>
+                      return dom !== null ? (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Days on Market</span>
+                          <span>{dom}</span>
+                        </div>
                       ) : null;
-                    })()}
-                    
-                    {/* Garage - HIDE ROW if no data (per Daryl's requirement) */}
-                    {(() => {
-                      let garageSpaces = 0;
-                      
-                      // Check garageSpaces field first
-                      if (comp.garageSpaces && comp.garageSpaces > 0) {
-                        garageSpaces = comp.garageSpaces;
-                      }
-                      // Check if there's a details.numGarageSpaces (from raw data)
-                      else if ((comp as any).details?.numGarageSpaces && (comp as any).details.numGarageSpaces > 0) {
-                        garageSpaces = (comp as any).details.numGarageSpaces;
-                      }
-                      
-                      // ONLY show row if we have garage spaces - HIDE entirely if null/undefined/0
-                      return garageSpaces > 0 ? (
-                        <div>Garage: {garageSpaces} spaces</div>
-                      ) : null;
-                    })()}
-                    
-                    {/* For Closed/Sold comps - RESO compliant labels */}
-                    {comp.soldPrice && (
-                      <div>Close Price: ${comp.soldPrice.toLocaleString()}</div>
-                    )}
-                    
-                    {(() => {
-                      if (!comp.soldDate) return null;
-                      const date = new Date(comp.soldDate);
-                      if (isNaN(date.getTime())) return null;
-                      const mm = String(date.getMonth() + 1).padStart(2, '0');
-                      const dd = String(date.getDate()).padStart(2, '0');
-                      const yyyy = date.getFullYear();
-                      return (
-                        <div>Close Date: {mm}/{dd}/{yyyy}</div>
-                      );
                     })()}
                   </div>
 
