@@ -231,11 +231,13 @@ function SubjectPropertyPanel({
   onSet,
   onClear,
   onAutoFetchResults,
+  hasAutoFetched,
 }: {
   subject: PropertyData | null;
   onSet: (p: PropertyData) => void;
   onClear: () => void;
   onAutoFetchResults: (results: PropertyData[]) => void;
+  hasAutoFetched: boolean;
 }) {
   const [mode, setMode] = useState<"search" | "manual">("search");
   const [addressSearch, setAddressSearch] = useState("");
@@ -422,6 +424,12 @@ function SubjectPropertyPanel({
       setFetchingComps(false);
     }
   };
+
+  useEffect(() => {
+    if (subject && !hasAutoFetched) {
+      fetchAutoComps(subject).then(onAutoFetchResults);
+    }
+  }, []); // run once on mount only
 
   if (subject) {
     return (
@@ -2499,6 +2507,7 @@ export default function CmaBuilderPage() {
             onSet={(p) => updateCma({ subjectProperty: { ...p, mlsNumber: normalizeMlsForDisplay(p.mlsNumber) } })}
             onClear={() => { updateCma({ subjectProperty: null }); setAutoFetchResults([]); }}
             onAutoFetchResults={setAutoFetchResults}
+            hasAutoFetched={autoFetchResults.length > 0}
           />
           <ComparablePropertiesPanel
             comps={cma.comparableProperties}
