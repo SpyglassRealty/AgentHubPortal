@@ -396,12 +396,24 @@ function CmaPresentationInner({ cmaData, id }: { cmaData: any; id: string }) {
         sqft: parsedSqft,
         lotSizeAcres: lotAcres,
         daysOnMarket: comp.daysOnMarket || comp.dom || 0,
-        
+        yearBuilt: comp.yearBuilt || null,
+        garageSpaces: comp.garageSpaces || comp.garage?.spaces || null,
+        pricePerSqft: (() => {
+          const cp = comp.closePrice || comp.soldPrice;
+          const lp = comp.listPrice || comp.price;
+          const sq = parsedSqft;
+          if (sq > 0) {
+            if (cp) return Math.round(cp / sq);
+            if (lp) return Math.round(lp / sq);
+          }
+          return 0;
+        })(),
+
         // CRITICAL: Add missing fields that were being dropped during transformation
         description: comp.description || comp.remarks || comp.publicRemarks || null,
         listDate: comp.listDate || null,
-        soldDate: comp.soldDate || null, 
-        originalPrice: comp.originalPrice || null,
+        soldDate: comp.soldDate || comp.closeDate || null,
+        originalPrice: comp.originalPrice || comp.originalListPrice || comp.listPrice || null,
         
         photos: (() => {
           // Based on official Repliers API reference:

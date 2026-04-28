@@ -282,10 +282,72 @@ function PropertyCard({ property, isSubject = false, onClick }: { property: CmaP
           <span className="flex items-center gap-1" data-testid={`property-sqft-${property.id}`}>
             <Square className="w-3 h-3" /> {property.sqft.toLocaleString()}
           </span>
+          {property.yearBuilt ? (
+            <span className="flex items-center gap-1" data-testid={`property-yearbuilt-${property.id}`}>
+              <Home className="w-3 h-3" /> {property.yearBuilt}
+            </span>
+          ) : null}
+          {(property.lotSizeAcres && property.lotSizeAcres > 0) ? (
+            <span className="flex items-center gap-1" data-testid={`property-lotsize-${property.id}`}>
+              <MapPin className="w-3 h-3" /> {property.lotSizeAcres.toFixed(2)} ac
+            </span>
+          ) : null}
+          {(property.garageSpaces && property.garageSpaces > 0) ? (
+            <span data-testid={`property-garage-${property.id}`}>
+              {property.garageSpaces} gar
+            </span>
+          ) : null}
         </div>
-        <p className="text-xs text-gray-600 mt-2 flex items-center gap-1" data-testid={`property-dom-${property.id}`}>
-          <Clock className="w-3 h-3" /> {extractDOM(property) || 0} days on market
-        </p>
+
+        {/* Listing Details */}
+        <div className="mt-3 pt-3 border-t border-gray-100 space-y-0.5 text-xs text-gray-700">
+          <div className="font-medium text-gray-900 mb-1">Listing Details</div>
+          {property.originalPrice ? (
+            <div className="flex justify-between">
+              <span className="text-gray-500">Orig. Price</span>
+              <span>{formatCurrency(property.originalPrice)}</span>
+            </div>
+          ) : null}
+          {property.listPrice ? (
+            <div className="flex justify-between">
+              <span className="text-gray-500">List Price</span>
+              <span>{formatCurrency(property.listPrice)}</span>
+            </div>
+          ) : null}
+          {property.soldPrice ? (
+            <div className="flex justify-between">
+              <span className="text-gray-500">Sold Price</span>
+              <span>
+                {formatCurrency(property.soldPrice)}
+                {property.listPrice ? (
+                  <span className="ml-1 text-gray-500">
+                    ({((property.soldPrice / property.listPrice) * 100).toFixed(1)}%)
+                  </span>
+                ) : null}
+              </span>
+            </div>
+          ) : null}
+          {(property.pricePerSqft && property.pricePerSqft > 0) ? (
+            <div className="flex justify-between">
+              <span className="text-gray-500">Price/Sq. Ft.</span>
+              <span>${property.pricePerSqft.toLocaleString()}</span>
+            </div>
+          ) : null}
+          {property.soldDate ? (
+            <div className="flex justify-between">
+              <span className="text-gray-500">Sold Date</span>
+              <span>{(() => {
+                const d = new Date(property.soldDate!);
+                if (isNaN(d.getTime())) return '—';
+                return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+              })()}</span>
+            </div>
+          ) : null}
+          <div className="flex justify-between" data-testid={`property-dom-${property.id}`}>
+            <span className="text-gray-500">Days on Market</span>
+            <span>{extractDOM(property) ?? 0}</span>
+          </div>
+        </div>
       </div>
     </Card>
   );
