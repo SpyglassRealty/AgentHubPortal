@@ -12,6 +12,15 @@ import { isAuthenticated } from "./replitAuth";
 import { extractPhotosFromRepliersList, debugPhotoFields } from "./lib/repliers-photo-utils";
 import { parseAddress, createAddressSearchFallbacks, ParsedAddress } from "./lib/address-parser";
 
+function formatMlsDate(val: any): string | null {
+  if (!val) return null;
+  try {
+    const d = typeof val === 'number' ? new Date(val * 1000) : new Date(val);
+    if (isNaN(d.getTime())) return null;
+    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${String(d.getFullYear()).slice(2)}`;
+  } catch { return null; }
+}
+
 // Helper: get DB user
 async function getDbUser(req: any): Promise<any> {
   const sessionUserId = req.user?.claims?.sub;
@@ -254,6 +263,7 @@ export function registerEnhancedCmaSearchRoutes(app: Express) {
             zip: postalCode,
             listPrice: listing.listPrice || 0,
             soldPrice: listing.soldPrice || listing.closePrice || null,
+            originalPrice: listing.originalPrice || listing.listPrice || null,
             beds: listing.details?.numBedrooms || listing.bedroomsTotal || 0,
             baths: listing.details?.numBathrooms || listing.bathroomsTotal || 0,
             sqft: listing.details?.sqft || listing.livingArea || 0,
@@ -261,13 +271,55 @@ export function registerEnhancedCmaSearchRoutes(app: Express) {
             yearBuilt: listing.details?.yearBuilt || null,
             propertyType: listing.details?.style || listing.details?.propertyType || listing.propertyType || '',
             status: listing.standardStatus || listing.status || '',
-            listDate: listing.listDate || '',
-            soldDate: listing.soldDate || listing.closeDate || null,
-            daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
+            listDate: formatMlsDate(listing.listDate),
+            soldDate: formatMlsDate(listing.soldDate || listing.closeDate),
+            offMarketDate: formatMlsDate(listing.offMarketDate),
+            daysOnMarket: listing.simpleDaysOnMarket || listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
+            garageSpaces: listing.details?.numGarageSpaces || listing.garageSpaces || 0,
+            stories: listing.details?.numStoreys || null,
             photos,
             latitude: listing.map?.latitude || listing.address?.latitude || null,
             longitude: listing.map?.longitude || listing.address?.longitude || null,
             subdivision: listing.address?.neighborhood || listing.address?.area || '',
+            description: listing.details?.description || listing.remarks || listing.publicRemarks || null,
+            county: listing.address?.county || null,
+            schoolDistrict: listing.school?.district || listing.details?.schoolDistrict || null,
+            schoolHigh: listing.school?.high || null,
+            schoolMiddle: listing.school?.middle || null,
+            schoolElementary: listing.school?.elementary || null,
+            taxes: listing.taxAnnualAmount || listing.tax?.annualAmount || null,
+            cooling: Array.isArray(listing.details?.cooling) ? listing.details.cooling.join(', ') : (listing.details?.cooling || null),
+            heating: Array.isArray(listing.details?.heating) ? listing.details.heating.join(', ') : (listing.details?.heating || null),
+            appliances: Array.isArray(listing.details?.appliances) ? listing.details.appliances.join(', ') : (listing.details?.appliances || null),
+            fireplace: listing.details?.fireplace || listing.details?.fireplaceFeatures || null,
+            flooring: Array.isArray(listing.details?.flooring) ? listing.details.flooring.join(', ') : (listing.details?.flooring || null),
+            foundation: Array.isArray(listing.details?.foundation) ? listing.details.foundation.join(', ') : (listing.details?.foundation || null),
+            roof: Array.isArray(listing.details?.roofing) ? listing.details.roofing.join(', ') : (listing.details?.roofing || null),
+            pool: listing.details?.pool || listing.details?.poolFeatures || null,
+            parkingSpaces: listing.details?.numParkingSpaces || null,
+            parkingFeatures: Array.isArray(listing.details?.parking) ? listing.details.parking.join(', ') : null,
+            lotFeatures: Array.isArray(listing.details?.lotFeatures) ? listing.details.lotFeatures.join(', ') : null,
+            exteriorFeatures: Array.isArray(listing.details?.exteriorFeatures) ? listing.details.exteriorFeatures.join(', ') : null,
+            interiorFeatures: Array.isArray(listing.details?.interiorFeatures) ? listing.details.interiorFeatures.join(', ') : null,
+            laundry: Array.isArray(listing.details?.laundryFeatures) ? listing.details.laundryFeatures.join(', ') : null,
+            sewer: Array.isArray(listing.details?.sewer) ? listing.details.sewer.join(', ') : null,
+            utilities: Array.isArray(listing.details?.utilities) ? listing.details.utilities.join(', ') : null,
+            constructionMaterials: Array.isArray(listing.details?.constructionMaterials) ? listing.details.constructionMaterials.join(', ') : null,
+            fencing: Array.isArray(listing.details?.fencing) ? listing.details.fencing.join(', ') : null,
+            patioFeatures: Array.isArray(listing.details?.patioAndPorchFeatures) ? listing.details.patioAndPorchFeatures.join(', ') : null,
+            levels: listing.details?.levels || null,
+            waterSource: listing.details?.waterSource || null,
+            windowFeatures: Array.isArray(listing.details?.windowFeatures) ? listing.details.windowFeatures.join(', ') : null,
+            securityFeatures: Array.isArray(listing.details?.securityFeatures) ? listing.details.securityFeatures.join(', ') : null,
+            ownership: listing.details?.ownership || null,
+            propertyCondition: listing.details?.propertyCondition || null,
+            directionFaces: listing.details?.directionFaces || null,
+            coveredSpaces: listing.details?.numCoveredSpaces || null,
+            otherStructures: Array.isArray(listing.details?.otherStructures) ? listing.details.otherStructures.join(', ') : null,
+            disclosures: Array.isArray(listing.details?.disclosures) ? listing.details.disclosures.join(', ') : null,
+            greenEnergy: Array.isArray(listing.details?.greenEnergyEfficient) ? listing.details.greenEnergyEfficient.join(', ') : null,
+            communityFeatures: Array.isArray(listing.details?.communityFeatures) ? listing.details.communityFeatures.join(', ') : null,
+            accessibilityFeatures: Array.isArray(listing.details?.accessibilityFeatures) ? listing.details.accessibilityFeatures.join(', ') : null,
           };
           
           // Calculate relevance score
@@ -306,6 +358,8 @@ export function registerEnhancedCmaSearchRoutes(app: Express) {
         pageNum: pageNum.toString(),
         sortBy: 'createdOnDesc',
       });
+
+      params.set('fields', 'mlsNumber,listingId,address,map,details,images,lot,timestamps,taxes,school,association');
 
       // Add existing filters
       if (city) params.append('city', city);
@@ -375,6 +429,7 @@ export function registerEnhancedCmaSearchRoutes(app: Express) {
           zip: postalCode,
           listPrice: listing.listPrice || 0,
           soldPrice: listing.soldPrice || listing.closePrice || null,
+          originalPrice: listing.originalPrice || listing.listPrice || null,
           beds: listing.details?.numBedrooms || listing.bedroomsTotal || 0,
           baths: listing.details?.numBathrooms || listing.bathroomsTotal || 0,
           sqft: listing.details?.sqft || listing.livingArea || 0,
@@ -382,12 +437,55 @@ export function registerEnhancedCmaSearchRoutes(app: Express) {
           yearBuilt: listing.details?.yearBuilt || null,
           propertyType: listing.details?.style || listing.details?.propertyType || listing.propertyType || '',
           status: listing.standardStatus || listing.status || '',
-          listDate: listing.listDate || '',
-          soldDate: listing.soldDate || listing.closeDate || null,
-          daysOnMarket: listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
+          listDate: formatMlsDate(listing.listDate),
+          soldDate: formatMlsDate(listing.soldDate || listing.closeDate),
+          offMarketDate: formatMlsDate(listing.offMarketDate),
+          daysOnMarket: listing.simpleDaysOnMarket || listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
+          garageSpaces: listing.details?.numGarageSpaces || listing.garageSpaces || 0,
+          stories: listing.details?.numStoreys || null,
           photos,
           latitude: listing.map?.latitude || listing.address?.latitude || null,
           longitude: listing.map?.longitude || listing.address?.longitude || null,
+          subdivision: listing.address?.neighborhood || listing.address?.area || '',
+          description: listing.details?.description || listing.remarks || listing.publicRemarks || null,
+          county: listing.address?.county || null,
+          schoolDistrict: listing.school?.district || listing.details?.schoolDistrict || null,
+          schoolHigh: listing.school?.high || null,
+          schoolMiddle: listing.school?.middle || null,
+          schoolElementary: listing.school?.elementary || null,
+          taxes: listing.taxAnnualAmount || listing.tax?.annualAmount || null,
+          cooling: Array.isArray(listing.details?.cooling) ? listing.details.cooling.join(', ') : (listing.details?.cooling || null),
+          heating: Array.isArray(listing.details?.heating) ? listing.details.heating.join(', ') : (listing.details?.heating || null),
+          appliances: Array.isArray(listing.details?.appliances) ? listing.details.appliances.join(', ') : (listing.details?.appliances || null),
+          fireplace: listing.details?.fireplace || listing.details?.fireplaceFeatures || null,
+          flooring: Array.isArray(listing.details?.flooring) ? listing.details.flooring.join(', ') : (listing.details?.flooring || null),
+          foundation: Array.isArray(listing.details?.foundation) ? listing.details.foundation.join(', ') : (listing.details?.foundation || null),
+          roof: Array.isArray(listing.details?.roofing) ? listing.details.roofing.join(', ') : (listing.details?.roofing || null),
+          pool: listing.details?.pool || listing.details?.poolFeatures || null,
+          parkingSpaces: listing.details?.numParkingSpaces || null,
+          parkingFeatures: Array.isArray(listing.details?.parking) ? listing.details.parking.join(', ') : null,
+          lotFeatures: Array.isArray(listing.details?.lotFeatures) ? listing.details.lotFeatures.join(', ') : null,
+          exteriorFeatures: Array.isArray(listing.details?.exteriorFeatures) ? listing.details.exteriorFeatures.join(', ') : null,
+          interiorFeatures: Array.isArray(listing.details?.interiorFeatures) ? listing.details.interiorFeatures.join(', ') : null,
+          laundry: Array.isArray(listing.details?.laundryFeatures) ? listing.details.laundryFeatures.join(', ') : null,
+          sewer: Array.isArray(listing.details?.sewer) ? listing.details.sewer.join(', ') : null,
+          utilities: Array.isArray(listing.details?.utilities) ? listing.details.utilities.join(', ') : null,
+          constructionMaterials: Array.isArray(listing.details?.constructionMaterials) ? listing.details.constructionMaterials.join(', ') : null,
+          fencing: Array.isArray(listing.details?.fencing) ? listing.details.fencing.join(', ') : null,
+          patioFeatures: Array.isArray(listing.details?.patioAndPorchFeatures) ? listing.details.patioAndPorchFeatures.join(', ') : null,
+          levels: listing.details?.levels || null,
+          waterSource: listing.details?.waterSource || null,
+          windowFeatures: Array.isArray(listing.details?.windowFeatures) ? listing.details.windowFeatures.join(', ') : null,
+          securityFeatures: Array.isArray(listing.details?.securityFeatures) ? listing.details.securityFeatures.join(', ') : null,
+          ownership: listing.details?.ownership || null,
+          propertyCondition: listing.details?.propertyCondition || null,
+          directionFaces: listing.details?.directionFaces || null,
+          coveredSpaces: listing.details?.numCoveredSpaces || null,
+          otherStructures: Array.isArray(listing.details?.otherStructures) ? listing.details.otherStructures.join(', ') : null,
+          disclosures: Array.isArray(listing.details?.disclosures) ? listing.details.disclosures.join(', ') : null,
+          greenEnergy: Array.isArray(listing.details?.greenEnergyEfficient) ? listing.details.greenEnergyEfficient.join(', ') : null,
+          communityFeatures: Array.isArray(listing.details?.communityFeatures) ? listing.details.communityFeatures.join(', ') : null,
+          accessibilityFeatures: Array.isArray(listing.details?.accessibilityFeatures) ? listing.details.accessibilityFeatures.join(', ') : null,
         };
       });
 
