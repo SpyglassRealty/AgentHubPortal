@@ -50,6 +50,10 @@ interface GoogleCompanyEvent {
 
 interface GoogleCompanyResponse {
   events: GoogleCompanyEvent[];
+  error?: {
+    type: 'agent_calendar_unavailable';
+    message: string;
+  };
 }
 
 interface FubCalendarResponse {
@@ -199,6 +203,7 @@ export default function CalendarPage() {
 
   const isLoading = fubLoading || googleLoading;
   const error = fubError || googleError;
+  const googleSoftError = googleData?.error;
 
   const handleRefresh = async () => {
     await refreshSync(async () => {
@@ -475,6 +480,17 @@ export default function CalendarPage() {
             <CardContent className="p-4 flex items-center gap-3">
               <AlertCircle className="h-5 w-5 text-amber-600" />
               <p className="text-amber-800">{fubData.message}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {googleSoftError && (
+          <Card className="border-yellow-200 bg-yellow-50">
+            <CardContent className="p-4 flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 shrink-0" />
+              <p className="text-sm text-yellow-800">
+                Calendar unavailable for this agent. Their Google Workspace account may not be active.
+              </p>
             </CardContent>
           </Card>
         )}

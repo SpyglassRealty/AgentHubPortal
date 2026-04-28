@@ -6620,7 +6620,33 @@ Respond with valid JSON in this exact format:
       const calendar = google.calendar({ version: 'v3', auth });
 
       // List ALL calendars for this user
-      const calListRes = await calendar.calendarList.list({ maxResults: 50 });
+      let calListRes;
+      try {
+        calListRes = await calendar.calendarList.list({ maxResults: 50 });
+      } catch (error: any) {
+        const status = error?.code ?? error?.response?.status;
+        const message = error?.message ?? '';
+        const isDelegationError =
+          status === 400 ||
+          status === 403 ||
+          status === 404 ||
+          message.includes('invalid_grant') ||
+          message.includes('unauthorized_client') ||
+          message.includes('access_denied') ||
+          message.includes('Invalid email or User ID');
+
+        if (isDelegationError) {
+          console.warn(`[Company Calendar] Soft-fail: agent_calendar_unavailable for ${userEmail}: ${message}`);
+          return res.status(200).json({
+            events: [],
+            error: {
+              type: 'agent_calendar_unavailable',
+              message: 'Calendar unavailable for this agent',
+            },
+          });
+        }
+        throw error;
+      }
       const allCalendars = calListRes.data.items || [];
       console.log(`[Company Calendar] Found ${allCalendars.length} calendars for ${userEmail}`);
 
