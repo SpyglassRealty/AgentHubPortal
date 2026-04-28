@@ -6,7 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Menu, Phone, Mail, X } from 'lucide-react';
+import { Menu, Phone, Mail, ArrowLeft } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import { PdfDownloadButton } from './PdfDownloadButton';
 import type { AgentProfile, CmaProperty } from '../types';
@@ -161,13 +161,14 @@ export function Header({
             </Popover>
 
             <Button
-              variant="ghost"
-              size="icon"
+              variant="outline"
+              size="sm"
               onClick={onClose}
-              className="text-white hover:bg-white/20 ml-2"
+              className="border-white/40 text-white bg-transparent hover:bg-white/20 hover:text-white ml-2 gap-1.5"
               data-testid="button-close-header"
             >
-              <X className="w-5 h-5" />
+              <ArrowLeft className="w-4 h-4" />
+              Edit Comps
             </Button>
           </div>
         </div>
