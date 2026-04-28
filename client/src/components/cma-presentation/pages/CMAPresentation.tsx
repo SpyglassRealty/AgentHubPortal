@@ -123,13 +123,7 @@ function CmaPresentationInner({ cmaData, id }: { cmaData: any; id: string }) {
   };
 
   const handleClose = useCallback(() => {
-    // If user navigated directly to this URL, there might not be a history stack
-    // Try to go back first, then fallback to CMA dashboard
-    if (window.history.length > 1) {
-      window.history.back();
-    } else {
-      navigate(`/cma/${id}`);
-    }
+    navigate(`/cma/${id}`);
   }, [navigate, id]);
 
   useEffect(() => {
