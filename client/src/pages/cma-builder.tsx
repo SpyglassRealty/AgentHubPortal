@@ -272,7 +272,7 @@ function SubjectPropertyPanel({
       const body: any = {
         page: 1,
         limit: 25,
-        statuses: ["A", "U", "S"],
+        statuses: ["A", "U", "P", "S"],
         dateSoldDays: 180,
       };
       if (zip) body.zip = zip;
@@ -2535,7 +2535,7 @@ export default function CmaBuilderPage() {
                   if (beds > 0) parts.push(`${Math.max(1, beds - 1)}–${beds + 1} beds`);
                   if (baths > 0) parts.push(`${baths} baths`);
                   if (sqft > 0) parts.push(`${formatNumber(Math.round(sqft * 0.75))}–${formatNumber(Math.round(sqft * 1.25))} sqft`);
-                  parts.push("Active/Pending/Closed 180 days");
+                  parts.push("Active/Pending/Under Contract/Closed 180 days");
                   return parts.join(" · ");
                 })()}
               </p>
