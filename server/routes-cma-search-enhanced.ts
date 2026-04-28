@@ -152,7 +152,9 @@ export function registerEnhancedCmaSearchRoutes(app: Express) {
               pageNum: '1',
               sortBy: 'createdOnDesc',
             });
-            
+
+            params.set('fields', 'mlsNumber,listingId,address,map,details,images,lot,timestamps,taxes,school,association');
+
             // Add search parameters
             Object.entries(searchParams).forEach(([key, value]) => {
               if (value) params.append(key, value.toString());

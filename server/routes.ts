@@ -97,6 +97,16 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
 }
+
+function formatMlsDate(val: any): string | null {
+  if (!val) return null;
+  try {
+    const d = typeof val === 'number' ? new Date(val * 1000) : new Date(val);
+    if (isNaN(d.getTime())) return null;
+    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${String(d.getFullYear()).slice(2)}`;
+  } catch { return null; }
+}
+
 import { db, pool } from "./db";
 import { users as usersTable } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
@@ -3576,8 +3586,9 @@ Respond with valid JSON in this exact format:
             yearBuilt: listing.details?.yearBuilt || null,
             propertyType: listing.details?.propertyType || listing.propertyType || '',
             status: listing.standardStatus || listing.status || '',
-            listDate: listing.listDate || '',
-            soldDate: listing.soldDate || listing.closeDate || null,
+            listDate: formatMlsDate(listing.listDate),
+            soldDate: formatMlsDate(listing.soldDate || listing.closeDate),
+            offMarketDate: formatMlsDate(listing.offMarketDate),
             daysOnMarket: listing.simpleDaysOnMarket || listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
             photos,
             stories: listing.details?.numStoreys || null,
@@ -4003,8 +4014,9 @@ Respond with valid JSON in this exact format:
           yearBuilt: listing.details?.yearBuilt || null,
           propertyType: listing.details?.style || listing.details?.propertyType || listing.propertyType || '',
           status: listing.standardStatus || listing.status || '',
-          listDate: listing.listDate || '',
-          soldDate: listing.soldDate || listing.closeDate || null,
+          listDate: formatMlsDate(listing.listDate),
+          soldDate: formatMlsDate(listing.soldDate || listing.closeDate),
+          offMarketDate: formatMlsDate(listing.offMarketDate),
           daysOnMarket: listing.simpleDaysOnMarket || listing.daysOnMarket || listing.dom || listing.timestamps?.dom || 0,
           garageSpaces: listing.details?.numGarageSpaces || listing.garageSpaces || 0,
           photos,
