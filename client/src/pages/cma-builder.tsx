@@ -54,6 +54,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import PropertyCard from "@/components/cma/PropertyCard";
+import { CMAReportDownloadButton } from "@/components/pdf/CMAReportDownloadButton";
 
 // Types
 interface PropertyData {
@@ -2414,6 +2415,7 @@ export default function CmaBuilderPage() {
               </Badge>
             )}
             {/* Action buttons matching Contract Conduit */}
+            <CMAReportDownloadButton cma={cma} disabled={!isStep2Complete} />
             <Button
               variant="outline"
               onClick={handleSave}
