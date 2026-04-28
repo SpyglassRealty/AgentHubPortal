@@ -425,11 +425,14 @@ function SubjectPropertyPanel({
     }
   };
 
+  const autoFetchedRef = useRef(false);
+
   useEffect(() => {
-    if (subject && !hasAutoFetched) {
+    if (subject && !hasAutoFetched && !autoFetchedRef.current) {
+      autoFetchedRef.current = true;
       fetchAutoComps(subject).then(onAutoFetchResults);
     }
-  }, []); // run once on mount only
+  }, [subject]);
 
   if (subject) {
     return (
