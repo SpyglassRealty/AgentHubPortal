@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { refreshAndCacheMarketPulse, ensureFreshMarketPulseData } from './marketPulseService';
 import { renewExpiringCalendarWatches } from './callDutyRoutes';
+import { runEmailTriageForAllUsers } from './emailTriageScorer';
 
 export function initializeScheduler(): void {
   console.log('[Scheduler] Initializing scheduled tasks...');
@@ -44,8 +45,21 @@ export function initializeScheduler(): void {
     timezone: 'America/Chicago'
   });
   
+  // Email triage scoring: every 15 minutes, batched across all Gmail-connected users
+  cron.schedule('*/15 * * * *', async () => {
+    console.log('[Scheduler] Running 15-min email triage scan...');
+    try {
+      await runEmailTriageForAllUsers();
+    } catch (err) {
+      console.error('[Scheduler] Email triage run failed:', err);
+    }
+  }, {
+    timezone: 'America/Chicago'
+  });
+
   console.log('[Scheduler] Market Pulse refresh scheduled: hourly + daily at 6:00 AM Central');
   console.log('[Scheduler] Calendar watch renewal scheduled: daily at 5:00 AM Central');
+  console.log('[Scheduler] Email triage scoring scheduled: every 15 minutes');
 }
 
 export async function runStartupTasks(): Promise<void> {

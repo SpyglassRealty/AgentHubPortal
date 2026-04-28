@@ -1741,3 +1741,30 @@ export const pulseCommunityAllowlist = pgTable("pulse_community_allowlist", {
 export type PulseCommunityAllowlist = typeof pulseCommunityAllowlist.$inferSelect;
 export type InsertPulseCommunityAllowlist = typeof pulseCommunityAllowlist.$inferInsert;
 
+// ── Email Triage Scores ───────────────────────────────────────────────────────
+// Stores AI triage results for each agent's unread Primary emails.
+// Background job scores every 15 min; UI exposes a "Needs Reply" tab (score ≥ 70).
+export const emailTriageScores = pgTable("email_triage_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  gmailMsgId: varchar("gmail_msg_id").notNull(),
+  fromEmail: varchar("from_email"),
+  fromName: varchar("from_name"),
+  subject: varchar("subject"),
+  receivedAt: timestamp("received_at"),
+  score: integer("score").notNull(),
+  category: varchar("category").notNull(),
+  reason: varchar("reason", { length: 90 }).notNull(),
+  dismissed: boolean("dismissed").notNull().default(false),
+  scoredAt: timestamp("scored_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("idx_triage_unique_user_msg").on(table.userId, table.gmailMsgId),
+  // Note: partial index (WHERE dismissed = false) not used here due to Drizzle 0.39.x
+  // type inference bug with index().where(). Apply manually post-deploy:
+  // CREATE INDEX CONCURRENTLY idx_triage_user_score ON email_triage_scores(user_id, score) WHERE dismissed = false;
+  index("idx_triage_user_score").on(table.userId, table.score),
+]);
+
+export type EmailTriageScore = typeof emailTriageScores.$inferSelect;
+export type InsertEmailTriageScore = typeof emailTriageScores.$inferInsert;
+
