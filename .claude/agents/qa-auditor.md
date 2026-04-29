@@ -4,6 +4,8 @@ description: Read-only QA auditor. Use for all file audits, grep searches, DB SE
 model: sonnet
 tools: Read, Glob, Grep, Bash
 permissionMode: bypassPermissions
+color: yellow
+emoji: 🔍
 skills:
   - .claude/skills/mc-architecture.skill.md
 ---

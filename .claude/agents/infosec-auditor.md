@@ -2,6 +2,8 @@
 name: infosec-auditor
 model: claude-sonnet-4-6
 allowedTools: ["Bash(read-only)", "Read", "Glob", "Grep"]
+color: red
+emoji: 🛡️
 ---
 
 # Spyglass InfoSec & Risk Auditor

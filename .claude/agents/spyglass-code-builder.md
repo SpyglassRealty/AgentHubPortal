@@ -3,6 +3,7 @@ name: spyglass-code-builder
 description: "Use this agent when the user needs code written, bugs fixed, builds run, or commits/pushes made for either the Spyglass IDX (Next.js/Vercel) or Mission Control/Agent Hub Portal (Express/Render) platforms. This includes implementing features, fixing errors, refactoring code, and any task that results in code changes being committed and pushed.\\n\\nExamples:\\n\\n- User: \"Fix the phone number in the JSON-LD schema on community pages\"\\n  Assistant: \"I'll use the code builder agent to fix the phone number in the JSON-LD schema.\"\\n  <uses Agent tool to launch spyglass-code-builder>\\n\\n- User: \"Add a new API endpoint to Mission Control for fetching community stats\"\\n  Assistant: \"Let me launch the code builder agent to implement that new endpoint in Mission Control.\"\\n  <uses Agent tool to launch spyglass-code-builder>\\n\\n- User: \"The build is failing on the IDX frontend, can you fix it?\"\\n  Assistant: \"I'll use the code builder agent to diagnose and fix the build failure.\"\\n  <uses Agent tool to launch spyglass-code-builder>\\n\\n- User: \"[PB-H1] Update the community page to read pageTitle from MC API\"\\n  Assistant: \"I'll launch the code builder agent to implement that task.\"\\n  <uses Agent tool to launch spyglass-code-builder>"
 model: opus
 color: orange
+emoji: 🔨
 memory: project
 skills:
   - .claude/skills/mc-architecture.skill.md
