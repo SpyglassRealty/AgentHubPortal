@@ -6517,10 +6517,32 @@ Respond with valid JSON in this exact format:
       const agentEmail = req.query.agentEmail as string | undefined;
       const loggedInEmail = (dbUser?.email || req.user?.claims?.email) as string | undefined;
 
-      // Use agentEmail directly if it's a valid @spyglassrealty.com address
+      // Resolve agentEmail → Workspace email for Google impersonation.
+      // FAST PATH: agentEmail is already a @spyglassrealty.com Workspace email.
+      // FUB PATH: agentEmail is a FUB routing email (e.g. *@followupboss.me) — look up
+      //   the agent_directory_profiles row by fub_email and use its email column.
+      // See BUG-MC-CALENDAR-IMPERSONATION-EMAIL-LOOKUP for context.
       let userEmail: string | undefined;
       if (agentEmail?.endsWith('@spyglassrealty.com')) {
         userEmail = agentEmail;
+      } else if (agentEmail) {
+        try {
+          const agentRecord = await db
+            .select({ email: agentDirectoryProfiles.email })
+            .from(agentDirectoryProfiles)
+            .where(eq(agentDirectoryProfiles.fubEmail, agentEmail))
+            .limit(1);
+
+          if (agentRecord[0]?.email?.endsWith('@spyglassrealty.com')) {
+            userEmail = agentRecord[0].email;
+            console.log(`[Company Calendar] Resolved fub_email ${agentEmail} → ${userEmail}`);
+          } else {
+            console.log(`[Company Calendar] No Workspace email found for fub_email ${agentEmail}`);
+          }
+        } catch (err: any) {
+          console.error(`[Company Calendar] DB lookup for fub_email ${agentEmail} failed:`, err?.message || err);
+          // fall through, keep userEmail undefined → loggedInEmail fallback below
+        }
       }
 
       // Fall back to logged-in user if no agent selected or agent email not valid
