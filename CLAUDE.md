@@ -69,7 +69,20 @@ Every prompt must start with an @-mention:
 @.claude/agents/spyglass-architect.md    → specs, plans, analysis only
 @.claude/agents/spyglass-code-builder.md → all code changes, commits, pushes
 @.claude/agents/infosec-auditor.md       → security review (auth, secrets, injection vectors)
+@.claude/agents/bash-reviewer.md         → read-only bash command gate (APPROVE / APPROVE-WITH-NOTE / HOLD-FOR-DARYL / BLOCK)
 ```
+
+### Claude Code Sub-Agents (`.claude/agents/`)
+
+Five agents in `~/clawd/AgentHubPortal/.claude/agents/`
+
+| Agent | Model | Permitted Actions |
+|---|---|---|
+| `spyglass-code-builder` | claude-opus-4-6 | Full access — read, write, edit, bash, commit, push |
+| `qa-auditor` | claude-sonnet-4-6 | Read-only — bash (SELECT, grep, ls, cat), never writes or commits |
+| `spyglass-architect` | claude-opus-4-6 | Read-only — bash (grep, ls, cat), never writes or commits |
+| `infosec-auditor` | claude-sonnet-4-6 | Read-only — bash (read-only), grep, security review, never writes or commits |
+| `bash-reviewer` | claude-sonnet-4-6 | Read-only — Read, Glob, Grep only. NEVER executes commands. Reviews proposed bash commands and returns APPROVE / APPROVE-WITH-NOTE / HOLD-FOR-DARYL / BLOCK. |
 
 **Terminal workflow (current):**
 - Mission Control prompts → paste into terminal at `~/clawd/AgentHubPortal`
@@ -173,6 +186,15 @@ Stop and rebuild the prompt template instead of pushing through.
 
 (Note: HIGH-RISK on MC has THREE gates — see "When HIGH-RISK gate fires"
 below — so the threshold is one higher than IDX.)
+
+### Bash command review
+
+Agents invoke `@.claude/agents/bash-reviewer.md` before executing bash
+commands matching the trigger criteria in that file (network-bound,
+credential-touching, or potentially scope-drifting). Trivial commands
+(pwd, ls, git status, simple file reads) skip review. The reviewer's
+verdicts (APPROVE / APPROVE-WITH-NOTE / HOLD-FOR-DARYL / BLOCK) are
+binding on the spawning agent.
 
 ---
 
