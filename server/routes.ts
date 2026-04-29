@@ -6738,7 +6738,10 @@ Respond with valid JSON in this exact format:
         userEmail.toLowerCase() !== loggedInEmail.toLowerCase();
 
       const filteredEvents = isGenuineImpersonation
-        ? events.filter((e) => e.source !== 'google_personal' && e.source !== 'google_fub')
+        ? events.filter((e) =>
+            (e.source !== 'google_personal' && e.source !== 'google_fub') ||
+            e.calendarId.toLowerCase() === (userEmail || '').toLowerCase()
+          )
         : events;
 
       if (isGenuineImpersonation) {
