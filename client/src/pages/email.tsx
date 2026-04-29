@@ -33,14 +33,18 @@ import {
   Forward,
   X,
   Plus,
+  AlertCircle,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import type { GmailMessage } from "@shared/schema";
 
 // ── Category Tabs ────────────────────────────────────────────────
-type CategoryId = 'primary' | 'promotions' | 'social' | 'forums';
+type CategoryId = 'primary' | 'promotions' | 'social' | 'forums' | 'needsReply';
 
 const categories: { id: CategoryId; label: string; icon: typeof Inbox }[] = [
   { id: 'primary', label: 'Primary', icon: Inbox },
+  { id: 'needsReply', label: 'Needs Reply', icon: AlertCircle },
   { id: 'promotions', label: 'Promotions', icon: Tag },
   { id: 'social', label: 'Social', icon: Users },
   { id: 'forums', label: 'Forums', icon: MessageCircle },
@@ -62,6 +66,28 @@ interface CategoryUnreadCounts {
   promotions: number;
   social: number;
   forums: number;
+}
+
+interface TriageEmail {
+  id: string;
+  gmailMsgId: string;
+  fromEmail: string | null;
+  fromName: string | null;
+  subject: string | null;
+  receivedAt: string | null;
+  score: number;
+  reason: string;
+  dismissed: boolean;
+  scoredAt: string;
+}
+
+interface TriageStats {
+  needsReplyCount: number;
+}
+
+interface TriageListResponse {
+  emails: TriageEmail[];
+  count: number;
 }
 
 // ── Date formatting ──────────────────────────────────────────────
@@ -233,6 +259,70 @@ function EmailListItem({
         </div>
       )}
     </button>
+  );
+}
+
+// ── Triage Email List Item ───────────────────────────────────────
+function TriageEmailListItem({
+  email,
+  isSelected,
+  onClick,
+  onDismiss,
+}: {
+  email: TriageEmail;
+  isSelected: boolean;
+  onClick: () => void;
+  onDismiss: () => void;
+}) {
+  const displayName = email.fromName || email.fromEmail || 'Unknown';
+  const initials = displayName
+    .split(' ')
+    .map(w => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+  return (
+    <div className="relative">
+      <button
+        onClick={onClick}
+        className={`
+          w-full text-left flex items-start gap-3 p-3 pr-10 rounded-lg transition-colors cursor-pointer
+          ${isSelected
+            ? 'bg-[#EF4923]/10 border border-[#EF4923]/20'
+            : 'hover:bg-muted/50'
+          }
+        `}
+      >
+        <div className="shrink-0 h-10 w-10 rounded-full flex items-center justify-center text-xs font-semibold bg-[#EF4923] text-white">
+          {initials || '?'}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm truncate font-semibold text-foreground">
+              {displayName}
+            </span>
+            <span className="text-xs text-muted-foreground shrink-0">
+              {email.receivedAt ? formatEmailDate(email.receivedAt) : ''}
+            </span>
+          </div>
+          <p className="text-sm truncate font-medium text-foreground">
+            {email.subject || '(no subject)'}
+          </p>
+          <p className="text-xs text-muted-foreground italic truncate mt-0.5">
+            {email.reason}
+          </p>
+        </div>
+      </button>
+      <button
+        onClick={onDismiss}
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        aria-label="Not important"
+        title="Not important"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
   );
 }
 
@@ -682,6 +772,20 @@ function EmptyState({ hasSearch }: { hasSearch: boolean }) {
   );
 }
 
+// ── Triage Empty State ───────────────────────────────────────────
+function TriageEmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+      <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
+        <MailOpen className="h-8 w-8 text-muted-foreground" />
+      </div>
+      <p className="text-sm text-muted-foreground max-w-xs">
+        Nothing urgent right now. We'll let you know when something needs your attention.
+      </p>
+    </div>
+  );
+}
+
 // ── Main Page ────────────────────────────────────────────────────
 export default function EmailPage() {
   const queryClient = useQueryClient();
@@ -716,6 +820,7 @@ export default function EmailPage() {
       if (!res.ok) throw new Error('Failed to fetch inbox');
       return res.json();
     },
+    enabled: activeCategory !== 'needsReply',
   });
 
   const messages = inboxData?.messages || [];
@@ -732,7 +837,99 @@ export default function EmailPage() {
       if (!res.ok) throw new Error('Failed to fetch unread counts');
       return res.json();
     },
-    refetchInterval: 60000, // Refresh every minute
+    refetchInterval: 60000,
+  });
+
+  // Triage stats — drives the Needs Reply badge count
+  const { data: triageStats, refetch: refetchTriageStats } = useQuery<TriageStats>({
+    queryKey: ['/api/email/triage/stats'],
+    queryFn: async () => {
+      const res = await fetch('/api/email/triage/stats', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch triage stats');
+      return res.json();
+    },
+    refetchInterval: 60000,
+  });
+
+  // Triage email list — only fetched when the tab is active
+  const {
+    data: triageData,
+    isLoading: triageLoading,
+    refetch: refetchTriage,
+  } = useQuery<TriageListResponse>({
+    queryKey: ['/api/email/triage', { threshold: 70 }],
+    queryFn: async () => {
+      const res = await fetch('/api/email/triage?threshold=70', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch triage emails');
+      return res.json();
+    },
+    enabled: activeCategory === 'needsReply',
+    refetchInterval: activeCategory === 'needsReply' ? 60000 : false,
+  });
+
+  const { toast } = useToast();
+
+  // Dismiss a triage email: optimistic remove, rollback on error
+  const dismissMutation = useMutation({
+    mutationFn: async (gmailMsgId: string) => {
+      const res = await fetch('/api/email/triage/dismiss', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ gmailMsgId }),
+      });
+      if (!res.ok) throw new Error('Failed to dismiss');
+      return res.json();
+    },
+    onMutate: async (gmailMsgId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/email/triage', { threshold: 70 }] });
+      const previous = queryClient.getQueryData<TriageListResponse>(['/api/email/triage', { threshold: 70 }]);
+      queryClient.setQueryData<TriageListResponse>(
+        ['/api/email/triage', { threshold: 70 }],
+        old => old ? { ...old, emails: old.emails.filter(e => e.gmailMsgId !== gmailMsgId) } : old
+      );
+      if (selectedMessageId === gmailMsgId) setSelectedMessageId(null);
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['/api/email/triage', { threshold: 70 }], context.previous);
+      }
+      toast({ title: 'Failed to dismiss', variant: 'destructive' });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/email/triage/stats'] });
+    },
+  });
+
+  // Rescan inbox manually (rate-limited to 5 min by backend)
+  const rescanMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/email/triage/rescan', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.status === 429) {
+        const data = await res.json();
+        // eslint-disable-next-line @typescript-eslint/no-throw-literal
+        throw { status: 429, retryAfterSeconds: data.retryAfterSeconds as number };
+      }
+      if (!res.ok) throw new Error('Rescan failed');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/email/triage', { threshold: 70 }] });
+      queryClient.invalidateQueries({ queryKey: ['/api/email/triage/stats'] });
+    },
+    onError: (error: unknown) => {
+      const e = error as { status?: number; retryAfterSeconds?: number };
+      if (e?.status === 429) {
+        const minutes = Math.ceil((e.retryAfterSeconds ?? 60) / 60);
+        toast({ description: `Rescanned recently, try again in ${minutes} minute${minutes !== 1 ? 's' : ''}.` });
+      } else {
+        toast({ title: 'Rescan failed', variant: 'destructive' });
+      }
+    },
   });
 
   const handleSearch = (e: React.FormEvent) => {
@@ -750,9 +947,13 @@ export default function EmailPage() {
 
   const handleRefresh = async () => {
     await refreshSync(async () => {
-      await refetch();
-      // Also refresh unread counts
-      await queryClient.invalidateQueries({ queryKey: ['/api/gmail/unread-counts'] });
+      if (activeCategory === 'needsReply') {
+        await refetchTriage();
+        await refetchTriageStats();
+      } else {
+        await refetch();
+        await queryClient.invalidateQueries({ queryKey: ['/api/gmail/unread-counts'] });
+      }
     });
   };
 
@@ -813,6 +1014,21 @@ export default function EmailPage() {
                 <Plus className="h-4 w-4 mr-1.5" />
                 Compose
               </Button>
+              {activeCategory === 'needsReply' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => rescanMutation.mutate()}
+                  disabled={rescanMutation.isPending}
+                >
+                  {rescanMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-1.5" />
+                  )}
+                  Rescan inbox
+                </Button>
+              )}
               <RefreshButton
                 onRefresh={handleRefresh}
                 lastManualRefresh={lastManualRefresh}
@@ -871,7 +1087,9 @@ export default function EmailPage() {
             {categories.map(cat => {
               const Icon = cat.icon;
               const isActive = activeCategory === cat.id;
-              const unreadCountForCategory = unreadCounts?.[cat.id] || 0;
+              const unreadCountForCategory = cat.id === 'needsReply'
+                ? (triageStats?.needsReplyCount || 0)
+                : (unreadCounts?.[cat.id as keyof CategoryUnreadCounts] || 0);
               return (
                 <button
                   key={cat.id}
@@ -910,7 +1128,25 @@ export default function EmailPage() {
             `}
           >
             <div className="flex-1 overflow-y-auto">
-              {isLoading ? (
+              {activeCategory === 'needsReply' ? (
+                triageLoading ? (
+                  <EmailListSkeleton />
+                ) : (triageData?.emails?.length ?? 0) === 0 ? (
+                  <TriageEmptyState />
+                ) : (
+                  <div className="p-1 space-y-0.5">
+                    {triageData!.emails.map(email => (
+                      <TriageEmailListItem
+                        key={email.gmailMsgId}
+                        email={email}
+                        isSelected={selectedMessageId === email.gmailMsgId}
+                        onClick={() => handleMessageClick(email.gmailMsgId)}
+                        onDismiss={() => dismissMutation.mutate(email.gmailMsgId)}
+                      />
+                    ))}
+                  </div>
+                )
+              ) : isLoading ? (
                 <EmailListSkeleton />
               ) : isErrorState ? (
                 <div className="p-6 text-center">
@@ -935,8 +1171,8 @@ export default function EmailPage() {
               )}
             </div>
 
-            {/* Pagination */}
-            {!isLoading && messages.length > 0 && (
+            {/* Pagination — hidden on Needs Reply tab (no pages) */}
+            {activeCategory !== 'needsReply' && !isLoading && messages.length > 0 && (
               <div className="p-3 border-t flex items-center justify-between shrink-0">
                 <Button
                   variant="outline"
