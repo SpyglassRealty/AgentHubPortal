@@ -3986,6 +3986,9 @@ Respond with valid JSON in this exact format:
         // Debug photo fields for first listing to help troubleshoot photo issues
         if (index === 0) {
           debugPhotoFields(listing, listing.mlsNumber || listing.listingId);
+          console.log('[CMA-TOP] listing top keys:', Object.keys(listing || {}).filter(k => !['details','images','photos'].includes(k)).join(', '));
+          console.log('[CMA-SCHOOL] school:', JSON.stringify(listing.school));
+          console.log('[CMA-TAX] tax/taxes:', listing.taxAnnualAmount, listing.tax);
         }
 
         // Debug logging for price and thumbnail issues
@@ -4055,27 +4058,27 @@ Respond with valid JSON in this exact format:
           parkingSpaces: listing.details?.numParkingSpaces || null,
           parkingFeatures: listing.details?.driveway || null,
           lotFeatures: listing.details?.landscapeFeatures || null,
-          exteriorFeatures: Array.isArray(listing.details?.exteriorFeatures) ? listing.details.exteriorFeatures.join(', ') : null,
-          interiorFeatures: Array.isArray(listing.details?.interiorFeatures) ? listing.details.interiorFeatures.join(', ') : null,
-          laundry: Array.isArray(listing.details?.laundryFeatures) ? listing.details.laundryFeatures.join(', ') : null,
-          sewer: Array.isArray(listing.details?.sewer) ? listing.details.sewer.join(', ') : null,
+          exteriorFeatures: null,
+          interiorFeatures: null,
+          laundry: listing.details?.laundryLevel || null,
+          sewer: Array.isArray(listing.details?.sewer) ? listing.details.sewer.join(', ') : (listing.details?.sewer || null),
           utilities: Array.isArray(listing.details?.utilities) ? listing.details.utilities.join(', ') : null,
           constructionMaterials: [listing.details?.exteriorConstruction1, listing.details?.exteriorConstruction2].filter(Boolean).join(', ') || null,
-          fencing: Array.isArray(listing.details?.fencing) ? listing.details.fencing.join(', ') : null,
+          fencing: null,
           patioFeatures: listing.details?.patio || null,
-          levels: listing.details?.levels || null,
+          levels: null,
           waterSource: listing.details?.waterSource || null,
-          windowFeatures: Array.isArray(listing.details?.windowFeatures) ? listing.details.windowFeatures.join(', ') : null,
-          securityFeatures: Array.isArray(listing.details?.securityFeatures) ? listing.details.securityFeatures.join(', ') : null,
-          ownership: listing.details?.ownership || null,
-          propertyCondition: listing.details?.propertyCondition || null,
-          directionFaces: listing.details?.directionFaces || null,
+          windowFeatures: null,
+          securityFeatures: null,
+          ownership: null,
+          propertyCondition: null,
+          directionFaces: null,
           coveredSpaces: listing.details?.numCoveredSpaces || null,
-          otherStructures: Array.isArray(listing.details?.otherStructures) ? listing.details.otherStructures.join(', ') : null,
-          disclosures: Array.isArray(listing.details?.disclosures) ? listing.details.disclosures.join(', ') : null,
-          greenEnergy: Array.isArray(listing.details?.greenEnergyEfficient) ? listing.details.greenEnergyEfficient.join(', ') : null,
-          communityFeatures: Array.isArray(listing.details?.communityFeatures) ? listing.details.communityFeatures.join(', ') : null,
-          accessibilityFeatures: Array.isArray(listing.details?.accessibilityFeatures) ? listing.details.accessibilityFeatures.join(', ') : null,
+          otherStructures: null,
+          disclosures: null,
+          greenEnergy: null,
+          communityFeatures: null,
+          accessibilityFeatures: null,
         };
       });
 
