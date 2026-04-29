@@ -3596,6 +3596,17 @@ Respond with valid JSON in this exact format:
             latitude: listing.map?.latitude || listing.address?.latitude || null,
             longitude: listing.map?.longitude || listing.address?.longitude || null,
             description: listing.details?.description || listing.remarks || listing.publicRemarks || null,
+            cooling: listing.details?.airConditioning || null,
+            appliances: listing.details?.extras || null,
+            flooring: listing.details?.flooringType || null,
+            foundation: listing.details?.foundationType || null,
+            roof: listing.details?.roofMaterial || null,
+            pool: listing.details?.swimmingPool || null,
+            parkingFeatures: listing.details?.driveway || null,
+            lotFeatures: listing.details?.landscapeFeatures || null,
+            constructionMaterials: [listing.details?.exteriorConstruction1, listing.details?.exteriorConstruction2].filter(Boolean).join(', ') || null,
+            fireplace: listing.details?.numFireplaces ? `${listing.details.numFireplaces} fireplace(s)` : null,
+            patioFeatures: listing.details?.patio || null,
           };
         });
 
@@ -3975,8 +3986,6 @@ Respond with valid JSON in this exact format:
         // Debug photo fields for first listing to help troubleshoot photo issues
         if (index === 0) {
           debugPhotoFields(listing, listing.mlsNumber || listing.listingId);
-          console.log('[CMA-DEBUG] listing.details keys:', Object.keys(listing.details || {}).join(', '));
-          console.log('[CMA-DEBUG] sample details:', JSON.stringify(listing.details || {}).slice(0, 2000));
         }
 
         // Debug logging for price and thumbnail issues
@@ -4034,26 +4043,26 @@ Respond with valid JSON in this exact format:
           schoolHigh: listing.school?.high || null,
           schoolMiddle: listing.school?.middle || null,
           schoolElementary: listing.school?.elementary || null,
-          cooling: Array.isArray(listing.details?.cooling) ? listing.details.cooling.join(', ') : (listing.details?.cooling || null),
+          cooling: listing.details?.airConditioning || null,
           heating: Array.isArray(listing.details?.heating) ? listing.details.heating.join(', ') : (listing.details?.heating || null),
-          appliances: Array.isArray(listing.details?.appliances) ? listing.details.appliances.join(', ') : (listing.details?.appliances || null),
-          fireplace: listing.details?.fireplace || listing.details?.fireplaceFeatures || null,
+          appliances: listing.details?.extras || null,
+          fireplace: listing.details?.numFireplaces ? `${listing.details.numFireplaces} fireplace(s)` : null,
           fireplaceCount: listing.details?.numFireplaces || null,
-          flooring: Array.isArray(listing.details?.flooring) ? listing.details.flooring.join(', ') : (listing.details?.flooring || null),
-          foundation: Array.isArray(listing.details?.foundation) ? listing.details.foundation.join(', ') : (listing.details?.foundation || null),
-          roof: Array.isArray(listing.details?.roofing) ? listing.details.roofing.join(', ') : (listing.details?.roofing || null),
-          pool: listing.details?.pool || listing.details?.poolFeatures || null,
+          flooring: listing.details?.flooringType || null,
+          foundation: listing.details?.foundationType || null,
+          roof: listing.details?.roofMaterial || null,
+          pool: listing.details?.swimmingPool || null,
           parkingSpaces: listing.details?.numParkingSpaces || null,
-          parkingFeatures: Array.isArray(listing.details?.parking) ? listing.details.parking.join(', ') : null,
-          lotFeatures: Array.isArray(listing.details?.lotFeatures) ? listing.details.lotFeatures.join(', ') : null,
+          parkingFeatures: listing.details?.driveway || null,
+          lotFeatures: listing.details?.landscapeFeatures || null,
           exteriorFeatures: Array.isArray(listing.details?.exteriorFeatures) ? listing.details.exteriorFeatures.join(', ') : null,
           interiorFeatures: Array.isArray(listing.details?.interiorFeatures) ? listing.details.interiorFeatures.join(', ') : null,
           laundry: Array.isArray(listing.details?.laundryFeatures) ? listing.details.laundryFeatures.join(', ') : null,
           sewer: Array.isArray(listing.details?.sewer) ? listing.details.sewer.join(', ') : null,
           utilities: Array.isArray(listing.details?.utilities) ? listing.details.utilities.join(', ') : null,
-          constructionMaterials: Array.isArray(listing.details?.constructionMaterials) ? listing.details.constructionMaterials.join(', ') : null,
+          constructionMaterials: [listing.details?.exteriorConstruction1, listing.details?.exteriorConstruction2].filter(Boolean).join(', ') || null,
           fencing: Array.isArray(listing.details?.fencing) ? listing.details.fencing.join(', ') : null,
-          patioFeatures: Array.isArray(listing.details?.patioAndPorchFeatures) ? listing.details.patioAndPorchFeatures.join(', ') : null,
+          patioFeatures: listing.details?.patio || null,
           levels: listing.details?.levels || null,
           waterSource: listing.details?.waterSource || null,
           windowFeatures: Array.isArray(listing.details?.windowFeatures) ? listing.details.windowFeatures.join(', ') : null,
