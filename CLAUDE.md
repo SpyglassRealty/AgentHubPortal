@@ -141,6 +141,41 @@ client/src/components/community/ContentBlocksEditor.tsx  — Content blocks UI
 
 ---
 
+## DEFAULT OPERATING MODE — CHAINED, AUTO-FLOW
+
+Every task uses the chained workflow by default:
+@spyglass-architect → @qa-auditor → @spyglass-code-builder
+
+Auto-flow rules:
+- Architect writes spec → QA reviews spec → Builder implements
+- No Daryl gate between Architect and QA
+- No Daryl gate between QA and Builder unless QA flags HIGH-RISK
+- Builder uses "Yes, allow all edits during this session" after
+  QA approval — Daryl does NOT approve individual str_replace edits
+- Builder ALWAYS stops at Step 5 with a pre-commit report before committing
+- Daryl gate at Step 5 → Builder commits + pushes
+- Daryl manually confirms Render deploy LIVE on the dashboard → Builder runs verification curl
+
+Daryl ONLY gates between agents when:
+- QA flags HIGH-RISK (per Risk tiers below)
+- Architect identifies critical risk (auth, DB schema, cross-platform,
+  destructive ops, Render env var changes)
+- Builder hits an unexpected error mid-execution
+
+If a chain runs without surfacing one of those three conditions,
+no Daryl involvement until Step 5.
+
+### Friction = Signal
+
+If Daryl finds himself approving more than three prompts on a HIGH-RISK
+task or more than one on a LOW-RISK task, the chain shape is wrong.
+Stop and rebuild the prompt template instead of pushing through.
+
+(Note: HIGH-RISK on MC has THREE gates — see "When HIGH-RISK gate fires"
+below — so the threshold is one higher than IDX.)
+
+---
+
 ## Agent Chaining Policy
 
 ### Token efficiency rationale
@@ -185,8 +220,43 @@ Builder (implements + commits + pushes)
 
 **When in doubt** → Builder defaults to HIGH-RISK and stops for Daryl.
 
-### Per-tool edit prompts
-Once QA-approved, Builder answers option **2** ("Yes, allow all edits during this session") to per-tool edit prompts.
+### When HIGH-RISK gate fires
+
+Daryl gate fires AFTER Architect writes spec + QA reviews it,
+BEFORE Builder begins implementation. NOT per-edit. NOT per file
+change. Once Daryl ✅ the spec, Builder auto-flows through
+implementation, build, and smoke verification using "allow all
+edits during this session" — surfaces only at Step 5 pre-commit
+report and again after push for Render deploy LIVE confirmation.
+
+This means a HIGH-RISK task on MC has exactly THREE Daryl gates:
+1. After QA review of Architect spec → ✅ to proceed to Builder
+2. At Step 5 pre-commit report → ✅ to commit + push
+3. After push → Daryl confirms Render deploy LIVE on dashboard.render.com/web/srv-d5vc5od6ubrc73cbslag/events → ✅ to run post-deploy verification curl
+
+Why three gates on MC (vs two on IDX): Render auto-deploys on push to main but deploy state is not programmatically queryable in a Claude Code session. Builder cannot confirm LIVE. Post-push verification curl is only meaningful after Daryl confirms LIVE on dashboard.render.com.
+
+A LOW-RISK task on MC has ONE Daryl gate:
+1. At Step 5 pre-commit report → ✅ to commit + push
+
+(LOW-RISK skips the post-deploy gate because LOW-RISK changes — CSS, copy, docs — don't require post-deploy verification curls. Builder posts SHA after push and the task is done.)
+
+### Per-Tool Edit Prompts
+
+Once QA has approved the spec, Builder answers Claude Code's
+per-tool edit prompts with **option 2 — "Yes, allow all edits
+during this session"**. Daryl does NOT manually approve each
+str_replace, create_file, or related edit. QA approval covers
+the entire batch through Step 5.
+
+Exceptions where per-edit review is still appropriate:
+- Editing files outside the spec's stated scope (Builder must
+  stop and re-spec instead of expanding scope mid-implementation)
+- Bash commands that mutate state outside the repo (deploy hooks,
+  Slack sends, **psql via Mac Mini for DB writes** — these always
+  prompt regardless of "allow all edits")
+- Anything with the "Contains command_substitution" warning that
+  isn't a known false-positive (env loads, basic bash patterns)
 
 ### Render-specific deploy flow (DIFFERENT FROM VERCEL)
 - Render auto-deploys on push to `main`. Builder **cannot** poll Render API from a Claude Code session.
