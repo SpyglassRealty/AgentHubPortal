@@ -262,6 +262,8 @@ function SubjectPropertyPanel({
     yearBuilt: "",
     lotSizeAcres: "",
     subdivision: "",
+    useCustomDateRange: false,
+    customDaysBack: "",
   });
 
   const fetchAutoComps = async (prop: PropertyData): Promise<PropertyData[]> => {
@@ -277,7 +279,7 @@ function SubjectPropertyPanel({
         page: 1,
         limit: 25,
         statuses: ["A", "U", "P", "S"],
-        dateSoldDays: 180,
+        dateSoldDays: manualEntry.useCustomDateRange && parseInt(manualEntry.customDaysBack) > 0 ? parseInt(manualEntry.customDaysBack) : 180,
       };
       if (zip) body.zip = zip;
       if (beds > 0) body.minBeds = Math.max(1, beds - 1);
@@ -614,6 +616,8 @@ function SubjectPropertyPanel({
                             yearBuilt: "",
                             lotSizeAcres: "",
                             subdivision: "",
+                            useCustomDateRange: false,
+                            customDaysBack: "",
                           });
                           setMode("manual");
                           setSearchResults([]);
@@ -709,6 +713,28 @@ function SubjectPropertyPanel({
                 onChange={(e) => setManualEntry({ ...manualEntry, lotSizeAcres: e.target.value })}
               />
             </div>
+            <div className="flex items-center gap-2 mt-1">
+              <input
+                type="checkbox"
+                id="customDateRange"
+                checked={manualEntry.useCustomDateRange}
+                onChange={(e) => setManualEntry({ ...manualEntry, useCustomDateRange: e.target.checked, customDaysBack: "" })}
+                className="w-4 h-4 accent-orange-500"
+              />
+              <label htmlFor="customDateRange" className="text-sm text-muted-foreground">Custom sold date range</label>
+            </div>
+            {manualEntry.useCustomDateRange && (
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  placeholder="Days back (e.g. 365)"
+                  value={manualEntry.customDaysBack}
+                  onChange={(e) => setManualEntry({ ...manualEntry, customDaysBack: e.target.value })}
+                  className="w-full"
+                />
+                <span className="text-sm text-muted-foreground whitespace-nowrap">days back</span>
+              </div>
+            )}
             <Button
               className="w-full bg-[#EF4923] hover:bg-[#d4401f] text-white"
               onClick={handleManualSave}
