@@ -167,18 +167,18 @@ async function getDbUser(req: any): Promise<User | undefined> {
   return user;
 }
 
-// Middleware: require developer access (hardcoded check)
+// Middleware: require developer access (role === 'developer' OR is_super_admin)
 async function requireDeveloper(req: any, res: any, next: any) {
   const user = await getDbUser(req);
   if (!user) {
     return res.status(401).json({ message: "Authentication required." });
   }
-  
-  // Hardcoded developer check until role migration is complete
-  if (user.email !== 'daryl@spyglassrealty.com' && !user.isSuperAdmin) {
+
+  // Consolidated policy: developer role OR super admin
+  if (user.role !== 'developer' && !user.isSuperAdmin) {
     return res.status(403).json({ message: "Access denied. Developer privileges required." });
   }
-  
+
   (req as any).dbUser = user;
   next();
 }
@@ -362,58 +362,103 @@ export function setupDeveloperRoutes(app: Express) {
       );
       
       res.json({ message: "User super admin status updated successfully" });
-      
+
     } catch (error) {
       console.error("Error updating user super admin status:", error);
       res.status(500).json({ message: "Failed to update user super admin status" });
     }
   });
 
-  // POST /api/developer/invite - add co-developer by email
-  app.post("/api/developer/invite", async (req, res) => {
+  // PUT /api/developer/users/:id/role - update user role
+  app.put("/api/developer/users/:id/role", async (req, res) => {
     try {
-      const { email, makeSuperAdmin = false } = req.body;
-      
-      if (!email) {
-        return res.status(400).json({ message: "Email is required" });
+      const { id } = req.params;
+      const { role } = req.body;
+
+      if (!['developer', 'admin', 'agent', 'viewer'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role. Must be one of: developer, admin, agent, viewer" });
       }
-      
-      // Check if user exists
-      const existingUserResult = await db.execute(sql`
-        SELECT id, is_super_admin FROM users WHERE email = ${email}
+
+      // Get current user info for logging
+      const currentUserResult = await db.execute(sql`
+        SELECT email, role as current_role FROM users WHERE id = ${id}
       `);
-      
-      if (existingUserResult.rows.length === 0) {
-        return res.status(404).json({ message: "User not found. They must sign up first." });
+
+      if (currentUserResult.rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
       }
-      
-      const user = existingUserResult.rows[0];
-      
-      // Update super admin status if requested
-      if (makeSuperAdmin) {
-        await db.execute(sql`
-          UPDATE users SET is_super_admin = true, updated_at = NOW() WHERE email = ${email}
-        `);
-      }
-      
+
+      const targetUser = currentUserResult.rows[0];
+
+      const updatedUser = await storage.updateUserRole(id, role);
+
       // Log this action
       await logActivity(
-        (req as any).dbUser.id, 
-        (req as any).dbUser.email, 
+        (req as any).dbUser.id,
+        (req as any).dbUser.email,
         `${(req as any).dbUser.firstName || ''} ${(req as any).dbUser.lastName || ''}`.trim() || (req as any).dbUser.email,
-        'create',
-        `Invited user as co-developer${makeSuperAdmin ? ' with super admin privileges' : ''}`,
-        { 
-          invited_email: email,
-          previous_super_admin: user.is_super_admin,
-          new_super_admin: makeSuperAdmin || user.is_super_admin
+        'update',
+        `Changed role from ${targetUser.current_role} to ${role}`,
+        {
+          target_user_id: id,
+          target_email: targetUser.email,
+          old_role: targetUser.current_role,
+          new_role: role
         },
         req.ip
       );
-      
-      res.json({ message: `User successfully invited as co-developer${makeSuperAdmin ? ' with super admin privileges' : ''}` });
-      
-    } catch (error) {
+
+      res.json(updatedUser);
+
+    } catch (error: any) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ message: "Failed to update user role" });
+    }
+  });
+
+  // POST /api/developer/invite - add co-developer by email (strict @spyglassrealty.com only)
+  app.post("/api/developer/invite", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Strict domain validation: @spyglassrealty.com only (Decision A1)
+      if (!email.toLowerCase().endsWith('@spyglassrealty.com')) {
+        return res.status(400).json({ message: "Spyglass email address required (@spyglassrealty.com)" });
+      }
+
+      // Decision B1: role = 'developer', is_super_admin stays false.
+      // storage.inviteDeveloper handles both existing-user (update role) and new-user (create) cases.
+      const invitedUser = await storage.inviteDeveloper(email);
+
+      // Log this action
+      await logActivity(
+        (req as any).dbUser.id,
+        (req as any).dbUser.email,
+        `${(req as any).dbUser.firstName || ''} ${(req as any).dbUser.lastName || ''}`.trim() || (req as any).dbUser.email,
+        'create',
+        `Invited user as co-developer`,
+        {
+          invited_email: email,
+          invited_user_id: invitedUser.id,
+          assigned_role: 'developer'
+        },
+        req.ip
+      );
+
+      res.json({
+        message: `User successfully invited as co-developer`,
+        user: {
+          id: invitedUser.id,
+          email: invitedUser.email,
+          role: invitedUser.role
+        }
+      });
+
+    } catch (error: any) {
       console.error("Error inviting co-developer:", error);
       res.status(500).json({ message: "Failed to invite co-developer" });
     }

@@ -690,7 +690,7 @@ function DeveloperPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Activity Feed</CardTitle>
-                <CardDescription>Real-time log of all user actions across the platform</CardDescription>
+                <CardDescription>Developer Page Access Log</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Filters */}
@@ -1041,7 +1041,6 @@ function DeveloperPage() {
                       <TableRow>
                         <TableHead>User</TableHead>
                         <TableHead>Email</TableHead>
-                        <TableHead>Status</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>Last Login</TableHead>
                         <TableHead>Actions</TableHead>
@@ -1074,11 +1073,6 @@ function DeveloperPage() {
                             </div>
                           </TableCell>
                           <TableCell className="text-muted-foreground">{user.email}</TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                              Active
-                            </Badge>
-                          </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="flex items-center gap-1">
                               {user.role === 'developer' ? (
@@ -1169,7 +1163,7 @@ function DeveloperPage() {
                         </div>
                         <div>
                           <p className="text-2xl font-bold">{systemHealth?.database_stats?.total_users || 0}</p>
-                          <p className="text-xs text-muted-foreground">Total Users</p>
+                          <p className="text-xs text-muted-foreground">MC Login Users</p>
                         </div>
                       </div>
                     </CardContent>
