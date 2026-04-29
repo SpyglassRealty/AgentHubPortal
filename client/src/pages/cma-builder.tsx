@@ -261,6 +261,7 @@ function SubjectPropertyPanel({
     sqft: "",
     yearBuilt: "",
     lotSizeAcres: "",
+    subdivision: "",
   });
 
   const fetchAutoComps = async (prop: PropertyData): Promise<PropertyData[]> => {
@@ -284,6 +285,7 @@ function SubjectPropertyPanel({
       if (sqft > 0) { body.minSqft = Math.round(sqft * 0.75); body.maxSqft = Math.round(sqft * 1.25); }
       if (lotSizeAcres > 0) { body.minLotAcres = +(lotSizeAcres * 0.5).toFixed(4); body.maxLotAcres = +(lotSizeAcres * 2).toFixed(4); }
       if (yearBuilt > 0) { body.minYearBuilt = yearBuilt - 10; body.maxYearBuilt = yearBuilt + 10; }
+      if (prop.subdivision) body.subdivision = prop.subdivision;
       const res = await apiRequest("POST", "/api/cma/search-properties", body);
       const data = await res.json();
       return data.listings || [];
@@ -413,6 +415,7 @@ function SubjectPropertyPanel({
       sqft: parseInt(manualEntry.sqft) || 0,
       lotSizeAcres: parseFloat(manualEntry.lotSizeAcres) || null,
       yearBuilt: parseInt(manualEntry.yearBuilt) || null,
+      subdivision: manualEntry.subdivision || undefined,
       propertyType: "Residential",
       status: "Manual Entry",
     };
@@ -610,6 +613,7 @@ function SubjectPropertyPanel({
                             sqft: "",
                             yearBuilt: "",
                             lotSizeAcres: "",
+                            subdivision: "",
                           });
                           setMode("manual");
                           setSearchResults([]);
@@ -665,6 +669,11 @@ function SubjectPropertyPanel({
                 onChange={(e) => setManualEntry({ ...manualEntry, zip: e.target.value })}
               />
             </div>
+            <Input
+              placeholder="Subdivision (optional)"
+              value={manualEntry.subdivision}
+              onChange={(e) => setManualEntry({ ...manualEntry, subdivision: e.target.value })}
+            />
             <div className="grid grid-cols-3 gap-2">
               <Input
                 placeholder="Beds"
