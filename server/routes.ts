@@ -6623,7 +6623,19 @@ Respond with valid JSON in this exact format:
         return true;
       });
 
-      console.log(`[Company Calendar] Included ${includedCalendars.length} calendars after filtering:`);
+      // Sort shared calendars to the front so their google_company tag wins
+      // the first-seen-wins dedup over primary-calendar copies of the same
+      // event (auto-accepted invites). Without this sort, the primary calendar
+      // is processed first, primary-cal copies get tagged google_personal, and
+      // the impersonation strip silently removes them.
+      // See: BUG-MC-CALENDAR-SHARED-EVENTS-STRIP-REGRESSION
+      includedCalendars.sort((a, b) => {
+        const aShared = SHARED_CALENDAR_MAP.has(a.id || '') ? 0 : 1;
+        const bShared = SHARED_CALENDAR_MAP.has(b.id || '') ? 0 : 1;
+        return aShared - bShared;
+      });
+
+      console.log(`[Company Calendar] Included ${includedCalendars.length} calendars after filtering (shared-first):`);
       includedCalendars.forEach((cal) =>
         console.log(`  - ${cal.summary} (${cal.id}) [${cal.accessRole}]`)
       );
