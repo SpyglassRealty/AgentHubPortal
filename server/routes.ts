@@ -3360,12 +3360,12 @@ Respond with valid JSON in this exact format:
       params.append('fields', [
         'mlsNumber', 'listingId', 'address', 'map', 'details', 'images', 'photos',
         'listPrice', 'soldPrice', 'originalPrice', 'listPriceLog',
-        'remarks', 'publicRemarks', 'description', 
-        'listDate', 'soldDate', 'closeDate',
+        'remarks', 'publicRemarks', 'description',
+        'listDate', 'soldDate', 'closeDate', 'offMarketDate',
         'daysOnMarket', 'simpleDaysOnMarket', 'dom',
         'standardStatus', 'status', 'lastStatus',
         'bedroomsTotal', 'bathroomsTotal', 'livingArea', 'lotSizeArea',
-        'lot', 'timestamps'
+        'lot', 'timestamps', 'taxes', 'school', 'association',
       ].join(','));
 
       // Enhanced address search logic
@@ -3975,6 +3975,8 @@ Respond with valid JSON in this exact format:
         // Debug photo fields for first listing to help troubleshoot photo issues
         if (index === 0) {
           debugPhotoFields(listing, listing.mlsNumber || listing.listingId);
+          console.log('[CMA-DEBUG] listing.details keys:', Object.keys(listing.details || {}).join(', '));
+          console.log('[CMA-DEBUG] sample details:', JSON.stringify(listing.details || {}).slice(0, 2000));
         }
 
         // Debug logging for price and thumbnail issues

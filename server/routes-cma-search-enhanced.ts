@@ -253,11 +253,6 @@ export function registerEnhancedCmaSearchRoutes(app: Express) {
           const photos = extractPhotosFromRepliersList(listing);
           
           if (index === 0) debugPhotoFields(listing, listing.mlsNumber || listing.listingId);
-          if (index === 0) {
-            console.log('[CMA-DEBUG] listing.details keys:', Object.keys(listing.details || {}).join(', '));
-            console.log('[CMA-DEBUG] listing keys:', Object.keys(listing || {}).join(', '));
-            console.log('[CMA-DEBUG] sample details:', JSON.stringify(listing.details || {}).slice(0, 2000));
-          }
 
           const processedListing = {
             mlsNumber: listing.mlsNumber || listing.listingId || '',
@@ -424,11 +419,6 @@ export function registerEnhancedCmaSearchRoutes(app: Express) {
 
         const photos = extractPhotosFromRepliersList(listing);
         if (index === 0) debugPhotoFields(listing, listing.mlsNumber || listing.listingId);
-        if (index === 0) {
-          console.log('[CMA-DEBUG] listing.details keys:', Object.keys(listing.details || {}).join(', '));
-          console.log('[CMA-DEBUG] listing keys:', Object.keys(listing || {}).join(', '));
-          console.log('[CMA-DEBUG] sample details:', JSON.stringify(listing.details || {}).slice(0, 2000));
-        }
 
         return {
           mlsNumber: listing.mlsNumber || listing.listingId || '',
