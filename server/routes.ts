@@ -6737,12 +6737,18 @@ Respond with valid JSON in this exact format:
         !!loggedInEmail &&
         userEmail.toLowerCase() !== loggedInEmail.toLowerCase();
 
-      const filteredEvents = isGenuineImpersonation
-        ? events.filter((e) =>
-            (e.source !== 'google_personal' && e.source !== 'google_fub') ||
-            e.calendarId.toLowerCase() === (userEmail || '').toLowerCase()
-          )
-        : events;
+      // ryan@spyglassrealty.com sees Google Calendar only — no FUB sync events
+      const RYAN_EXEMPT_EMAIL = 'ryan@spyglassrealty.com';
+      const targetIsRyan = userEmail?.toLowerCase() === RYAN_EXEMPT_EMAIL;
+
+      const filteredEvents = events.filter((e) => {
+        if (targetIsRyan && e.source === 'google_fub') return false;
+        if (isGenuineImpersonation) {
+          return (e.source !== 'google_personal' && e.source !== 'google_fub') ||
+                 e.calendarId.toLowerCase() === (userEmail || '').toLowerCase();
+        }
+        return true;
+      });
 
       if (isGenuineImpersonation) {
         console.log(
