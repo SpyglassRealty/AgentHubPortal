@@ -27,7 +27,7 @@ export function ComparableStatsSection({ data }: ComparableStatsSectionProps) {
 
   const withSqft = comparables.filter(c => (c.sqft || 0) > 0);
   const avgSqft = withSqft.length > 0
-    ? Math.round(withSqft.reduce((sum, c) => sum + c.sqft, 0) / withSqft.length)
+    ? Math.round(withSqft.reduce((sum, c) => sum + Number(c.sqft), 0) / withSqft.length)
     : 0;
 
   return (

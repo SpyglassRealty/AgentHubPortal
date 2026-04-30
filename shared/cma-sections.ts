@@ -88,6 +88,8 @@ export interface CMASubjectProperty {
   photos: string[];
   listDate: string;
   status: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface CMAComparable {
@@ -154,6 +156,8 @@ export interface CMAComparable {
   greenEnergy?: string;
   communityFeatures?: string;
   accessibilityFeatures?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface CMAAgentInfo {
@@ -189,4 +193,5 @@ export interface CMAReportData {
   agent: CMAAgentInfo;
   analysis: CMAAnalysisData;
   metadata: CMAReportMetadata;
+  mapImageUrl?: string;
 }

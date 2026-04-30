@@ -74,6 +74,8 @@ export function CMAReportDownloadButton({ cma, disabled = false }: CMAReportDown
         photos: sub.photos || (sub.photo ? [sub.photo] : []),
         listDate: sub.listDate || '',
         status: sub.status || '',
+        latitude: sub.latitude || undefined,
+        longitude: sub.longitude || undefined,
       };
 
       // Map comparables
@@ -144,6 +146,8 @@ export function CMAReportDownloadButton({ cma, disabled = false }: CMAReportDown
           greenEnergy: (c as any).greenEnergy || undefined,
           communityFeatures: (c as any).communityFeatures || undefined,
           accessibilityFeatures: (c as any).accessibilityFeatures || undefined,
+          latitude: (c as any).latitude || undefined,
+          longitude: (c as any).longitude || undefined,
         };
       });
 
@@ -181,7 +185,39 @@ export function CMAReportDownloadButton({ cma, disabled = false }: CMAReportDown
         reportTitle: cma.name || 'Comparative Market Analysis',
       };
 
-      const reportData: CMAReportData = { subjectProperty, comparables, agent, analysis, metadata };
+      // Build Mapbox static map image
+      const mapTokenRes = await fetch('/api/mapbox-token');
+      const mapTokenData = await mapTokenRes.json();
+      const mapboxToken = mapTokenData.token;
+
+      let markerStr = '';
+      if (subjectProperty.latitude && subjectProperty.longitude) {
+        markerStr += `pin-l-home+ef4923(${subjectProperty.longitude},${subjectProperty.latitude}),`;
+      }
+      comparables.forEach((c, i) => {
+        if (c.latitude && c.longitude) {
+          markerStr += `pin-s-${i + 1}+cc0000(${c.longitude},${c.latitude}),`;
+        }
+      });
+      markerStr = markerStr.replace(/,$/, '');
+
+      let mapImageUrl = '';
+      if (markerStr && mapboxToken) {
+        const mapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/${markerStr}/auto/800x400?padding=60&access_token=${mapboxToken}`;
+        try {
+          const mapRes = await fetch(mapUrl);
+          const mapBlob = await mapRes.blob();
+          mapImageUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(mapBlob);
+          });
+        } catch (e) {
+          console.warn('Map image fetch failed:', e);
+        }
+      }
+
+      const reportData: CMAReportData = { subjectProperty, comparables, agent, analysis, metadata, mapImageUrl: mapImageUrl || undefined };
 
       const coverPageConfig: CoverPageConfig = {
         title: 'Comparative Market Analysis',
