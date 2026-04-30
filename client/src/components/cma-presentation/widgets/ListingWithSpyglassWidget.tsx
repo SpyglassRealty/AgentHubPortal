@@ -20,9 +20,10 @@ export function ListingWithSpyglassWidget({
             {/* Embedded YouTube Video - Larger size */}
             <div className="relative w-full aspect-video max-w-4xl mx-auto rounded-lg overflow-hidden shadow-lg">
               <iframe
-                src={videoUrl.replace('watch?v=', 'embed/')}
+                src={videoUrl.replace('watch?v=', 'embed/').replace('://www.youtube.com/', '://www.youtube-nocookie.com/').replace('://youtube.com/', '://www.youtube-nocookie.com/')}
                 title="Spyglass Realty Video Presentation"
                 allowFullScreen
+                referrerPolicy="no-referrer-when-downgrade"
                 className="absolute inset-0 w-full h-full"
               />
             </div>
