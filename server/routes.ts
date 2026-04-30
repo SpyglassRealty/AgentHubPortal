@@ -411,7 +411,7 @@ export async function registerRoutes(
     try {
       const user = await getDbUser(req);
       
-      if (!user?.isSuperAdmin) {
+      if (!user || (user.role !== 'developer' && user.role !== 'admin' && !user.isSuperAdmin)) {
         return res.status(403).json({ message: "Access denied" });
       }
 
