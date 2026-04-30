@@ -3812,12 +3812,12 @@ Respond with valid JSON in this exact format:
         fallbackParams.append('fields', [
           'mlsNumber', 'listingId', 'address', 'map', 'details', 'images', 'photos',
           'listPrice', 'soldPrice', 'originalPrice', 'listPriceLog',
-          'remarks', 'publicRemarks', 'description', 
-          'listDate', 'soldDate', 'closeDate',
+          'remarks', 'publicRemarks', 'description',
+          'listDate', 'soldDate', 'closeDate', 'offMarketDate',
           'daysOnMarket', 'simpleDaysOnMarket', 'dom',
           'standardStatus', 'status', 'lastStatus',
           'bedroomsTotal', 'bathroomsTotal', 'livingArea', 'lotSizeArea',
-          'lot', 'timestamps'
+          'lot', 'timestamps', 'taxes', 'school', 'association',
         ].join(','));
         
         // Add generic search parameter
@@ -4041,7 +4041,7 @@ Respond with valid JSON in this exact format:
           description: listing.details?.description || listing.remarks || listing.publicRemarks || null,
           taxes: listing.taxAnnualAmount || listing.tax?.annualAmount || null,
           offMarketDate: listing.offMarketDate || null,
-          county: listing.address?.county || null,
+          county: listing.address?.county || listing.address?.area || null,
           schoolDistrict: listing.school?.district || listing.details?.schoolDistrict || null,
           schoolHigh: listing.school?.high || null,
           schoolMiddle: listing.school?.middle || null,
