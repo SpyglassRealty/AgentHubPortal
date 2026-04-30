@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
+
+import { AgentBadge } from "@/components/agents/AgentBadge";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,6 +51,8 @@ import {
   Phone,
   Loader2,
   User,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import type { AgentDirectoryProfile } from "@shared/schema";
 
@@ -150,7 +154,32 @@ export default function AgentListPage() {
     },
   });
 
+  const syncFromFubMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/agents/sync-from-fub", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Sync failed");
+      return res.json() as Promise<{ inserted: number; skipped: number; errors: any[] }>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/agents"] });
+      toast({
+        title: "Sync complete",
+        description: `${data.inserted} new agent${data.inserted === 1 ? '' : 's'} synced from FUB. ${data.skipped} already existed.${data.errors?.length ? ` ${data.errors.length} error(s).` : ''}`,
+      });
+    },
+    onError: () => {
+      toast({ title: "Sync failed", description: "Could not sync agents from FUB.", variant: "destructive" });
+    },
+  });
+
   const agents = agentsData?.agents || [];
+
+  const pendingCount = (agents || []).filter(
+    (a) => !a.isVisible && a.fubAgentId != null
+  ).length;
   
   // Handle select all
   const handleSelectAll = (checked: boolean) => {
@@ -206,6 +235,17 @@ export default function AgentListPage() {
             <Link href="/admin">
               <Button variant="outline">← Back to Admin</Button>
             </Link>
+            <Button
+              variant="outline"
+              onClick={() => syncFromFubMutation.mutate()}
+              disabled={syncFromFubMutation.isPending}
+            >
+              {syncFromFubMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Syncing...</>
+              ) : (
+                <><RefreshCw className="h-4 w-4 mr-2" />Sync from FUB</>
+              )}
+            </Button>
             <Link href="/admin/agents/new">
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
@@ -257,6 +297,7 @@ export default function AgentListPage() {
                   <SelectItem value="all">All Agents</SelectItem>
                   <SelectItem value="visible">Visible</SelectItem>
                   <SelectItem value="hidden">Hidden</SelectItem>
+                  <SelectItem value="pending">Pending Review ({pendingCount})</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -281,6 +322,23 @@ export default function AgentListPage() {
             </div>
           </CardContent>
         </Card>
+
+        {pendingCount > 0 && visibilityFilter !== 'pending' && (
+          <Card className="border-orange-300 bg-orange-50 mb-4">
+            <CardContent className="pt-4 pb-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-orange-600 shrink-0" />
+                <p className="text-sm text-orange-800">
+                  <strong>{pendingCount}</strong> agent{pendingCount === 1 ? '' : 's'} synced from FUB awaiting review.
+                  Fill in Workspace email and office location before activating.
+                </p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setVisibilityFilter('pending')}>
+                Review Now
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Bulk Actions */}
         {selectedAgents.size > 0 && (
@@ -363,7 +421,8 @@ export default function AgentListPage() {
                   </TableHeader>
                   <TableBody>
                     {agents.map((agent) => (
-                      <TableRow key={agent.id}>
+                      <Fragment key={agent.id}>
+                      <TableRow>
                         <TableCell>
                           <Checkbox
                             checked={selectedAgents.has(agent.id)}
@@ -384,8 +443,9 @@ export default function AgentListPage() {
                               </div>
                             )}
                             <div>
-                              <p className="font-medium">
+                              <p className="font-medium flex items-center gap-2">
                                 {agent.firstName} {agent.lastName}
+                                <AgentBadge fubCreatedAt={agent.fubCreatedAt} />
                               </p>
                               {agent.professionalTitle && (
                                 <p className="text-sm text-muted-foreground">
@@ -476,6 +536,16 @@ export default function AgentListPage() {
                           </DropdownMenu>
                         </TableCell>
                       </TableRow>
+                      {!agent.isVisible && agent.fubAgentId != null && !agent.email && (
+                        <TableRow className="bg-orange-50/50">
+                          <TableCell colSpan={8} className="py-2 text-xs text-orange-700">
+                            <AlertCircle className="h-3 w-3 inline mr-1" />
+                            Workspace email required for Google Calendar access. FUB ID: {agent.fubAgentId}.{' '}
+                            <a href={`/admin/agents/${agent.id}`} className="underline">Edit profile</a>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      </Fragment>
                     ))}
                   </TableBody>
                 </Table>

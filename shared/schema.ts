@@ -1072,7 +1072,7 @@ export const agentDirectoryProfiles = pgTable("agent_directory_profiles", {
   email: varchar("email", { length: 255 }).notNull(),
   phone: varchar("phone", { length: 50 }),
   fubEmail: varchar("fub_email", { length: 255 }), // Follow Up Boss routing email
-  officeLocation: text("office_location").notNull(), // Comma-separated: "Austin,Houston" for multi-office agents
+  officeLocation: text("office_location"), // Comma-separated: "Austin,Houston" for multi-office agents
   bio: text("bio"),
   professionalTitle: varchar("professional_title", { length: 255 }),
   licenseNumber: varchar("license_number", { length: 100 }),
@@ -1087,7 +1087,7 @@ export const agentDirectoryProfiles = pgTable("agent_directory_profiles", {
     tiktok?: string;
   }>(),
   subdomain: varchar("subdomain", { length: 100 }).unique(), // For agentname.spyglassrealty.com
-  isVisible: boolean("is_visible").default(true),
+  isVisible: boolean("is_visible").default(false),
   sortOrder: integer("sort_order").default(0),
   
   // Experience and expertise
@@ -1107,7 +1107,11 @@ export const agentDirectoryProfiles = pgTable("agent_directory_profiles", {
   
   // Repliers integration
   repliersAgentId: varchar("repliers_agent_id", { length: 50 }), // Repliers Agent ID for saved search management
-  
+
+  // Follow Up Boss integration
+  fubAgentId: integer("fub_agent_id"),
+  fubCreatedAt: timestamp("fub_created_at", { withTimezone: true }),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -1116,6 +1120,7 @@ export const agentDirectoryProfiles = pgTable("agent_directory_profiles", {
   index("idx_agent_directory_sort").on(table.sortOrder),
   index("idx_agent_directory_name").on(table.firstName, table.lastName),
   index("idx_agent_directory_subdomain").on(table.subdomain),
+  uniqueIndex("idx_agent_directory_fub_agent_id").on(table.fubAgentId),
 ]);
 
 export type AgentDirectoryProfile = typeof agentDirectoryProfiles.$inferSelect;

@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Users, Search, Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AgentBadge } from "@/components/agents/AgentBadge";
 
 interface Agent {
   id: number;
   name: string;
   email: string;
+  created?: string;
 }
 
 interface AgentSelectorProps {
@@ -120,7 +122,10 @@ export function AgentSelector({ selectedAgentId, onAgentChange }: AgentSelectorP
                 >
                   <Check className={cn("h-4 w-4 shrink-0", selectedAgentId === agent.id.toString() ? "opacity-100" : "opacity-0")} />
                   <div className="flex flex-col min-w-0 flex-1 text-left">
-                    <span className="truncate">{agent.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate">{agent.name}</span>
+                      <AgentBadge fubCreatedAt={agent.created} />
+                    </div>
                     <span className="text-xs text-muted-foreground truncate">{agent.email}</span>
                   </div>
                 </button>

@@ -13,6 +13,7 @@ export interface FubAgent {
   name: string;
   email: string;
   pictureUrl?: string;
+  created?: string;
 }
 
 export interface FubPerson {
@@ -250,6 +251,7 @@ class FubClient {
               name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
               email: user.email,
               pictureUrl: user.pictureUrl || user.picture || undefined,
+              created: user.created,
             });
           }
         }

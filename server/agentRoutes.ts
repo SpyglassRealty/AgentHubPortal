@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, desc, asc, ilike, and, or, sql } from "drizzle-orm";
+import { eq, desc, asc, ilike, and, or, sql, isNotNull } from "drizzle-orm";
 import { db } from "./db";
 import {
   agentDirectoryProfiles,
@@ -10,6 +10,7 @@ import { z } from "zod";
 import multer from "multer";
 import { nanoid } from "nanoid";
 import { isAuthenticated, isAdmin } from "./replitAuth";
+import { syncFubAgentsToDirectory } from "./fubSyncService";
 
 const router = Router();
 
@@ -179,7 +180,12 @@ router.get("/admin/agents", isAuthenticated, isAdmin, async (req, res) => {
       conditions.push(eq(agentDirectoryProfiles.officeLocation, office as string));
     }
     
-    if (visibility && visibility !== 'all') {
+    if (visibility === 'pending') {
+      conditions.push(and(
+        eq(agentDirectoryProfiles.isVisible, false),
+        isNotNull(agentDirectoryProfiles.fubAgentId),
+      ));
+    } else if (visibility && visibility !== 'all') {
       const isVisible = visibility === 'visible';
       conditions.push(eq(agentDirectoryProfiles.isVisible, isVisible));
     }
@@ -234,6 +240,21 @@ router.get("/admin/agents/:id", isAuthenticated, isAdmin, async (req, res) => {
   } catch (error) {
     console.error("Error fetching agent profile:", error);
     res.status(500).json({ error: "Failed to fetch agent profile" });
+  }
+});
+
+router.post("/admin/agents/sync-from-fub", isAuthenticated, isAdmin, async (req: any, res) => {
+  try {
+    const adminUserId = req.user?.claims?.sub;
+    console.log(`[FubSync] Admin sync triggered by user: ${adminUserId}`);
+    const result = await syncFubAgentsToDirectory({
+      triggeredBy: 'admin',
+      adminUserId,
+    });
+    res.json(result);
+  } catch (error: any) {
+    console.error("[FubSync] Admin sync failed:", error);
+    res.status(500).json({ error: "Failed to sync FUB agents", message: error.message });
   }
 });
 
