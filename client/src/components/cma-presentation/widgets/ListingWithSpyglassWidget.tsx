@@ -22,7 +22,6 @@ export function ListingWithSpyglassWidget({
               <iframe
                 src={videoUrl.replace('watch?v=', 'embed/')}
                 title="Spyglass Realty Video Presentation"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
                 className="absolute inset-0 w-full h-full"
               />
