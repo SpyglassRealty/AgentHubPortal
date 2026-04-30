@@ -274,3 +274,23 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     return;
   }
 };
+
+export const isAdmin: RequestHandler = async (req: any, res, next) => {
+  try {
+    const sessionUserId = req.user?.claims?.sub;
+    const email = req.user?.claims?.email;
+
+    let user = await storage.getUser(sessionUserId);
+    if (!user && email) {
+      user = await storage.getUserByEmail(email);
+    }
+
+    if (!user || (user.role !== 'admin' && user.role !== 'developer')) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    next();
+  } catch (error) {
+    console.error('[Admin Auth] Error:', error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};

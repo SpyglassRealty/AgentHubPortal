@@ -9,7 +9,7 @@ import {
 import { z } from "zod";
 import multer from "multer";
 import { nanoid } from "nanoid";
-import { isAuthenticated } from "./replitAuth";
+import { isAuthenticated, isAdmin } from "./replitAuth";
 
 const router = Router();
 
@@ -153,7 +153,7 @@ function calculateSeoScore(profile: Partial<AgentDirectoryProfile>): number {
 // ── ADMIN ROUTES: Agent Profiles ──────────────────────────────────────────
 
 // GET /api/admin/agents - List all agent profiles (with filters)
-router.get("/admin/agents", async (req, res) => {
+router.get("/admin/agents", isAuthenticated, isAdmin, async (req, res) => {
   try {
     const { search, office, visibility, sortBy = 'firstName', order = 'asc' } = req.query;
     
@@ -217,7 +217,7 @@ router.get("/admin/agents", async (req, res) => {
 });
 
 // GET /api/admin/agents/:id - Get single agent profile
-router.get("/admin/agents/:id", async (req, res) => {
+router.get("/admin/agents/:id", isAuthenticated, isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -238,7 +238,7 @@ router.get("/admin/agents/:id", async (req, res) => {
 });
 
 // POST /api/admin/agents - Create new agent profile
-router.post("/admin/agents", async (req, res) => {
+router.post("/admin/agents", isAuthenticated, isAdmin, async (req, res) => {
   try {
     // Preprocess data to convert empty strings to null/undefined
     const preprocessedData = {
@@ -287,7 +287,7 @@ router.post("/admin/agents", async (req, res) => {
 });
 
 // PUT /api/admin/agents/:id - Update agent profile
-router.put("/admin/agents/:id", async (req, res) => {
+router.put("/admin/agents/:id", isAuthenticated, isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -346,7 +346,7 @@ router.put("/admin/agents/:id", async (req, res) => {
 });
 
 // DELETE /api/admin/agents/:id - Delete agent profile
-router.delete("/admin/agents/:id", async (req, res) => {
+router.delete("/admin/agents/:id", isAuthenticated, isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -367,7 +367,7 @@ router.delete("/admin/agents/:id", async (req, res) => {
 });
 
 // PATCH /api/admin/agents/bulk-visibility - Bulk update visibility
-router.patch("/admin/agents/bulk-visibility", async (req, res) => {
+router.patch("/admin/agents/bulk-visibility", isAuthenticated, isAdmin, async (req, res) => {
   try {
     const { agentIds, isVisible } = req.body;
     
@@ -400,7 +400,7 @@ router.patch("/admin/agents/bulk-visibility", async (req, res) => {
 });
 
 // POST /api/admin/agents/upload-photo - Upload agent photo to Vercel Blob
-router.post("/admin/agents/upload-photo", isAuthenticated, uploadPhoto.single("file"), async (req: any, res) => {
+router.post("/admin/agents/upload-photo", isAuthenticated, isAdmin, uploadPhoto.single("file"), async (req: any, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
@@ -802,7 +802,7 @@ router.get("/agents/:subdomain", async (req, res) => {
 // ── Photo Migration Route ────────────────────────────────────────────
 
 // POST /api/admin/migrate-agent-photos - Migrate agent photos from REW to Mission Control
-router.post("/admin/migrate-agent-photos", async (req, res) => {
+router.post("/admin/migrate-agent-photos", isAuthenticated, isAdmin, async (req, res) => {
   try {
     console.log("Starting agent photo URL migration...");
     
