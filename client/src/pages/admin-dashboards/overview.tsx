@@ -70,7 +70,7 @@ export default function AdminDashboardOverview() {
   return (
     <DashboardLayout
       title="Business Dashboard"
-      subtitle="Spyglass Realty — Team overview powered by ReZen"
+      subtitle="Spyglass Realty — Team overview"
       icon={LayoutDashboard}
       actions={
         <Button
