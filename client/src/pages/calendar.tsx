@@ -469,7 +469,7 @@ export default function CalendarPage() {
             />
             {googleSyncTime > 0 && (
               <div className="text-xs text-muted-foreground px-2">
-                Synced from Google {format(new Date(googleSyncTime), "h:mm a")}
+                Last synced {format(new Date(googleSyncTime), "h:mm a")}
               </div>
             )}
           </div>

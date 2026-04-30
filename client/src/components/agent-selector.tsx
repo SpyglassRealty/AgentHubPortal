@@ -118,8 +118,11 @@ export function AgentSelector({ selectedAgentId, onAgentChange }: AgentSelectorP
                   }}
                   data-testid={`option-agent-${agent.id}`}
                 >
-                  <Check className={cn("h-4 w-4", selectedAgentId === agent.id.toString() ? "opacity-100" : "opacity-0")} />
-                  <span className="truncate">{agent.name}</span>
+                  <Check className={cn("h-4 w-4 shrink-0", selectedAgentId === agent.id.toString() ? "opacity-100" : "opacity-0")} />
+                  <div className="flex flex-col min-w-0 flex-1 text-left">
+                    <span className="truncate">{agent.name}</span>
+                    <span className="text-xs text-muted-foreground truncate">{agent.email}</span>
+                  </div>
                 </button>
               ))
             )}
