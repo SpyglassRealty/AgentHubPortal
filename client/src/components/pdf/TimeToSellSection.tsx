@@ -70,13 +70,12 @@ function avgOfNums(values: (number | null | undefined)[]): number | null {
 export function TimeToSellSection({ data }: TimeToSellSectionProps) {
   const { comparables, agent } = data;
 
-  // Hero stats
-  const withDOM = comparables.filter(c => (c.daysOnMarket || 0) > 0);
-  const avgDOM = withDOM.length > 0
-    ? Math.round(withDOM.reduce((s, c) => s + (c.daysOnMarket || 0), 0) / withDOM.length)
-    : null;
-
+  // Hero stats — DOM averaged over sold/closed comps only
   const soldComps = comparables.filter(isSold);
+  const withSoldDOM = soldComps.filter(c => (c.daysOnMarket || 0) > 0);
+  const avgDOM = withSoldDOM.length > 0
+    ? Math.round(withSoldDOM.reduce((s, c) => s + (c.daysOnMarket || 0), 0) / withSoldDOM.length)
+    : null;
   const validPctComps = soldComps.filter(c => (c.soldPrice || 0) > 0 && (c.listPrice || 0) > 0);
   const avgPctOfList = validPctComps.length > 0
     ? validPctComps.reduce((s, c) => s + ((c.soldPrice || 0) / (c.listPrice || 1) * 100), 0) / validPctComps.length
@@ -123,7 +122,7 @@ export function TimeToSellSection({ data }: TimeToSellSectionProps) {
   // Table averages
   const avgListPrice = avgOfNums(comparables.map(c => c.listPrice || 0).filter(v => v > 0));
   const avgSoldPrice = avgOfNums(soldComps.map(c => c.soldPrice || null));
-  const avgDomAll = avgOfNums(withDOM.map(c => c.daysOnMarket || 0));
+  const avgDomAll = avgOfNums(withSoldDOM.map(c => c.daysOnMarket || 0));
 
   return (
     <Page size="LETTER" style={styles.page}>
