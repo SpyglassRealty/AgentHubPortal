@@ -1,5 +1,6 @@
-import { 
-  extractPrice, 
+import { useState } from 'react';
+import {
+  extractPrice,
   extractSqft, 
   extractDOM, 
   extractFullAddress,
@@ -423,96 +424,207 @@ function MarketingContent() {
   );
 }
 
-function CompsContent({ comparables, stats, subjectProperty }: { 
-  comparables: CmaProperty[]; 
+function CompsContent({ comparables, subjectProperty }: {
+  comparables: CmaProperty[];
   stats: ReturnType<typeof calculateCMAStats>;
   subjectProperty?: CmaProperty;
 }) {
-  // Calculate subject property values for "vs market" comparison
+  const [enabledIds, setEnabledIds] = useState<Set<string>>(new Set(comparables.map(c => c.id)));
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  function toggleComp(id: string) {
+    setEnabledIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  const filteredByTab = filterStatus === 'all'
+    ? comparables
+    : comparables.filter(c => c.status === filterStatus);
+
+  const activeComps = filteredByTab.filter(c => enabledIds.has(c.id));
+
+  const livePrices = activeComps.map(c => extractPrice(c)).filter(v => v > 0);
+  const liveAvgPrice = livePrices.length ? livePrices.reduce((a, b) => a + b, 0) / livePrices.length : null;
+  const liveLowPrice = livePrices.length ? Math.min(...livePrices) : null;
+  const liveHighPrice = livePrices.length ? Math.max(...livePrices) : null;
+  const sortedPrices = [...livePrices].sort((a, b) => a - b);
+  const mid = Math.floor(sortedPrices.length / 2);
+  const liveMedian = sortedPrices.length
+    ? (sortedPrices.length % 2 === 0 ? (sortedPrices[mid - 1] + sortedPrices[mid]) / 2 : sortedPrices[mid])
+    : null;
+  const livePsfVals = activeComps.map(c => c.pricePerSqft).filter(v => v > 0);
+  const livePsf = livePsfVals.length ? livePsfVals.reduce((a, b) => a + b, 0) / livePsfVals.length : null;
+
   const subjectPrice = subjectProperty ? extractPrice(subjectProperty) : null;
   const subjectSqft = subjectProperty ? extractSqft(subjectProperty) : null;
-  const subjectPricePerSqft = (subjectPrice && subjectSqft && subjectSqft > 0) 
-    ? subjectPrice / subjectSqft 
-    : null;
-  
-  // Calculate % difference vs market average
-  const priceVsMarket = (stats.avgPrice && stats.avgPrice > 0 && subjectPrice && subjectPrice > 0)
-    ? ((subjectPrice - stats.avgPrice) / stats.avgPrice) * 100
-    : null;
-  
-  const avgPricePerSqft = stats.avgPricePerSqft ?? null;
-  const pricePerSqftVsMarket = (avgPricePerSqft && avgPricePerSqft > 0 && subjectPricePerSqft && subjectPricePerSqft > 0)
-    ? ((subjectPricePerSqft - avgPricePerSqft) / avgPricePerSqft) * 100
-    : null;
-  
+  const subjectPsf = (subjectPrice && subjectSqft && subjectSqft > 0) ? subjectPrice / subjectSqft : null;
+  const priceVsMarket = (liveAvgPrice && liveAvgPrice > 0 && subjectPrice && subjectPrice > 0)
+    ? ((subjectPrice - liveAvgPrice) / liveAvgPrice) * 100 : null;
+  const psfVsMarket = (livePsf && livePsf > 0 && subjectPsf && subjectPsf > 0)
+    ? ((subjectPsf - livePsf) / livePsf) * 100 : null;
+
+  const statusTabs = ['all', 'Closed', 'Active Under Contract', 'Pending', 'Active', 'Leasing'];
+  const tabCounts: Record<string, number> = { all: comparables.length };
+  for (const c of comparables) {
+    tabCounts[c.status] = (tabCounts[c.status] || 0) + 1;
+  }
+
   return (
     <div className="flex flex-col h-full">
-      <div className="grid grid-cols-4 gap-3 mb-4">
-        <div className="bg-zinc-50 p-3 rounded text-center">
-          <p className="text-lg font-bold text-[#EF4923]">{comparables.length}</p>
-          <p className="text-xs text-zinc-500">Properties</p>
+      {/* Status tabs */}
+      <div className="flex gap-1 mb-2 flex-wrap">
+        {statusTabs.map(tab => {
+          const count = tab === 'all' ? comparables.length : (tabCounts[tab] || 0);
+          if (tab !== 'all' && count === 0) return null;
+          return (
+            <button
+              key={tab}
+              onClick={() => setFilterStatus(tab)}
+              className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${
+                filterStatus === tab
+                  ? 'bg-[#EF4923] text-white border-[#EF4923]'
+                  : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400'
+              }`}
+            >
+              {tab === 'all' ? 'All' : tab} ({count})
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 6-col live stats bar */}
+      <div className="grid grid-cols-6 gap-2 mb-3">
+        <div className="bg-zinc-50 p-2 rounded text-center">
+          <p className="text-sm font-bold text-[#EF4923]">
+            {activeComps.length}<span className="text-[9px] text-zinc-400">/{filteredByTab.length}</span>
+          </p>
+          <p className="text-[9px] text-zinc-500">Selected</p>
         </div>
-        <div className="bg-zinc-50 p-3 rounded text-center">
-          <p className="text-lg font-bold text-[#222222]">{stats.avgPrice ? formatPrice(stats.avgPrice) : 'N/A'}</p>
-          <p className="text-xs text-zinc-500">Avg Price</p>
+        <div className="bg-zinc-50 p-2 rounded text-center">
+          <p className="text-sm font-bold text-[#222222]">{liveAvgPrice ? formatPrice(liveAvgPrice) : 'N/A'}</p>
+          <p className="text-[9px] text-zinc-500">Avg Price</p>
           {priceVsMarket !== null && (
-            <p className={`text-[10px] flex items-center justify-center gap-0.5 ${priceVsMarket > 0 ? 'text-red-500' : 'text-green-500'}`}>
+            <p className={`text-[9px] flex items-center justify-center gap-0.5 ${priceVsMarket > 0 ? 'text-red-500' : 'text-green-500'}`}>
               {priceVsMarket > 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
-              {Math.abs(priceVsMarket).toFixed(1)}% vs market
+              {Math.abs(priceVsMarket).toFixed(1)}% vs subject
             </p>
           )}
-          {subjectPrice && (
-            <p className="text-[10px] text-zinc-400">Your: {formatPrice(subjectPrice)}</p>
-          )}
         </div>
-        <div className="bg-zinc-50 p-3 rounded text-center">
-          <p className="text-lg font-bold text-[#222222]">{avgPricePerSqft ? `$${Math.round(avgPricePerSqft)}` : 'N/A'}</p>
-          <p className="text-xs text-zinc-500">Avg $/SqFt</p>
-          {pricePerSqftVsMarket !== null && (
-            <p className={`text-[10px] flex items-center justify-center gap-0.5 ${pricePerSqftVsMarket > 0 ? 'text-red-500' : 'text-green-500'}`}>
-              {pricePerSqftVsMarket > 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
-              {Math.abs(pricePerSqftVsMarket).toFixed(1)}% vs market
+        <div className="bg-zinc-50 p-2 rounded text-center">
+          <p className="text-sm font-bold text-[#222222]">{liveLowPrice ? formatPrice(liveLowPrice) : 'N/A'}</p>
+          <p className="text-[9px] text-zinc-500">Low</p>
+        </div>
+        <div className="bg-zinc-50 p-2 rounded text-center">
+          <p className="text-sm font-bold text-[#222222]">{liveHighPrice ? formatPrice(liveHighPrice) : 'N/A'}</p>
+          <p className="text-[9px] text-zinc-500">High</p>
+        </div>
+        <div className="bg-zinc-50 p-2 rounded text-center">
+          <p className="text-sm font-bold text-[#222222]">{liveMedian ? formatPrice(liveMedian) : 'N/A'}</p>
+          <p className="text-[9px] text-zinc-500">Median</p>
+        </div>
+        <div className="bg-zinc-50 p-2 rounded text-center">
+          <p className="text-sm font-bold text-[#222222]">{livePsf ? `$${Math.round(livePsf)}` : 'N/A'}</p>
+          <p className="text-[9px] text-zinc-500">Avg $/SqFt</p>
+          {psfVsMarket !== null && (
+            <p className={`text-[9px] flex items-center justify-center gap-0.5 ${psfVsMarket > 0 ? 'text-red-500' : 'text-green-500'}`}>
+              {psfVsMarket > 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
+              {Math.abs(psfVsMarket).toFixed(1)}% vs subject
             </p>
           )}
-          {subjectPricePerSqft && (
-            <p className="text-[10px] text-zinc-400">Your: ${Math.round(subjectPricePerSqft)}</p>
-          )}
-        </div>
-        <div className="bg-zinc-50 p-3 rounded text-center">
-          <p className="text-lg font-bold text-[#222222]">{stats.avgDOM !== null ? `${Math.round(stats.avgDOM)} days` : 'N/A'}</p>
-          <p className="text-xs text-zinc-500">Avg DOM</p>
         </div>
       </div>
+
+      {/* 12-col table */}
       <div className="flex-1 overflow-auto">
-        <table className="w-full text-xs">
+        <table className="w-full text-[10px]">
           <thead>
-            <tr className="border-b">
-              <th className="text-left py-1">Address</th>
-              <th className="text-right py-1">Price</th>
-              <th className="text-right py-1">Sq Ft</th>
-              <th className="text-right py-1">Status</th>
+            <tr className="border-b bg-zinc-50 text-left">
+              <th className="py-1 px-1 w-5"></th>
+              <th className="py-1 px-1 text-[9px] font-semibold text-zinc-500">#</th>
+              <th className="py-1 px-1 text-[9px] font-semibold text-zinc-500">Address</th>
+              <th className="py-1 px-1 text-center text-[9px] font-semibold text-zinc-500">Bd</th>
+              <th className="py-1 px-1 text-center text-[9px] font-semibold text-zinc-500">Ba</th>
+              <th className="py-1 px-1 text-right text-[9px] font-semibold text-zinc-500">SqFt</th>
+              <th className="py-1 px-1 text-right text-[9px] font-semibold text-zinc-500">List Price</th>
+              <th className="py-1 px-1 text-right text-[9px] font-semibold text-zinc-500">Sold Price</th>
+              <th className="py-1 px-1 text-right text-[9px] font-semibold text-zinc-500">$/SqFt</th>
+              <th className="py-1 px-1 text-center text-[9px] font-semibold text-zinc-500">DOM</th>
+              <th className="py-1 px-1 text-center text-[9px] font-semibold text-zinc-500">Status</th>
+              <th className="py-1 px-1 text-right text-[9px] font-semibold text-zinc-500">% List</th>
             </tr>
           </thead>
           <tbody>
-            {/* Show ALL comparables - no truncation for PDF compatibility */}
-            {comparables.map((comp, i) => (
-              <tr key={i} className="border-b border-zinc-100">
-                <td className="py-1 truncate max-w-[120px]">{extractFullAddress(comp) || 'Unknown'}</td>
-                <td className="text-right py-1">{formatPrice(extractPrice(comp))}</td>
-                <td className="text-right py-1">{formatNumber(extractSqft(comp))}</td>
-                <td className="text-right py-1">
-                  <span 
-                    className="px-1 py-0.5 rounded text-[10px]"
-                    style={{ 
-                      backgroundColor: getStatusColor(normalizeStatus(comp.status)) + '20',
-                      color: getStatusColor(normalizeStatus(comp.status))
-                    }}
-                  >
-                    {normalizeStatus(comp.status)}
-                  </span>
+            {subjectProperty && (
+              <tr className="border-b border-blue-100 bg-blue-50">
+                <td className="py-1 px-1"></td>
+                <td className="py-1 px-1 text-zinc-400">S</td>
+                <td className="py-1 px-1 truncate max-w-[90px]">
+                  <span className="mr-1 px-1 rounded bg-blue-600 text-white text-[8px] font-bold">Subject</span>
+                  {extractFullAddress(subjectProperty) || 'Subject'}
                 </td>
+                <td className="py-1 px-1 text-center">{extractBeds(subjectProperty) || '-'}</td>
+                <td className="py-1 px-1 text-center">{extractBaths(subjectProperty) || '-'}</td>
+                <td className="py-1 px-1 text-right">{subjectSqft ? formatNumber(subjectSqft) : '-'}</td>
+                <td className="py-1 px-1 text-right">{subjectPrice ? formatPrice(subjectPrice) : '-'}</td>
+                <td className="py-1 px-1 text-right text-zinc-400">-</td>
+                <td className="py-1 px-1 text-right">{subjectPsf ? `$${Math.round(subjectPsf)}` : '-'}</td>
+                <td className="py-1 px-1 text-center">-</td>
+                <td className="py-1 px-1 text-center">
+                  <span className="px-1 rounded bg-blue-100 text-blue-700 text-[9px]">Subject</span>
+                </td>
+                <td className="py-1 px-1 text-right">-</td>
               </tr>
-            ))}
+            )}
+            {filteredByTab.map((comp, i) => {
+              const isEnabled = enabledIds.has(comp.id);
+              const listPrice = comp.listPrice || comp.price || 0;
+              const soldPrice = comp.soldPrice || 0;
+              const sqft = extractSqft(comp);
+              const psf = comp.pricePerSqft || (sqft > 0 ? extractPrice(comp) / sqft : 0);
+              const dom = extractDOM(comp);
+              const pctOfList = listPrice > 0 && soldPrice > 0 ? (soldPrice / listPrice) * 100 : null;
+              return (
+                <tr
+                  key={comp.id}
+                  className={`border-b border-zinc-100 transition-opacity ${!isEnabled ? 'opacity-40' : ''}`}
+                >
+                  <td className="py-1 px-1">
+                    <input
+                      type="checkbox"
+                      checked={isEnabled}
+                      onChange={() => toggleComp(comp.id)}
+                      className="w-3 h-3 cursor-pointer"
+                    />
+                  </td>
+                  <td className="py-1 px-1 text-zinc-400">{i + 1}</td>
+                  <td className="py-1 px-1 truncate max-w-[90px]">{extractFullAddress(comp) || 'Unknown'}</td>
+                  <td className="py-1 px-1 text-center">{extractBeds(comp) || '-'}</td>
+                  <td className="py-1 px-1 text-center">{extractBaths(comp) || '-'}</td>
+                  <td className="py-1 px-1 text-right">{sqft ? formatNumber(sqft) : '-'}</td>
+                  <td className="py-1 px-1 text-right">{listPrice ? formatPrice(listPrice) : '-'}</td>
+                  <td className="py-1 px-1 text-right font-semibold" style={{ color: soldPrice ? '#16a34a' : undefined }}>
+                    {soldPrice ? formatPrice(soldPrice) : '-'}
+                  </td>
+                  <td className="py-1 px-1 text-right">{psf > 0 ? `$${Math.round(psf)}` : '-'}</td>
+                  <td className="py-1 px-1 text-center">{dom > 0 ? dom : '-'}</td>
+                  <td className="py-1 px-1 text-center">
+                    <span
+                      className="px-1 py-0.5 rounded text-[9px]"
+                      style={{
+                        backgroundColor: getStatusColor(normalizeStatus(comp.status)) + '20',
+                        color: getStatusColor(normalizeStatus(comp.status)),
+                      }}
+                    >
+                      {normalizeStatus(comp.status)}
+                    </span>
+                  </td>
+                  <td className="py-1 px-1 text-right">{pctOfList ? `${pctOfList.toFixed(1)}%` : '-'}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
