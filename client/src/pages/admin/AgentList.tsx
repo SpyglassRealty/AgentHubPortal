@@ -161,13 +161,25 @@ export default function AgentListPage() {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Sync failed");
-      return res.json() as Promise<{ inserted: number; skipped: number; errors: any[] }>;
+      return res.json() as Promise<{
+        inserted: number;
+        updated: number;
+        skipped: number;
+        skipped_alias: number;
+        errors: any[];
+      }>;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/agents"] });
+      const parts: string[] = [];
+      if (data.inserted > 0) parts.push(`${data.inserted} new`);
+      if (data.updated > 0) parts.push(`${data.updated} merged`);
+      if (data.skipped > 0) parts.push(`${data.skipped} already linked`);
+      if (data.skipped_alias > 0) parts.push(`${data.skipped_alias} skipped (alias collision)`);
+      if (data.errors?.length) parts.push(`${data.errors.length} error(s)`);
       toast({
         title: "Sync complete",
-        description: `${data.inserted} new agent${data.inserted === 1 ? '' : 's'} synced from FUB. ${data.skipped} already existed.${data.errors?.length ? ` ${data.errors.length} error(s).` : ''}`,
+        description: parts.length > 0 ? parts.join(' · ') : 'No changes.',
       });
     },
     onError: () => {

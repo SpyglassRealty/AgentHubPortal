@@ -1,10 +1,13 @@
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "./db";
 import { agentDirectoryProfiles } from "@shared/schema";
 import { getFubClientAsync, type FubAgent } from "./fubClient";
 
 export interface SyncResult {
   inserted: number;
+  updated: number;
   skipped: number;
+  skipped_alias: number;
   fubAgentsTotal: number;
   insertedAgents: Array<{ id: string; fubAgentId: number; name: string; fubEmail: string }>;
   errors: Array<{ fubAgentId?: number; name?: string; message: string }>;
@@ -52,7 +55,9 @@ export async function syncFubAgentsToDirectory(
 
   const result: SyncResult = {
     inserted: 0,
+    updated: 0,
     skipped: 0,
+    skipped_alias: 0,
     fubAgentsTotal: 0,
     insertedAgents: [],
     errors: [],
@@ -104,12 +109,63 @@ export async function syncFubAgentsToDirectory(
     return result;
   }
 
-  // 4. Iterate and insert
+  // 4. Iterate and merge (UPDATE on email match, INSERT for net-new, SKIP on alias collision)
   for (const agent of fubAgents) {
-    const { firstName, lastName } = splitName(agent.name, agent.email);
-    const fubCreatedAt = agent.created ? new Date(agent.created) : null;
-
     try {
+      // Step 1 — Email validation gate
+      const trimmedFubEmail = agent.email?.trim() ?? '';
+      if (trimmedFubEmail === '') {
+        result.skipped += 1;
+        console.warn('[FubSync] null_fub_email', JSON.stringify({ fub_agent_id: agent.id }));
+        continue;
+      }
+
+      const { firstName, lastName } = splitName(agent.name, trimmedFubEmail);
+      const fubCreatedAt = agent.created ? new Date(agent.created) : null;
+
+      // Step 2 — Email match query (case-insensitive + whitespace-normalized, manual rows only — fub_agent_id IS NULL)
+      const matches = await db
+        .select({ id: agentDirectoryProfiles.id })
+        .from(agentDirectoryProfiles)
+        .where(and(
+          sql`LOWER(TRIM(${agentDirectoryProfiles.email})) = LOWER(${trimmedFubEmail})`,
+          isNull(agentDirectoryProfiles.fubAgentId),
+        ));
+
+      // Step 3 — Branch on match count
+      if (matches.length >= 2) {
+        // 2+ matches → SKIP (alias collision)
+        result.skipped_alias += 1;
+        console.warn('[FubSync] alias collision', JSON.stringify({
+          email: trimmedFubEmail,
+          match_count: matches.length,
+          fub_agent_id: agent.id,
+        }));
+        continue;
+      }
+
+      if (matches.length === 1) {
+        // 1 match → UPDATE only fubAgentId, fubCreatedAt, fubEmail
+        await db
+          .update(agentDirectoryProfiles)
+          .set({
+            fubAgentId: agent.id,
+            fubCreatedAt,
+            fubEmail: trimmedFubEmail,
+          })
+          .where(eq(agentDirectoryProfiles.id, matches[0].id));
+        result.updated += 1;
+        console.log('[FubSync]', JSON.stringify({
+          triggeredBy,
+          fubAgentId: agent.id,
+          name: agent.name,
+          action: 'updated',
+          id: matches[0].id,
+        }));
+        continue;
+      }
+
+      // 0 matches → INSERT new row (existing behavior)
       const inserted = await db
         .insert(agentDirectoryProfiles)
         .values({
@@ -118,7 +174,7 @@ export async function syncFubAgentsToDirectory(
           firstName,
           lastName,
           email: '', // empty string — Workspace email to be filled by admin
-          fubEmail: agent.email,
+          fubEmail: trimmedFubEmail,
           // officeLocation: nullable after migration — null means "no office assigned yet"
           officeLocation: null,
           headshotUrl: agent.pictureUrl || null,
@@ -139,7 +195,7 @@ export async function syncFubAgentsToDirectory(
           id: inserted[0].id,
           fubAgentId: agent.id,
           name: agent.name,
-          fubEmail: agent.email,
+          fubEmail: trimmedFubEmail,
         });
         console.log('[FubSync]', JSON.stringify({
           triggeredBy,
@@ -148,6 +204,7 @@ export async function syncFubAgentsToDirectory(
           action: 'inserted',
         }));
       } else {
+        // Conflict on fub_agent_id — already linked from prior run
         result.skipped += 1;
         console.log('[FubSync]', JSON.stringify({
           triggeredBy,
@@ -179,7 +236,9 @@ export async function syncFubAgentsToDirectory(
     triggeredBy,
     fubAgentsTotal: result.fubAgentsTotal,
     inserted: result.inserted,
+    updated: result.updated,
     skipped: result.skipped,
+    skipped_alias: result.skipped_alias,
     errors: result.errors.length,
     startedAt: result.startedAt,
     finishedAt: result.finishedAt,
