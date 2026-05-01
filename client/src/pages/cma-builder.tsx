@@ -266,6 +266,11 @@ function SubjectPropertyPanel({
     customDaysBack: "",
   });
 
+  const [selectedStatuses, setSelectedStatuses] = useState(["A", "U", "P", "S"]);
+  const toggleStatus = (code: string) => setSelectedStatuses(prev =>
+    prev.includes(code) ? prev.filter(s => s !== code) : [...prev, code]
+  );
+
   const fetchAutoComps = async (prop: PropertyData): Promise<PropertyData[]> => {
     try {
       const zip = prop.zip || prop.address?.match(/\d{5}/)?.[0] || "";
@@ -278,7 +283,7 @@ function SubjectPropertyPanel({
       const body: any = {
         page: 1,
         limit: 25,
-        statuses: ["A", "U", "P", "S"],
+        statuses: selectedStatuses,
         dateSoldDays: manualEntry.useCustomDateRange && parseInt(manualEntry.customDaysBack) > 0 ? parseInt(manualEntry.customDaysBack) : 180,
       };
       if (zip) body.zip = zip;
@@ -712,6 +717,34 @@ function SubjectPropertyPanel({
                 value={manualEntry.lotSizeAcres}
                 onChange={(e) => setManualEntry({ ...manualEntry, lotSizeAcres: e.target.value })}
               />
+            </div>
+            <div className="mb-3">
+              <p className="text-xs text-muted-foreground mb-2">Listing statuses to include</p>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { code: "A", label: "Active", color: "#16a34a", bg: "#dcfce7", border: "#16a34a" },
+                  { code: "U", label: "Active Under Contract", color: "#2563eb", bg: "#dbeafe", border: "#2563eb" },
+                  { code: "P", label: "Pending", color: "#ca8a04", bg: "#fef9c3", border: "#ca8a04" },
+                  { code: "S", label: "Closed", color: "#dc2626", bg: "#fee2e2", border: "#dc2626" },
+                ] as const).map(opt => {
+                  const selected = selectedStatuses.includes(opt.code);
+                  return (
+                    <button
+                      key={opt.code}
+                      type="button"
+                      onClick={() => toggleStatus(opt.code)}
+                      className="border rounded-full px-3 py-1 text-xs font-medium cursor-pointer flex items-center gap-1.5 transition-colors"
+                      style={selected
+                        ? { backgroundColor: opt.bg, color: opt.color, borderColor: opt.border }
+                        : { backgroundColor: 'white', color: '#a1a1aa', borderColor: '#e4e4e7' }
+                      }
+                    >
+                      {selected && <span>✓</span>}
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div className="flex items-center gap-2 mt-1">
               <input
