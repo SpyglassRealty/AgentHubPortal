@@ -289,8 +289,6 @@ function SubjectPropertyPanel({
       if (beds > 0) body.minBeds = Math.max(1, beds - 1);
       if (baths > 0) body.minBaths = Math.max(1, Math.floor(baths) - 1 || 1);
       if (sqft > 0) { body.minSqft = Math.round(sqft * 0.75); body.maxSqft = Math.round(sqft * 1.25); }
-      const lotVal = parseFloat(manualEntry.lotSizeAcres);
-      if (!isNaN(lotVal) && lotVal > 0) { body.minLotAcres = lotVal * 0.5; body.maxLotAcres = lotVal * 1.5; }
       if (yearBuilt > 0) { body.minYearBuilt = yearBuilt - 10; body.maxYearBuilt = yearBuilt + 10; }
       if (prop.subdivision) body.subdivision = prop.subdivision;
       const res = await apiRequest("POST", "/api/cma/search-properties", body);
