@@ -936,6 +936,8 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
   }
   const [mainView, setMainView] = useState<'compare' | 'map' | 'stats'>('compare');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [enabledIds, setEnabledIds] = useState<Set<string>>(() => new Set(comparables.map(c => c.id)));
+  const toggleComp = (id: string) => setEnabledIds(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const [selectedProperty, setSelectedProperty] = useState<CmaProperty | null>(null);
   const [mapboxToken, setMapboxToken] = useState('');
   const [geocodedCoords, setGeocodedCoords] = useState<{latitude: number; longitude: number}|null>(null);
@@ -1009,6 +1011,11 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
 
   const statistics = useMemo(() => calculateStatistics(filteredComparables), [filteredComparables]);
 
+  useEffect(() => { setEnabledIds(new Set(filteredComparables.map(c => c.id))); }, [statusFilter]);
+
+  const enabledComps = mainView === 'stats' ? filteredComparables.filter(c => enabledIds.has(c.id)) : filteredComparables;
+  const liveStatistics = useMemo(() => calculateStatistics(enabledComps), [enabledComps]);
+
   return (
     <div className="flex flex-col h-full bg-white" data-testid="comps-widget">
       <div className="p-4 border-b space-y-4">
@@ -1055,54 +1062,54 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
           ))}
         </div>
         
-        {statistics && (() => {
+        {statistics && liveStatistics && (() => {
           // Calculate subject property values for "vs market" comparison
           const extractedPrice = subjectProperty ? extractPrice(subjectProperty) : null;
           // Use suggestedListPrice as fallback if subject property has no price data
           const subjectPrice = extractedPrice || suggestedListPrice || null;
           const subjectSqft = subjectProperty ? extractSqft(subjectProperty) : null;
-          const subjectPricePerSqft = (subjectPrice && subjectSqft && subjectSqft > 0) 
-            ? subjectPrice / subjectSqft 
+          const subjectPricePerSqft = (subjectPrice && subjectSqft && subjectSqft > 0)
+            ? subjectPrice / subjectSqft
             : null;
-          
-          // Calculate % difference vs market average
-          const priceVsMarket = (statistics.price.average > 0 && subjectPrice && subjectPrice > 0)
-            ? ((subjectPrice - statistics.price.average) / statistics.price.average) * 100
+
+          // Calculate % difference vs market average (live — updates as comps are toggled)
+          const priceVsMarket = (liveStatistics.price.average > 0 && subjectPrice && subjectPrice > 0)
+            ? ((subjectPrice - liveStatistics.price.average) / liveStatistics.price.average) * 100
             : null;
-          
-          const pricePerSqftVsMarket = (statistics.pricePerSqFt.average > 0 && subjectPricePerSqft && subjectPricePerSqft > 0)
-            ? ((subjectPricePerSqft - statistics.pricePerSqFt.average) / statistics.pricePerSqFt.average) * 100
+
+          const pricePerSqftVsMarket = (liveStatistics.pricePerSqFt.average > 0 && subjectPricePerSqft && subjectPricePerSqft > 0)
+            ? ((subjectPricePerSqft - liveStatistics.pricePerSqFt.average) / liveStatistics.pricePerSqFt.average) * 100
             : null;
-          
+
           return (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-4 p-2 sm:p-4 bg-gray-50 rounded-lg" data-testid="stats-summary">
-              <StatItem 
-                label="LOW PRICE" 
-                value={formatCurrency(statistics.price.range.min)} 
+              <StatItem
+                label="LOW PRICE"
+                value={formatCurrency(liveStatistics.price.range.min)}
               />
-              <StatItem 
-                label="HIGH PRICE" 
-                value={formatCurrency(statistics.price.range.max)} 
+              <StatItem
+                label="HIGH PRICE"
+                value={formatCurrency(liveStatistics.price.range.max)}
               />
-              <StatItem 
-                label="AVG PRICE" 
-                value={formatCurrency(statistics.price.average)}
+              <StatItem
+                label="AVG PRICE"
+                value={formatCurrency(liveStatistics.price.average)}
                 vsMarketPercent={priceVsMarket}
                 yourValue={subjectPrice ? formatCurrency(subjectPrice) : undefined}
               />
-              <StatItem 
-                label="MEDIAN" 
-                value={formatCurrency(statistics.price.median)} 
+              <StatItem
+                label="MEDIAN"
+                value={formatCurrency(liveStatistics.price.median)}
               />
-              <StatItem 
-                label="AVG $/SQFT" 
-                value={`$${Math.round(statistics.pricePerSqFt.average)}`}
+              <StatItem
+                label="AVG $/SQFT"
+                value={`$${Math.round(liveStatistics.pricePerSqFt.average)}`}
                 vsMarketPercent={pricePerSqftVsMarket}
                 yourValue={subjectPricePerSqft ? `$${Math.round(subjectPricePerSqft)}` : undefined}
               />
-              <StatItem 
-                label="AVG DOM" 
-                value={`${Math.round(statistics.daysOnMarket.average)} days`} 
+              <StatItem
+                label="AVG DOM"
+                value={`${Math.round(liveStatistics.daysOnMarket.average)} days`}
               />
             </div>
           );
@@ -1129,67 +1136,97 @@ export function CompsWidget({ comparables, subjectProperty, suggestedListPrice }
           />
         )}
 
-        {mainView === 'stats' && statistics && (
-          <div className="space-y-6" data-testid="stats-view">
-            <Card className="p-6" data-testid="stats-price-card">
-              <h3 className="text-lg font-semibold mb-4 text-gray-900">Price Statistics</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div data-testid="stats-price-avg">
-                  <p className="text-sm text-gray-600">Average</p>
-                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(statistics.price.average)}</p>
-                </div>
-                <div data-testid="stats-price-median">
-                  <p className="text-sm text-gray-600">Median</p>
-                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(statistics.price.median)}</p>
-                </div>
-                <div data-testid="stats-price-range">
-                  <p className="text-sm text-gray-600">Range</p>
-                  <p className="text-lg font-medium text-gray-900">
-                    {formatCurrency(statistics.price.range.min)} - {formatCurrency(statistics.price.range.max)}
-                  </p>
-                </div>
-              </div>
-            </Card>
-            
-            <Card className="p-6" data-testid="stats-ppsf-card">
-              <h3 className="text-lg font-semibold mb-4 text-gray-900">Price Per Square Foot</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div data-testid="stats-ppsf-avg">
-                  <p className="text-sm text-gray-600">Average</p>
-                  <p className="text-2xl font-bold text-gray-900">${Math.round(statistics.pricePerSqFt.average)}/sqft</p>
-                </div>
-                <div data-testid="stats-ppsf-median">
-                  <p className="text-sm text-gray-600">Median</p>
-                  <p className="text-2xl font-bold text-gray-900">${Math.round(statistics.pricePerSqFt.median)}/sqft</p>
-                </div>
-                <div data-testid="stats-ppsf-range">
-                  <p className="text-sm text-gray-600">Range</p>
-                  <p className="text-lg font-medium text-gray-900">
-                    ${Math.round(statistics.pricePerSqFt.range.min)} - ${Math.round(statistics.pricePerSqFt.range.max)}/sqft
-                  </p>
-                </div>
-              </div>
-            </Card>
-            
-            <Card className="p-6" data-testid="stats-dom-card">
-              <h3 className="text-lg font-semibold mb-4 text-gray-900">Days on Market</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div data-testid="stats-dom-avg">
-                  <p className="text-sm text-gray-600">Average</p>
-                  <p className="text-2xl font-bold text-gray-900">{Math.round(statistics.daysOnMarket.average)} days</p>
-                </div>
-                <div data-testid="stats-dom-median">
-                  <p className="text-sm text-gray-600">Median</p>
-                  <p className="text-2xl font-bold text-gray-900">{Math.round(statistics.daysOnMarket.median)} days</p>
-                </div>
-                <div data-testid="stats-dom-range">
-                  <p className="text-sm text-gray-600">Range</p>
-                  <p className="text-lg font-medium text-gray-900">
-                    {Math.round(statistics.daysOnMarket.range.min)} - {Math.round(statistics.daysOnMarket.range.max)} days
-                  </p>
-                </div>
-              </div>
-            </Card>
+        {mainView === 'stats' && (
+          <div className="overflow-auto" data-testid="stats-view">
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="border-b bg-zinc-50 text-left sticky top-0">
+                  <th className="py-1.5 px-2 w-6"></th>
+                  <th className="py-1.5 px-2 text-[10px] font-semibold text-zinc-500">#</th>
+                  <th className="py-1.5 px-2 text-[10px] font-semibold text-zinc-500">Address</th>
+                  <th className="py-1.5 px-2 text-[10px] font-semibold text-zinc-500">Status</th>
+                  <th className="py-1.5 px-2 text-right text-[10px] font-semibold text-zinc-500">List Price</th>
+                  <th className="py-1.5 px-2 text-right text-[10px] font-semibold text-zinc-500">Sold Price</th>
+                  <th className="py-1.5 px-2 text-right text-[10px] font-semibold text-zinc-500">Sold Date</th>
+                  <th className="py-1.5 px-2 text-right text-[10px] font-semibold text-zinc-500">$/SqFt</th>
+                  <th className="py-1.5 px-2 text-center text-[10px] font-semibold text-zinc-500">DOM</th>
+                  <th className="py-1.5 px-2 text-center text-[10px] font-semibold text-zinc-500">Beds</th>
+                  <th className="py-1.5 px-2 text-center text-[10px] font-semibold text-zinc-500">Baths</th>
+                  <th className="py-1.5 px-2 text-right text-[10px] font-semibold text-zinc-500">SqFt</th>
+                  <th className="py-1.5 px-2 text-right text-[10px] font-semibold text-zinc-500">% List</th>
+                </tr>
+              </thead>
+              <tbody>
+                {subjectProperty && (
+                  <tr className="border-b border-blue-100 bg-blue-50">
+                    <td className="py-1.5 px-2"></td>
+                    <td className="py-1.5 px-2 text-zinc-400">S</td>
+                    <td className="py-1.5 px-2 truncate max-w-[120px]">
+                      <span className="mr-1 px-1 rounded bg-blue-600 text-white text-[9px] font-bold">Subject</span>
+                      {subjectProperty.address || 'Subject Property'}
+                    </td>
+                    <td className="py-1.5 px-2">—</td>
+                    <td className="py-1.5 px-2 text-right">{subjectProperty.listPrice ? `$${subjectProperty.listPrice.toLocaleString()}` : '—'}</td>
+                    <td className="py-1.5 px-2 text-right">—</td>
+                    <td className="py-1.5 px-2 text-right">—</td>
+                    <td className="py-1.5 px-2 text-right">{subjectProperty.listPrice && subjectProperty.sqft > 0 ? `$${Math.round(subjectProperty.listPrice / subjectProperty.sqft)}` : '—'}</td>
+                    <td className="py-1.5 px-2 text-center">—</td>
+                    <td className="py-1.5 px-2 text-center">{subjectProperty.beds ?? '—'}</td>
+                    <td className="py-1.5 px-2 text-center">{subjectProperty.baths ?? '—'}</td>
+                    <td className="py-1.5 px-2 text-right">{subjectProperty.sqft > 0 ? subjectProperty.sqft.toLocaleString() : '—'}</td>
+                    <td className="py-1.5 px-2 text-right">—</td>
+                  </tr>
+                )}
+                {filteredComparables.map((comp, i) => {
+                  const isEnabled = enabledIds.has(comp.id);
+                  const price = extractPrice(comp) || 0;
+                  const sqft = extractSqft(comp) || 0;
+                  const dom = extractDOM(comp) || 0;
+                  const listPrice = comp.listPrice || 0;
+                  const soldPrice = comp.soldPrice || 0;
+                  const psf = comp.pricePerSqft || (sqft > 0 ? price / sqft : 0);
+                  const pctOfList = listPrice > 0 && soldPrice > 0 ? (soldPrice / listPrice * 100) : null;
+                  const statusColor = getStatusColor(normalizeStatus(comp.status));
+                  const soldDate = comp.soldDate ? new Date(comp.soldDate).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' }) : '—';
+                  return (
+                    <tr
+                      key={comp.id}
+                      className={`border-b border-zinc-100 transition-opacity ${!isEnabled ? 'opacity-40' : ''}`}
+                    >
+                      <td className="py-1.5 px-2">
+                        <input
+                          type="checkbox"
+                          checked={isEnabled}
+                          onChange={() => toggleComp(comp.id)}
+                          className="w-3.5 h-3.5 cursor-pointer accent-[#EF4923]"
+                        />
+                      </td>
+                      <td className="py-1.5 px-2 text-zinc-400">{i + 1}</td>
+                      <td className="py-1.5 px-2 truncate max-w-[120px]">{comp.address || 'Unknown'}</td>
+                      <td className="py-1.5 px-2">
+                        <span
+                          className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+                          style={{ backgroundColor: statusColor + '20', color: statusColor }}
+                        >
+                          {normalizeStatus(comp.status)}
+                        </span>
+                      </td>
+                      <td className="py-1.5 px-2 text-right">{listPrice ? `$${listPrice.toLocaleString()}` : '—'}</td>
+                      <td className="py-1.5 px-2 text-right font-semibold" style={{ color: soldPrice ? '#16a34a' : undefined }}>
+                        {soldPrice ? `$${soldPrice.toLocaleString()}` : '—'}
+                      </td>
+                      <td className="py-1.5 px-2 text-right">{soldDate}</td>
+                      <td className="py-1.5 px-2 text-right">{psf > 0 ? `$${Math.round(psf)}` : '—'}</td>
+                      <td className="py-1.5 px-2 text-center">{dom > 0 ? dom : '—'}</td>
+                      <td className="py-1.5 px-2 text-center">{comp.beds ?? '—'}</td>
+                      <td className="py-1.5 px-2 text-center">{comp.baths ?? '—'}</td>
+                      <td className="py-1.5 px-2 text-right">{sqft > 0 ? sqft.toLocaleString() : '—'}</td>
+                      <td className="py-1.5 px-2 text-right">{pctOfList ? `${pctOfList.toFixed(1)}%` : '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
 
