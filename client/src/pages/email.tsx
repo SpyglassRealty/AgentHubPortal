@@ -516,7 +516,7 @@ function ComposeEmailSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-[600px] flex flex-col p-0">
-        <SheetHeader className="px-6 py-4 border-b shrink-0">
+        <SheetHeader className="pl-6 pr-10 py-4 border-b shrink-0">
           <div className="flex items-center justify-between gap-2">
             <SheetTitle className="flex items-center gap-2">
               {compose.mode === 'reply' && <Reply className="h-4 w-4" />}
@@ -868,6 +868,15 @@ function EmailDetail({
 
       {/* Body + Suggestions — single scrollable region */}
       <div className="flex-1 overflow-auto">
+        {/* AI Suggested Replies — Needs Reply tab only */}
+        {isNeedsReply && (
+          <SuggestedReplies
+            key={messageId}
+            messageId={messageId}
+            onUseSuggestion={handleUseSuggestion}
+          />
+        )}
+
         <div className="p-4">
           {msg.body ? (
             <div
@@ -906,15 +915,6 @@ function EmailDetail({
             </Button>
           </div>
         </div>
-
-        {/* AI Suggested Replies — Needs Reply tab only */}
-        {isNeedsReply && (
-          <SuggestedReplies
-            key={messageId}
-            messageId={messageId}
-            onUseSuggestion={handleUseSuggestion}
-          />
-        )}
       </div>
     </div>
   );
