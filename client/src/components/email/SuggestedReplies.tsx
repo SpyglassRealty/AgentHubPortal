@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Check, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Sparkles, Check, ChevronDown, ChevronUp, Loader2, Mic } from "lucide-react";
 
 interface Suggestion {
   index: 0 | 1 | 2;
@@ -18,9 +18,11 @@ interface SuggestionsResponse {
 export function SuggestedReplies({
   messageId,
   onUseSuggestion,
+  onDictate,
 }: {
   messageId: string;
   onUseSuggestion: (body: string) => void;
+  onDictate?: () => void;
 }) {
   const [usedIndex, setUsedIndex] = useState<number | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -44,31 +46,43 @@ export function SuggestedReplies({
 
   return (
     <div className="border-t shrink-0">
-      {/* Collapsed header / toggle */}
-      <button
-        onClick={() => !isLoading && setIsExpanded(prev => !prev)}
-        className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left transition-colors hover:bg-muted/40 ${isLoading ? 'cursor-default' : 'cursor-pointer'}`}
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <Loader2 className="h-4 w-4 text-[#EF4923] animate-spin shrink-0" />
-        ) : (
-          <Sparkles className="h-4 w-4 text-[#EF4923] shrink-0" />
+      {/* Header row: toggle button (flex-1) + mic button (sibling) */}
+      <div className="flex items-center gap-1 px-4 py-2.5 text-sm">
+        <button
+          onClick={() => !isLoading && setIsExpanded(prev => !prev)}
+          className={`flex-1 flex items-center gap-2 text-left transition-colors hover:text-foreground ${isLoading ? 'cursor-default' : 'cursor-pointer'}`}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 text-[#EF4923] animate-spin shrink-0" />
+          ) : (
+            <Sparkles className="h-4 w-4 text-[#EF4923] shrink-0" />
+          )}
+          <span className="font-medium flex-1">
+            {isLoading ? "Generating suggestions…" : "3 suggested replies"}
+          </span>
+          {!isLoading && data?.voiceMatched && (
+            <Badge variant="secondary" className="text-xs">
+              Voice matched
+            </Badge>
+          )}
+          {!isLoading && (
+            isExpanded
+              ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+              : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+          )}
+        </button>
+
+        {!isLoading && onDictate && (
+          <button
+            onClick={onDictate}
+            title="Dictate reply"
+            className="p-1.5 shrink-0 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <Mic className="h-4 w-4" />
+          </button>
         )}
-        <span className="font-medium flex-1">
-          {isLoading ? "Generating suggestions…" : "3 suggested replies"}
-        </span>
-        {!isLoading && data?.voiceMatched && (
-          <Badge variant="secondary" className="text-xs">
-            Voice matched
-          </Badge>
-        )}
-        {!isLoading && (
-          isExpanded
-            ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
-            : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-        )}
-      </button>
+      </div>
 
       {/* Expanded card grid */}
       {isExpanded && data?.suggestions && (

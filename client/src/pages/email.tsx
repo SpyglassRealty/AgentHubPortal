@@ -36,7 +36,6 @@ import {
   AlertCircle,
   RefreshCw,
   Loader2,
-  Mic,
   Square,
 } from "lucide-react";
 import type { GmailMessage } from "@shared/schema";
@@ -368,12 +367,16 @@ function ComposeEmailSheet({
   compose,
   setCompose,
   onSent,
+  autoStartDictation = false,
+  onDictationStarted,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   compose: ComposeState;
   setCompose: React.Dispatch<React.SetStateAction<ComposeState>>;
   onSent: () => void;
+  autoStartDictation?: boolean;
+  onDictationStarted?: () => void;
 }) {
   const { toast } = useToast();
   const [showCc, setShowCc] = useState(!!compose.cc);
@@ -459,6 +462,17 @@ function ComposeEmailSheet({
 
   const formatElapsed = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
+  // Auto-start dictation when compose opens via mic click in SuggestedReplies
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (open && autoStartDictation && dictState === 'idle' && !autoStartedRef.current) {
+      autoStartedRef.current = true;
+      handleMicClick();
+      onDictationStarted?.();
+    }
+    if (!open) autoStartedRef.current = false;
+  }, [open, autoStartDictation, dictState, handleMicClick, onDictationStarted]);
+
   const sendMutation = useMutation({
     mutationFn: async () => {
       if (compose.mode === 'reply' || compose.mode === 'replyAll') {
@@ -526,38 +540,24 @@ function ComposeEmailSheet({
               {modeLabel}
             </SheetTitle>
 
-            {/* Dictation control */}
-            <div className="flex items-center gap-2 shrink-0">
-              {(dictState === 'transcribing' || dictState === 'rewriting') ? (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  {dictState === 'transcribing' ? 'Transcribing…' : 'Polishing…'}
-                </div>
-              ) : dictState === 'recording' ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground tabular-nums">{formatElapsed(elapsed)}</span>
-                  <button
-                    onClick={handleMicClick}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#EF4923] text-white text-xs font-medium hover:bg-[#EF4923]/90 transition-colors"
-                  >
-                    <Square className="h-3.5 w-3.5 fill-current" />
-                    Stop
-                  </button>
-                </div>
-              ) : (
+            {/* Dictation status — shown only when active (recording/processing) */}
+            {(dictState === 'transcribing' || dictState === 'rewriting') ? (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                {dictState === 'transcribing' ? 'Transcribing…' : 'Polishing…'}
+              </div>
+            ) : dictState === 'recording' ? (
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs text-muted-foreground tabular-nums">{formatElapsed(elapsed)}</span>
                 <button
                   onClick={handleMicClick}
-                  title="Dictate reply"
-                  className={`p-1.5 rounded-md transition-colors ${
-                    dictState === 'error'
-                      ? 'text-destructive hover:bg-destructive/10'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#EF4923] text-white text-xs font-medium hover:bg-[#EF4923]/90 transition-colors"
                 >
-                  <Mic className="h-4 w-4" />
+                  <Square className="h-3.5 w-3.5 fill-current" />
+                  Stop
                 </button>
-              )}
-            </div>
+              </div>
+            ) : null}
           </div>
 
           {dictState === 'error' && dictError && (
@@ -717,11 +717,13 @@ function EmailDetail({
   onBack,
   onCompose,
   isNeedsReply = false,
+  onDictateCompose,
 }: {
   messageId: string;
   onBack: () => void;
   onCompose: (compose: ComposeState) => void;
   isNeedsReply?: boolean;
+  onDictateCompose?: (state: ComposeState) => void;
 }) {
   const url = `/api/gmail/message/${messageId}`;
 
@@ -874,6 +876,7 @@ function EmailDetail({
             key={messageId}
             messageId={messageId}
             onUseSuggestion={handleUseSuggestion}
+            onDictate={onDictateCompose ? () => onDictateCompose(buildReplyComposeState('reply')) : undefined}
           />
         )}
 
@@ -968,6 +971,7 @@ export default function EmailPage() {
   const [pageTokens, setPageTokens] = useState<string[]>([]);
   const [composeOpen, setComposeOpen] = useState(false);
   const [compose, setCompose] = useState<ComposeState>(emptyCompose);
+  const [autoStartDictation, setAutoStartDictation] = useState(false);
   const { lastManualRefresh, lastAutoRefresh, isLoading: isSyncing, refresh: refreshSync } = useSyncStatus('calendar'); // reuse calendar sync section
 
   // Build inbox URL with category + search
@@ -1143,6 +1147,12 @@ export default function EmailPage() {
 
   const handleCompose = (composeState?: ComposeState) => {
     setCompose(composeState || emptyCompose);
+    setComposeOpen(true);
+  };
+
+  const handleDictateCompose = (state: ComposeState) => {
+    setAutoStartDictation(true);
+    setCompose(state);
     setComposeOpen(true);
   };
 
@@ -1384,6 +1394,7 @@ export default function EmailPage() {
                 onBack={() => setSelectedMessageId(null)}
                 onCompose={handleCompose}
                 isNeedsReply={activeCategory === 'needsReply'}
+                onDictateCompose={handleDictateCompose}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
@@ -1403,6 +1414,8 @@ export default function EmailPage() {
         compose={compose}
         setCompose={setCompose}
         onSent={handleSent}
+        autoStartDictation={autoStartDictation}
+        onDictationStarted={() => setAutoStartDictation(false)}
       />
     </Layout>
   );
