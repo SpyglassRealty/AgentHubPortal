@@ -1099,7 +1099,7 @@ export default function EmailPage() {
           </div>
 
           {/* Search bar */}
-          <form onSubmit={handleSearch} className="mt-3 flex gap-2">
+          <form onSubmit={handleSearch} className="mt-3 flex gap-2 max-w-sm">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input

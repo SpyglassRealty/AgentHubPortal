@@ -404,7 +404,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <div className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-visible">
+        <div className="flex-1 p-4 md:px-8 md:py-4 overflow-y-auto overflow-x-visible">
           {children}
         </div>
       </main>
