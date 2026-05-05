@@ -54,6 +54,9 @@ async function runDirectMigrations() {
       { name: 'fub_picture_url', sql: 'ALTER TABLE users ADD COLUMN fub_picture_url varchar' },
       { name: 'created_at', sql: 'ALTER TABLE users ADD COLUMN created_at timestamp DEFAULT NOW()' },
       { name: 'updated_at', sql: 'ALTER TABLE users ADD COLUMN updated_at timestamp DEFAULT NOW()' },
+      { name: 'email_signature', sql: 'ALTER TABLE users ADD COLUMN email_signature text' },
+      { name: 'email_signature_fields', sql: 'ALTER TABLE users ADD COLUMN email_signature_fields jsonb' },
+      { name: 'email_signature_synced_at', sql: 'ALTER TABLE users ADD COLUMN email_signature_synced_at timestamp' },
     ];
     
     // Add missing columns

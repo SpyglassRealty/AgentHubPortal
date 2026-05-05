@@ -32,6 +32,23 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
+export interface SignatureFields {
+  name: string;
+  title: string;
+  phone: string;
+  email: string;
+  website: string;
+  licenseNumber?: string;
+  photoUploadId?: string;
+  ctaButtons?: Array<{ label: string; url: string }>;
+  socialLinks?: {
+    facebook?: string;
+    instagram?: string;
+    linkedin?: string;
+    twitter?: string;
+  };
+}
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
@@ -47,6 +64,9 @@ export const users = pgTable("users", {
   theme: varchar("theme").default("light"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  emailSignature: text("email_signature"),
+  emailSignatureFields: jsonb("email_signature_fields").$type<SignatureFields>(),
+  emailSignatureSyncedAt: timestamp("email_signature_synced_at"),
 });
 
 export const uploads = pgTable("uploads", {
