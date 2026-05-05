@@ -38,6 +38,7 @@ import {
   Loader2,
 } from "lucide-react";
 import type { GmailMessage } from "@shared/schema";
+import { SuggestedReplies } from "@/components/email/SuggestedReplies";
 
 // ── Category Tabs ────────────────────────────────────────────────
 type CategoryId = 'primary' | 'promotions' | 'social' | 'forums' | 'needsReply';
@@ -138,6 +139,13 @@ function formatFullDate(dateStr: string): string {
   } catch {
     return dateStr;
   }
+}
+
+function plainTextToHtml(text: string): string {
+  return text
+    .split('\n\n')
+    .map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`)
+    .join('');
 }
 
 // Extract a clean sender name from "Name <email>" format
@@ -586,10 +594,12 @@ function EmailDetail({
   messageId,
   onBack,
   onCompose,
+  isNeedsReply = false,
 }: {
   messageId: string;
   onBack: () => void;
   onCompose: (compose: ComposeState) => void;
+  isNeedsReply?: boolean;
 }) {
   const url = `/api/gmail/message/${messageId}`;
 
@@ -616,6 +626,48 @@ function EmailDetail({
   }
 
   const msg = data.message;
+
+  const buildReplyComposeState = (mode: ComposeMode, suggestedBody?: string): ComposeState => {
+    const fromMatch = msg.from.match(/<(.+?)>/);
+    const replyTo = fromMatch ? fromMatch[1] : msg.from;
+    const replyQuotedHtml = msg.body
+      ? `<p><strong>On ${formatFullDate(msg.date)}, ${msg.from} wrote:</strong></p>${msg.body}`
+      : undefined;
+
+    if (mode === 'forward') {
+      return {
+        mode: 'forward',
+        to: '',
+        cc: '',
+        bcc: '',
+        subject: msg.subject.startsWith('Fwd:') ? msg.subject : `Fwd: ${msg.subject}`,
+        body: '',
+        originalMessageId: msg.id,
+        quotedHtml: msg.body
+          ? `<p><strong>From:</strong> ${msg.from}<br/><strong>Date:</strong> ${formatFullDate(msg.date)}<br/><strong>Subject:</strong> ${msg.subject}<br/><strong>To:</strong> ${msg.to}${msg.cc ? `<br/><strong>Cc:</strong> ${msg.cc}` : ''}</p><br/>${msg.body}`
+          : undefined,
+      };
+    }
+
+    const allCc = mode === 'replyAll' ? [msg.to, msg.cc].filter(Boolean).join(', ') : '';
+
+    return {
+      mode,
+      to: replyTo,
+      cc: allCc,
+      bcc: '',
+      subject: msg.subject.startsWith('Re:') ? msg.subject : `Re: ${msg.subject}`,
+      body: suggestedBody ? plainTextToHtml(suggestedBody) : '',
+      originalMessageId: msg.id,
+      threadId: msg.threadId,
+      quotedHtml: replyQuotedHtml,
+    };
+  };
+
+  const handleUseSuggestion = (body: string) => {
+    onCompose(buildReplyComposeState('reply', body));
+  };
+
   const sender = parseSender(msg.from);
   const initials = sender.name
     .split(' ')
@@ -662,6 +714,34 @@ function EmailDetail({
             )}
           </div>
         </div>
+
+        {/* Top action row */}
+        <div className="flex items-center gap-2 pt-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onCompose(buildReplyComposeState('reply'))}
+          >
+            <Reply className="h-4 w-4 mr-1.5" />
+            Reply
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onCompose(buildReplyComposeState('replyAll'))}
+          >
+            <ReplyAll className="h-4 w-4 mr-1.5" />
+            Reply All
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onCompose(buildReplyComposeState('forward'))}
+          >
+            <Forward className="h-4 w-4 mr-1.5" />
+            Forward
+          </Button>
+        </div>
       </div>
 
       {/* Body */}
@@ -675,26 +755,12 @@ function EmailDetail({
           <p className="text-muted-foreground italic">No message body</p>
         )}
 
-        {/* Reply / Reply All / Forward buttons */}
+        {/* Bottom reply row */}
         <div className="flex items-center gap-2 mt-6 pt-4 border-t">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              const fromMatch = msg.from.match(/<(.+?)>/);
-              const replyTo = fromMatch ? fromMatch[1] : msg.from;
-              onCompose({
-                mode: 'reply',
-                to: replyTo,
-                cc: '',
-                bcc: '',
-                subject: msg.subject.startsWith('Re:') ? msg.subject : `Re: ${msg.subject}`,
-                body: '',
-                originalMessageId: msg.id,
-                threadId: msg.threadId,
-                quotedHtml: `<p><strong>On ${formatFullDate(msg.date)}, ${msg.from} wrote:</strong></p>${msg.body || msg.snippet}`,
-              });
-            }}
+            onClick={() => onCompose(buildReplyComposeState('reply'))}
           >
             <Reply className="h-4 w-4 mr-1.5" />
             Reply
@@ -702,23 +768,7 @@ function EmailDetail({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              const fromMatch = msg.from.match(/<(.+?)>/);
-              const replyTo = fromMatch ? fromMatch[1] : msg.from;
-              // For Reply All, include original To and CC minus the current user
-              const allCc = [msg.to, msg.cc].filter(Boolean).join(', ');
-              onCompose({
-                mode: 'replyAll',
-                to: replyTo,
-                cc: allCc,
-                bcc: '',
-                subject: msg.subject.startsWith('Re:') ? msg.subject : `Re: ${msg.subject}`,
-                body: '',
-                originalMessageId: msg.id,
-                threadId: msg.threadId,
-                quotedHtml: `<p><strong>On ${formatFullDate(msg.date)}, ${msg.from} wrote:</strong></p>${msg.body || msg.snippet}`,
-              });
-            }}
+            onClick={() => onCompose(buildReplyComposeState('replyAll'))}
           >
             <ReplyAll className="h-4 w-4 mr-1.5" />
             Reply All
@@ -726,24 +776,22 @@ function EmailDetail({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              onCompose({
-                mode: 'forward',
-                to: '',
-                cc: '',
-                bcc: '',
-                subject: msg.subject.startsWith('Fwd:') ? msg.subject : `Fwd: ${msg.subject}`,
-                body: '',
-                originalMessageId: msg.id,
-                quotedHtml: `<p><strong>From:</strong> ${msg.from}<br/><strong>Date:</strong> ${formatFullDate(msg.date)}<br/><strong>Subject:</strong> ${msg.subject}<br/><strong>To:</strong> ${msg.to}${msg.cc ? `<br/><strong>Cc:</strong> ${msg.cc}` : ''}</p><br/>${msg.body || msg.snippet}`,
-              });
-            }}
+            onClick={() => onCompose(buildReplyComposeState('forward'))}
           >
             <Forward className="h-4 w-4 mr-1.5" />
             Forward
           </Button>
         </div>
       </div>
+
+      {/* AI Suggested Replies — Needs Reply tab only */}
+      {isNeedsReply && (
+        <SuggestedReplies
+          key={messageId}
+          messageId={messageId}
+          onUseSuggestion={handleUseSuggestion}
+        />
+      )}
     </div>
   );
 }
@@ -1211,6 +1259,7 @@ export default function EmailPage() {
                 messageId={selectedMessageId}
                 onBack={() => setSelectedMessageId(null)}
                 onCompose={handleCompose}
+                isNeedsReply={activeCategory === 'needsReply'}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
