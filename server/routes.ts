@@ -140,6 +140,7 @@ import multicamRoutes from "./multicamRoutes";
 import { registerCommunityContentBlocksRoutes } from "./communityContentBlocksRoutes";
 import { registerEmailTriageRoutes } from "./emailTriageRoutes";
 import { registerEmailSuggestionRoutes } from "./emailSuggestionRoutes";
+import { registerEmailDictationRoutes } from "./emailDictationRoutes";
 
 
 // Helper function to get the actual database user from request
@@ -5685,6 +5686,9 @@ Respond with valid JSON in this exact format:
 
   // Register Email Suggestion routes (AI reply suggestions with voice matching)
   registerEmailSuggestionRoutes(app);
+
+  // Register Email Dictation routes (voice → STT → rewrite → compose body)
+  registerEmailDictationRoutes(app);
 
   // Register Xano proxy routes for admin dashboards
   registerXanoRoutes(app, isAuthenticated);

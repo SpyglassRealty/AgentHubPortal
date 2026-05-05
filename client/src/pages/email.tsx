@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import Layout from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -36,9 +36,12 @@ import {
   AlertCircle,
   RefreshCw,
   Loader2,
+  Mic,
+  Square,
 } from "lucide-react";
 import type { GmailMessage } from "@shared/schema";
 import { SuggestedReplies } from "@/components/email/SuggestedReplies";
+import { useVoiceRecorder } from "../../replit_integrations/audio/useVoiceRecorder";
 
 // ── Category Tabs ────────────────────────────────────────────────
 type CategoryId = 'primary' | 'promotions' | 'social' | 'forums' | 'needsReply';
@@ -376,6 +379,86 @@ function ComposeEmailSheet({
   const [showCc, setShowCc] = useState(!!compose.cc);
   const [showBcc, setShowBcc] = useState(!!compose.bcc);
 
+  // ── Dictation ──────────────────────────────────────────────────
+  type DictationState = 'idle' | 'recording' | 'transcribing' | 'rewriting' | 'error';
+  const [dictState, setDictState] = useState<DictationState>('idle');
+  const [elapsed, setElapsed] = useState(0);
+  const [dictError, setDictError] = useState<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const capRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { startRecording, stopRecording } = useVoiceRecorder();
+
+  const clearDictTimers = useCallback(() => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (capRef.current) { clearTimeout(capRef.current); capRef.current = null; }
+  }, []);
+
+  useEffect(() => {
+    if (!open) { clearDictTimers(); setDictState('idle'); setElapsed(0); setDictError(null); }
+  }, [open, clearDictTimers]);
+  useEffect(() => () => clearDictTimers(), [clearDictTimers]);
+
+  const submitDictation = useCallback(async (blob: Blob) => {
+    setDictState('transcribing');
+    const rewritingTimer = setTimeout(() => setDictState('rewriting'), 3000);
+    try {
+      const base64: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      const res = await fetch('/api/email/dictate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ audio: base64 }),
+      });
+      clearTimeout(rewritingTimer);
+      const data = await res.json();
+      if (!res.ok || data.error === 'too_vague') {
+        setDictState('error');
+        setDictError('Polishing failed — try recording again, or type your reply manually.');
+        return;
+      }
+      setCompose(prev => ({ ...prev, body: plainTextToHtml(data.body) }));
+      setDictState('idle');
+      toast({ title: 'Dictation complete', description: 'Your spoken reply is ready to review.' });
+    } catch {
+      clearTimeout(rewritingTimer);
+      setDictState('error');
+      setDictError('Polishing failed — try recording again, or type your reply manually.');
+    }
+  }, [setCompose, toast]);
+
+  const handleMicClick = useCallback(async () => {
+    if (dictState === 'recording') {
+      clearDictTimers();
+      const blob = await stopRecording();
+      if (blob.size) await submitDictation(blob);
+      else setDictState('idle');
+    } else if (dictState === 'idle' || dictState === 'error') {
+      setDictError(null);
+      setElapsed(0);
+      try {
+        await startRecording();
+        setDictState('recording');
+        timerRef.current = setInterval(() => setElapsed(s => s + 1), 1000);
+        capRef.current = setTimeout(async () => {
+          clearDictTimers();
+          const blob = await stopRecording();
+          if (blob.size) await submitDictation(blob);
+          else setDictState('idle');
+        }, 180_000);
+      } catch {
+        setDictState('error');
+        setDictError('Microphone access denied. Check your browser permissions.');
+      }
+    }
+  }, [dictState, clearDictTimers, startRecording, stopRecording, submitDictation]);
+
+  const formatElapsed = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
   const sendMutation = useMutation({
     mutationFn: async () => {
       if (compose.mode === 'reply' || compose.mode === 'replyAll') {
@@ -434,13 +517,52 @@ function ComposeEmailSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-[600px] flex flex-col p-0">
         <SheetHeader className="px-6 py-4 border-b shrink-0">
-          <SheetTitle className="flex items-center gap-2">
-            {compose.mode === 'reply' && <Reply className="h-4 w-4" />}
-            {compose.mode === 'replyAll' && <ReplyAll className="h-4 w-4" />}
-            {compose.mode === 'forward' && <Forward className="h-4 w-4" />}
-            {compose.mode === 'new' && <Plus className="h-4 w-4" />}
-            {modeLabel}
-          </SheetTitle>
+          <div className="flex items-center justify-between gap-2">
+            <SheetTitle className="flex items-center gap-2">
+              {compose.mode === 'reply' && <Reply className="h-4 w-4" />}
+              {compose.mode === 'replyAll' && <ReplyAll className="h-4 w-4" />}
+              {compose.mode === 'forward' && <Forward className="h-4 w-4" />}
+              {compose.mode === 'new' && <Plus className="h-4 w-4" />}
+              {modeLabel}
+            </SheetTitle>
+
+            {/* Dictation control */}
+            <div className="flex items-center gap-2 shrink-0">
+              {(dictState === 'transcribing' || dictState === 'rewriting') ? (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {dictState === 'transcribing' ? 'Transcribing…' : 'Polishing…'}
+                </div>
+              ) : dictState === 'recording' ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground tabular-nums">{formatElapsed(elapsed)}</span>
+                  <button
+                    onClick={handleMicClick}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#EF4923] text-white text-xs font-medium hover:bg-[#EF4923]/90 transition-colors"
+                  >
+                    <Square className="h-3.5 w-3.5 fill-current" />
+                    Stop
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleMicClick}
+                  title="Dictate reply"
+                  className={`p-1.5 rounded-md transition-colors ${
+                    dictState === 'error'
+                      ? 'text-destructive hover:bg-destructive/10'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  <Mic className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {dictState === 'error' && dictError && (
+            <p className="text-xs text-destructive mt-1">{dictError}</p>
+          )}
           <SheetDescription className="sr-only">Compose and send an email message</SheetDescription>
         </SheetHeader>
 
