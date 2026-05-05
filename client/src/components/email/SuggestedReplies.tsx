@@ -79,7 +79,7 @@ export function SuggestedReplies({
               <span className="text-xs font-medium text-muted-foreground">
                 {s.label}
               </span>
-              <p className="text-sm text-foreground line-clamp-3 flex-1 whitespace-pre-wrap">
+              <p className="text-sm text-foreground flex-1 whitespace-pre-wrap">
                 {s.body}
               </p>
               <Button
