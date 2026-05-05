@@ -744,54 +744,56 @@ function EmailDetail({
         </div>
       </div>
 
-      {/* Body */}
-      <div className="flex-1 overflow-auto p-4">
-        {msg.body ? (
-          <div
-            className="prose prose-sm dark:prose-invert max-w-none email-content"
-            dangerouslySetInnerHTML={{ __html: msg.body }}
-          />
-        ) : (
-          <p className="text-muted-foreground italic">No message body</p>
-        )}
+      {/* Body + Suggestions — single scrollable region */}
+      <div className="flex-1 overflow-auto">
+        <div className="p-4">
+          {msg.body ? (
+            <div
+              className="prose prose-sm dark:prose-invert max-w-none email-content"
+              dangerouslySetInnerHTML={{ __html: msg.body }}
+            />
+          ) : (
+            <p className="text-muted-foreground italic">No message body</p>
+          )}
 
-        {/* Bottom reply row */}
-        <div className="flex items-center gap-2 mt-6 pt-4 border-t">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onCompose(buildReplyComposeState('reply'))}
-          >
-            <Reply className="h-4 w-4 mr-1.5" />
-            Reply
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onCompose(buildReplyComposeState('replyAll'))}
-          >
-            <ReplyAll className="h-4 w-4 mr-1.5" />
-            Reply All
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onCompose(buildReplyComposeState('forward'))}
-          >
-            <Forward className="h-4 w-4 mr-1.5" />
-            Forward
-          </Button>
+          {/* Bottom reply row */}
+          <div className="flex items-center gap-2 mt-6 pt-4 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onCompose(buildReplyComposeState('reply'))}
+            >
+              <Reply className="h-4 w-4 mr-1.5" />
+              Reply
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onCompose(buildReplyComposeState('replyAll'))}
+            >
+              <ReplyAll className="h-4 w-4 mr-1.5" />
+              Reply All
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onCompose(buildReplyComposeState('forward'))}
+            >
+              <Forward className="h-4 w-4 mr-1.5" />
+              Forward
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* AI Suggested Replies — Needs Reply tab only */}
-      {isNeedsReply && (
-        <SuggestedReplies
-          key={messageId}
-          messageId={messageId}
-          onUseSuggestion={handleUseSuggestion}
-        />
-      )}
+        {/* AI Suggested Replies — Needs Reply tab only */}
+        {isNeedsReply && (
+          <SuggestedReplies
+            key={messageId}
+            messageId={messageId}
+            onUseSuggestion={handleUseSuggestion}
+          />
+        )}
+      </div>
     </div>
   );
 }
