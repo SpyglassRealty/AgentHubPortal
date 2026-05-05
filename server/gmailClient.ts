@@ -36,6 +36,18 @@ function decodeBase64Url(data: string): string {
   return Buffer.from(base64, 'base64').toString('utf-8');
 }
 
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+}
+
 function extractBody(payload: any): { text: string; html: string } {
   let text = '';
   let html = '';
@@ -356,4 +368,126 @@ export async function sendGmailMessage(options: SendEmailOptions): Promise<strin
 
   console.log(`[Gmail] Message sent successfully, ID: ${response.data.id}`);
   return response.data.id!;
+}
+
+// ── Sent mail + thread context helpers ────────────────────────────────────────
+
+// Converts HTML email content to clean plain text: strips tags, then decodes
+// entities. Preserves <br> and <p> boundaries as newlines so quoted-content
+// detection still works on the resulting plain text.
+export function htmlToPlainText(html: string): string {
+  if (!html.includes('<')) return decodeHtmlEntities(html);
+  const withLineBreaks = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n');
+  const stripped = withLineBreaks.replace(/<[^>]+>/g, '');
+  return decodeHtmlEntities(stripped).replace(/\n{3,}/g, '\n\n').trim();
+}
+
+// Strips Gmail signature blocks and quoted prior messages from a plain-text body.
+// Exported so emailVoiceProfiler and emailSuggestionRoutes share the logic.
+export function stripQuotedContent(body: string): string {
+  const lines = body.split(/\r?\n/);
+  const out: string[] = [];
+  for (const line of lines) {
+    if (/^>/.test(line)) break;
+    if (/^On .{5,80}wrote:\s*$/i.test(line.trim())) break;
+    if (/^-{3,}\s*(Original|Forwarded) Message\s*-{3,}/i.test(line)) break;
+    if (line.trim() === '--') break;
+    out.push(line);
+  }
+  return out.join('\n').trim();
+}
+
+export interface SentEmail {
+  id: string;
+  to: string;
+  subject: string;
+  body: string;   // plain text, signature and quoted content stripped
+  date: string;
+}
+
+export async function fetchSentEmails(
+  userEmail: string,
+  limit: number = 20
+): Promise<SentEmail[]> {
+  const gmail = getGmailClient(userEmail);
+
+  console.log(`[Gmail] Fetching ${limit} sent emails for ${userEmail}`);
+
+  const listResponse = await gmail.users.messages.list({
+    userId: 'me',
+    maxResults: limit,
+    q: 'in:sent',
+  });
+
+  const messageIds = listResponse.data.messages || [];
+  if (messageIds.length === 0) return [];
+
+  const messages = await Promise.all(
+    messageIds.map(async (msg) => {
+      try {
+        const full = await gmail.users.messages.get({
+          userId: 'me',
+          id: msg.id!,
+          format: 'full',
+        });
+        const headers = full.data.payload?.headers || [];
+        const { text, html } = extractBody(full.data.payload);
+        const rawBody = text || htmlToPlainText(html);
+        return {
+          id: full.data.id!,
+          to: getHeader(headers, 'To'),
+          subject: getHeader(headers, 'Subject') || '(No subject)',
+          body: rawBody,
+          date: getHeader(headers, 'Date'),
+        } satisfies SentEmail;
+      } catch (err) {
+        console.error(`[Gmail] Error fetching sent message ${msg.id}:`, err);
+        return null;
+      }
+    })
+  );
+
+  return messages.filter(Boolean) as SentEmail[];
+}
+
+// Returns a plain-text summary of earlier messages in a thread for injection
+// into the suggestion prompt as background context.
+export async function getGmailThreadContext(
+  userEmail: string,
+  threadId: string,
+  excludeMessageId: string,
+  maxMessages: number = 3
+): Promise<string> {
+  const gmail = getGmailClient(userEmail);
+
+  try {
+    const thread = await gmail.users.threads.get({
+      userId: 'me',
+      id: threadId,
+      format: 'full',
+    });
+
+    // Thread messages arrive oldest-first; exclude the message being replied to
+    const prior = (thread.data.messages || []).filter(m => m.id !== excludeMessageId);
+    const context = prior.slice(-maxMessages);
+
+    if (context.length === 0) return '';
+
+    return context
+      .map(m => {
+        const headers = m.payload?.headers || [];
+        const from = getHeader(headers, 'From');
+        const date = getHeader(headers, 'Date');
+        const { text, html } = extractBody(m.payload);
+        const body = stripQuotedContent(text || htmlToPlainText(html));
+        return `--- From: ${from} | Date: ${date} ---\n${body.substring(0, 400)}`;
+      })
+      .join('\n\n');
+  } catch (err) {
+    console.error(`[Gmail] Error fetching thread context for ${threadId}:`, err);
+    return '';
+  }
 }

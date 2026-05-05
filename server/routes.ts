@@ -139,6 +139,7 @@ import callDutyRoutes from "./callDutyRoutes";
 import multicamRoutes from "./multicamRoutes";
 import { registerCommunityContentBlocksRoutes } from "./communityContentBlocksRoutes";
 import { registerEmailTriageRoutes } from "./emailTriageRoutes";
+import { registerEmailSuggestionRoutes } from "./emailSuggestionRoutes";
 
 
 // Helper function to get the actual database user from request
@@ -5681,6 +5682,9 @@ Respond with valid JSON in this exact format:
 
   // Register Email Triage routes (AI-scored Needs Reply tab, v1.0 backend)
   registerEmailTriageRoutes(app);
+
+  // Register Email Suggestion routes (AI reply suggestions with voice matching)
+  registerEmailSuggestionRoutes(app);
 
   // Register Xano proxy routes for admin dashboards
   registerXanoRoutes(app, isAuthenticated);
