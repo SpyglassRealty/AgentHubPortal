@@ -120,6 +120,10 @@ async function runDirectMigrations() {
     // IDX leads table for form submissions
     await createIdxLeadsTable();
 
+    // Email suggestion tables (Commit 1 — voice profiles + feedback logging)
+    await createUserVoiceProfilesTable();
+    await createSuggestionFeedbackTable();
+
   } catch (error) {
     console.error("[Database] Direct migration error:", error);
     throw error;
@@ -1414,5 +1418,58 @@ async function addCommunitySourceColumns() {
   } catch (error) {
     console.error("[Database] Error adding community source columns:", error);
     // Do not throw - columns might already exist
+  }
+}
+
+async function createUserVoiceProfilesTable() {
+  try {
+    console.log("[Database] Creating user_voice_profiles table if not exists...");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_voice_profiles (
+        id                   VARCHAR      PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id              VARCHAR      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        voice_profile        JSONB        NOT NULL,
+        extracted_from_count INTEGER      NOT NULL DEFAULT 0,
+        last_extracted_at    TIMESTAMP    NOT NULL DEFAULT NOW(),
+        CONSTRAINT uq_user_voice_profiles_user_id UNIQUE (user_id)
+      )
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_user_voice_profiles_user_id
+        ON user_voice_profiles (user_id)
+    `);
+    console.log("[Database] user_voice_profiles table ready");
+  } catch (error) {
+    console.error("[Database] Error creating user_voice_profiles table:", error);
+  }
+}
+
+async function createSuggestionFeedbackTable() {
+  try {
+    console.log("[Database] Creating suggestion_feedback table if not exists...");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS suggestion_feedback (
+        id                VARCHAR      PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id           VARCHAR      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        message_id        VARCHAR      NOT NULL,
+        suggestion_index  INTEGER,
+        suggestion_label  VARCHAR(50),
+        original_text     TEXT,
+        sent_text         TEXT,
+        edit_distance     INTEGER,
+        created_at        TIMESTAMP    NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_suggestion_feedback_user
+        ON suggestion_feedback (user_id)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_suggestion_feedback_message
+        ON suggestion_feedback (message_id)
+    `);
+    console.log("[Database] suggestion_feedback table ready");
+  } catch (error) {
+    console.error("[Database] Error creating suggestion_feedback table:", error);
   }
 }

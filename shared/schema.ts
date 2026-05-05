@@ -1773,3 +1773,53 @@ export const emailTriageScores = pgTable("email_triage_scores", {
 export type EmailTriageScore = typeof emailTriageScores.$inferSelect;
 export type InsertEmailTriageScore = typeof emailTriageScores.$inferInsert;
 
+// ── User Voice Profiles ───────────────────────────────────────────────────────
+// Caches extracted writing-voice data per user, derived from their 20 most
+// recent sent emails. Refreshed every 7 days or on first visit to Needs Reply.
+export const userVoiceProfiles = pgTable("user_voice_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
+  voiceProfile: jsonb("voice_profile").notNull().$type<{
+    salutation_style: string | null;
+    closing_style: string | null;
+    signature_pattern: string | null;
+    avg_sentence_length: 'short' | 'medium' | 'long';
+    uses_bullet_points: boolean;
+    formality_level: 1 | 2 | 3 | 4 | 5;
+    typical_email_length: '1-2 sentences' | '1 paragraph' | 'multi-paragraph';
+    uses_contractions: boolean;
+    characteristic_phrases: string[];
+    tends_to_ask_follow_up_questions: boolean;
+    representative_sentences: string[];
+  }>(),
+  extractedFromCount: integer("extracted_from_count").notNull().default(0),
+  lastExtractedAt: timestamp("last_extracted_at").defaultNow().notNull(),
+});
+
+export type UserVoiceProfile = typeof userVoiceProfiles.$inferSelect;
+export type InsertUserVoiceProfile = typeof userVoiceProfiles.$inferInsert;
+
+// ── Suggestion Feedback ───────────────────────────────────────────────────────
+// Tracks which AI reply suggestion (if any) the user picked and how much
+// they edited it before sending. Enables empirical quality iteration.
+// suggestionIndex is null when the user discarded all suggestions.
+// editDistance is absolute character-count difference between originalText
+// and sentText — a rough proxy for edit magnitude requiring no extra deps.
+export const suggestionFeedback = pgTable("suggestion_feedback", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  messageId: varchar("message_id").notNull(),
+  suggestionIndex: integer("suggestion_index"),
+  suggestionLabel: varchar("suggestion_label", { length: 50 }),
+  originalText: text("original_text"),
+  sentText: text("sent_text"),
+  editDistance: integer("edit_distance"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_suggestion_feedback_user").on(table.userId),
+  index("idx_suggestion_feedback_message").on(table.messageId),
+]);
+
+export type SuggestionFeedback = typeof suggestionFeedback.$inferSelect;
+export type InsertSuggestionFeedback = typeof suggestionFeedback.$inferInsert;
+
